@@ -39,6 +39,6 @@ v1Api.post("/headline", async (c: Context) => {
   return c.json({ transformedText });
 });
 
-app.route("/api/v1", v1Api);
+app.route("/v1", v1Api);
 
 Deno.serve(app.fetch);
