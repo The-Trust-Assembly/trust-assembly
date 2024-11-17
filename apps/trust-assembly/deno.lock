@@ -1,6 +1,7 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@hono/hono@^4.6.10": "4.6.10",
     "npm:@eslint/js@^9.13.0": "9.15.0",
     "npm:@types/react-dom@^18.3.1": "18.3.1",
     "npm:@types/react@^18.3.12": "18.3.12",
@@ -14,6 +15,11 @@
     "npm:typescript-eslint@^8.11.0": "8.14.0_@typescript-eslint+parser@8.14.0__eslint@9.15.0__typescript@5.6.3_eslint@9.15.0_typescript@5.6.3",
     "npm:typescript@~5.6.2": "5.6.3",
     "npm:vite@^5.4.10": "5.4.11"
+  },
+  "jsr": {
+    "@hono/hono@4.6.10": {
+      "integrity": "dae93ac8bb49881f99506aa8e01e5536d5d72cc3c2b556bde2816fdf25ca609c"
+    }
   },
   "npm": {
     "@ampproject/remapping@2.3.0": {
@@ -1178,6 +1184,9 @@
     }
   },
   "workspace": {
+    "dependencies": [
+      "jsr:@hono/hono@^4.6.10"
+    ],
     "packageJson": {
       "dependencies": [
         "npm:@eslint/js@^9.13.0",

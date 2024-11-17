@@ -1,7 +1,7 @@
-import { Context, Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
-import { poweredBy } from "hono/powered-by";
+import { Context, Hono } from "@hono/hono";
+import { cors } from "@hono/hono/cors";
+import { logger } from "@hono/hono/logger";
+import { poweredBy } from "@hono/hono/powered-by";
 
 const app = new Hono();
 
