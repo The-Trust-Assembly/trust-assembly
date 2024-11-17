@@ -1,17 +1,13 @@
-import { useEffect, useState } from "react";
 import { getHello } from "./backend/api";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Hello() {
-  const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { isLoading, data: message } = useQuery({
+    queryKey: ["hello"],
+    queryFn: getHello,
+  });
 
-  useEffect(() => {
-    getHello()
-      .then((msg) => setMessage(msg))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
