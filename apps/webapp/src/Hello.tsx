@@ -1,15 +1,11 @@
 import { getHello } from "./backend/api";
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 export default function Hello() {
-  const { isLoading, data: message } = useQuery({
+  const { data: message } = useSuspenseQuery({
     queryKey: ["hello"],
     queryFn: getHello,
   });
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div>
