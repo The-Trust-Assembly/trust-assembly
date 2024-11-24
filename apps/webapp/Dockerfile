@@ -13,5 +13,3 @@ RUN deno install
 
 # Compile the main app so that it doesn't need to be compiled each startup/entry.
 # RUN deno cache main.ts
-
-CMD ["task", "serve"]
