@@ -12,15 +12,18 @@ const app = new Hono();
 const dbClient = new Client({
   user: Deno.env.get("POSTGRES_USER"),
   database: Deno.env.get("POSTGRES_DB"),
-  hostname: "postgres",
+  hostname: Deno.env.get("POSTGRES_HOST"),
   port: 5432,
   password: Deno.env.get("POSTGRES_PASSWORD"),
 });
 
-app.use("/api/*", async (c, next) => {
+app.use("/api/*", async (_, next) => {
   try {
     await dbClient.connect();
     await next();
+  } catch (e) {
+    console.error("Error connecting to database", e);
+    throw e;
   } finally {
     await dbClient.end();
   }
