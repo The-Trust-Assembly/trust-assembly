@@ -1,0 +1,32 @@
+@startuml database
+
+title Database
+
+Entity User {
+  * id: int
+  ---
+  * email: string
+}
+
+Entity Article {
+  * id: int
+  ---
+  * url: string
+  * text: blob
+}
+
+Entity ArticleEdit {
+  * id: int
+  ---
+  * user_id: int
+  * article_id: int
+  ---
+  * edited_text: blob
+  * text_index: int
+  * original_text_length: int
+}
+
+User }o-- ArticleEdit
+Article }o-- ArticleEdit
+
+@enduml
