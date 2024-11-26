@@ -2,6 +2,7 @@ import { Context, Hono } from "@hono/hono";
 import { cors } from "@hono/hono/cors";
 import { logger } from "@hono/hono/logger";
 import { poweredBy } from "@hono/hono/powered-by";
+import { extract } from '@extractus/article-extractor';
 
 const app = new Hono();
 
@@ -19,6 +20,16 @@ app.use(
 );
 app.get("/", (c: Context) => {
   return c.text("Hello Deno!");
+});
+
+app.get("/parsedArticle", async (c: Context) => {
+  const url = c.req.query("url");
+  if (!url) {
+    c.status(400);
+    return c.json({ error: "URL is required" });
+  }
+  const parsed = await extract(url);
+  return c.json(parsed);
 });
 
 const v1Api = new Hono();
