@@ -21,17 +21,30 @@ npm install
 npm run build
 ```
 
-### Quick Test of the Chrome Extension
+### Quick Test of the firefox/IE Extension
 
-#### Load the Extension into Chrome
+#### Load the Extension into firefox
 
 1. Enable Developer Mode
-    * Open Chrome.
-    * Navigate to chrome://extensions/.
-    * Enable Developer mode using the toggle switch in the top right corner.
+    * Open firefox.
+    * Navigate to about:debugging#/runtime/this-firefox
 2. Load Unpacked Extension
-    * Click Load unpacked.
-    * Select the browser-extension directory.
+    * Click Load temporary add-on.
+    * Select the browser-extension directory and open any file.
+3. Verify Extension Installation
+    * The extension should now appear in your list with the name "Headline Stylistic Transformer".
+    * Ensure there are no errors during loading.
+	
+#### Load the Extension into Edge
+
+1. Enable Developer Mode
+    * Open Edge.
+    * Navigate to edge://extensions/
+	* click the three lines
+	* enable developer mode
+2. Load Unpacked Extension
+    * Click Load unpacked button
+    * Select the browser-extension directory
 3. Verify Extension Installation
     * The extension should now appear in your list with the name "Headline Stylistic Transformer".
     * Ensure there are no errors during loading.
@@ -49,6 +62,14 @@ npm run build
 3. Popup Verification
     * Click on the extension's icon in the toolbar.
     * The popup should display with the heading "Transformer" and a button labeled "Toggle Transformation".
+
+##notes for the future
+I tried using an extension to build in multiple browsers, but currently, it seems that it might be better to just keep a seperate branch for firefox
+-Will we need a branch for each browser?  I'm not sure.
+-We may at some point need a polyfill extension added (example below) to cover the case where the javascript differences between browsers. But we don't 
+need it yet, and for all I know, we may never need it.
+	https://github.com/mozilla/webextension-polyfill/
+
 
 ## Architecture
 
