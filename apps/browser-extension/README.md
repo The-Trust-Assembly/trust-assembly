@@ -35,6 +35,11 @@ npm run build
 3. Verify Extension Installation
     * The extension should now appear in your list with the name "Headline Stylistic Transformer".
     * Ensure there are no errors during loading.
+  
+### Other browsers
+
+Some browsers require mutually incompatible code in order to run.  To use firefox to Edge, switch to the Firefox branch.
+
 
 #### Test the Extension
 
