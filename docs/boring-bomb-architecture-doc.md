@@ -27,10 +27,9 @@ The process from initial empty DB to neutral headlines fetchable by users is as 
 
 1. `Datasource`
     1. id
-    2. parent_id (if the url to the same article has changed over time, then the new `Datasource` will have the prior `Datasource` as its parent_id)
-    3. base_url (i.e. [`https://extelligence.substack.com/archive`](https://extelligence.substack.com/archive))
-    4. owner_id
-    5. time_last_scraped
+    2. base_url (i.e. [`https://extelligence.substack.com/archive`](https://extelligence.substack.com/archive))
+    3. owner_id
+    4. time_last_scraped
 2. `Article`
     1. id
     2. original_text
@@ -61,12 +60,17 @@ This is very simple, because at the end of the day all boring bomb is trying to 
 
 1. How will scraping work be distributed amongst the workers?
 2. How will worker and API logs be collected, queried, and viewed?
-3. If the URL for a site changes, how do we determine the new `Datasource` which will have the `Datasource` with the previous URL as its `parent_id`?
+3. If the URL for a site changes, how do we determine the new `Datasource` and relate it to the prior `Datasource`?
 4. How much does an `Article` need to mutate before we create a new `Article` that references the old `Article` as its `parent_id`?
 5. How will Boring Bomb acquire and maintain access to paywalled `Datasources` like NYT and other paid subscription articles?
 6. Should we include images in our system? Storing image data will greatly increase the amount of space we need to pay for, and require a different type of storage (i.e. blob storage like S3 or Cloudflare’s R2), but images may contain important information. One way to get the best of both worlds may be to simply store image caption data if it exists, or have AI do a synopsis of the image and just storage that. The question to answer is: what benefit does storing image data give to Trust Assembly?
 7. Which programming language should we use? Which has the best support for scraping websites, logging into to paywalled websites?
-8. How do we organize the hierarchy of scraper code, such that we reuse similar logic for similar sites (i.e. all the substack-based `Datasources`) and are still able to correctly scrape publishers without huge maintenance overhead? From looking at github code for scraping popular media outlets, it all looks pretty manual, because most do not provide APIs)
+8. How do we organize the hierarchy of scraper code, such that we reuse similar logic for similar sites (i.e. all the substack-based `Datasources`) and are still able to correctly scrape publishers without huge maintenance overhead? From looking at github code for scraping popular media outlets, it all looks pretty manual, because most do not provide APIs
+
+## 🛣️ Features We Considered, But Decided To Leave For Future Iterations
+
+1. There is the possibility that a `Datasource`'s `base_url` changes over time. For instance, https://www.nytimes.com/section/us becomes https://www.nytimes.com/section/america. We don't have a good way to handle this yet. We have an idea that we could create a new `Datasource` with the new `base_url` and set the old `Datasource` as its `parent_id`. but we're not going to implement handling for this now
+2. The current architecture ignores image data when scraping. We could add images to the `Article` model, but this would require a lot of additional storage, and it's not clear how these images would improve the core functionality of Boring Bomb (generating unbiased headlines). We're going to ignore images for now.
 
 ## ⛺ Non-functional Requirements (CAMPS Considerations)
 
