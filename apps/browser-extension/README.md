@@ -38,7 +38,7 @@ npm run build
   
 ### Other browsers
 
-Some browsers require mutually incompatible code in order to run.  To use firefox to Edge, switch to the Firefox branch.
+Some browsers require mutually incompatible code in order to run.  To use the extension on the Firefox or Edge browsers, use the firefox branch (i.e. git checkout firefox).
 
 
 #### Test the Extension
