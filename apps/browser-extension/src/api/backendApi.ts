@@ -1,6 +1,6 @@
 // TODO: make this dynamic based on which environment we're in, for now it's
 // hardcoded to only work locally
-import { CONFIG } from '../../configs/config.local';
+import { CONFIG } from '../../configs/config.test';
 import { TransformedArticle } from '../models/TransformedArticle';
 import { getBackendUrlFromEnvironmentAndVersion } from '../utils/constants';
 
