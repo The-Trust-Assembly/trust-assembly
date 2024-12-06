@@ -1,12 +1,9 @@
-import { Article } from '../models/Article';
-import { TransformedArticle } from '../models/TransformedArticle';
-
 export type ArticleElement = {
   style: {
     color: string;
     fontStyle: string;
   };
-  article: Article;
+  headline: string;
 };
 
 const MODIFIED_STYLE = {
@@ -24,12 +21,6 @@ export default class ArticleStateManager {
   private originalProps: ArticleElement | null = null;
   private modifiedProps: ArticleElement | null = null;
 
-  constructor(
-    private fetchModification: (
-      article: Article,
-    ) => Promise<TransformedArticle>,
-  ) {}
-
   public async setElement(element: HTMLElement): Promise<void> {
     console.log('setting element:', element);
 
@@ -39,36 +30,24 @@ export default class ArticleStateManager {
         color: element.style.color,
         fontStyle: element.style.fontStyle,
       },
-      article: {
-        headline: element.textContent || '',
-      },
-    };
-
-    const modifiedArticle = await this.fetchModification(
-      this.originalProps.article,
-    );
-    this.modifiedProps = {
-      style: MODIFIED_STYLE,
-      article: {
-        headline: modifiedArticle.transformedText,
-      },
+      headline: element.textContent || '',
     };
   }
 
-  public toggleModification(): void {
+  public toggleModification(modifiedHeadline?: string): void {
     if (!this.element || !this.originalProps) {
       console.warn('No element to modify');
       return;
     }
-    if (!this.modifiedProps) {
-      console.warn('No modified headline to apply');
-      return;
-    }
+    this.modifiedProps = {
+      style: MODIFIED_STYLE,
+      headline: modifiedHeadline || this.originalProps.headline,
+    };
 
     this.toggleState = !this.toggleState;
     const {
       style: { color, fontStyle },
-      article: { headline },
+      headline,
     } = this.toggleState ? this.modifiedProps : this.originalProps;
 
     console.log(`element.style.color: ${color}`);

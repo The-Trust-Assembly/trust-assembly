@@ -1,3 +1,3 @@
 export type Article = {
-  headline: string;
+  url: string;
 };

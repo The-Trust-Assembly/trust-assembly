@@ -1,18 +1,19 @@
 // TODO: make this dynamic based on which environment we're in, for now it's
 // hardcoded to only work locally
 import { CONFIG } from '../../configs/config.local';
-import { Article } from '../models/Article';
 import { TransformedArticle } from '../models/TransformedArticle';
 import { getBackendUrlFromEnvironmentAndVersion } from '../utils/constants';
 
-export async function getTransformation(
-  article: Article,
-): Promise<TransformedArticle> {
+export async function getTransformations(
+  url: string,
+): Promise<TransformedArticle[] | undefined> {
   try {
-    const result = await makeRequest<TransformedArticle>(
+    const result = await makeRequest<TransformedArticle[]>(
       'POST',
-      '/headline',
-      article,
+      '/headlines',
+      {
+        url,
+      },
     );
 
     console.log(`background::sendResponse: ${JSON.stringify(result, null, 2)}`);
