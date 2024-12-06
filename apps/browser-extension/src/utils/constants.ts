@@ -1,5 +1,5 @@
 export enum BACKEND_URL {
-  LOCAL = 'http://localhost:8000',
+  LOCAL = 'http://localhost:5173',
   PROD = 'https://trust-assembly.com',
   DEV = 'https://dev.trust-assembly.com',
   STAGING = 'https://staging.trust-assembly.com',
