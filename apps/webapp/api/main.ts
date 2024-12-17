@@ -5,8 +5,29 @@ import { poweredBy } from "@hono/hono/powered-by";
 import { extract } from '@extractus/article-extractor';
 import { serveStatic } from "@hono/hono/serve-static";
 import { trimTrailingSlash } from '@hono/hono/trailing-slash'
+import { Client } from "https://deno.land/x/postgres/mod.ts";
 
 const app = new Hono();
+
+const dbClient = new Client({
+  user: Deno.env.get("POSTGRES_USER"),
+  database: Deno.env.get("POSTGRES_DB"),
+  hostname: Deno.env.get("POSTGRES_HOST"),
+  port: 5432,
+  password: Deno.env.get("POSTGRES_PASSWORD"),
+});
+
+app.use("/api/*", async (_, next) => {
+  try {
+    await dbClient.connect();
+    await next();
+  } catch (e) {
+    console.error("Error connecting to database", e);
+    throw e;
+  } finally {
+    await dbClient.end();
+  }
+});
 
 app.use("*", logger(), poweredBy());
 app.use(
@@ -35,6 +56,11 @@ app.get("/api/parsedArticle", async (c: Context) => {
   }
   const parsed = await extract(url);
   return c.json(parsed);
+});
+
+app.get("/api/db-test", async (c: Context) => {
+  const result = await dbClient.queryArray("SELECT * FROM information_schema.tables");
+  return c.json(result.rows);
 });
 
 const v1Api = new Hono();
