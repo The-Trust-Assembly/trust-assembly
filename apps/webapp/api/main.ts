@@ -6,6 +6,7 @@ import { extract } from '@extractus/article-extractor';
 import { serveStatic } from "@hono/hono/serve-static";
 import { trimTrailingSlash } from '@hono/hono/trailing-slash'
 import { Client } from "https://deno.land/x/postgres/mod.ts";
+import fakeData from "./fakeDb.ts";
 
 const app = new Hono();
 
@@ -29,17 +30,19 @@ app.use("/api/*", async (_, next) => {
   }
 });
 
+const corsPolicy = cors({
+  origin: ["*"], // TODO: Change this to trust-assembly.org, or whatever URL we're using frontend URL
+  allowMethods: ["POST", "GET", "OPTIONS"],
+  allowHeaders: ["Content-Type"],
+  exposeHeaders: ["Content-Length"],
+  maxAge: 600,
+  credentials: true,
+});
+
 app.use("*", logger(), poweredBy());
 app.use(
   "*",
-  cors({
-    origin: ["*"], // TODO: Change this to trust-assembly.org, or whatever URL we're using frontend URL
-    allowMethods: ["POST", "GET", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
-    exposeHeaders: ["Content-Length"],
-    maxAge: 600,
-    credentials: true,
-  })
+  corsPolicy,
 );
 
 app.use(trimTrailingSlash());
@@ -64,21 +67,31 @@ app.get("/api/db-test", async (c: Context) => {
 });
 
 const v1Api = new Hono();
+v1Api.use(
+  "*",
+  corsPolicy
+);
 
-const transformHeadline = (headline: string): Promise<string> => {
-  // TODO: Implement the logic to transform the headline using OpenAI
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(headline.toUpperCase());
-    }, 100); // Simulating some asynchronous operation
-  });
+type HeadlineData = {
+  headline: string;
+  creator: string;
+}
+const transformedHeadlines = (url: string): Promise<HeadlineData[]> => {
+  return Promise.resolve(
+    fakeData
+      .filter(data => url.startsWith(data.url))
+      .map(({ headline, creator }) => ({
+        headline,
+        creator,
+      }))
+  );
 };
 
-v1Api.post("/headline", async (c: Context) => {
-  const { headline } = await c.req.json();
+v1Api.post("/headlines", async (c: Context) => {
+  const { url } = await c.req.json();
 
-  const transformedText = await transformHeadline(headline);
-  return c.json({ transformedText });
+  const headlineData = await transformedHeadlines(url);
+  return c.json(headlineData);
 });
 
 app.route("/api/v1", v1Api);
