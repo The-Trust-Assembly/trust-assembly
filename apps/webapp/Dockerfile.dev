@@ -1,3 +1,16 @@
+FROM denoland/deno:2.1.1 AS migrator
+
+WORKDIR /migrate
+
+ARG POSTGRES_HOST
+
+ENV POSTGRES_USER=$POSTGRES_USER
+
+COPY ./api/nessie.config.ts .
+COPY ./api/db ./db
+
+RUN deno install  --allow-read=${POSTGRES_HOST}:5432 --allow-write=nessie.config.ts,db -f  https://deno.land/x/nessie/cli.ts --global
+
 FROM denoland/deno:2.1.1
 
 WORKDIR /app
