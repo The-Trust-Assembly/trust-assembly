@@ -8,6 +8,27 @@ services:
       - "5173:5173"
     env_file:
       - db.local.env
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: migrator
+    command: deno run -A https://deno.land/x/nessie/cli.ts migrate
+    env_file:
+      - db.local.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: migrator
+    command: deno run -A https://deno.land/x/nessie/cli.ts seed
+    env_file:
+      - db.local.env
+    depends_on:
+      - migrate
   postgres:
     image: postgres:17.2
     env_file:
@@ -15,7 +36,13 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - trust_assembly_data:/var/lib/postgresql/data
+      - trust_assembly_data:/var/lib/postgresql/trust_assembly_data
+    healthcheck:
+      test: ["CMD-SHELL", "runuser", "-u", "postgres", "--", "pg_isready"]
+      interval: 5s
+      timeout: 60s
+      retries: 10
+      start_period: 10s
 volumes:
   trust_assembly_data:
     driver: local

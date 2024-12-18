@@ -11,3 +11,21 @@ services:
     command: deno task serve
     ports:
       - "8001:8000"
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+      args:
+        POSTGRES_HOST: ${POSTGRES_HOST}
+    command: deno run -A https://deno.land/x/nessie/cli.ts migrate
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: migrator
+      args:
+        POSTGRES_HOST: ${POSTGRES_HOST}
+    command: deno run -A https://deno.land/x/nessie/cli.ts seed
+    depends_on:
+      - migrate
