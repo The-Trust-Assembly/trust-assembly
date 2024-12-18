@@ -5,30 +5,23 @@ import { poweredBy } from "@hono/hono/powered-by";
 import { extract } from '@extractus/article-extractor';
 import { serveStatic } from "@hono/hono/serve-static";
 import { trimTrailingSlash } from '@hono/hono/trailing-slash'
-import { Client } from "https://deno.land/x/postgres/mod.ts";
+import { createMiddleware } from '@hono/hono/factory'
 import fakeData from "./fakeDb.ts";
+import BasicDbRepo from "./basicDbRepo.ts";
 
 const app = new Hono();
 
-const dbClient = new Client({
-  user: Deno.env.get("POSTGRES_USER"),
-  database: Deno.env.get("POSTGRES_DB"),
-  hostname: Deno.env.get("POSTGRES_HOST"),
-  port: 5432,
-  password: Deno.env.get("POSTGRES_PASSWORD"),
-});
-
-app.use("/api/*", async (_, next) => {
-  try {
-    await dbClient.connect();
-    await next();
-  } catch (e) {
-    console.error("Error connecting to database", e);
-    throw e;
-  } finally {
-    await dbClient.end();
+const dbMiddleware = createMiddleware<{
+  Variables: {
+    db: BasicDbRepo
   }
-});
+}>(async (c, next) => {
+  using db = await BasicDbRepo.create();
+  c.set('db', db);
+  await next()
+})
+
+app.use("/api/*", dbMiddleware);
 
 const corsPolicy = cors({
   origin: ["*"], // TODO: Change this to trust-assembly.org, or whatever URL we're using frontend URL
@@ -62,8 +55,9 @@ app.get("/api/parsedArticle", async (c: Context) => {
 });
 
 app.get("/api/db-test", async (c: Context) => {
-  const result = await dbClient.queryArray("SELECT * FROM information_schema.tables");
-  return c.json(result.rows);
+  const dbClient = c.var.db as BasicDbRepo;
+  const result = await dbClient.getAllCreatorEdits("https://www.cnn.com/2024/12/05/politics/john-roberts-transgender-skrmetti-analysis");
+  return c.json(result);
 });
 
 const v1Api = new Hono();
