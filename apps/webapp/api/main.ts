@@ -6,7 +6,6 @@ import { extract } from '@extractus/article-extractor';
 import { serveStatic } from "@hono/hono/serve-static";
 import { trimTrailingSlash } from '@hono/hono/trailing-slash'
 import { createMiddleware } from '@hono/hono/factory'
-import fakeData from "./fakeDb.ts";
 import BasicDbRepo from "./basicDbRepo.ts";
 
 const app = new Hono();
@@ -70,21 +69,16 @@ type HeadlineData = {
   headline: string;
   creator: string;
 }
-const transformedHeadlines = (url: string): Promise<HeadlineData[]> => {
-  return Promise.resolve(
-    fakeData
-      .filter(data => url.startsWith(data.url))
-      .map(({ headline, creator }) => ({
-        headline,
-        creator,
-      }))
-  );
-};
+
+function cleanUrl(url: string) {
+  return url.replace(/\/(index.html)?\/?$/, "");
+}
 
 v1Api.post("/headlines", async (c: Context) => {
   const { url } = await c.req.json();
+  const dbClient = c.var.db as BasicDbRepo;
 
-  const headlineData = await transformedHeadlines(url);
+  const headlineData = await dbClient.getAllCreatorEdits(cleanUrl(url));
   return c.json(headlineData);
 });
 
