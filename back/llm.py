@@ -41,21 +41,10 @@ class OpenAILLM(LLM):
         # Getting OpenAI API key from environment for now
         # Will be changed to a more secure method later
         openai.api_key = os.getenv("OPENAI_API_KEY")
-        self.client = openai.AsyncOpenAI()
+        self.client = openai.OpenAI()
 
     async def transform_headline(self, headline: str, author: str, body: str) -> str:
         try:
-            prompt = f"""You are an expert in writing headlines in the style of different authors.
-            Rewrite the following headline in the style of {author}, while keeping the same meaning.
-            Use the article body for context.
-            
-            Original headline: {headline}
-            
-            Article body:
-            {body}
-            
-            Output only the transformed headline, nothing else."""
-
             # Using GPT-4o-mini for now because it's cheap
             response = await self.client.completions.create(
                 model="gpt-4o-mini",
