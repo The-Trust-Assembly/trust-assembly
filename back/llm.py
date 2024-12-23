@@ -150,7 +150,7 @@ class HeadlineTransformService:
         except Exception as e:
             if fallback_provider:
                 # Try fallback provider if primary fails
-                async with self.factory.create(provider, reuse_instance=True) as llm:
+                async with self.factory.create(fallback_provider, reuse_instance=True) as llm:
                     result = await llm.transform_headline(headline, author, body)
                     return result, fallback_provider
             raise  # Re-raise if no fallback or fallback also failed
@@ -158,7 +158,7 @@ class HeadlineTransformService:
 
 service = HeadlineTransformService()
 @app.post("/transform-headline", response_model=HeadlineResponse)
-async def transform_headline(request: HeadlineRequest):
+async def transform_headline(request: HeadlineRequest) -> HeadlineResponse:
     transformed, provider_used = await service.transform_headline(
         request.headline,
         request.author,
