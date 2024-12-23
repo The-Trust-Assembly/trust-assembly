@@ -17,7 +17,7 @@ async def test_headline_transform():
             "headline": "Scientists discover new deep-sea creatures",
             "author": "Scott Alexander",
             "body": "Marine biologists discovered several new species...",
-            "provider": "openai"  # "openai" or "test"
+            "provider": "test"  # "openai" or "test"
         }
 
         # Send the request to your API
