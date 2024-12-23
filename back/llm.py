@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, auto
 from fastapi import FastAPI
@@ -33,6 +34,12 @@ class LLM(ABC):
         pass
 
 class TestLLM(LLM):
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
     async def transform_headline(self, headline: str, author: str, body: str) -> str:
         return f"TEST : {headline}"
 
@@ -41,15 +48,21 @@ class OpenAILLM(LLM):
         # Getting OpenAI API key from environment for now
         # Will be changed to a more secure method later
         openai.api_key = os.getenv("OPENAI_API_KEY")
-        self.client = openai.OpenAI()
+        self.client = openai.AsyncOpenAI()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
 
     async def transform_headline(self, headline: str, author: str, body: str) -> str:
         try:
             # Using GPT-4o-mini for now because it's cheap
-            response = await self.client.completions.create(
+            response = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {
+                    {   # Keep static content like instructions in beginning to allow prompt caching
                         "role": "developer", 
                         "content": """You are an expert in writing headlines in the style of different authors.
                                         Rewrite the the headline provided to you in the style of the given author, while keeping the same meaning.
@@ -57,7 +70,7 @@ class OpenAILLM(LLM):
                     },
                     {
                         "role": "user", 
-                        "content":  """Original headline: {headline}
+                        "content":  f"""Original headline: {headline}
 
                                         Author style to mimic: {author}
 
@@ -72,7 +85,7 @@ class OpenAILLM(LLM):
             print(f"Error in transform_headline: {str(e)}")
             return headline  # Return original headline if transformation fails
         
-# Factory for creating LLM instances
+# Factory for creating LLM provider instances
 class LLMFactory:
     # Class variable to store provider mapping
     _providers: Dict[LLMProvider, Type[LLM]] = {
@@ -131,13 +144,13 @@ class HeadlineTransformService:
         Returns both the transformed headline and which provider was actually used.
         """
         try:
-            async with self.factory.get_provider(provider) as llm:
+            async with self.factory.create(provider, reuse_instance=True) as llm:
                 result = await llm.transform_headline(headline, author, body)
                 return result, provider
         except Exception as e:
             if fallback_provider:
                 # Try fallback provider if primary fails
-                async with self.factory.get_provider(fallback_provider) as llm:
+                async with self.factory.create(provider, reuse_instance=True) as llm:
                     result = await llm.transform_headline(headline, author, body)
                     return result, fallback_provider
             raise  # Re-raise if no fallback or fallback also failed
