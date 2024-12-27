@@ -1,10 +1,14 @@
+#!/usr/bin/env python3
 from abc import ABC, abstractmethod
+import argparse
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
+import json
 import openai
 import os
+import sys
 from typing import Dict, Optional, Type
 
 class LLMProvider(str, Enum):
@@ -97,16 +101,101 @@ class HeadlineTransformService:
                 return result, self.fallback_provider.provider_type
             raise e
 
-service = HeadlineTransformService(OpenAILLM())
-async def transform_headline(request: HeadlineRequest) -> HeadlineResponse:
-    transformed, provider_used = await service.transform_headline(
-        request.headline,
-        request.author,
-        request.body
+def create_parser() -> argparse.ArgumentParser:
+    """Create and configure the CLI argument parser"""
+    parser = argparse.ArgumentParser(
+        description="Transform headlines using different LLM providers"
     )
     
-    return HeadlineResponse(
-        original_headline=request.headline,
-        transformed_headline=transformed,
-        provider_used=provider_used
+    # Add arguments for headline transformation
+    parser.add_argument(
+        "--headline", 
+        required=True,
+        help="The headline to transform"
     )
+    parser.add_argument(
+        "--author", 
+        required=True,
+        help="The author whose style to mimic"
+    )
+    parser.add_argument(
+        "--body", 
+        required=True,
+        help="The article body for context"
+    )
+    parser.add_argument(
+        "--provider",
+        choices=[p.value for p in LLMProvider],
+        default=LLMProvider.OPENAI.value,
+        help="The LLM provider to use (default: openai)"
+    )
+    parser.add_argument(
+        "--fallback-provider",
+        choices=[p.value for p in LLMProvider],
+        default=LLMProvider.TEST.value,
+        help="The fallback LLM provider to use if primary fails (default: test)"
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)"
+    )
+    
+    return parser
+
+def create_service(provider: str, fallback_provider: Optional[str] = None) -> HeadlineTransformService:
+    """Create a HeadlineTransformService with the specified providers"""
+    # Map provider types to their implementations
+    provider_map: Dict[LLMProvider, Type[LLM]] = {
+        LLMProvider.TEST: TestLLM,
+        LLMProvider.OPENAI: OpenAILLM,
+    }
+    
+    # Create primary provider
+    primary = provider_map[LLMProvider(provider)]()
+    
+    # Create fallback provider if specified
+    secondary = None
+    if fallback_provider:
+        secondary = provider_map[LLMProvider(fallback_provider)]()
+    
+    return HeadlineTransformService(primary, secondary)
+
+async def main():
+    """ CLI entry point """
+    parser = create_parser()
+    args = parser.parse_args()
+    
+    # Create the service with specified providers
+    service = create_service(args.provider, args.fallback_provider)
+    
+    try:
+        # Transform the headline
+        transformed, provider_used = await service.transform_headline(
+            args.headline,
+            args.author,
+            args.body
+        )
+        
+        # Create response object
+        response = HeadlineResponse(
+            original_headline=args.headline,
+            transformed_headline=transformed,
+            provider_used=provider_used
+        )
+        
+        # Output results in requested format
+        if args.output_format == "json":
+            print(json.dumps(response.__dict__))
+        else:
+            print(f"Original headline: {response.original_headline}")
+            print(f"Transformed headline: {response.transformed_headline}")
+            print(f"Provider used: {response.provider_used}")
+            
+    except Exception as e:
+        print(f"Error: {str(e)}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
