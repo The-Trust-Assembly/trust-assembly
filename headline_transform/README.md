@@ -1,0 +1,2 @@
+- To install, `uv pip install [-e] .` from this directory, `-e` for editable mode
+- Example usage: `transform-headline --headline "Your headline" --author "Author name" --body "Article body" --provider test --output-format json`

@@ -1,0 +1,16 @@
+# pyproject.toml
+[project]
+name = "headline_transform"
+version = "0.1.0"
+description = "A tool for transforming news headlines using an LLM"
+requires-python = ">=3.8"
+dependencies = [
+    "openai",
+]
+
+[project.scripts]
+transform-headline = "headline_transform.cli:run_async_main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

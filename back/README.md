@@ -1,2 +1,0 @@
-- Install all Python required packages with `uv sync`
-- Run headline replacement service from `back/` directory with `uvicorn llm:app --reload`
