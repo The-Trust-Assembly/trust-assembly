@@ -1,5 +1,5 @@
 import { TrustAssemblyMessage } from './utils/messagePassing';
-import { getTransformation } from './api/backendApi';
+import { getTransformations } from './api/backendApi';
 import { MessagePayload } from './models/MessagePayload';
 
 console.log(
@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener(
 
       // Make the API request to your backend
       try {
-        const transformedArticle = await getTransformation(message.article);
+        const transformedArticle = await getTransformations(message.url);
         sendResponse(transformedArticle);
       } catch (error) {
         console.error('Error fetching transformed headline:', error);
