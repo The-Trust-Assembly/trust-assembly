@@ -29,6 +29,7 @@ services:
       - db.local.env
     depends_on:
       - migrate
+    profiles: ["seed"]
   postgres:
     image: postgres:17.2
     env_file:
