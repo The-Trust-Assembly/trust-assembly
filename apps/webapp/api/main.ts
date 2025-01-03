@@ -1,34 +1,28 @@
-import { Context, Hono } from "@hono/hono";
+import { Hono } from "@hono/hono";
 import { cors } from "@hono/hono/cors";
 import { logger } from "@hono/hono/logger";
 import { poweredBy } from "@hono/hono/powered-by";
 import { extract } from '@extractus/article-extractor';
 import { serveStatic } from "@hono/hono/serve-static";
 import { trimTrailingSlash } from '@hono/hono/trailing-slash'
-import { Client } from "https://deno.land/x/postgres/mod.ts";
-import fakeData from "./fakeDb.ts";
+import { createMiddleware } from '@hono/hono/factory'
+import BasicDbRepo from "./basicDbRepo.ts";
 
-const app = new Hono();
+type Env = {
+  Variables: {
+    db: BasicDbRepo
+  },
+};
 
-const dbClient = new Client({
-  user: Deno.env.get("POSTGRES_USER"),
-  database: Deno.env.get("POSTGRES_DB"),
-  hostname: Deno.env.get("POSTGRES_HOST"),
-  port: 5432,
-  password: Deno.env.get("POSTGRES_PASSWORD"),
-});
+const app = new Hono<Env>();
 
-app.use("/api/*", async (_, next) => {
-  try {
-    await dbClient.connect();
-    await next();
-  } catch (e) {
-    console.error("Error connecting to database", e);
-    throw e;
-  } finally {
-    await dbClient.end();
-  }
-});
+const dbMiddleware = createMiddleware(async (c, next) => {
+  using db = await BasicDbRepo.create();
+  c.set('db', db);
+  await next()
+})
+
+app.use("/api/*", dbMiddleware);
 
 const corsPolicy = cors({
   origin: ["*"], // TODO: Change this to trust-assembly.org, or whatever URL we're using frontend URL
@@ -47,11 +41,11 @@ app.use(
 
 app.use(trimTrailingSlash());
 
-app.get("/api", (c: Context) => {
+app.get("/api", (c) => {
   return c.text("Hello Deno!");
 });
 
-app.get("/api/parsedArticle", async (c: Context) => {
+app.get("/api/parsedArticle", async (c) => {
   const url = c.req.query("url");
   if (!url) {
     c.status(400);
@@ -61,12 +55,13 @@ app.get("/api/parsedArticle", async (c: Context) => {
   return c.json(parsed);
 });
 
-app.get("/api/db-test", async (c: Context) => {
-  const result = await dbClient.queryArray("SELECT * FROM information_schema.tables");
-  return c.json(result.rows);
+app.get("/api/db-test", async (c) => {
+  const dbClient = c.var.db;
+  const result = await dbClient.getAllCreatorEdits("https://www.cnn.com/2024/12/05/politics/john-roberts-transgender-skrmetti-analysis");
+  return c.json(result);
 });
 
-const v1Api = new Hono();
+const v1Api = new Hono<Env>();
 v1Api.use(
   "*",
   corsPolicy
@@ -76,27 +71,22 @@ type HeadlineData = {
   headline: string;
   creator: string;
 }
-const transformedHeadlines = (url: string): Promise<HeadlineData[]> => {
-  return Promise.resolve(
-    fakeData
-      .filter(data => url.startsWith(data.url))
-      .map(({ headline, creator }) => ({
-        headline,
-        creator,
-      }))
-  );
-};
 
-v1Api.post("/headlines", async (c: Context) => {
+function cleanUrl(url: string) {
+  return url.replace(/\/(index.html)?\/?$/, "");
+}
+
+v1Api.post("/headlines", async (c) => {
   const { url } = await c.req.json();
+  const dbClient = c.var.db;
 
-  const headlineData = await transformedHeadlines(url);
+  const headlineData = await dbClient.getAllCreatorEdits(cleanUrl(url));
   return c.json(headlineData);
 });
 
 app.route("/api/v1", v1Api);
 
-app.use("/api/*", async (c: Context) => {
+app.use("/api/*", async (c) => {
   c.status(404);
   return c.json({ error: "Not found" });
 });
