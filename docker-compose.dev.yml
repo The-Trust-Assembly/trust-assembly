@@ -7,7 +7,7 @@ services:
     ports:
       - "5173:5173"
     env_file:
-      - db.local.env
+      - ./apps/webapp/db.local.env
   migrate:
     build:
       context: .
@@ -15,7 +15,7 @@ services:
       target: migrator
     command: deno run -A https://deno.land/x/nessie/cli.ts migrate
     env_file:
-      - db.local.env
+      - ./apps/webapp/db.local.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -26,14 +26,14 @@ services:
       target: migrator
     command: deno run -A https://deno.land/x/nessie/cli.ts seed
     env_file:
-      - db.local.env
+      - ./apps/webapp/db.local.env
     depends_on:
       - migrate
     profiles: ["seed"]
   postgres:
     image: postgres:17.2
     env_file:
-      - db.local.env
+      - ./apps/webapp/db.local.env
     ports:
       - 5432:5432
     volumes:

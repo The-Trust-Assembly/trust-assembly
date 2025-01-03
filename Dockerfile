@@ -6,8 +6,8 @@ ARG POSTGRES_HOST
 
 ENV POSTGRES_HOST=$POSTGRES_HOST
 
-COPY ./api/nessie.config.ts .
-COPY ./api/db ./db
+COPY ./apps/webapp/api/nessie.config.ts .
+COPY ./apps/webapp/api/db ./db
 
 RUN deno install  --allow-read=${POSTGRES_HOST}:5432 --allow-write=nessie.config.ts,db -f  https://deno.land/x/nessie/cli.ts --global
 
@@ -22,7 +22,7 @@ WORKDIR /app
 # USER deno
 
 # These steps will be re-run upon each file change in your working directory:
-COPY . .
+COPY ./apps/webapp/ .
 RUN deno install
 
 # Compile the main app so that it doesn't need to be compiled each startup/entry.
