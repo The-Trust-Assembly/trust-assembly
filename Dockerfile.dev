@@ -11,11 +11,27 @@ COPY ./apps/webapp//api/db ./db
 
 RUN deno install  --allow-read=${POSTGRES_HOST}:5432 --allow-write=nessie.config.ts,db -f  https://deno.land/x/nessie/cli.ts --global
 
+FROM python:3.9-alpine AS transform_builder
+
+# Copy headline_transform dir
+WORKDIR headline_transform/
+COPY headline_transform/ headline_transform/
+
+# Build headline_transform package
+RUN pip install --no-cache-dir pip setuptools wheel build && \
+    cd headline_transform && \
+    python -m build --wheel
+
 FROM denoland/deno:2.1.1
 
 WORKDIR /app
 
 EXPOSE 5173
+
+# Install pipx
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends pipx && \
+    rm -rf /var/lib/apt/lists/*
 
 ARG POSTGRES_USER
 ARG POSTGRES_PASSWORD
@@ -28,5 +44,11 @@ ENV POSTGRES_DB=$POSTGRES_DB
 ENV POSTGRES_HOST=$POSTGRES_HOST
 
 COPY ./apps/webapp/ .
+
+# Install headline_transform package
+COPY --from=transform_builder /headline_transform/headline_transform/dist/*.whl /tmp/
+RUN pipx install /tmp/*.whl && \
+    pipx ensurepath && \
+    rm /tmp/*.whl
 
 RUN deno install
