@@ -34,17 +34,32 @@ export default class ArticleStateManager {
     };
   }
 
+  public setModifiedHeadline(modifiedHeadline?: string): void {
+    this.setModificationState({ modifiedHeadline, state: true });
+  }
+
   public toggleModification(modifiedHeadline?: string): void {
+    this.setModificationState({ modifiedHeadline, state: !this.toggleState });
+  }
+
+  private setModificationState({
+    modifiedHeadline,
+    state,
+  }: {
+    modifiedHeadline?: string;
+    state: boolean;
+  }): void {
     if (!this.element || !this.originalProps) {
       console.warn('No element to modify');
       return;
     }
+
     this.modifiedProps = {
       style: MODIFIED_STYLE,
       headline: modifiedHeadline || this.originalProps.headline,
     };
 
-    this.toggleState = !this.toggleState;
+    this.toggleState = state;
     const {
       style: { color, fontStyle },
       headline,

@@ -6,6 +6,6 @@ export type MessagePayload =
       headline?: string;
     }
   | {
-      action: TrustAssemblyMessage.FETCH_TRANSFORMED_HEADLINE;
-      url: string;
+      action: TrustAssemblyMessage.SET_MODIFIED_HEADLINE;
+      headline?: string;
     };

@@ -50,6 +50,11 @@ let modifiedHeadline: string | undefined;
         stateManager.toggleModification(modifiedHeadline);
         return false;
       }
+      if (message.action === TrustAssemblyMessage.SET_MODIFIED_HEADLINE) {
+        modifiedHeadline = message.headline;
+        stateManager.setModifiedHeadline(modifiedHeadline);
+        return false;
+      }
     },
   );
 })();

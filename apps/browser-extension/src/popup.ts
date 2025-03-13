@@ -1,9 +1,23 @@
-import { getTransformations } from './api/backendApi';
+import { getTransformation } from './api/backendApi';
 import { MessagePayload } from './models/MessagePayload';
 import { TransformedArticle } from './models/TransformedArticle';
 import { TrustAssemblyMessage } from './utils/messagePassing';
 
+// state
 let currentUrl: string | undefined = undefined;
+let selectedAuthor: string | undefined;
+let selectedHeadline: string | undefined;
+
+type ButtonDisplayState = 'none' | 'retrive' | 'toggle';
+
+// popup elements
+const retrieveButton = document.getElementById('retrieve-transform');
+const toggleButton = document.getElementById('toggle-transform');
+const selectElement = document.getElementById(
+  'transform-select',
+) as HTMLSelectElement;
+
+// set current url
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const urlString = tabs[0].url;
   if (!urlString) {
@@ -14,72 +28,109 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   currentUrl = url.origin + url.pathname;
 });
 
-let selectedHeadline: string | undefined;
+// event listeners
+selectElement.addEventListener('change', (event) => {
+  const previousAuthor = selectedAuthor;
+  selectedAuthor = (event.target as HTMLSelectElement).value;
+  if (selectedAuthor) {
+    if (selectedAuthor !== previousAuthor) {
+      setButtonDisplayState('retrive');
+    } else {
+      setButtonDisplayState('toggle');
+    }
+  } else {
+    setButtonDisplayState('none');
+  }
+});
 
-const retrieveButton = document.getElementById('retrieve-transform');
 retrieveButton?.addEventListener('click', async () => {
   if (!currentUrl) {
     console.warn('No current URL found');
     return;
   }
 
-  const data = await getHeadlineData(currentUrl);
+  const data = await getHeadlineData(currentUrl, selectElement.value);
   if (data) {
-    retrieveButton!.style.display = 'none';
-    setupCreatorSelector(data);
+    setButtonDisplayState('toggle');
+    selectedHeadline = data.transformedHeadline;
+    await setModifiedHeadline();
   }
 });
 
-const toggleButton = document.getElementById('toggle-transform');
 toggleButton?.addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    lastFocusedWindow: true,
-  });
-  if (tab?.id) {
-    chrome.tabs.sendMessage<MessagePayload>(tab.id, {
-      action: TrustAssemblyMessage.TOGGLE_MODIFICATION,
-      headline: selectedHeadline,
-    });
-  }
+  await toggleHeadline();
 });
 
 const STORED_DATA = 'storedHeadlineData';
 
 async function getHeadlineData(
   url: string,
-): Promise<TransformedArticle[] | undefined> {
-  const storedData = sessionStorage.getItem(STORED_DATA);
+  author: string,
+): Promise<TransformedArticle | undefined> {
+  const storedData = retrieveStoredResult(author);
   if (storedData) {
-    return JSON.parse(storedData) as TransformedArticle[];
+    return storedData;
   }
 
-  const data = await getTransformations(url);
+  const data = await getTransformation(url, author);
   if (data) {
-    sessionStorage.setItem(STORED_DATA, JSON.stringify(data));
+    storeResult(author, data);
   }
   return data;
 }
 
-function setupCreatorSelector(data: TransformedArticle[]) {
-  document.getElementById('select-container')!.style.display = 'block';
+function retrieveStoredResult(author: string): TransformedArticle | undefined {
+  const storedData = sessionStorage.getItem(keyFn(author));
 
-  const select = document.getElementById(
-    'transform-select',
-  ) as HTMLSelectElement;
-  select.innerHTML = '';
-  data.forEach((article, index) => {
-    const option = document.createElement('option');
-    option.value = article.headline;
-    option.textContent = article.creator;
-    if (index === 0) {
-      option.selected = true;
-      selectedHeadline = article.headline;
-    }
-    select.appendChild(option);
-  });
+  if (!storedData) {
+    return undefined;
+  }
 
-  select.addEventListener('change', (event) => {
-    selectedHeadline = (event.target as HTMLSelectElement).value;
+  return JSON.parse(storedData) as TransformedArticle;
+}
+
+function storeResult(author: string, data: TransformedArticle): void {
+  sessionStorage.setItem(keyFn(author), JSON.stringify(data));
+}
+
+function keyFn(author: string): string {
+  return `${STORED_DATA}:${author}`;
+}
+
+async function setModifiedHeadline(): Promise<void> {
+  await sendHeadlineMessage(TrustAssemblyMessage.SET_MODIFIED_HEADLINE);
+}
+
+async function toggleHeadline(): Promise<void> {
+  sendHeadlineMessage(TrustAssemblyMessage.TOGGLE_MODIFICATION);
+}
+
+async function sendHeadlineMessage(event: TrustAssemblyMessage): Promise<void> {
+  const [tab] = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
   });
+  if (tab?.id) {
+    chrome.tabs.sendMessage<MessagePayload>(tab.id, {
+      action: event,
+      headline: selectedHeadline,
+    });
+  }
+}
+
+function setButtonDisplayState(state: ButtonDisplayState): void {
+  switch (state) {
+    case 'none':
+      retrieveButton!.style.display = 'none';
+      toggleButton!.style.display = 'none';
+      break;
+    case 'retrive':
+      retrieveButton!.style.display = 'block';
+      toggleButton!.style.display = 'none';
+      break;
+    case 'toggle':
+      retrieveButton!.style.display = 'none';
+      toggleButton!.style.display = 'block';
+      break;
+  }
 }

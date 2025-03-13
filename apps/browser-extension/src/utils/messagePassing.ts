@@ -1,5 +1,5 @@
 export enum TrustAssemblyMessage {
-  FETCH_TRANSFORMED_HEADLINE = 'fetchTransformedHeadline',
+  SET_MODIFIED_HEADLINE = 'setModifiedHeadline',
   TOGGLE_MODIFICATION = 'toggleModification',
   // Add more message types as needed
 }
