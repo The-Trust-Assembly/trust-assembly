@@ -10,7 +10,7 @@ services:
         POSTGRES_HOST: ${POSTGRES_HOST}
     command: deno task serve
     ports:
-      - "8001:8000"
+      - "80:8000"
   migrate:
     build:
       context: .
