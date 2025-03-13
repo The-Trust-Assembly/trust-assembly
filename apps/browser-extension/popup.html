@@ -13,11 +13,24 @@
   </head>
   <body>
     <h3>Headline Transformer</h3>
+    <select id="transform-select">
+      <!-- used AI to populate this, we probably want a more diverse group -->
+      <option value="Scott Alexander">Scott Alexander</option>
+      <option value="Eliezer Yudkowsky">Eliezer Yudkowsky</option>
+      <option value="Paul Graham">Paul Graham</option>
+      <option value="Gwern Branwen">Gwern Branwen</option>
+      <option value="Sarah Constantin">Sarah Constantin</option>
+      <option value="Robin Hanson">Robin Hanson</option>
+      <option value="Zvi Moshowitz">Zvi Moshowitz</option>
+      <option value="Ben Thompson">Ben Thompson</option>
+      <option value="Tyler Cowen">Tyler Cowen</option>
+      <option value="Nassim Nicholas Taleb">Nassim Nicholas Taleb</option>
+      <option value="Vitalik Buterin">Vitalik Buterin</option>
+    </select>
     <button id="retrieve-transform">Retrieve Transformation</button>
-    <div id="select-container" style="display: none;">
-      <select id="transform-select"></select>
-      <button id="toggle-transform">Toggle Transform</button>
-    </div>
+    <button id="toggle-transform" style="display: none;">
+      Toggle Transform
+    </button>
 
     <script src="dist/src/popup.js"></script>
   </body>

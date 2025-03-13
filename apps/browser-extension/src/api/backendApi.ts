@@ -4,16 +4,15 @@ import { CONFIG } from '../../configs/config.test';
 import { TransformedArticle } from '../models/TransformedArticle';
 import { getBackendUrlFromEnvironmentAndVersion } from '../utils/constants';
 
-export async function getTransformations(
+export async function getTransformation(
   url: string,
-): Promise<TransformedArticle[] | undefined> {
+  author: string,
+): Promise<TransformedArticle | undefined> {
   try {
-    const result = await makeRequest<TransformedArticle[]>(
-      'POST',
-      '/headlines',
-      {
-        url,
-      },
+    const params = new URLSearchParams({ url, author });
+    const result = await makeRequest<TransformedArticle>(
+      'GET',
+      `/transformedHeadline?${params.toString()}`,
     );
 
     console.log(`background::sendResponse: ${JSON.stringify(result, null, 2)}`);
@@ -27,23 +26,31 @@ export async function getTransformations(
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-function makeRequest<T>(
+async function makeRequest<T>(
   method: HttpMethod,
   path: string,
   body?: unknown,
 ): Promise<T> {
   const baseUrl = getBackendUrlFromEnvironmentAndVersion(
     CONFIG.BACKEND_URL,
-    CONFIG.API_VERSION,
+    undefined,
   );
   const url = `${baseUrl}${path}`;
-  return fetch(url, {
+  const response = await fetch(url, {
     method,
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-  })
-    .then((response) => response.json())
-    .then((data: T) => data);
+  });
+
+  if (!response.ok) {
+    const reason = await response
+      .json()
+      .then((data: { error: string }) => data.error)
+      .catch(() => `Error retrieving data: ${response.statusText}`);
+    throw new Error(reason);
+  }
+
+  return (await response.json()) as T;
 }
