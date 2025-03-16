@@ -1,5 +1,6 @@
 // this should probably just be an Article
 export type TransformedArticle = {
-  headline: string;
-  creator: string;
+  originalHeadline: string;
+  transformedHeadline: string;
+  providerUsed: string;
 };
