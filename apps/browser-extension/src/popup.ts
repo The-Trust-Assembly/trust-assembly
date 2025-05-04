@@ -67,20 +67,23 @@ async function getHeadlineData(
   url: string,
   author: string,
 ): Promise<TransformedArticle | undefined> {
-  const storedData = retrieveStoredResult(author);
+  const storedData = await retrieveStoredResult(author);
   if (storedData) {
     return storedData;
   }
 
   const data = await getTransformation(url, author);
   if (data) {
-    storeResult(author, data);
+    await storeResult(author, data);
   }
   return data;
 }
 
-function retrieveStoredResult(author: string): TransformedArticle | undefined {
-  const storedData = sessionStorage.getItem(keyFn(author));
+async function retrieveStoredResult(
+  author: string,
+): Promise<TransformedArticle | undefined> {
+  const key = keyFn(author);
+  const storedData = (await chrome.storage.session.get(key))[key];
 
   if (!storedData) {
     return undefined;
@@ -89,12 +92,14 @@ function retrieveStoredResult(author: string): TransformedArticle | undefined {
   return JSON.parse(storedData) as TransformedArticle;
 }
 
-function storeResult(author: string, data: TransformedArticle): void {
-  sessionStorage.setItem(keyFn(author), JSON.stringify(data));
+function storeResult(author: string, data: TransformedArticle): Promise<void> {
+  return chrome.storage.session.set({
+    [keyFn(author)]: JSON.stringify(data),
+  });
 }
 
 function keyFn(author: string): string {
-  return `${STORED_DATA}:${author}`;
+  return `${STORED_DATA}:${currentUrl}:${author}`;
 }
 
 async function setModifiedHeadline(): Promise<void> {
