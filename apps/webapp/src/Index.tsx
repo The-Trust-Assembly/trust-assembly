@@ -1,32 +1,57 @@
-import { useState } from "react"
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import gavel from './assets/gavel.jpg'
+import socialMediaIcons from './assets/social-media-icons.jpg';
 
 export default function Index() {
-  const [count, setCount] = useState(0)
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <nav className="max-w-md flex-responsive nav-row">
+        <div>
+          <img src={gavel} alt="gavel icon" className="gavel-icon" />
+          <strong className="text-lg">Trust Assembly</strong>
+        </div>
+        <div className="flex-grow"></div>
+        <ul className="nav-list flex-row gap">
+          <li>Home</li>
+          <li>Explore</li>
+          <li>About</li>
+          <li className="button-link">Login</li>
+        </ul>
+      </nav>
+      <main>
+        <div className="hero-bg">
+          <div className="flex-col items-center hero">
+            <div className="hero-text">Repair the Headlines.</div>
+            <div className="hero-text">Rebuild the Narrative.</div>
+            <div className="hero-button">Get Started</div>
+          </div>
+        </div>
+        <div className="flex-responsive justify-between text-lg max-w-sm">
+          <div className="column">
+            <div>Trending Replacements</div>
+            <ul>
+              <li>New York Times: ...</li>
+              <li>Fox News: ...</li>
+            </ul>
+          </div>
+          <div className="column">
+            <div>Recently Adjudicated</div>
+            <ul>
+              <li>CNN: ...</li>
+              <li>BBC: ...</li>
+            </ul>
+          </div>
+        </div>
+      </main>
+      <footer className="flex-responsive max-w-md">
+        <ul className="nav-list flex-row gap">
+          <li>Terms</li>
+          <li>Privacy</li>
+          <li>Contact</li>
+        </ul>
+        <div className="flex-grow"></div>
+        <img src={socialMediaIcons} alt="social media icons" className="social-icons" />
+      </footer>
     </>
   )
 }
