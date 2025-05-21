@@ -13,37 +13,6 @@
 
 /* Flexbox & responsive design */
 
-.flex-row {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-}
-
-.flex-col {
-  display: flex;
-  flex-direction: column;
-}
-
-.gap {
-  gap: 1em;
-}
-
-.flex-grow {
-  flex-grow: 1;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.flex-responsive {
-  display: flex;
-}
-
 @media (max-width: 500px) {
   .flex-responsive {
     flex-direction: column;
@@ -56,14 +25,14 @@
   }
 }
 
-.max-w-md {
+.medium-width {
   max-width: 1024px;
   margin: auto;
   padding: 0 1em;
 }
 
-.max-w-sm {
-  max-width: 512px;
+.small-width {
+  max-width: 600px;
   margin: auto;
   padding: 0 1em;
 }
@@ -132,5 +101,4 @@
 .social-icons {
   height: 23px;
   width: 108.5px;
-  padding: 1em;
 }

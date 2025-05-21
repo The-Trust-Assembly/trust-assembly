@@ -7,13 +7,13 @@ export default function Index() {
 
   return (
     <>
-      <nav className="max-w-md flex-responsive nav-row">
-        <Link to="#">
+      <nav className="medium-width flex flex-responsive nav-row">
+        <Link to="#" className="flex flex-row items-baseline">
           <img src={gavel} alt="gavel icon" className="gavel-icon" />
           <strong className="text-lg">Trust Assembly</strong>
         </Link>
         <div className="flex-grow"></div>
-        <ul className="nav-list flex-row gap">
+        <ul className="nav-list flex flex-row gap items-baseline gap-4">
           <li><Link to="#">Home</Link></li>
           <li><Link to="#">Explore</Link></li>
           <li><Link to="#">About</Link></li>
@@ -23,8 +23,8 @@ export default function Index() {
       <main>
         <Page/>
       </main>
-      <footer className="flex-responsive max-w-md">
-        <ul className="nav-list flex-row gap">
+      <footer className="flex flex-responsive medium-width">
+        <ul className="nav-list flex flex-row gap-4">
           <li><Link to="#">Terms</Link></li>
           <li><Link to="#">Privacy</Link></li>
           <li><Link to="#">Contact</Link></li>
