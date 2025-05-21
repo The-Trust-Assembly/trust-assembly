@@ -2,7 +2,7 @@ export default function Page() {
 	return (
 		<>
 			<div className="hero-bg">
-				<div className="flex-col items-center hero">
+				<div className="flex flex-col items-center hero">
 					<div className="hero-text">Repair the Headlines.</div>
 					<div className="hero-text">Rebuild the Narrative.</div>
 					<div className="hero-button">Get Started</div>
