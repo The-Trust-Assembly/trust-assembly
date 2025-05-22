@@ -1,32 +1,37 @@
-import { useState } from "react"
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { Link } from 'react-router-dom';
+import Page from './components/Page';
+import gavel from './assets/gavel.jpg'
+import socialMediaIcons from './assets/social-media-icons.jpg';
 
 export default function Index() {
-  const [count, setCount] = useState(0)
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <nav className="medium-width flex flex-responsive nav-row">
+        <Link to="#" className="flex flex-row items-baseline">
+          <img src={gavel} alt="gavel icon" className="gavel-icon" />
+          <strong className="text-lg">Trust Assembly</strong>
+        </Link>
+        <div className="flex-grow"></div>
+        <ul className="nav-list flex flex-row gap items-baseline gap-4">
+          <li><Link to="#">Home</Link></li>
+          <li><Link to="#">Explore</Link></li>
+          <li><Link to="#">About</Link></li>
+          <li className="button-link"><Link to="#">Login</Link></li>
+        </ul>
+      </nav>
+      <main>
+        <Page/>
+      </main>
+      <footer className="flex flex-responsive medium-width">
+        <ul className="nav-list flex flex-row gap-4">
+          <li><Link to="#">Terms</Link></li>
+          <li><Link to="#">Privacy</Link></li>
+          <li><Link to="#">Contact</Link></li>
+        </ul>
+        <div className="flex-grow"></div>
+        <img src={socialMediaIcons} alt="social media icons" className="social-icons" />
+      </footer>
     </>
   )
 }
