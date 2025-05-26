@@ -1,4 +1,4 @@
-import { Context, Hono, Next } from "@hono/hono";
+import { Context, Hono, MiddlewareHandler } from "@hono/hono";
 import { cors } from "@hono/hono/cors";
 import { logger } from "@hono/hono/logger";
 import { poweredBy } from "@hono/hono/powered-by";
@@ -8,10 +8,25 @@ import { trimTrailingSlash } from '@hono/hono/trailing-slash'
 import { createMiddleware } from '@hono/hono/factory'
 import BasicDbRepo from "./basicDbRepo.ts";
 import transformHeadline from "./cliInterface.ts";
+import { 
+  Session,
+  sessionMiddleware, 
+  CookieStore 
+} from 'jsr:@jcs224/hono-sessions'
+
+type SessionData = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  }
+};
 
 type Env = {
   Variables: {
-    db: BasicDbRepo
+    db: BasicDbRepo;
+    session: Session<SessionData>;
+    session_key_rotation: boolean;
   },
 };
 
@@ -33,9 +48,31 @@ app.use(
   corsPolicy,
 );
 
+const store = new CookieStore()
+const sessionMiddlewareHanlder = sessionMiddleware({
+  store,
+  encryptionKey: 'password_at_least_32_characters_long', // TODO: change this to a secure key
+  expireAfterSeconds: 900, // Expire session after 15 minutes of inactivity
+  cookieOptions: {
+    sameSite: 'Lax',
+    path: '/', // Required for this library to work properly
+    httpOnly: true, // Recommended to avoid XSS attacks
+  },
+}) as unknown as MiddlewareHandler<Env, string, {}>;
+
+app.use('/api/*', sessionMiddlewareHanlder);
+
+const dbMiddleware = createMiddleware(async (c, next) => {
+  using db = await BasicDbRepo.create();
+  c.set('db', db);
+  await next()
+});
+
+app.use("/api/*", dbMiddleware);
+
 app.use(trimTrailingSlash());
 
-app.get("/api/transformedHeadline", async (c: Context) => {
+app.get("/api/transformedHeadline", async (c) => {
   const url = c.req.query("url");
   const author = c.req.query("author");
 
@@ -68,19 +105,11 @@ app.get("/api/transformedHeadline", async (c: Context) => {
   }
 });
 
-const dbMiddleware = createMiddleware(async (c: Context, next: Next) => {
-  using db = await BasicDbRepo.create();
-  c.set('db', db);
-  await next()
-})
-
-app.use("/api/*", dbMiddleware);
-
-app.get("/api", (c: Context) => {
+app.get("/api", (c) => {
   return c.text("Hello Deno!");
 });
 
-app.get("/api/parsedArticle", async (c: Context) => {
+app.get("/api/parsedArticle", async (c) => {
   const url = c.req.query("url");
   if (!url) {
     c.status(400);
@@ -90,10 +119,33 @@ app.get("/api/parsedArticle", async (c: Context) => {
   return c.json(parsed);
 });
 
-app.get("/api/db-test", async (c: Context) => {
+app.get("/api/db-test", async (c) => {
   const dbClient = c.var.db;
   const result = await dbClient.getAllCreatorEdits("https://www.cnn.com/2024/12/05/politics/john-roberts-transgender-skrmetti-analysis");
   return c.json(result);
+});
+
+app.get("/api/user", (c) => {
+  const session = c.var.session;
+  const user = session.get('user');
+  if (!user) {
+    c.status(401);
+    return c.json({ error: "Unauthorized" });
+  }
+
+  return c.json(user);
+});
+
+app.post("/api/login", (c) => {
+  const dummyUser = {
+    id: "123",
+    name: "John Doe",
+    email: "john.doe@example.com"
+  };
+
+  const session = c.var.session;
+  session.set('user', dummyUser);
+  return c.json(dummyUser);
 });
 
 const v1Api = new Hono<Env>();

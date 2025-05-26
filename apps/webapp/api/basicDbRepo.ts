@@ -10,6 +10,7 @@ export default class BasicDbRepo {
       hostname: Deno.env.get("POSTGRES_HOST"),
       port: 5432,
       password: Deno.env.get("POSTGRES_PASSWORD"),
+      
     });
     await client.connect();
     return new BasicDbRepo(client);

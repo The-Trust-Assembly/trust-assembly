@@ -1,15 +1,20 @@
-import { getHello } from "./backend/api";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSession } from "./contexts/SessionProvider";
 
+// Test component for features in development
 export default function Hello() {
-  const { data: message } = useSuspenseQuery({
-    queryKey: ["hello"],
-    queryFn: getHello,
-  });
+  const session = useSession();
 
   return (
     <div>
-      <h1>{message}</h1>
+      {session.type === "loggedIn" ? (
+        <h1>Hello, {session.user.name}!</h1>
+      ) : (
+        <button
+          onClick={session.login}
+        >
+          Login
+        </button>
+      )}
     </div>
   )
 }
