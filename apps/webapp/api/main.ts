@@ -13,6 +13,7 @@ import {
   sessionMiddleware, 
   CookieStore 
 } from 'jsr:@jcs224/hono-sessions'
+import { authenticateToken, JwtDecodeError, JwtVerificationError } from "./auth.ts";
 
 type SessionData = {
   user: {
@@ -136,16 +137,45 @@ app.get("/api/user", (c) => {
   return c.json(user);
 });
 
-app.post("/api/login", (c) => {
-  const dummyUser = {
-    id: "123",
-    name: "John Doe",
-    email: "john.doe@example.com"
-  };
+app.post("/api/login", async (c) => {
+  const { token } = await c.req.json();
 
-  const session = c.var.session;
-  session.set('user', dummyUser);
-  return c.json(dummyUser);
+  if (!token) {
+    c.status(400);
+    return c.json({ error: "Token is required" });
+  }
+
+  try {
+    const payload = await authenticateToken(token);
+
+    // TODO: replace with query to users table
+    const user = {
+      id: payload.sub,
+      name: payload.name,
+      email: payload.email,
+    };
+  
+    const session = c.var.session;
+    session.set('user', user);
+    return c.json(user);
+  } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e));
+
+    if (e instanceof JwtDecodeError) {
+      c.status(400);
+      return c.json({ error: `Invalid token: ${error.message}` });
+    }
+
+    c.status(401);
+    
+    if (e instanceof JwtVerificationError) {
+      return c.json({ error: `Signature invalid: ${error.message}` });
+    }
+
+    return c.json({ error: `Unauthorized: ${error.message}` });
+  }
+
+
 });
 
 const v1Api = new Hono<Env>();

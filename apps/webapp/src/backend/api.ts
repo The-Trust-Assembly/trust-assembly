@@ -25,9 +25,12 @@ export async function getUser(): Promise<User | null> {
   return await response.json();
 }
 
-// dummy login for now. Will need to integrate with google auth
-export async function login(): Promise<User> {
-  const response = await makeRequest('POST', '/api/login');
+export async function login(token: string): Promise<User> {
+  const response = await makeRequest(
+    'POST',
+    '/api/login',
+    { token }
+  );
   return await response.json();
 }
 

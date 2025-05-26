@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext } from "react";
 import { getUser, login, User } from "../backend/api";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 
@@ -7,7 +7,7 @@ export type Session = {
   user: User;
 } | {
   type: "loggedOut";
-  login: () => void;
+  login: (token: string) => void;
 };
 
 export const SessionContext = createContext<Session | null>(null);
@@ -38,7 +38,7 @@ export default function SessionProvider({ children }: Props) {
 
   const session: Session = user
     ? { type: "loggedIn", user }
-    : { type: "loggedOut", login: () => loginMutator.mutate() };
+    : { type: "loggedOut", login: (token) => loginMutator.mutate(token) };
   
   return (
     <SessionContext.Provider value={session}>

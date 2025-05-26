@@ -3,8 +3,11 @@
   "specifiers": {
     "jsr:@hono/hono@^4.7.1": "4.7.10",
     "jsr:@jcs224/hono-sessions@*": "0.7.2",
+    "jsr:@jcs224/hono-sessions@~0.7.2": "0.7.2",
+    "jsr:@panva/jose@6.0.11": "6.0.11",
     "npm:@eslint/js@^9.13.0": "9.15.0",
     "npm:@extractus/article-extractor@^8.0.16": "8.0.16",
+    "npm:@react-oauth/google@~0.12.2": "0.12.2_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:@tanstack/react-query@^5.60.5": "5.60.5_react@18.3.1",
     "npm:@types/react-dom@^18.3.1": "18.3.1",
     "npm:@types/react@^18.3.12": "18.3.12",
@@ -13,6 +16,8 @@
     "npm:eslint-plugin-react-refresh@~0.4.14": "0.4.14_eslint@9.15.0",
     "npm:eslint@^9.13.0": "9.15.0",
     "npm:globals@^15.11.0": "15.12.0",
+    "npm:hono@4": "4.7.10",
+    "npm:iron-webcrypto@^1.2.1": "1.2.1",
     "npm:react-dom@^18.3.1": "18.3.1_react@18.3.1",
     "npm:react-error-boundary@^4.1.2": "4.1.2_react@18.3.1",
     "npm:react-router-dom@^6.28.0": "6.28.0_react@18.3.1_react-dom@18.3.1__react@18.3.1",
@@ -26,7 +31,14 @@
       "integrity": "e59029e252af371abe43e8e4f9a115e38974c6bd5972022372bf89f763269cc7"
     },
     "@jcs224/hono-sessions@0.7.2": {
-      "integrity": "d68311491b514e0947495de4bd0b0542b3f299bc25acdf30c2e0f953d71ab58a"
+      "integrity": "d68311491b514e0947495de4bd0b0542b3f299bc25acdf30c2e0f953d71ab58a",
+      "dependencies": [
+        "npm:hono",
+        "npm:iron-webcrypto"
+      ]
+    },
+    "@panva/jose@6.0.11": {
+      "integrity": "90d3a31fbe29ab3ab64f5c8c7c413b8a962663d7c62eacd51cc7f41d9c42ccbf"
     }
   },
   "npm": {
@@ -363,6 +375,13 @@
       "dependencies": [
         "@nodelib/fs.scandir",
         "fastq"
+      ]
+    },
+    "@react-oauth/google@0.12.2_react@18.3.1_react-dom@18.3.1__react@18.3.1": {
+      "integrity": "sha512-d1GVm2uD4E44EJft2RbKtp8Z1fp/gK8Lb6KHgs3pHlM0PxCXGLaq8LLYQYENnN4xPWO1gkL4apBtlPKzpLvZwg==",
+      "dependencies": [
+        "react",
+        "react-dom"
       ]
     },
     "@remix-run/router@1.21.0": {
@@ -949,6 +968,9 @@
     "has-flag@4.0.0": {
       "integrity": "sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ=="
     },
+    "hono@4.7.10": {
+      "integrity": "sha512-QkACju9MiN59CKSY5JsGZCYmPZkA6sIW6OFCUp7qDjZu6S6KHtJHhAc9Uy9mV9F8PJ1/HQ3ybZF2yjCa/73fvQ=="
+    },
     "html-escaper@3.0.3": {
       "integrity": "sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ=="
     },
@@ -982,6 +1004,9 @@
     },
     "imurmurhash@0.1.4": {
       "integrity": "sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA=="
+    },
+    "iron-webcrypto@1.2.1": {
+      "integrity": "sha512-feOM6FaSr6rEABp/eDfVseKyTMDt+KGpeB35SkVn9Tyn0CqvVsY3EwI0v5i8nMHyJnzCIQf7nsy3p41TPkJZhg=="
     },
     "is-extglob@2.1.1": {
       "integrity": "sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ=="
@@ -1515,12 +1540,14 @@
   "workspace": {
     "dependencies": [
       "jsr:@hono/hono@^4.7.1",
-      "jsr:@jcs224/hono-sessions@~0.7.2"
+      "jsr:@jcs224/hono-sessions@~0.7.2",
+      "jsr:@panva/jose@6.0.11"
     ],
     "packageJson": {
       "dependencies": [
         "npm:@eslint/js@^9.13.0",
         "npm:@extractus/article-extractor@^8.0.16",
+        "npm:@react-oauth/google@~0.12.2",
         "npm:@tanstack/react-query@^5.60.5",
         "npm:@types/react-dom@^18.3.1",
         "npm:@types/react@^18.3.12",
