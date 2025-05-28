@@ -1,11 +1,11 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Index from "./Index";
 import Hello from "./Hello";
 import './App.css'
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import QueryBoundaryProvider from "./contexts/QueryBoundaryProvider";
 import ParsedArticle from "./ParsedArticle";
 import SessionProvider from "./contexts/SessionProvider";
+import Index from "./Index";
 
 function App() {
   const queryClient = new QueryClient({
