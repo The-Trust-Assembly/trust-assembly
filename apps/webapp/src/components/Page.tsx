@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import gavel from '../assets/gavel.jpg'
-import socialMediaIcons from '../assets/social-media-icons.jpg';
+import Navbar from './Navbar';
+
+const socialMediaIcons = '/social-media-icons.jpg';
 
 type PageProps = {
   children?: React.ReactNode;
@@ -8,24 +9,12 @@ type PageProps = {
 
 export default function Page({ children }: PageProps) {
   return (
-    <>
-      <nav className="medium-width flex flex-responsive nav-row">
-        <Link to="#" className="flex flex-row items-baseline">
-          <img src={gavel} alt="gavel icon" className="gavel-icon" />
-          <strong className="text-lg">Trust Assembly</strong>
-        </Link>
-        <div className="flex-grow"></div>
-        <ul className="nav-list flex flex-row gap items-baseline gap-4">
-          <li><Link to="#">Home</Link></li>
-          <li><Link to="#">Explore</Link></li>
-          <li><Link to="#">About</Link></li>
-          <li className="button-link"><Link to="#">Login</Link></li>
-        </ul>
-      </nav>
+    <div className="max-w-screen-lg mx-auto flex flex-col min-h-screen">
+      <Navbar />
       <main>
         { children }
       </main>
-      <footer className="flex flex-responsive medium-width">
+      <footer className="flex flex-row px-2">
         <ul className="nav-list flex flex-row gap-4">
           <li><Link to="#">Terms</Link></li>
           <li><Link to="#">Privacy</Link></li>
@@ -34,6 +23,6 @@ export default function Page({ children }: PageProps) {
         <div className="flex-grow"></div>
         <img src={socialMediaIcons} alt="social media icons" className="social-icons" />
       </footer>
-    </>
+    </div>
   )
 }

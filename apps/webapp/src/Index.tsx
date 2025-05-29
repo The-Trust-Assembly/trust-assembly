@@ -10,7 +10,7 @@ export default function Index() {
           <div className="hero-button">Get Started</div>
         </div>
       </div>
-      <div className="flex flex-responsive justify-between text-lg small-width">
+      <div className="flex flex-col md:flex-row justify-between text-lg small-width">
         <div className="column">
           <div>Trending Replacements</div>
           <ul className="my-5 pl-5 list-disc">

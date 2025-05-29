@@ -5,12 +5,11 @@ export default class BasicDbRepo {
 
   static async create() {
     const client = new Client({
-      user: Deno.env.get("POSTGRES_USER"),
-      database: Deno.env.get("POSTGRES_DB"),
-      hostname: Deno.env.get("POSTGRES_HOST"),
+      user: Deno.env.get("POSTGRES_USER") || "postgres",
+      database: Deno.env.get("POSTGRES_DB") || "trust_assembly",
+      hostname: Deno.env.get("POSTGRES_HOST") || "localhost",
       port: 5432,
-      password: Deno.env.get("POSTGRES_PASSWORD"),
-      
+      password: Deno.env.get("POSTGRES_PASSWORD") || "password",
     });
     await client.connect();
     return new BasicDbRepo(client);

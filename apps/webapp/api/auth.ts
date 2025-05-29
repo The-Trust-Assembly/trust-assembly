@@ -37,7 +37,7 @@ export async function authenticateToken(token: string): Promise<JwtPayload> {
       audience: payload.aud,
     });
   
-    return verifiedPayload;
+    return verifiedPayload as JwtPayload;
   } catch (e) {
     console.log("Error verifying JWT:", e);
     const error = e instanceof Error ? e : new Error(String(e));
