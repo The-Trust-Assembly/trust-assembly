@@ -13,7 +13,7 @@ function renderReplacement(replacement: Replacement, idx: number) {
       key={idx}
       className="col-span-2 mb-8 flex flex-col items-stretch px-2"
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 bg-white border border-gray-200 rounded-3xl shadow-lg px-4 md:px-8 py-6 items-center relative z-10 gap-y-2 md:gap-y-0" style={{ minHeight: '80px' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 bg-white border border-gray-200 rounded-3xl shadow-lg px-4 md:px-8 py-4 items-center relative z-10 gap-y-2 md:gap-y-0" style={{ minHeight: '80px' }}>
         {/* ORIGINAL label */}
         <div className="text-xs pl-2 text-orange-700 order-1 md:order-1 md:col-span-1 md:row-start-1 md:row-end-2">ORIGINAL</div>
         {/* ORIGINAL headline */}
@@ -29,7 +29,7 @@ function renderReplacement(replacement: Replacement, idx: number) {
         {/* Status and URL */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 my-2 text-sm text-gray-800 col-span-1 break-all order-5 md:order-5 md:col-span-2 md:row-start-3 md:row-end-4 md:my-2">
           <div><span className="inline-block rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-semibold text-sm shrink-0 text-left">{replacement.status}</span></div>
-          <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-left px-3 sm:px-1">{replacement.url}</a>
+          <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="underline decoration-gray-400/50 hover:decoration-gray-800 transition-all text-left px-3 sm:px-1">{replacement.url}</a>
         </div>
       </div>
     </div>
@@ -79,7 +79,7 @@ export default function Replacements() {
   return (
     <Page>
       <h1 className="text-2xl text-center">Headline Replacements</h1>
-      <div className="mt-6">
+      <div className="mt-6 sm:px-2 lg:px-10">
         {sampleData.map(renderReplacement)}
       </div>
     </Page>
