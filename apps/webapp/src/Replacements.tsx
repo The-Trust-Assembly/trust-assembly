@@ -13,20 +13,23 @@ function renderReplacement(replacement: Replacement, idx: number) {
       key={idx}
       className="col-span-2 mb-8 flex flex-col items-stretch px-2"
     >
-      <div className="grid grid-cols-2 bg-white border border-gray-200 rounded-3xl shadow-lg px-8 py-6 items-center relative z-10" style={{ minHeight: '80px' }}>
-        <div className="text-xs pl-2 text-orange-700">ORIGINAL</div>
-        <div className="text-xs pl-2 text-green-700">REPLACEMENT</div>
-        <div className="px-2 py-2 h-full text-left font-medium text-orange-700 bg-orange-50/50 border border-r-0 border-orange-400/50 rounded-l-md whitespace-pre-line break-words">
+      <div className="grid grid-cols-1 md:grid-cols-2 bg-white border border-gray-200 rounded-3xl shadow-lg px-4 md:px-8 py-6 items-center relative z-10 gap-y-2 md:gap-y-0" style={{ minHeight: '80px' }}>
+        {/* ORIGINAL label */}
+        <div className="text-xs pl-2 text-orange-700 order-1 md:order-1 md:col-span-1 md:row-start-1 md:row-end-2">ORIGINAL</div>
+        {/* ORIGINAL headline */}
+        <div className="px-2 py-2 h-full text-left font-medium text-orange-700 bg-orange-50/50 border md:border-r-0 border-orange-400/50 rounded-t-md md:rounded-l-md md:rounded-tr-none whitespace-pre-line break-words order-2 md:order-3 md:col-span-1 md:row-start-2 md:row-end-3">
           <span className="bg-orange-100 p-1 box-decoration-clone">{replacement.originalHeadline}</span>
         </div>
-        <div className="px-2 py-2 h-full font-semibold text-green-700 bg-green-50/50 border border-green-400/50 rounded-r-md whitespace-pre-line break-words">
+        {/* REPLACEMENT label */}
+        <div className="text-xs pl-2 text-green-700 order-3 md:order-2 md:col-span-1 md:row-start-1 md:row-end-2 md:col-start-2">REPLACEMENT</div>
+        {/* REPLACEMENT headline */}
+        <div className="px-2 py-2 h-full font-semibold text-green-700 bg-green-50/50 border border-green-400/50 rounded-b-md md:rounded-r-md md:rounded-bl-none whitespace-pre-line break-words order-4 md:order-4 md:col-span-1 md:row-start-2 md:row-end-3 md:col-start-2">
           <span className="bg-green-100 p-1 box-decoration-clone">{replacement.replacementHeadline}</span>
         </div>
-        <div className="my-2 pl-2 text-sm text-gray-500 col-span-1 break-all">
-          <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{replacement.url}</a>
-        </div>
-        <div className="flex justify-end">
-          <span className="inline-block rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-semibold text-sm shrink">{replacement.status}</span>
+        {/* URL and Status */}
+        <div className="flex justify-between items-center gap-2 my-2 pl-2 text-sm text-gray-500 col-span-1 break-all order-5 md:order-5 md:col-span-2 md:row-start-3 md:row-end-4 md:pl-2 md:my-2">
+          <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-left">{replacement.url}</a>
+          <span className="inline-block rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-semibold text-sm shrink-0 text-right">{replacement.status}</span>
         </div>
       </div>
     </div>
@@ -75,7 +78,7 @@ export default function Replacements() {
 
   return (
     <Page>
-      <h1 className="text-2xl ml-11">Headline Replacements</h1>
+      <h1 className="text-2xl ml-4 md:ml-11">Headline Replacements</h1>
       <div className="mt-6">
         {sampleData.map(renderReplacement)}
       </div>
