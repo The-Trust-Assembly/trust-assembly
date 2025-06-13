@@ -8,13 +8,17 @@ type PageProps = {
 };
 
 export default function Page({ children }: PageProps) {
-  return (
-    <div className="max-w-screen-lg mx-auto flex flex-col min-h-screen">
+  return (<>
+    <div className="mx-auto flex flex-col max-w-7xl justify-between items-stretch px-2">
       <Navbar />
+    </div>
+    <div>
       <main>
         { children }
       </main>
-      <footer className="flex flex-row px-2">
+    </div>
+    <div className="mx-auto flex flex-col max-w-7xl justify-between items-stretch px-2">
+      <footer className="flex flex-row justify-between pb-2">
         <ul className="nav-list flex flex-row gap-4">
           <li><Link to="#">Terms</Link></li>
           <li><Link to="#">Privacy</Link></li>
@@ -24,5 +28,5 @@ export default function Page({ children }: PageProps) {
         <img src={socialMediaIcons} alt="social media icons" className="social-icons" />
       </footer>
     </div>
-  )
+  </>)
 }
