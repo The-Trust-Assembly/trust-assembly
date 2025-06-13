@@ -190,10 +190,10 @@ Install [Docker](https://docs.docker.com/get-docker/) and [docker-compose](https
 To build and run the Docker container for the first time, run:
 
 ```bash
-docker-compose -f docker-compose.dev.yml --profile seed up --build
+docker compose -f docker-compose.dev.yml --profile seed up --build
 ```
 
-This will build the Docker image and run the container. The `--profile seed` flag is used to populate the database with initial data. You can omit this flag on subsequent runs.
+This will build the Docker image and run the container. The `--profile seed` flag is used to populate the database with initial data. You can omit this flag on subsequent runs. Systems running older versions of Docker may need to use `docker-compose` instead of `docker compose`.
 
 TODO: set up live reload when making changes to the code. Right now, you will have to rebuild the Docker image and restart the container when making changes.
 
