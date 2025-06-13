@@ -26,10 +26,10 @@ function renderReplacement(replacement: Replacement, idx: number) {
         <div className="px-2 py-2 h-full font-semibold text-green-700 bg-green-50/50 border border-green-400/50 rounded-b-md md:rounded-r-md md:rounded-bl-none whitespace-pre-line break-words order-4 md:order-4 md:col-span-1 md:row-start-2 md:row-end-3 md:col-start-2">
           <span className="bg-green-100 p-1 box-decoration-clone">{replacement.replacementHeadline}</span>
         </div>
-        {/* URL and Status */}
-        <div className="flex justify-between items-center gap-2 my-2 pl-2 text-sm text-gray-500 col-span-1 break-all order-5 md:order-5 md:col-span-2 md:row-start-3 md:row-end-4 md:pl-2 md:my-2">
-          <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-left">{replacement.url}</a>
-          <span className="inline-block rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-semibold text-sm shrink-0 text-right">{replacement.status}</span>
+        {/* Status and URL */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 my-2 text-sm text-gray-800 col-span-1 break-all order-5 md:order-5 md:col-span-2 md:row-start-3 md:row-end-4 md:my-2">
+          <div><span className="inline-block rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-semibold text-sm shrink-0 text-left">{replacement.status}</span></div>
+          <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-left px-3 sm:px-1">{replacement.url}</a>
         </div>
       </div>
     </div>
