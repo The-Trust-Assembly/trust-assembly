@@ -78,7 +78,7 @@ export default function Replacements() {
 
   return (
     <Page>
-      <h1 className="text-2xl ml-4 md:ml-11">Headline Replacements</h1>
+      <h1 className="text-2xl text-center">Headline Replacements</h1>
       <div className="mt-6">
         {sampleData.map(renderReplacement)}
       </div>

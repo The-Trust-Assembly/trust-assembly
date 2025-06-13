@@ -18,7 +18,7 @@ export default function Page({ children }: PageProps) {
       </main>
     </div>
     <div className="mx-auto flex flex-col max-w-7xl justify-between items-stretch px-2">
-      <footer className="flex flex-row justify-between">
+      <footer className="flex flex-row justify-between pb-2">
         <ul className="nav-list flex flex-row gap-4">
           <li><Link to="#">Terms</Link></li>
           <li><Link to="#">Privacy</Link></li>
