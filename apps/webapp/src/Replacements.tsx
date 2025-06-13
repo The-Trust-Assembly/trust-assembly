@@ -16,11 +16,11 @@ function renderReplacement(replacement: Replacement, idx: number) {
       <div className="grid grid-cols-2 bg-white border border-gray-200 rounded-3xl shadow-lg px-8 py-6 items-center relative z-10" style={{ minHeight: '80px' }}>
         <div className="text-xs pl-2 text-orange-700">ORIGINAL</div>
         <div className="text-xs pl-2 text-green-700">REPLACEMENT</div>
-        <div className="px-2 py-1 h-full text-left font-medium text-orange-700 bg-orange-100 rounded-l-md whitespace-pre-line break-words">
-          {replacement.originalHeadline}
+        <div className="px-2 py-2 h-full text-left font-medium text-orange-700 bg-orange-50/50 border border-r-0 border-orange-400/50 rounded-l-md whitespace-pre-line break-words">
+          <span className="bg-orange-100 p-1 box-decoration-clone">{replacement.originalHeadline}</span>
         </div>
-        <div className="px-2 py-1 h-full font-semibold text-green-700 bg-green-200 rounded-r-md whitespace-pre-line break-words">
-          {replacement.replacementHeadline}
+        <div className="px-2 py-2 h-full font-semibold text-green-700 bg-green-50/50 border border-green-400/50 rounded-r-md whitespace-pre-line break-words">
+          <span className="bg-green-100 p-1 box-decoration-clone">{replacement.replacementHeadline}</span>
         </div>
         <div className="my-2 pl-2 text-sm text-gray-500 col-span-1 break-all">
           <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{replacement.url}</a>
