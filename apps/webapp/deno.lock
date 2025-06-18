@@ -5,6 +5,7 @@
     "jsr:@jcs224/hono-sessions@*": "0.7.2",
     "jsr:@jcs224/hono-sessions@~0.7.2": "0.7.2",
     "jsr:@panva/jose@*": "6.0.11",
+    "jsr:@panva/jose@6.0.11": "6.0.11",
     "npm:@eslint/js@^9.13.0": "9.15.0",
     "npm:@extractus/article-extractor@^8.0.16": "8.0.16",
     "npm:@react-oauth/google@~0.12.2": "0.12.2_react@18.3.1_react-dom@18.3.1__react@18.3.1",
