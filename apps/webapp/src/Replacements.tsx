@@ -1,3 +1,4 @@
+import { Fragment } from "react/jsx-runtime";
 import Page from "./components/Page";
 
 type Replacement = {
@@ -7,10 +8,13 @@ type Replacement = {
   url: string;
 }
 
-function renderReplacement(replacement: Replacement, idx: number) {
+type ReplacementItemProps = {
+  replacement: Replacement,
+}
+
+function ReplacementItem({replacement}: ReplacementItemProps) {
   return (
     <div
-      key={idx}
       className="col-span-2 mb-8 flex flex-col items-stretch px-2"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 bg-white border border-gray-200 rounded-3xl shadow-lg px-4 md:px-8 py-4 items-center relative z-10 gap-y-2 md:gap-y-0" style={{ minHeight: '80px' }}>
@@ -80,8 +84,12 @@ export default function Replacements() {
     <Page>
       <h1 className="text-2xl text-center">Headline Replacements</h1>
       <div className="mt-6 sm:px-2 lg:px-10">
-        {sampleData.map(renderReplacement)}
+        {sampleData.map((replacement, idx) => (
+          <Fragment key={replacement.url} >
+            <ReplacementItem replacement={replacement} />
+          </Fragment>
+        ))}
       </div>
-    </Page>
+    </Page >
   );
 }
