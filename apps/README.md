@@ -8,7 +8,8 @@ This API uses Deno, Hono, Postgres, and LLMs
 ## Getting Started
 
 ```
-deno task start # this will start the server listening on 0.0.0.0:8000
+docker compose --file docker-compose.dev.yml up postgres # this will start the database
+deno task dev # this will start the frontend server listening on 0.0.0.0:5173
 ```
 
 # Architecture

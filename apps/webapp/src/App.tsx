@@ -6,6 +6,7 @@ import QueryBoundaryProvider from "./contexts/QueryBoundaryProvider";
 import ParsedArticle from "./ParsedArticle";
 import SessionProvider from "./contexts/SessionProvider";
 import Index from "./Index";
+import Replacements from "./Replacements";
 
 function App() {
   const queryClient = new QueryClient({
@@ -25,6 +26,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/hello" element={<Hello />} />
               <Route path="/parsedArticle" element={<ParsedArticle />} />
+              <Route path="/replacements" element={<Replacements />} />
             </Routes>
           </BrowserRouter>
         </SessionProvider>
