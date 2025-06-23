@@ -89,10 +89,11 @@ function ReplacementItem({replacement}: ReplacementItemProps) {
           />
           {/* Status and URL */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 my-2 text-sm text-gray-800 col-span-1 break-all order-5 md:order-5 md:col-span-2 md:row-start-3 md:row-end-4 md:my-2">
-            <div><span className="inline-block rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-semibold text-sm shrink-0 text-left">{replacement.status}</span></div>
-            <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="underline decoration-gray-400/50 hover:decoration-gray-800 transition-all text-left px-3 sm:px-1">{replacement.url}</a>
-            <div className="grow-1"></div>
-            <button className="px-2 py-1 rounded-md bg-blue-500 text-white font-bold">Submit</button>
+            <div className="flex gap-2">
+              <button className="px-3 py-1 rounded-md bg-blue-500 text-white font-bold">Submit</button>
+              <span className="inline-block rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 font-semibold text-sm shrink-0 text-left">{replacement.status}</span>
+            </div>
+            <a href={replacement.url} target="_blank" rel="noopener noreferrer" className="underline decoration-gray-400/50 hover:decoration-gray-800 transition-all text-left sm:px-1">{replacement.url}</a>
           </div>
         </div>
       </div>
