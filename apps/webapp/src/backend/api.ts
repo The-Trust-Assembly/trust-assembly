@@ -11,6 +11,19 @@ export async function getParsedArticle(url: string): Promise<ArticleData | null>
   return await response.json();
 }
 
+export async function getSampleReplacementHeadlines(): Promise<Replacement[]> {
+  const path = `/api/sampleReplacementHeadlines`;
+  const response = await makeRequest('GET', path);
+  return await response.json();
+}
+
+export type Replacement = {
+  originalHeadline: string;
+  replacementHeadline: string;
+  status: "Pending";
+  url: string;
+}
+
 export type User = {
   id: string;
   name: string;

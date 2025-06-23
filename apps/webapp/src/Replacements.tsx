@@ -1,13 +1,7 @@
 import { Fragment } from "react/jsx-runtime";
 import Page from "./components/Page";
 import Card from "./components/Card";
-
-type Replacement = {
-  originalHeadline: string;
-  replacementHeadline: string;
-  status: "Pending";
-  url: string;
-}
+import { getSampleReplacementHeadlines, Replacement } from "./backend/api";
 
 type ReplacementItemProps = {
   replacement: Replacement,
@@ -105,51 +99,15 @@ function ReplacementItem({replacement}: ReplacementItemProps) {
   );
 }
 
-export default function Replacements() {
-  const sampleData: Replacement[] = [
-    {
-      originalHeadline: "New Study Proves Coffee Cures Cancer",
-      replacementHeadline: "Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers",
-      status: "Pending",
-      url: "https://fake.news/coffee-cures-cancer/"
-    },
-    {
-      originalHeadline: "Stock Market Collapse Imminent, Experts Warn",
-      replacementHeadline: "Analysts Predict Market Volatility Amid Inflation Concerns",
-      status: "Pending",
-      url: "https://fake.news/stock-market-collapse/"
-    },
-    {
-      originalHeadline: "Major Bank Crash Signals Financial Armageddon",
-      replacementHeadline: "Bank Faces Liquidity Crisis; Regulators Monitor for Broader Impacts",
-      status: "Pending",
-      url: "https://fake.news/major-bank-crash/"
-    },
-    {
-      originalHeadline: "Senator Caught in Massive Tax Fraud Scandal",
-      replacementHeadline: "Senator Under Investigation for Alleged Tax Filing Irregularities",
-      status: "Pending",
-      url: "https://fake.news/senator-tax-fraud/"
-    },
-    {
-      originalHeadline: "City Descends Into Chaos as Crime Soars",
-      replacementHeadline: "City Reports Increase in Property Crime; Violent Crime Rates Steady",
-      status: "Pending",
-      url: "https://fake.news/city-descends-into-chaos/"
-    },
-    {
-      originalHeadline: "The Singularity Starts Now",
-      replacementHeadline: "OpenAI CEO Says Wonders Will Become Routine",
-      status: "Pending",
-      url: "https://fake.news/singularity-starts-now/"
-    }
-  ]
+export default async function Replacements() {
+  const sampleReplacementHeadlines = await getSampleReplacementHeadlines();
+  console.log('sample replacement headlines', sampleReplacementHeadlines)
 
   return (
     <Page>
       <h1 className="text-2xl text-center">Headline Replacements</h1>
       <div className="mt-6 gap-8 flex flex-col sm:px-2 lg:px-10 mb-8">
-        {sampleData.map((replacement) => (
+        {sampleReplacementHeadlines.map((replacement) => (
           <Fragment key={replacement.url} >
             <ReplacementItem replacement={replacement} />
           </Fragment>

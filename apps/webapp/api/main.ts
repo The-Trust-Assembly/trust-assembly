@@ -14,6 +14,7 @@ import {
   CookieStore 
 } from 'jsr:@jcs224/hono-sessions'
 import { authenticateToken, JwtDecodeError, JwtVerificationError } from "./auth.ts";
+import sampleReplacementHeadlines from "./sampleReplacementHeadlines.ts";
 
 type SessionData = {
   user: {
@@ -119,6 +120,10 @@ app.get("/api/parsedArticle", async (c) => {
   const parsed = await extract(url);
   return c.json(parsed);
 });
+
+app.get("/api/sampleReplacementHeadlines", async (c) => {
+  return c.json(sampleReplacementHeadlines)
+})
 
 app.get("/api/db-test", async (c) => {
   const dbClient = c.var.db;
