@@ -2,6 +2,7 @@ import { Fragment } from "react/jsx-runtime";
 import Page from "./components/Page";
 import Card from "./components/Card";
 import { getSampleReplacementHeadlines, Replacement } from "./backend/api";
+import { useState, useEffect } from "react";
 
 type ReplacementItemProps = {
   replacement: Replacement,
@@ -99,9 +100,23 @@ function ReplacementItem({replacement}: ReplacementItemProps) {
   );
 }
 
-export default async function Replacements() {
-  const sampleReplacementHeadlines = await getSampleReplacementHeadlines();
-  console.log('sample replacement headlines', sampleReplacementHeadlines)
+export default function Replacements() {
+  const [sampleReplacementHeadlines, setSampleReplacementHeadlines] = useState<Replacement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getSampleReplacementHeadlines()
+      .then((data) => setSampleReplacementHeadlines(data))
+      .catch((err) => {
+        console.error("Failed to fetch replacement headlines", err);
+        setSampleReplacementHeadlines([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <Page><div>Loading...</div></Page>;
+  }
 
   return (
     <Page>
@@ -113,6 +128,6 @@ export default async function Replacements() {
           </Fragment>
         ))}
       </div>
-    </Page >
+    </Page>
   );
 }
