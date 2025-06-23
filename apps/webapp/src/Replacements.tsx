@@ -36,8 +36,8 @@ function HeadlineContent({ label, headline, type, borderType }: HeadlineContentP
   }
 
   const borderStyles = {
-    start: "md:border-r-0 rounded-t-md md:rounded-l-md md:rounded-tr-none",
-    end: "md:border-l-0 rounded-l-md md:rounded-r-md md:rounded-tl-none",
+    start: "md:border-r-0 rounded-t-md md:rounded-l-md md:rounded-r-none",
+    end: "md:border-l-0 rounded-b-md md:rounded-r-md md:rounded-l-none",
   }
 
   const {
