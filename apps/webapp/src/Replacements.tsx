@@ -148,7 +148,7 @@ export default function Replacements() {
   return (
     <Page>
       <h1 className="text-2xl text-center">Headline Replacements</h1>
-      <div className="mt-6 gap-8 flex flex-col sm:px-2 lg:px-10">
+      <div className="mt-6 gap-8 flex flex-col sm:px-2 lg:px-10 mb-8">
         {sampleData.map((replacement) => (
           <Fragment key={replacement.url} >
             <ReplacementItem replacement={replacement} />
