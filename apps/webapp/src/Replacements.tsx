@@ -36,8 +36,8 @@ function HeadlineContent({ label, headline, type, borderType }: HeadlineContentP
   }
 
   const borderStyles = {
-    start: "md:border-r-0 rounded-t-md md:rounded-l-md md:rounded-r-none",
-    end: "md:border-l-0 rounded-b-md md:rounded-r-md md:rounded-l-none",
+    start: "rounded-t-md md:rounded-l-md md:rounded-r-none",
+    end: "rounded-b-md md:rounded-r-md md:rounded-l-none",
   }
 
   const {
@@ -79,7 +79,7 @@ function ReplacementItem({replacement}: ReplacementItemProps) {
       <div
         className="col-span-2 items-stretch px-2"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 md:gap-y-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-y-0">
           <HeadlineContent
             label="Original"
             headline={replacement.originalHeadline}
