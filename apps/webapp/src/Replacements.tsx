@@ -2,7 +2,7 @@ import { Fragment } from "react/jsx-runtime";
 import Page from "./components/Page";
 import Card from "./components/Card";
 import { getSampleReplacementHeadlines, Replacement } from "./backend/api";
-import { useState, useEffect } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 type ReplacementItemProps = {
   replacement: Replacement,
@@ -102,22 +102,10 @@ function ReplacementItem({replacement}: ReplacementItemProps) {
 }
 
 export default function Replacements() {
-  const [sampleReplacementHeadlines, setSampleReplacementHeadlines] = useState<Replacement[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getSampleReplacementHeadlines()
-      .then((data) => setSampleReplacementHeadlines(data))
-      .catch((err) => {
-        console.error("Failed to fetch replacement headlines", err);
-        setSampleReplacementHeadlines([]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return <Page><div>Loading...</div></Page>;
-  }
+  const { data: sampleReplacementHeadlines } = useSuspenseQuery({
+    queryKey: ["replacementeHeadlines"],
+    queryFn: getSampleReplacementHeadlines
+  });
 
   return (
     <Page>
