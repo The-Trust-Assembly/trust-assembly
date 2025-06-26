@@ -1,6 +1,6 @@
 {
   "imports": {
-    "@hono/hono": "jsr:@hono/hono@^4.7.1",
+    "@hono/hono": "jsr:@hono/hono@^4.7.10",
     "@jcs224/hono-sessions": "jsr:@jcs224/hono-sessions@^0.7.2",
     "@panva/jose": "jsr:@panva/jose@6.0.11"
   }
