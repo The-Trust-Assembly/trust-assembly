@@ -13,7 +13,7 @@ import {
 } from 'jsr:@jcs224/hono-sessions'
 import sessions from "./sessions.ts";
 import test from "./test.ts";
-import headlines from "./headlines.ts";
+import replacements from "./replacements.ts";
 import transformations from "./transformations.ts";
 import v1Api from "./v1Api.ts";
 
@@ -66,7 +66,7 @@ const apiApp = new Hono<Env>()
   .route("/", sessions)
   .route("/", transformations)
   .route("/test", test)
-  .route("/sampleReplacementHeadlines", headlines)
+  .route("/replacements", replacements)
   .route("/v1", v1Api)
   .get("/", (c) => {
     return c.text("Hello Deno!");

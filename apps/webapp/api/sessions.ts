@@ -41,7 +41,7 @@ const app = new Hono<Env>()
       return c.json({ error: `Unauthorized: ${error.message}` });
     }
   })
-  .get("/user", (c) => {
+  .get("/me", (c) => {
     const session = c.var.session;
     const user = session.get('user');
     if (!user) {

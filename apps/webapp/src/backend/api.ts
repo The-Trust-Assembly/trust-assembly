@@ -11,8 +11,8 @@ export async function getParsedArticle(url: string): Promise<ArticleData | null>
   return await response.json();
 }
 
-export async function getSampleReplacementHeadlines(): Promise<Replacement[]> {
-  const path = `/api/sampleReplacementHeadlines`;
+export async function getReplacementHeadlines(): Promise<Replacement[]> {
+  const path = `/api/replacements`;
   const response = await makeRequest('GET', path);
   return await response.json();
 }
@@ -31,7 +31,7 @@ export type User = {
 }
 
 export async function getUser(): Promise<User | null> {
-  const response = await makeRequest('GET', '/api/user');
+  const response = await makeRequest('GET', '/api/me');
   if (response.status === 401) {
     return null;
   }
