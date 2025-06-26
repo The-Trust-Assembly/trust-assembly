@@ -1,7 +1,6 @@
 {
   "version": "4",
   "specifiers": {
-    "jsr:@hono/hono@^4.7.1": "4.7.10",
     "jsr:@jcs224/hono-sessions@*": "0.7.2",
     "jsr:@jcs224/hono-sessions@~0.7.2": "0.7.2",
     "jsr:@panva/jose@*": "6.0.11",
@@ -30,9 +29,6 @@
     "npm:vite@^5.4.10": "5.4.11"
   },
   "jsr": {
-    "@hono/hono@4.7.10": {
-      "integrity": "e59029e252af371abe43e8e4f9a115e38974c6bd5972022372bf89f763269cc7"
-    },
     "@jcs224/hono-sessions@0.7.2": {
       "integrity": "d68311491b514e0947495de4bd0b0542b3f299bc25acdf30c2e0f953d71ab58a",
       "dependencies": [
@@ -1771,7 +1767,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@hono/hono@^4.7.1",
+      "jsr:@hono/hono@^4.8.3",
       "jsr:@jcs224/hono-sessions@~0.7.2",
       "jsr:@panva/jose@6.0.11"
     ],
