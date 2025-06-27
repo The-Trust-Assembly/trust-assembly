@@ -7,7 +7,6 @@ import { trimTrailingSlash } from '@hono/hono/trailing-slash'
 import { createMiddleware } from '@hono/hono/factory'
 import BasicDbRepo from "./basicDbRepo.ts";
 import { 
-  Session,
   sessionMiddleware, 
   CookieStore 
 } from 'jsr:@jcs224/hono-sessions'
@@ -16,15 +15,7 @@ import test from "./test.ts";
 import replacements from "./replacements.ts";
 import transformations from "./transformations.ts";
 import v1Api from "./v1Api.ts";
-import { SessionData } from "./sessionUtils.ts";
-
-export type Env = {
-  Variables: {
-    db: BasicDbRepo;
-    session: Session<SessionData>;
-    session_key_rotation: boolean;
-  },
-};
+import { Env } from "./env.ts";
 
 const corsPolicy = cors({
   origin: ["*"], // TODO: Change this to trust-assembly.org, or whatever URL we're using frontend URL

@@ -1,8 +1,8 @@
 import { Context, Hono } from "@hono/hono";
-import { Env } from "./main.ts";
+import { Env, User } from "./env.ts";
 import { authenticateToken, JwtDecodeError, JwtPayload, JwtVerificationError } from "./auth.ts";
 import { createMiddleware } from "@hono/hono/factory";
-import { currentUser, User } from "./sessionUtils.ts";
+import { currentUser } from "./sessionUtils.ts";
 
 const authMiddleware = createMiddleware<Env, "*", {}>(async (c, next) => {
   const session = c.var.session;

@@ -1,5 +1,5 @@
 import { Hono } from "@hono/hono";
-import { Env } from "./main.ts";
+import { Env } from "./env.ts";
 import { extract } from "@extractus/article-extractor";
 import transformHeadline from "./cliInterface.ts";
 
