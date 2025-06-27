@@ -1,15 +1,5 @@
 import { Context } from "@hono/hono";
-import { Env } from "./main.ts";
-
-export type SessionData = {
-  user: User;
-};
-
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-};
+import { Env, User } from "./env.ts";
 
 export function currentUser(c: Context<Env, "*", {}>): User {
   const session = c.var.session;

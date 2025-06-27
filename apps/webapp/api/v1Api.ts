@@ -1,5 +1,5 @@
 import { Hono } from "@hono/hono";
-import { Env } from "./main.ts";
+import { Env } from "./env.ts";
 
 function cleanUrl(url: string) {
   return url.replace(/\/(index.html)?\/?$/, "");
