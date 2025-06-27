@@ -16,14 +16,7 @@ import test from "./test.ts";
 import replacements from "./replacements.ts";
 import transformations from "./transformations.ts";
 import v1Api from "./v1Api.ts";
-
-type SessionData = {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  }
-};
+import { SessionData } from "./sessionUtils.ts";
 
 export type Env = {
   Variables: {
