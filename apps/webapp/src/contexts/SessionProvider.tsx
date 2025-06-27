@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { getUser, login, User } from "../backend/api";
+import { getUser, login, register, User } from "../backend/api";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 
 export type Session = {
@@ -7,7 +7,8 @@ export type Session = {
   user: User;
 } | {
   type: "loggedOut";
-  login: (token: string) => void;
+  login: (token: string) => Promise<User>;
+  register: (token: string) => Promise<User>;
 };
 
 export const SessionContext = createContext<Session | null>(null);
@@ -34,11 +35,21 @@ export default function SessionProvider({ children }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user"] });
     },
-  })
+  });
+  const registerMutator = useMutation({
+    mutationFn: register,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    }
+  });
 
   const session: Session = user
     ? { type: "loggedIn", user }
-    : { type: "loggedOut", login: (token) => loginMutator.mutate(token) };
+    : {
+      type: "loggedOut",
+      login: (token) => loginMutator.mutateAsync(token),
+      register: (token) => registerMutator.mutateAsync(token),
+    };
   
   return (
     <SessionContext.Provider value={session}>

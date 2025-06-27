@@ -14,7 +14,7 @@ export class JwtVerificationError extends Error {
   }
 }
 
-type JwtPayload = {
+export type JwtPayload = {
   iss: string; // Issuer
   sub: string; // Subject
   aud: string; // Audience
