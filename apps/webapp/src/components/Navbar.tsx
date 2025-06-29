@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSession } from "@/contexts/SessionProvider";
 import Logo from "./Logo";
 import Modal from "./Modal";
-import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import LoginButton from "./LoginButton";
 
 // built from the tailwind example https://tailwindcss.com/plus/ui-blocks/application-ui/navigation/navbars
 
@@ -73,22 +73,24 @@ export default function Navbar(props: NavbarProps) {
         </div>
       )}
       <Modal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)}>
-        <GoogleOAuthProvider clientId={"866724834732-5qma1gh7ns35hqg92oamrqgjlq8dbt77.apps.googleusercontent.com"}>
+        <>
           {
             session.type === "loggedIn" ? (
               <h1 className="text-lg font-semibold">Hello, {session.user.name}!</h1>
             ) : (
-              <GoogleLogin
-                onSuccess={credentialResponse => {
-                  session.login(credentialResponse.credential!);
+              <LoginButton
+                session={session}
+                onSuccess={() => {
+                  setIsLoginModalOpen(false);
                 }}
-                onError={() => {
-                  console.log('Login Failed');
+                onError={(errMessage) => {
+                  console.error("Login error:", errMessage);
+                  setIsLoginModalOpen(false);
                 }}
               />
             )
           }
-        </GoogleOAuthProvider>
+        </>
       </Modal>
     </nav>
   );

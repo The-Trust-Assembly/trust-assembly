@@ -1,7 +1,8 @@
 {
   "version": "4",
   "specifiers": {
-    "jsr:@jcs224/hono-sessions@*": "0.7.2",
+    "jsr:@hono/hono@^4.8.3": "4.8.3",
+    "jsr:@jcs224/hono-sessions@*": "0.7.3",
     "jsr:@jcs224/hono-sessions@~0.7.2": "0.7.2",
     "jsr:@panva/jose@*": "6.0.11",
     "jsr:@panva/jose@6.0.11": "6.0.11",
@@ -29,8 +30,18 @@
     "npm:vite@^5.4.10": "5.4.11"
   },
   "jsr": {
+    "@hono/hono@4.8.3": {
+      "integrity": "f17509836610b97e9ec86bce5349387115c35ee72b7b29fd2b7944abe5f843ab"
+    },
     "@jcs224/hono-sessions@0.7.2": {
       "integrity": "d68311491b514e0947495de4bd0b0542b3f299bc25acdf30c2e0f953d71ab58a",
+      "dependencies": [
+        "npm:hono",
+        "npm:iron-webcrypto"
+      ]
+    },
+    "@jcs224/hono-sessions@0.7.3": {
+      "integrity": "803b5e9cc0c2e2bfc8af38fc01260af18e50e88a942cc7685a6ceb3ba3af71c6",
       "dependencies": [
         "npm:hono",
         "npm:iron-webcrypto"
