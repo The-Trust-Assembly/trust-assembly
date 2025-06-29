@@ -1,7 +1,7 @@
 import { Fragment } from "react/jsx-runtime";
 import Page from "./components/Page";
 import Card from "./components/Card";
-import { getSampleReplacementHeadlines, Replacement } from "./backend/api";
+import { getReplacementHeadlines, Replacement } from "./backend/api";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 type ReplacementItemProps = {
@@ -102,16 +102,16 @@ function ReplacementItem({replacement}: ReplacementItemProps) {
 }
 
 export default function Replacements() {
-  const { data: sampleReplacementHeadlines } = useSuspenseQuery({
-    queryKey: ["replacementeHeadlines"],
-    queryFn: getSampleReplacementHeadlines
+  const { data: replacementHeadlines } = useSuspenseQuery({
+    queryKey: ["replacementHeadlines"],
+    queryFn: getReplacementHeadlines
   });
 
   return (
     <Page>
       <h1 className="text-2xl text-center">Headline Replacements</h1>
       <div className="mt-6 gap-8 flex flex-col sm:px-2 lg:px-10 mb-8">
-        {sampleReplacementHeadlines.map((replacement) => (
+        {replacementHeadlines.map((replacement) => (
           <Fragment key={replacement.url} >
             <ReplacementItem replacement={replacement} />
           </Fragment>

@@ -197,7 +197,7 @@ This will build the Docker image and run the container. The `--profile seed` fla
 
 TODO: set up live reload when making changes to the code. Right now, you will have to rebuild the Docker image and restart the container when making changes.
 
-Confirm the container is running by visiting `http://localhost:5173` in your browser. Confirm the database is connected to the backend and seeded with data by visiting `http://localhost:5173/api/db-test`.
+Confirm the container is running by visiting `http://localhost:5173` in your browser. Confirm the database is connected to the backend and seeded with data by visiting `http://localhost:5173/api/test/db`.
 
 ## Browser extension development
 
