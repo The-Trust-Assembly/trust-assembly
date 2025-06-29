@@ -4,6 +4,12 @@ import { authenticateToken, JwtDecodeError, JwtPayload, JwtVerificationError } f
 import { createMiddleware } from "@hono/hono/factory";
 import { currentUser } from "./sessionUtils.ts";
 
+class UserNotFoundError extends Error {
+  constructor() {
+    super("User not found");
+  }
+}
+
 const authMiddleware = createMiddleware<Env, "*", {}>(async (c, next) => {
   const session = c.var.session;
   const user = session.get('user');
@@ -16,22 +22,46 @@ const authMiddleware = createMiddleware<Env, "*", {}>(async (c, next) => {
 
 const app = new Hono<Env>()
   .post("/login", async (c) => {
-    // TODO: replace with query to users table
-    const userFn = (payload: JwtPayload) => Promise.resolve({
-      id: payload.sub,
-      name: payload.name,
-      email: payload.email,
-    });
+    const dbClient = c.var.db;
 
-    return await handleTokenRequest(c, userFn);
+    const userFn = async (payload: JwtPayload) => {
+      const user = await dbClient.getUserByLoginProvider({
+        providerType: 'google',
+        remoteId: payload.sub,
+      });
+
+      if (!user) {
+        throw new UserNotFoundError();
+      }
+      return user;
+    }
+
+    try {
+      return await handleTokenRequest(c, userFn);
+    } catch (e) {
+      if (e instanceof UserNotFoundError) {
+        c.status(401);
+        return c.json({ error: e.message });
+      }
+      throw e;
+    }
   })
   .post("/register", async (c) => {
-    // TODO: replace with insert to users table
-    const userFn = (payload: JwtPayload) => Promise.resolve({
-      id: payload.sub,
-      name: payload.name,
-      email: payload.email,
-    });
+    const dbClient = c.var.db;
+ 
+    const userFn = async (payload: JwtPayload) => {
+      return await dbClient.registerUser(
+        {
+          name: payload.name,
+          email: payload.email,
+        },
+        {
+          remoteId: payload.sub,
+          providerType: 'google'
+        }
+      );
+      // TODO: handle DB conflict by throwing 409
+    };
     
     return await handleTokenRequest(c, userFn);
   })
