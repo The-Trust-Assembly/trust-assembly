@@ -6,11 +6,13 @@ import LoginButton from "./LoginButton";
 
 // built from the tailwind example https://tailwindcss.com/plus/ui-blocks/application-ui/navigation/navbars
 
-type NavbarProps = React.ComponentProps<'nav'>;
+type NavbarProps = React.ComponentProps<'nav'> & {
+  signInOpen?: boolean;
+};
 
 export default function Navbar(props: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(props.signInOpen ?? false);
   const session = useSession();
 
   return (
@@ -27,10 +29,10 @@ export default function Navbar(props: NavbarProps) {
             >
               <span className="absolute -inset-0.5"></span>
               <span className="sr-only">Open main menu</span>
-              <svg className="block size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
+              <svg className="block size-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
-              <svg className="hidden size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
+              <svg className="hidden size-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
             </button>
@@ -106,7 +108,7 @@ function NavButtons({ isBlock }: NavButtonsProps) {
   return (
     <>
       <a href="#" className={className}>Home</a>
-      <a href="#" className={className}>Explore</a>
+      <a href="/replacements" className={className}>Explore</a>
       <a href="#" className={className}>About</a>
     </>
   );

@@ -5,12 +5,13 @@ const socialMediaIcons = '/social-media-icons.jpg';
 
 type PageProps = {
   children?: React.ReactNode;
+  signInOpen?: boolean;
 };
 
-export default function Page({ children }: PageProps) {
+export default function Page({ children, signInOpen }: PageProps) {
   return (<>
     <div className="mx-auto flex flex-col max-w-7xl justify-between items-stretch px-2">
-      <Navbar />
+      <Navbar signInOpen={signInOpen} />
     </div>
     <div>
       <main>

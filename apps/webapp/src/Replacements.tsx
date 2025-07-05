@@ -1,8 +1,8 @@
 import { Fragment } from "react/jsx-runtime";
-import Page from "./components/Page";
 import Card from "./components/Card";
 import { getReplacementHeadlines, Replacement } from "./backend/api";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import AuthPage from "./components/AuthPage";
 
 type ReplacementItemProps = {
   replacement: Replacement,
@@ -108,7 +108,7 @@ export default function Replacements() {
   });
 
   return (
-    <Page>
+    <AuthPage>
       <h1 className="text-2xl text-center">Headline Replacements</h1>
       <div className="mt-6 gap-8 flex flex-col sm:px-2 lg:px-10 mb-8">
         {replacementHeadlines.map((replacement) => (
@@ -117,6 +117,6 @@ export default function Replacements() {
           </Fragment>
         ))}
       </div>
-    </Page>
+    </AuthPage>
   );
 }
