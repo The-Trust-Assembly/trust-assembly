@@ -75,6 +75,10 @@ export default function NewHeadlinePage() {
                             />
                         ))}
                     </section>
+					<div className="flex justify-between mt-2">
+						 <button className="px-3 py-1 rounded-md border border-gray-200">Cancel</button>
+						 <button className="px-3 py-1 rounded-md bg-blue-500 text-white font-bold">Save & Submit</button>
+					</div>
                 </Card>
             </div>
         </Page>
