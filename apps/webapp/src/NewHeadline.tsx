@@ -7,6 +7,27 @@ const MAX_HEADLINE_LENGTH = 120;
 export default function NewHeadlinePage() {
     const [originalHeadline, setOriginalHeadline] = useState("New Study Proves Coffee Cures Cancer");
     const [replacementHeadline, setReplacementHeadline] = useState("Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers");
+    // Citations state: always at least one empty field at the end
+    const [citations, setCitations] = useState<string[]>([""]);
+
+    // Handle citation change
+    const handleCitationChange = (idx: number, value: string) => {
+        const newCitations = [...citations];
+        newCitations[idx] = value;
+        // If last field is being edited and is not empty, add a new empty field
+        if (idx === citations.length - 1 && value.trim() !== "") {
+            newCitations.push("");
+        }
+        // Remove trailing empty fields (but always keep at least one)
+        while (
+            newCitations.length > 1 &&
+            newCitations[newCitations.length - 1] === "" &&
+            newCitations[newCitations.length - 2] === ""
+        ) {
+            newCitations.pop();
+        }
+        setCitations(newCitations);
+    };
 
     return (
         <Page>
@@ -41,10 +62,19 @@ export default function NewHeadlinePage() {
                         />
                     </form>
 
-					<section className="mt-2">
-						<h2 className="font-bold">Citations</h2>
-						<input type="text" placeholder="https://..." className="border border-gray-200 rounded-md p-2 w-full"/>
-					</section>
+                    <section className="mt-2">
+                        <h2 className="font-bold">Citations</h2>
+                        {citations.map((citation, idx) => (
+                            <input
+                                key={idx}
+                                type="text"
+                                placeholder="https://..."
+                                className="border border-gray-200 rounded-md p-2 w-full mb-2"
+                                value={citation}
+                                onChange={e => handleCitationChange(idx, e.target.value)}
+                            />
+                        ))}
+                    </section>
                 </Card>
             </div>
         </Page>
