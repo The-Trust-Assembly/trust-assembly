@@ -2,6 +2,8 @@ import { useState } from "react";
 import Card from "./components/Card";
 import Page from "./components/Page";
 
+const MAX_HEADLINE_LENGTH = 120;
+
 export default function NewHeadlinePage() {
     const [originalHeadline, setOriginalHeadline] = useState("New Study Proves Coffee Cures Cancer");
     const [replacementHeadline, setReplacementHeadline] = useState("Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers");
@@ -14,7 +16,9 @@ export default function NewHeadlinePage() {
                     <form className="flex flex-col">
                         <div className="flex flex-row justify-between">
                             <label htmlFor="originalHeadline">Original headline</label>
-                            <div>{originalHeadline.length} / 120</div>
+                            <div className={originalHeadline.length > MAX_HEADLINE_LENGTH ? 'text-red-600' : ''}>
+                                {originalHeadline.length} / {MAX_HEADLINE_LENGTH}
+                            </div>
                         </div>
                         <input
                             type="text"
