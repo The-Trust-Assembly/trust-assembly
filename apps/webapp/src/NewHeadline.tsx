@@ -27,7 +27,12 @@ export default function NewHeadlinePage() {
                             value={originalHeadline}
                             onChange={e => setOriginalHeadline(e.target.value)}
                         />
-                        <label htmlFor="replacementHeadline">Replacement headline</label>
+                        <div className="flex flex-row justify-between">
+                            <label htmlFor="replacementHeadline">Replacement headline</label>
+                            <div className={replacementHeadline.length > MAX_HEADLINE_LENGTH ? 'text-red-600' : ''}>
+                                {replacementHeadline.length} / {MAX_HEADLINE_LENGTH}
+                            </div>
+                        </div>
                         <input
                             type="text"
                             id="replacementHeadline"
