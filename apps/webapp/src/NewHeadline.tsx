@@ -20,8 +20,7 @@ export default function NewHeadlinePage() {
                                 {originalHeadline.length} / {MAX_HEADLINE_LENGTH}
                             </div>
                         </div>
-                        <input
-                            type="text"
+                        <textarea
                             id="originalHeadline"
                             className="border rounded-md p-2 bg-orange-50/50 text-orange-700 border-orange-400/50"
                             value={originalHeadline}
@@ -33,8 +32,7 @@ export default function NewHeadlinePage() {
                                 {replacementHeadline.length} / {MAX_HEADLINE_LENGTH}
                             </div>
                         </div>
-                        <input
-                            type="text"
+                        <textarea
                             id="replacementHeadline"
                             className="border rounded-md p-2 bg-green-50/50 text-green-700 border-green-400/50"
                             value={replacementHeadline}
