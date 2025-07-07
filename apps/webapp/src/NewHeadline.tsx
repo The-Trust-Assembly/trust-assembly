@@ -1,24 +1,39 @@
+import { useState } from "react";
 import Card from "./components/Card";
 import Page from "./components/Page";
 
 export default function NewHeadlinePage() {
-	return <Page>
-		<div className="m-4">
-			<Card>
-				<h1 className="text-lg font-bold">Propose New Headline</h1>
-				<form className="flex flex-col">
-					<label htmlFor="originalHeadline">Original headline</label>
-					<input type="text" id="originalHeadline"
-						className="border rounded-md p-2 bg-orange-50/50 text-orange-700 border-orange-400/50"
-						value="New Study Proves Coffee Cures Cancer"
-					/>
-					<label htmlFor="originalHeadline">Replacement headline</label>
-					<input type="text" id="originalHeadline"
-						className="border rounded-md p-2 bg-green-50/50 text-green-700 border-green-400/50"
-						value="Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers"
-					/>
-				</form>
-			</Card>
-		</div>
-	</Page>
+    const [originalHeadline, setOriginalHeadline] = useState("New Study Proves Coffee Cures Cancer");
+    const [replacementHeadline, setReplacementHeadline] = useState("Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers");
+
+    return (
+        <Page>
+            <div className="m-4">
+                <Card>
+                    <h1 className="text-lg font-bold">Propose New Headline</h1>
+                    <form className="flex flex-col">
+                        <div className="flex flex-row justify-between">
+                            <label htmlFor="originalHeadline">Original headline</label>
+                            <div>{originalHeadline.length} / 120</div>
+                        </div>
+                        <input
+                            type="text"
+                            id="originalHeadline"
+                            className="border rounded-md p-2 bg-orange-50/50 text-orange-700 border-orange-400/50"
+                            value={originalHeadline}
+                            onChange={e => setOriginalHeadline(e.target.value)}
+                        />
+                        <label htmlFor="replacementHeadline">Replacement headline</label>
+                        <input
+                            type="text"
+                            id="replacementHeadline"
+                            className="border rounded-md p-2 bg-green-50/50 text-green-700 border-green-400/50"
+                            value={replacementHeadline}
+                            onChange={e => setReplacementHeadline(e.target.value)}
+                        />
+                    </form>
+                </Card>
+            </div>
+        </Page>
+    );
 }
