@@ -1,0 +1,61 @@
+@startuml architecture
+
+title Architecture
+
+entity NewsSite {}
+
+namespace Browser {
+  entity BrowserAgent {}
+
+  namespace Extension {
+    entity Popup {
+      showEdited(): void
+      hideEdits(): void
+      editArticle(): void
+    }
+
+    entity ContentScript {
+      showEdited(edit: Edit): void
+      hideEdits(): void
+    }
+
+    entity Background {
+      getEdited(article: Article): Edit
+    }
+  }
+}
+
+namespace TrustAssembly {
+  entity Wiki {
+    login(): void
+    getArticle(url: string): Article
+    editArticle(article: Article, edit: Edit): void
+  }
+
+  entity API {
+    login(): void
+    createUser(user: User): void
+    getEdits(article: Article): Edit[]
+    createEdit(user: User, edit: Edit): void
+  }
+
+  entity BoringBomb {
+    saveArticle(url: string): void
+    modifyHeadline(article: Article): void
+  }
+
+  entity Database {}
+}
+
+TrustAssembly.BoringBomb "fetch article" --|> NewsSite
+TrustAssembly.BoringBomb --|> TrustAssembly.Database
+TrustAssembly.API --|> TrustAssembly.Database
+TrustAssembly.Wiki --|> TrustAssembly.API
+Browser.BrowserAgent "GET" --|> NewsSite
+Browser.Extension.Popup "hide/show edits" --|> Browser.Extension.ContentScript
+Browser.Extension.Popup "redirect" --|> TrustAssembly.Wiki
+Browser.Extension.ContentScript "hide/show edits" --|> Browser.BrowserAgent
+Browser.Extension.ContentScript "get edits" --|> Browser.Extension.Background
+Browser.Extension.Background --|> TrustAssembly.API
+
+@enduml
