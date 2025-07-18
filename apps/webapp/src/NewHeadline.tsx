@@ -7,25 +7,34 @@ const MAX_HEADLINE_LENGTH = 120;
 export default function NewHeadlinePage() {
     const [originalHeadline, setOriginalHeadline] = useState("New Study Proves Coffee Cures Cancer");
     const [replacementHeadline, setReplacementHeadline] = useState("Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers");
-    // Citations state: always at least one empty field at the end
-    const [citations, setCitations] = useState<string[]>([""]);
+    // Each citation is an object: { url: string, explanation: string }
+    const [citations, setCitations] = useState<{ url: string; explanation: string }[]>([
+        { url: "", explanation: "" }
+    ]);
 
-    // Handle citation change
-    const handleCitationChange = (idx: number, value: string) => {
+    // Handle citation URL change
+    const handleCitationUrlChange = (idx: number, value: string) => {
         const newCitations = [...citations];
-        newCitations[idx] = value;
+        newCitations[idx] = { ...newCitations[idx], url: value };
         // If last field is being edited and is not empty, add a new empty field
         if (idx === citations.length - 1 && value.trim() !== "") {
-            newCitations.push("");
+            newCitations.push({ url: "", explanation: "" });
         }
         // Remove trailing empty fields (but always keep at least one)
         while (
             newCitations.length > 1 &&
-            newCitations[newCitations.length - 1] === "" &&
-            newCitations[newCitations.length - 2] === ""
+            newCitations[newCitations.length - 1].url === "" &&
+            newCitations[newCitations.length - 2].url === ""
         ) {
             newCitations.pop();
         }
+        setCitations(newCitations);
+    };
+
+    // Handle citation explanation change
+    const handleCitationExplanationChange = (idx: number, value: string) => {
+        const newCitations = [...citations];
+        newCitations[idx] = { ...newCitations[idx], explanation: value };
         setCitations(newCitations);
     };
 
@@ -65,14 +74,22 @@ export default function NewHeadlinePage() {
                             <section className="mt-2">
                                 <h2 className="font-bold">Citations</h2>
                                 {citations.map((citation, idx) => (
-                                    <input
-                                        key={idx}
-                                        type="text"
-                                        placeholder="https://..."
-                                        className="border border-gray-200 rounded-md p-2 w-full mb-2"
-                                        value={citation}
-                                        onChange={e => handleCitationChange(idx, e.target.value)}
-                                    />
+                                    <div key={idx} className="mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="https://..."
+                                            className="border border-gray-200 rounded-md p-2 w-full mb-1"
+                                            value={citation.url}
+                                            onChange={e => handleCitationUrlChange(idx, e.target.value)}
+                                        />
+                                        <textarea
+                                            placeholder="Optional explanation (e.g. what this citation supports)"
+                                            className="border border-gray-200 rounded-md p-2 w-full text-sm text-gray-700 bg-gray-50"
+                                            value={citation.explanation}
+                                            onChange={e => handleCitationExplanationChange(idx, e.target.value)}
+                                            rows={2}
+                                        />
+                                    </div>
                                 ))}
                             </section>
                             <div className="flex justify-between mt-2">
