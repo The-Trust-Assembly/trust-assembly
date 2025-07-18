@@ -75,7 +75,7 @@ export default function NewHeadlinePage() {
         <Page>
             <div className="mx-auto p-4 max-w-4xl">
                 <Card>
-                    <div className="flex flex-row">
+                    <div className="flex flex-col md:flex-row">
                         <div className="flex-2/3">
                             <h1 className="text-lg font-bold">Propose New Headline</h1>
                             <form className="flex flex-col" onSubmit={handleSubmit}>
@@ -140,6 +140,7 @@ export default function NewHeadlinePage() {
                                 </div>
                             </form>
                         </div>
+                        <hr className="md:hidden border-t border-gray-400 mt-4 mb-2"/>
                         <aside className="pl-4 flex-1/3 shrink-0">
                             <h2 className="font-bold my-2">Group policy tips</h2>
                             <ul className="list-disc pl-6 flex flex-col gap-1">
