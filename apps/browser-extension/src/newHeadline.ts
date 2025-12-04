@@ -1,4 +1,7 @@
 // Script for new_headline.html implementing NewHeadline.tsx-like behavior
+import { TransformedArticle } from './models/TransformedArticle';
+import { Citation, HeadlineMessage } from './models/MessagePayload';
+import { getCurrentUrl } from './api/backendApi';
 
 const MAX_HEADLINE_LENGTH = 120;
 
@@ -12,9 +15,10 @@ const replacementError = document.getElementById('nh-replacement-error');
 const citationsContainer = document.getElementById('nh-citations');
 const citationsError = document.getElementById('nh-citations-error');
 const cancelButton = document.getElementById('nh-cancel');
+const saveButton = document.getElementById('nh-save');
 
-type Citation = { url: string; explanation: string };
 let citations: Citation[] = [{ url: '', explanation: '' }];
+let currentUrl: string | undefined = undefined;
 
 function renderCitations(): void {
   if (!citationsContainer) return;
@@ -25,6 +29,7 @@ function renderCitations(): void {
 
     const urlInput = document.createElement('input');
     urlInput.type = 'text';
+    urlInput.id ='citation:'+idx;
     urlInput.placeholder = 'https://...';
     urlInput.value = citation.url;
     urlInput.style.width = '100%';
@@ -38,6 +43,10 @@ function renderCitations(): void {
       trimTrailingEmpty();
       renderCitations();
       if (citationsError) citationsError.style.display = 'none';
+      setTimeout(() => {
+        const reRendered = document.getElementById('citation:'+idx);
+        if(reRendered) { reRendered.focus(); }
+      });
     });
     wrap.appendChild(urlInput);
 
@@ -117,15 +126,58 @@ function validate(): { originalHeadline?: string; replacementHeadline?: string; 
   return errors;
 }
 
-function initDefaults(): void {
-  if (originalArea) originalArea.value = 'New Study Proves Coffee Cures Cancer';
-  if (replacementArea)
-    replacementArea.value =
-      'Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers';
-  citations = [{ url: '', explanation: '' }];
+function renderPage(data: HeadlineMessage): void {
+  if (originalArea) originalArea.value = data.originalHeadline;
+  if (replacementArea) replacementArea.value = data.replacementHeadline;
+  citations = data.citations;
   renderCitations();
   updateCounts();
   clearErrors();
+}
+
+async function initDefaults(): Promise<void> {
+  currentUrl = await getCurrentUrl();
+  var HeadLineString = await chrome.storage.sync.get(["new Headline:"+currentUrl]);
+  citations = [{ url: '', explanation: '' }];
+  var data = {
+            originalHeadline: 'New Study Proves Coffee Cures Cancer',
+            replacementHeadline: 'Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers',
+            citations,
+          };
+  if(HeadLineString && HeadLineString["new Headline:"+currentUrl])
+  {
+  	//If we have a saved headline, use that
+    data = JSON.parse(HeadLineString["new Headline:"+currentUrl]);
+    renderPage(data);
+  }
+  else
+  {
+  	//else pull the headline from the page
+    chrome.tabs.query({
+    active: true, currentWindow: true}, (tabs) => {
+      const tab = tabs[0];
+      if (!tab?.id) {
+        renderPage(data);
+        return;
+      }
+      chrome.tabs.sendMessage(
+      tab.id, 
+      {action: "getHeadlineText"}, 
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Message failed:', chrome.runtime.lastError);
+        }
+        else if (response?.headline) {
+          data = {
+            originalHeadline: response.headline,
+            replacementHeadline: '',
+            citations,
+          };
+        }
+        renderPage(data);
+      });
+    });
+  }
 }
 
 // wire handlers
@@ -135,6 +187,23 @@ replacementArea?.addEventListener('input', updateCounts);
 cancelButton?.addEventListener('click', () => {
   window.location.href = 'popup.html';
 });
+
+let SaveHandler = async (event: MouseEvent) => {
+  try {
+    currentUrl = await getCurrentUrl();
+    chrome.storage.sync.set({ ["new Headline:"+currentUrl]: JSON.stringify({
+      "originalHeadline": originalArea?.value ?? '',
+      "replacementHeadline": replacementArea?.value ?? '',
+      "citations": citations,
+    }), });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+if (saveButton && SaveHandler) {
+  saveButton.addEventListener('click', SaveHandler);
+}
 
 form?.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -147,6 +216,22 @@ form?.addEventListener('submit', (e) => {
     });
   }
 });
+
+//Code to save when user stops typing
+let typingTimer : any;
+const doneTypingInterval = 5000;  //time in ms, 5 seconds
+
+//on keyup, start the countdown
+form?.addEventListener('keyup', (e) => {
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(SaveHandler, doneTypingInterval);
+});
+
+//on keydown, clear the countdown 
+form?.addEventListener('keydown', (e) => {
+  clearTimeout(typingTimer);
+});
+
 
 // kickoff
 initDefaults();

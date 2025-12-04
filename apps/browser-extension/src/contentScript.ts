@@ -8,6 +8,8 @@ function findHeadlineElement() {
   const selectors = [
     'h1.main-headline',
     'h1.article-title',
+	'h1.maintitle',
+	'h1.wp-block-post-title',
     'h1.headline',
     'h1.detailHeadline',
     'h1[class*="headline"]', // Catch-all selector for any class containing the text "headline"
@@ -28,13 +30,25 @@ function findHeadlineElement() {
   console.log('Headline element not found on this page.');
 }
 
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getHeadlineText") {
+	const headElement = findHeadlineElement();
+	if (headElement?.textContent) {
+	  sendResponse({ headline: headElement.textContent });
+	}
+	else {
+	  sendResponse({ headline: '' });
+	}
+  }
+});
+
 const stateManager = new ArticleStateManager();
 let modifiedHeadline: string | undefined;
 
 (async function () {
   const elementToModify = findHeadlineElement();
   if (!elementToModify) return;
-
+  
   await stateManager.setElement(elementToModify);
 
   elementToModify.addEventListener('click', () =>

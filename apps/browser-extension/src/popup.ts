@@ -1,4 +1,4 @@
-import { getTransformation } from './api/backendApi';
+import { getTransformation, getCurrentUrl } from './api/backendApi';
 import { MessagePayload } from './models/MessagePayload';
 import { TransformedArticle } from './models/TransformedArticle';
 import { TrustAssemblyMessage } from './utils/messagePassing';
@@ -20,16 +20,10 @@ const selectElement = document.getElementById(
 // elements for new-headline navigation
 const replaceHeadlineButton = document.getElementById('replace-headline');
 
-// set current url
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-  const urlString = tabs[0].url;
-  if (!urlString) {
-    return;
-  }
-
-  const url = new URL(urlString);
-  currentUrl = url.origin + url.pathname;
-});
+async function initDefaults(): Promise<void> {
+  currentUrl = await getCurrentUrl();
+}
+initDefaults();
 
 // event listeners
 selectElement.addEventListener('change', (event) => {

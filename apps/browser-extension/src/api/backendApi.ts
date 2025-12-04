@@ -4,6 +4,17 @@ import { CONFIG } from '../../configs/config.test';
 import { TransformedArticle } from '../models/TransformedArticle';
 import { getBackendUrlFromEnvironmentAndVersion } from '../utils/constants';
 
+export async function getCurrentUrl(): Promise<string | undefined> {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const urlString = tabs[0].url;
+    if (urlString) {
+      const url = new URL(urlString);
+      return url.origin + url.pathname;
+    }
+  });
+  return '';
+}
+
 export async function getTransformation(
   url: string,
   author: string,
