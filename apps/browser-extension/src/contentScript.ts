@@ -8,6 +8,9 @@ function findHeadlineElement() {
   const selectors = [
     'h1.main-headline',
     'h1.article-title',
+	'h1.heading_article',
+	'h1.maintitle',
+	'h1.wp-block-post-title',
     'h1.headline',
     'h1.detailHeadline',
     'h1[class*="headline"]', // Catch-all selector for any class containing the text "headline"
@@ -28,6 +31,18 @@ function findHeadlineElement() {
   console.log('Headline element not found on this page.');
 }
 
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {//todo does this work
+  if (request.action === "getHeadlineText") {
+	const headElement = findHeadlineElement();
+	if (headElement?.textContent) {
+	  sendResponse({ headline: headElement.textContent });
+	}
+	else {
+	  sendResponse({ headline: '' });
+	}
+  }
+});
+
 const stateManager = new ArticleStateManager();
 let modifiedHeadline: string | undefined;
 
@@ -41,9 +56,8 @@ let modifiedHeadline: string | undefined;
     stateManager.toggleModification(modifiedHeadline),
   );
 
-  chrome.runtime.onMessage.addListener(
+  browser.runtime.onMessage.addListener(
     async (message: MessagePayload): Promise<boolean | undefined> => {
-      console.log('Got message:', message);
 
       if (message.action === TrustAssemblyMessage.TOGGLE_MODIFICATION) {
         modifiedHeadline = message.headline;

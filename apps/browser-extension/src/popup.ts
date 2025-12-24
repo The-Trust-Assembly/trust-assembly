@@ -1,4 +1,4 @@
-import { getTransformation } from './api/backendApi';
+import { getTransformation, getCurrentUrl } from './api/backendApi';
 import { MessagePayload } from './models/MessagePayload';
 import { TransformedArticle } from './models/TransformedArticle';
 import { TrustAssemblyMessage } from './utils/messagePassing';
@@ -17,16 +17,13 @@ const selectElement = document.getElementById(
   'transform-select',
 ) as HTMLSelectElement;
 
-// set current url
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-  const urlString = tabs[0].url;
-  if (!urlString) {
-    return;
-  }
+// elements for new-headline navigation
+const replaceHeadlineButton = document.getElementById('replace-headline');
 
-  const url = new URL(urlString);
-  currentUrl = url.origin + url.pathname;
-});
+async function initDefaults(): Promise<void> {
+  currentUrl = await getCurrentUrl();
+}
+initDefaults();
 
 // event listeners
 selectElement.addEventListener('change', (event) => {
@@ -61,6 +58,11 @@ toggleButton?.addEventListener('click', async () => {
   await toggleHeadline();
 });
 
+// new-headline: open separate page
+replaceHeadlineButton?.addEventListener('click', () => {
+  window.location.href = 'new_headline.html';
+});
+
 const STORED_DATA = 'storedHeadlineData';
 
 async function getHeadlineData(
@@ -83,7 +85,7 @@ async function retrieveStoredResult(
   author: string,
 ): Promise<TransformedArticle | undefined> {
   const key = keyFn(author);
-  const storedData = (await chrome.storage.session.get(key))[key];
+  const storedData = (await browser.storage.local.get(key))[key];
 
   if (!storedData) {
     return undefined;
@@ -93,7 +95,7 @@ async function retrieveStoredResult(
 }
 
 function storeResult(author: string, data: TransformedArticle): Promise<void> {
-  return chrome.storage.session.set({
+  return browser.storage.local.set({
     [keyFn(author)]: JSON.stringify(data),
   });
 }
@@ -111,12 +113,12 @@ async function toggleHeadline(): Promise<void> {
 }
 
 async function sendHeadlineMessage(event: TrustAssemblyMessage): Promise<void> {
-  const [tab] = await chrome.tabs.query({
+  const [tab] = await browser.tabs.query({ //todo does this work?
     active: true,
     lastFocusedWindow: true,
   });
   if (tab?.id) {
-    chrome.tabs.sendMessage<MessagePayload>(tab.id, {
+    browser.tabs.sendMessage(tab.id, {
       action: event,
       headline: selectedHeadline,
     });

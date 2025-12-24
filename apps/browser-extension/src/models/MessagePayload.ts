@@ -9,3 +9,13 @@ export type MessagePayload =
       action: TrustAssemblyMessage.SET_MODIFIED_HEADLINE;
       headline?: string;
     };
+    
+
+export type Citation = { url: string; explanation: string };
+    
+export type HeadlineMessage =
+  | {
+    originalHeadline: string,
+    replacementHeadline: string,
+    citations: Citation[],
+  };
