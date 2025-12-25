@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Alerts you of limbic hijacking via transformed media headlines",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
-  "host_permissions": ["https://trust-assembly.org/*"],
+  "host_permissions": ["https://trustassembly.org/*"],
   "background": {
     "scripts": ["dist/src/background.js"]
   },

@@ -1,7 +1,4 @@
-import { dummyGetTransformation } from './api/dummyApi';
-import { Article } from './models/Article';
 import { MessagePayload } from './models/MessagePayload';
-import { TransformedArticle } from './models/TransformedArticle';
 import ArticleStateManager from './utils/ArticleStateManager';
 import { TrustAssemblyMessage } from './utils/messagePassing';
 
@@ -11,6 +8,9 @@ function findHeadlineElement() {
   const selectors = [
     'h1.main-headline',
     'h1.article-title',
+	'h1.heading_article',
+	'h1.maintitle',
+	'h1.wp-block-post-title',
     'h1.headline',
     'h1.detailHeadline',
     'h1[class*="headline"]', // Catch-all selector for any class containing the text "headline"
@@ -31,38 +31,20 @@ function findHeadlineElement() {
   console.log('Headline element not found on this page.');
 }
 
-const requestTransformedHeadline = async (
-  article: Article,
-): Promise<TransformedArticle> => {
-  // just use the dummy API for now
-  return await dummyGetTransformation(article);
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {//todo does this work
+  if (request.action === "getHeadlineText") {
+	const headElement = findHeadlineElement();
+	if (headElement?.textContent) {
+	  sendResponse({ headline: headElement.textContent });
+	}
+	else {
+	  sendResponse({ headline: '' });
+	}
+  }
+});
 
-  // TODO: uncomment this code below so that we actually communite with the backend
-  // rather than just returning the original text uppercase. Right now @melvillian
-  // commented this out to make the PR easier to work with; the plan is to
-  // add backend communication to the extension and then uncomment this code.
-
-  // const response = await chrome.runtime.sendMessage<
-  //   MessagePayload,
-  //   TransformedArticle | undefined
-  // >({
-  //   action: TrustAssemblyMessage.FETCH_TRANSFORMED_HEADLINE,
-  //   article,
-  // });
-  // console.log('chrome.runtime.sendMessage');
-  // console.log(`response: ${response}`);
-  // if (chrome.runtime.lastError) {
-  //   console.error(chrome.runtime.lastError);
-  //   throw new Error(chrome.runtime.lastError.message);
-  // } else if (response && response.transformedText) {
-  //   console.log('resolve(response);');
-  //   return response;
-  // } else {
-  //   throw new Error('No transformed text received');
-  // }
-};
-
-const stateManager = new ArticleStateManager(requestTransformedHeadline);
+const stateManager = new ArticleStateManager();
+let modifiedHeadline: string | undefined;
 
 (async function () {
   const elementToModify = findHeadlineElement();
@@ -71,19 +53,22 @@ const stateManager = new ArticleStateManager(requestTransformedHeadline);
   await stateManager.setElement(elementToModify);
 
   elementToModify.addEventListener('click', () =>
-    stateManager.toggleModification(),
+    stateManager.toggleModification(modifiedHeadline),
   );
 
-  chrome.runtime.onMessage.addListener(
+  browser.runtime.onMessage.addListener(
     async (message: MessagePayload): Promise<boolean | undefined> => {
-      console.log('Got message:', message);
 
       if (message.action === TrustAssemblyMessage.TOGGLE_MODIFICATION) {
-        stateManager.toggleModification();
+        modifiedHeadline = message.headline;
+        stateManager.toggleModification(modifiedHeadline);
+        return false;
+      }
+      if (message.action === TrustAssemblyMessage.SET_MODIFIED_HEADLINE) {
+        modifiedHeadline = message.headline;
+        stateManager.setModifiedHeadline(modifiedHeadline);
         return false;
       }
     },
   );
-
-  stateManager.toggleModification();
 })();

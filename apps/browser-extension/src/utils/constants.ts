@@ -1,9 +1,8 @@
 export enum BACKEND_URL {
-  LOCAL = 'http://localhost:8000',
-  PROD = 'https://trust-assembly.com',
+  LOCAL = 'http://localhost:5173',
+  PROD = 'https://trustassembly.org',
   DEV = 'https://dev.trust-assembly.com',
   STAGING = 'https://staging.trust-assembly.com',
-  TEST = 'https://test.trust-assembly.com',
 }
 
 export enum API_VERSION {
@@ -12,7 +11,9 @@ export enum API_VERSION {
 
 export const getBackendUrlFromEnvironmentAndVersion = (
   environment: BACKEND_URL,
-  version: API_VERSION,
+  version?: API_VERSION,
 ): string => {
-  return `${environment}/api/${version}`;
+  const url = new URL(environment);
+  url.pathname = version ? `/api/${version}` : '/api';
+  return url.toString();
 };

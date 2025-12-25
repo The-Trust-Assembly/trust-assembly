@@ -7,6 +7,7 @@ module.exports = {
     contentScript: './src/contentScript.ts',
     background: './src/background.ts',
     popup: './src/popup.ts',
+    newHeadline: './src/newHeadline.ts',
     // Add other entry points if needed
   },
   output: {
