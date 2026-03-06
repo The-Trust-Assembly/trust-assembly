@@ -1,10 +1,12 @@
 {
   "name": "trust-assembly",
   "version": "5.0.0",
+  "private": true,
   "description": "A civic deliberation platform where truth is the only thing that survives adversarial review",
-  "main": "trust-assembly-v5.jsx",
   "scripts": {
-    "start": "echo 'Trust Assembly runs as a Claude.ai artifact or in any React environment'"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [
     "fact-checking",
@@ -18,6 +20,11 @@
   "author": "Trust Assembly",
   "license": "SEE LICENSE",
   "dependencies": {
-    "react": "^18.0.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
   }
 }
