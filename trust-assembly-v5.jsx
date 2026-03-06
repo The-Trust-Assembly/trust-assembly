@@ -4551,23 +4551,6 @@ function OnboardingFlow({ onComplete, embedded }) {
 }
 
 async function loadSyntheticData() {
-  // v5 clean launch: wipe any synthetic data from previous versions
-  const cleaned = await sG("ta-cleaned-v6");
-  if (!cleaned) {
-    await sS(SK.USERS, {});
-    await sS(SK.ORGS, {});
-    await sS(SK.SUBS, {});
-    await sS(SK.VAULT, {});
-    await sS(SK.ARGS, {});
-    await sS(SK.BELIEFS, {});
-    await sS(SK.DISPUTES, {});
-    await sS(SK.APPS, {});
-    await sS(SK.AUDIT, []);
-    await sS(SK.GP, null);
-    await sS(SK.SESSION, null);
-    await sS(SK.SYNTH, null);
-    await sS("ta-cleaned-v6", true);
-  }
   // Ensure The General Public exists
   await ensureGeneralPublic();
 }
