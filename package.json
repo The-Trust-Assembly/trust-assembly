@@ -1,0 +1,23 @@
+{
+  "name": "trust-assembly",
+  "version": "5.0.0",
+  "description": "A civic deliberation platform where truth is the only thing that survives adversarial review",
+  "main": "trust-assembly-v5.jsx",
+  "scripts": {
+    "start": "echo 'Trust Assembly runs as a Claude.ai artifact or in any React environment'"
+  },
+  "keywords": [
+    "fact-checking",
+    "media-literacy",
+    "civic-tech",
+    "trust",
+    "reputation",
+    "jury-system",
+    "deliberation"
+  ],
+  "author": "Trust Assembly",
+  "license": "SEE LICENSE",
+  "dependencies": {
+    "react": "^18.0.0"
+  }
+}

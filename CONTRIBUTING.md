@@ -1,25 +1,37 @@
-# Contributing
+# Contributing to Trust Assembly
 
-Trust Assembly is a system for improving trust in news sources. For a more detailed overview of the project, see the [README](README.md).
+Thank you for your interest in contributing to Trust Assembly.
 
-We are currently taking contributions from members of the Trust Assembly organization. If you are interested in contributing, please reach out to us on Discord.
+## How to Contribute
 
-## Opening a Pull Request
+### Reporting Issues
+- **Bugs**: Open an issue with steps to reproduce
+- **Security vulnerabilities**: Report via email (details TBD), not public issues
+- **Gaming/exploits**: If you find a way to game the scoring system, we want to know
 
-1. Create a feature branch for your work.
-   1. Branch names should be of the form `<feature>_<your_name>_<short_name>`
-2. Push your branch to the repository and open a PR.
-3. Request a review from a member of the Trust Assembly organization.
+### Pull Requests
+1. Open an issue first to discuss major changes
+2. Fork the repository
+3. Create a feature branch
+4. Test your changes
+5. Submit a PR with a clear description
 
-For commits, please try to follow the [Google Engineering guidelines](https://google.github.io/eng-practices/).
+### Priority Areas
+- **Browser extension** (Chrome/Firefox) for delivering corrections
+- **API extraction** — converting window.storage calls to REST endpoints
+- **Adversarial testing** — try to break the scoring system
+- **Accessibility audit** — ensuring WCAG compliance
+- **Documentation** — improving the tutorial and rules text
+- **Internationalization** — supporting additional languages and countries
 
-- Make [atomic commits](https://www.freshconsulting.com/atomic-commits/) that are small and focused.
-- Use present tense and imperative mood in commit messages.
+### Code Style
+- The codebase is a single JSX file (~4,600 lines)
+- Inline styles using CSS custom properties
+- Business logic functions are async and return results
+- All user-facing text should be clear, concise, and match the institutional tone
 
-If the main branch has been updated while your PR is open, please rebase your branch on top of the main and fix any conflicts if they exist.
-
-## Code review
-
-Code review is an important part of the development process. We use GitHub's code review tools to provide feedback on pull requests. Please be responsive to feedback and be prepared to make changes to your code.
-
-When updating your PR in response to commits, use the `fixup` git feature so it's easier for the reviewer to see what has changed. Once you have gotten approval, squash the fixup(s)
+### Design Principles
+- **Transparency**: Every scoring decision should be auditable
+- **Asymmetry**: Wrong should always cost more than right pays
+- **Independence**: No single entity should control outcomes
+- **Earned trust**: Reputation comes from behavior, not identity
