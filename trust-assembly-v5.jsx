@@ -103,9 +103,25 @@ function hotScore(sub) {
   return sign * order + sec / 45000;
 }
 
-// --- Storage ---
-async function sG(k) { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; } catch { return null; } }
-async function sS(k, v) { try { await window.storage.set(k, JSON.stringify(v)); return true; } catch { return false; } }
+// --- Storage (API-backed via PostgreSQL) ---
+async function sG(k) {
+  try {
+    const res = await fetch("/api/kv?key=" + encodeURIComponent(k));
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.value ? JSON.parse(data.value) : null;
+  } catch { return null; }
+}
+async function sS(k, v) {
+  try {
+    const res = await fetch("/api/kv", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: k, value: JSON.stringify(v) }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
 
 async function ensureGeneralPublic() {
   let gpId = await sG(SK.GP);
@@ -1494,6 +1510,24 @@ function RegisterScreen({ onRegister }) {
     const now = new Date().toISOString(); const salt = genSalt(); const ph = await hashPw(form.password, salt); const tok = genToken();
     const gpId = await ensureGeneralPublic();
     const displayName = form.username.trim().replace(/\s+/g, " ");
+
+    // Register via server API (sets HTTP-only session cookie, stores in users table)
+    try {
+      await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: uname, displayName, realName: form.realName.trim().replace(/\s+/g, " "),
+          email: rawEmail, password: form.password,
+          gender: isDigitalIntelligence ? "di" : form.gender,
+          age: isDigitalIntelligence ? "N/A" : (form.age || "Undisclosed"),
+          country: form.country || null, state: form.region || null,
+          politicalAffiliation: form.politicalAffiliation || null,
+          bio: (form.bio || "").substring(0, 500),
+        }),
+      });
+    } catch (e) { /* Server auth is supplementary — KV store is primary for now */ }
+
     const user = {
       id: gid(), username: uname, displayName, realName: form.realName.trim().replace(/\s+/g, " "),
       email: rawEmail, emailNormalized: normEmail, passwordHash: ph, salt,
@@ -1617,7 +1651,10 @@ function LoginScreen({ onLogin, onGoRegister }) {
   const [username, setUsername] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
   const go = async () => {
     setError(""); if (!username.trim()) return setError("Enter username."); if (!password) return setError("Enter password.");
-    setLoading(true); const users = (await sG(SK.USERS)) || {}; const u = users[username.trim().toLowerCase()];
+    setLoading(true);
+    // Also call server API to set HTTP-only session cookie
+    try { await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: username.trim().toLowerCase(), password }) }); } catch {}
+    const users = (await sG(SK.USERS)) || {}; const u = users[username.trim().toLowerCase()];
     if (!u) { setError("No citizen found."); setLoading(false); return; }
     if (u.passwordHash && u.salt) { const h = await hashPw(password, u.salt); if (h !== u.passwordHash) { setError("Incorrect password."); setLoading(false); return; } }
     const tok = genToken(); u.sessionToken = tok; users[u.username] = u; await sS(SK.USERS, users); await sS(SK.SESSION, { username: u.username, token: tok });
