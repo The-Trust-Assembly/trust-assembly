@@ -6,3 +6,5 @@ node_modules/
 dist/
 build/
 .cache/
+.next/
+next-env.d.ts
