@@ -105,12 +105,12 @@ function hotScore(sub) {
 
 // --- Storage (API-backed via PostgreSQL) ---
 async function sG(k) {
-  try {
-    const res = await fetch("/api/kv?key=" + encodeURIComponent(k));
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.value ? JSON.parse(data.value) : null;
-  } catch { return null; }
+  // Throws on failure so callers using (await sG(SK.X)) || {} don't
+  // mistake a network/auth error for "no data" and overwrite real data.
+  const res = await fetch("/api/kv?key=" + encodeURIComponent(k));
+  if (!res.ok) throw new Error(`Storage read failed for ${k}: ${res.status}`);
+  const data = await res.json();
+  return data.value ? JSON.parse(data.value) : null;
 }
 async function sS(k, v) {
   try {
@@ -124,6 +124,7 @@ async function sS(k, v) {
 }
 
 async function ensureGeneralPublic() {
+  // sG throws on read failure, so this will never mistake an error for "no data"
   let gpId = await sG(SK.GP);
   if (gpId) return gpId;
   const orgs = (await sG(SK.ORGS)) || {};
@@ -4656,15 +4657,15 @@ export default function TrustAssembly() {
 
   useEffect(() => {
     if (!user) return;
-    const check = async () => { const s = (await sG(SK.SUBS)) || {}; const v = Object.values(s); setReviewCount(v.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]).length); setCrossCount(v.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]).length); const d = (await sG(SK.DISPUTES)) || {}; setDisputeCount(Object.values(d).filter(x => x.status === "pending_review" && x.jurors.includes(user.username) && !x.votes[user.username]).length); };
+    const check = async () => { try { const s = (await sG(SK.SUBS)) || {}; const v = Object.values(s); setReviewCount(v.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]).length); setCrossCount(v.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]).length); const d = (await sG(SK.DISPUTES)) || {}; setDisputeCount(Object.values(d).filter(x => x.status === "pending_review" && x.jurors.includes(user.username) && !x.votes[user.username]).length); } catch {} };
     check(); const i = setInterval(check, 5000); return () => clearInterval(i);
   }, [user, screen]);
 
-  const refreshUser = async () => { if (!user) return; const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setUser(all[user.username]); };
+  const refreshUser = async () => { try { if (!user) return; const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setUser(all[user.username]); } catch {} };
   useEffect(() => { if (user) refreshUser(); }, [screen]);
 
   const logout = async () => {
-    if (user) { const users = (await sG(SK.USERS)) || {}; if (users[user.username]) { users[user.username].sessionToken = null; await sS(SK.USERS, users); } }
+    try { if (user) { const users = (await sG(SK.USERS)) || {}; if (users[user.username]) { users[user.username].sessionToken = null; await sS(SK.USERS, users); } } } catch {}
     await sS(SK.SESSION, null); setUser(null); setScreen("login");
   };
 
@@ -4740,9 +4741,10 @@ export default function TrustAssembly() {
               <a href="/trust-assembly-firefox.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }}>Download Firefox Extension</button></a>
             </div>
             <div style={{ marginBottom: 20, fontSize: 12, color: "var(--stone)" }}>
-              <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => setScreen("extensions")}>Installation instructions &amp; details</button>
+              <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => setScreen(screen === "ext-landing" ? "login" : "ext-landing")}>{screen === "ext-landing" ? "Back to sign in" : "Installation instructions & details"}</button>
             </div>
-            {screen === "extensions" ? <ExtensionsScreen /> : screen === "login" ? <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} /> : <div><RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} /><div style={{ marginTop: 16, textAlign: "center" }}><button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button></div></div>}
+            {screen === "ext-landing" && <ExtensionsScreen />}
+            {screen === "login" ? <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} /> : screen !== "ext-landing" && <div><RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} /><div style={{ marginTop: 16, textAlign: "center" }}><button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button></div></div>}
           </div>
           <div style={{ maxWidth: 580, margin: "0 auto", padding: "0 20px 40px" }}><DiscoveryFeed onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} /></div>
         </div>
