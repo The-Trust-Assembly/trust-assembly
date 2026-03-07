@@ -1493,12 +1493,13 @@ function RegisterScreen({ onRegister }) {
     // Username uniqueness
     if (users[uname]) { setError("Username taken."); setLoading(false); return; }
     // Email uniqueness (normalized — catches Gmail dot tricks and +aliases)
+    // Digital Intelligences may share their partner's email
     const normEmail = normalizeEmail(form.email);
     const rawEmail = form.email.trim().toLowerCase();
-    if (Object.values(users).some(u => normalizeEmail(u.email) === normEmail)) { setError("Email already registered."); setLoading(false); return; }
+    const isDigitalIntelligence = form.isDI || form.gender === "di";
+    if (!isDigitalIntelligence && Object.values(users).some(u => normalizeEmail(u.email) === normEmail)) { setError("Email already registered."); setLoading(false); return; }
 
     // DI partner validation
-    const isDigitalIntelligence = form.isDI || form.gender === "di";
     let diPartnerUsername = null;
     if (isDigitalIntelligence) {
       const partnerName = sanitizeUsername(form.diPartner);
