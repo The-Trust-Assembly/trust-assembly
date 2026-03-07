@@ -2028,11 +2028,12 @@ function ReviewScreen({ user }) {
   const [vaultVotes, setVaultVotes] = useState({}); // { entryId: true/false }
   const [tab, setTab] = useState("ingroup");
   const [juryScore, setJuryScore] = useState(null);
+  const [diLinkReqs, setDiLinkReqs] = useState({});
 
   const load = useCallback(async () => {
     // Process rotation on every load — event-driven 6h check
     await processJuryRotation();
-    setSubs((await sG(SK.SUBS)) || {}); setDisputes((await sG(SK.DISPUTES)) || {}); setLoading(false);
+    setSubs((await sG(SK.SUBS)) || {}); setDisputes((await sG(SK.DISPUTES)) || {}); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
     // Compute jury score for display
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
@@ -2218,8 +2219,9 @@ function ReviewScreen({ user }) {
   const cgQ = all.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]);
   const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && d.jurors.includes(user.username) && !d.votes[user.username]);
   const diQ = all.filter(s => s.isDI && s.diPartner === user.username && s.status === "di_pending");
-  // Show DI tab if partner of any DI sub (pending or not) or has pending items
-  const hasDIPartnership = all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0;
+  // Show DI tab if partner of any DI sub, has pending items, or has pending link requests
+  const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
+  const hasDIPartnership = all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
 
   const castDisputeVote = async (disputeId, upheld) => {
     const users = (await sG(SK.USERS)) || {}; const me = users[user.username];
