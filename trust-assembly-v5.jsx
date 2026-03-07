@@ -4585,6 +4585,9 @@ function ExtensionsScreen() {
             <span style={{ fontSize: 18 }}>&#9672;</span> Download for Firefox
           </button>
         </a>
+        <button className="ta-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", fontSize: 12, background: "#0071E3", cursor: "default", opacity: 0.7 }} title="Coming soon to the App Store">
+          <span style={{ fontSize: 18 }}>&#9672;</span> Safari — Coming Soon
+        </button>
       </div>
 
       {/* Chrome instructions */}
@@ -4610,6 +4613,18 @@ function ExtensionsScreen() {
         <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension is now active. Visit any news article to see Trust Assembly corrections overlaid.</div></div>
         <div style={{ padding: 10, background: "#FDF5E6", border: "1px solid #D4850A", borderRadius: 2, fontSize: 12, color: "#9A6200", lineHeight: 1.6 }}>
           <strong>Note:</strong> Firefox temporary add-ons are removed when you close the browser. You'll need to reload it each session until the extension is published to the Firefox Add-ons store.
+        </div>
+      </div>
+
+      {/* Safari instructions */}
+      <div className="ta-card" style={{ marginBottom: 18 }}>
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "#0071E3" }}>Safari — macOS, iPhone &amp; iPad</h3>
+        <p style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 14 }}>Safari Web Extensions work across <strong>macOS, iOS, and iPadOS</strong> (Safari 15+). One extension, all Apple devices.</p>
+        <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}><strong>macOS:</strong> Install the Trust Assembly extension from the Mac App Store (coming soon). Once installed, open <span style={codeStyle}>Safari → Settings → Extensions</span> and enable "Trust Assembly".</div></div>
+        <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>2</div><div style={{ fontSize: 13, lineHeight: 1.7 }}><strong>iPhone / iPad:</strong> Install from the App Store. Then go to <span style={codeStyle}>Settings → Safari → Extensions</span>, tap Trust Assembly, and toggle it on. Grant permission to run on news sites.</div></div>
+        <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension syncs your Trust Assembly account across all your Apple devices. Corrections and translations appear automatically as you browse.</div></div>
+        <div style={{ padding: 10, background: "#E8F0FE", border: "1px solid #0071E3", borderRadius: 2, fontSize: 12, color: "#004EA2", lineHeight: 1.6 }}>
+          <strong>Status:</strong> The Safari extension is being prepared for App Store submission. In the meantime, developers can build it locally using <span style={codeStyle}>xcrun safari-web-extension-converter</span> with the Chrome extension source.
         </div>
       </div>
 
@@ -4643,6 +4658,7 @@ export default function TrustAssembly() {
   const [user, setUser] = useState(null); const [screen, setScreen] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showExtDetails, setShowExtDetails] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -4739,12 +4755,13 @@ export default function TrustAssembly() {
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
               <a href="/trust-assembly-chrome.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }}>Download Chrome Extension</button></a>
               <a href="/trust-assembly-firefox.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }}>Download Firefox Extension</button></a>
+              <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "#0071E3", cursor: "default", opacity: 0.7 }} title="Coming soon to the App Store">Safari — Coming Soon</button>
             </div>
             <div style={{ marginBottom: 20, fontSize: 12, color: "var(--stone)" }}>
-              <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => setScreen(screen === "ext-landing" ? "login" : "ext-landing")}>{screen === "ext-landing" ? "Back to sign in" : "Installation instructions & details"}</button>
+              <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => setShowExtDetails(!showExtDetails)}>{showExtDetails ? "Hide installation details" : "Installation instructions & details"}</button>
             </div>
-            {screen === "ext-landing" && <ExtensionsScreen />}
-            {screen === "login" ? <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} /> : screen !== "ext-landing" && <div><RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} /><div style={{ marginTop: 16, textAlign: "center" }}><button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button></div></div>}
+            {showExtDetails && <ExtensionsScreen />}
+            {screen === "login" ? <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} /> : <div><RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} /><div style={{ marginTop: 16, textAlign: "center" }}><button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button></div></div>}
           </div>
           <div style={{ maxWidth: 580, margin: "0 auto", padding: "0 20px 40px" }}><DiscoveryFeed onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} /></div>
         </div>
