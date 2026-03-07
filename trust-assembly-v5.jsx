@@ -4556,6 +4556,77 @@ async function loadSyntheticData() {
 }
 
 // ============================================================
+// BROWSER EXTENSION DOWNLOAD PAGE
+// ============================================================
+
+function ExtensionsScreen() {
+  const stepStyle = { display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" };
+  const numStyle = { background: "var(--navy)", color: "#F0EDE6", width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 2 };
+  const codeStyle = { background: "#E8E4DC", padding: "3px 8px", borderRadius: 2, fontFamily: "var(--mono)", fontSize: 12, color: "var(--charcoal)" };
+
+  return (
+    <div>
+      <div className="ta-section-rule" />
+      <h2 className="ta-section-head">Browser Extension</h2>
+      <p style={{ fontSize: 14, color: "#5A5650", marginBottom: 20, lineHeight: 1.7 }}>
+        The Trust Assembly browser extension overlays verified corrections, affirmations, and translations directly on news articles as you read them. No extra tabs. No searching. Truth finds you.
+      </p>
+
+      {/* Download buttons */}
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
+        <a href="/trust-assembly-chrome.zip" download style={{ textDecoration: "none" }}>
+          <button className="ta-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", fontSize: 12 }}>
+            <span style={{ fontSize: 18 }}>&#9672;</span> Download for Chrome
+          </button>
+        </a>
+        <a href="/trust-assembly-firefox.zip" download style={{ textDecoration: "none" }}>
+          <button className="ta-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", fontSize: 12, background: "var(--evergreen)" }}>
+            <span style={{ fontSize: 18 }}>&#9672;</span> Download for Firefox
+          </button>
+        </a>
+      </div>
+
+      {/* Chrome instructions */}
+      <div className="ta-card" style={{ marginBottom: 18 }}>
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>Chrome / Edge / Brave — Developer Mode Install</h3>
+        <div style={stepStyle}><div style={numStyle}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Download and <strong>unzip</strong> the Chrome extension file above. You should see a folder called <span style={codeStyle}>chrome</span> containing the extension files.</div></div>
+        <div style={stepStyle}><div style={numStyle}>2</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Open your browser and navigate to <span style={codeStyle}>chrome://extensions</span> (or <span style={codeStyle}>edge://extensions</span> / <span style={codeStyle}>brave://extensions</span>).</div></div>
+        <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Toggle <strong>"Developer mode"</strong> on — it's in the top-right corner of the page.</div></div>
+        <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load unpacked"</strong> and select the <span style={codeStyle}>chrome</span> folder you unzipped.</div></div>
+        <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The Trust Assembly icon will appear in your toolbar. Pin it for easy access. Visit any news article to see corrections and translations overlaid automatically.</div></div>
+        <div style={{ padding: 10, background: "#FDF5E6", border: "1px solid #D4850A", borderRadius: 2, fontSize: 12, color: "#9A6200", lineHeight: 1.6 }}>
+          <strong>Note:</strong> Chrome may show a "Disable developer mode extensions" popup on restart. Click the three dots and select "Keep" to keep the extension active.
+        </div>
+      </div>
+
+      {/* Firefox instructions */}
+      <div className="ta-card" style={{ marginBottom: 18 }}>
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--evergreen)" }}>Firefox — Temporary Add-on Install</h3>
+        <div style={stepStyle}><div style={numStyle}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Download and <strong>unzip</strong> the Firefox extension file above.</div></div>
+        <div style={stepStyle}><div style={numStyle}>2</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Open Firefox and navigate to <span style={codeStyle}>about:debugging#/runtime/this-firefox</span></div></div>
+        <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load Temporary Add-on..."</strong></div></div>
+        <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Select the <span style={codeStyle}>manifest.json</span> file inside the <span style={codeStyle}>firefox</span> folder.</div></div>
+        <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension is now active. Visit any news article to see Trust Assembly corrections overlaid.</div></div>
+        <div style={{ padding: 10, background: "#FDF5E6", border: "1px solid #D4850A", borderRadius: 2, fontSize: 12, color: "#9A6200", lineHeight: 1.6 }}>
+          <strong>Note:</strong> Firefox temporary add-ons are removed when you close the browser. You'll need to reload it each session until the extension is published to the Firefox Add-ons store.
+        </div>
+      </div>
+
+      {/* What it does */}
+      <div className="ta-card">
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>What the Extension Does</h3>
+        <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+          <div style={{ marginBottom: 8 }}><strong style={{ color: "var(--fired-clay)" }}>Corrections</strong> — When a news article's headline has been corrected through Trust Assembly review, the extension shows a badge count and displays the verified correction alongside the original.</div>
+          <div style={{ marginBottom: 8 }}><strong style={{ color: "var(--evergreen)" }}>Affirmations</strong> — Headlines that survived adversarial review and were confirmed accurate are marked as verified.</div>
+          <div style={{ marginBottom: 8 }}><strong style={{ color: "var(--indigo)" }}>Translations</strong> — Jargon, spin, propaganda, and euphemisms are replaced with plain-language alternatives approved through jury review. Toggle categories (Clarity, Anti-Propaganda, Euphemism, Satirical) in the popup.</div>
+          <div><strong style={{ color: "var(--stone)" }}>Settings</strong> — Click the extension icon to toggle badge visibility and translation overlays on or off.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN APP
 // ============================================================
 
@@ -4564,7 +4635,7 @@ const NAV_TOP = [
 ];
 const NAV_BOT = [
   { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "profile", label: "Citizen" }, { key: "audit", label: "Ledger" },
-  { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" }, { key: "vision", label: "Vision" },
+  { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" }, { key: "vision", label: "Vision" }, { key: "extensions", label: "Extension" },
 ];
 
 export default function TrustAssembly() {
@@ -4664,7 +4735,14 @@ export default function TrustAssembly() {
             <div style={{ fontFamily: "var(--body)", fontSize: 13, color: "#5A5650", marginBottom: 24 }}>A republic of citizens verifying truth through adversarial review.</div>
             <CitizenCounter />
             <p style={{ fontSize: 15, lineHeight: 1.7, color: "#2B2B2B", marginBottom: 28 }}>Submit headline corrections. Face random jury review. Build reputation through honesty. Everything is transparent. Nothing is hidden.</p>
-            {screen === "login" ? <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} /> : <div><RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} /><div style={{ marginTop: 16, textAlign: "center" }}><button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button></div></div>}
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
+              <a href="/trust-assembly-chrome.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }}>Download Chrome Extension</button></a>
+              <a href="/trust-assembly-firefox.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }}>Download Firefox Extension</button></a>
+            </div>
+            <div style={{ marginBottom: 20, fontSize: 12, color: "var(--stone)" }}>
+              <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => setScreen("extensions")}>Installation instructions &amp; details</button>
+            </div>
+            {screen === "extensions" ? <ExtensionsScreen /> : screen === "login" ? <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} /> : <div><RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} /><div style={{ marginTop: 16, textAlign: "center" }}><button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button></div></div>}
           </div>
           <div style={{ maxWidth: 580, margin: "0 auto", padding: "0 20px 40px" }}><DiscoveryFeed onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} /></div>
         </div>
@@ -4692,6 +4770,7 @@ export default function TrustAssembly() {
             {screen === "rules" && <RulesScreen />}
             {screen === "about" && <AboutScreen />}
             {screen === "vision" && <VisionScreen />}
+            {screen === "extensions" && <ExtensionsScreen />}
           </div>
         </div>
       )}

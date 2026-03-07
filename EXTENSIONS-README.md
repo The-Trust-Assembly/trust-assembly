@@ -31,19 +31,19 @@ Each entry includes: the submitter's Trust Score and Profile, the Assembly name,
 
 ### Chrome
 
-1. Download or clone the `ext-chrome/` directory
+1. Download or clone the `extensions/chrome/` directory
 2. Open `chrome://extensions/`
 3. Enable **Developer mode** (toggle in top-right)
 4. Click **Load unpacked**
-5. Select the `ext-chrome/` folder
+5. Select the `extensions/chrome/` folder
 6. The ⚖ icon appears in your toolbar
 
 ### Firefox
 
-1. Download or clone the `ext-firefox/` directory
+1. Download or clone the `extensions/firefox/` directory
 2. Open `about:debugging#/runtime/this-firefox`
 3. Click **Load Temporary Add-on**
-4. Select any file inside `ext-firefox/` (e.g., `manifest.json`)
+4. Select any file inside `extensions/firefox/` (e.g., `manifest.json`)
 5. The ⚖ icon appears in your toolbar
 
 **Note:** Temporary add-ons are removed when Firefox closes. For persistent installation, the extension needs to be signed by Mozilla (submit to [addons.mozilla.org](https://addons.mozilla.org)).
@@ -56,7 +56,7 @@ Safari requires Web Extensions to be wrapped in a native macOS/iOS app via Xcode
 2. Open **Safari > Develop** menu and check **Allow Unsigned Extensions**
 3. In Xcode, create a new Safari Web Extension project:
    ```bash
-   xcrun safari-web-extension-converter ext-safari/
+   xcrun safari-web-extension-converter extensions/safari/
    ```
 4. Build and run the Xcode project
 5. Enable the extension in **Safari > Settings > Extensions**
@@ -72,7 +72,7 @@ Safari requires Web Extensions to be wrapped in a native macOS/iOS app via Xcode
 Edit `api-client.js` and change `API_BASE` to point to your Trust Assembly API:
 
 ```javascript
-const API_BASE = "https://api.trustassembly.org"; // Your API URL
+const API_BASE = "https://trustassembly.org"; // Your API URL
 ```
 
 For local development:
@@ -155,7 +155,7 @@ Returns corrections, affirmations, and translations for a specific URL:
 All three extensions share the same core files with browser-specific manifests:
 
 ```
-ext-chrome/
+extensions/chrome/
 ├── manifest.json        # Manifest V3 (Chrome)
 ├── api-client.js        # API communication
 ├── content.js           # Injected into pages
@@ -167,11 +167,11 @@ ext-chrome/
 ├── icon48.png
 └── icon128.png
 
-ext-firefox/
+extensions/firefox/
 ├── manifest.json        # Manifest V2 (Firefox, broadest compat)
 └── ... (same shared files)
 
-ext-safari/
+extensions/safari/
 ├── manifest.json        # Manifest V3 (Safari, requires Xcode wrapper)
 └── ... (same shared files)
 ```
