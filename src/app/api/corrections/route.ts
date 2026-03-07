@@ -3,7 +3,37 @@ import { sql } from "@/lib/db";
 import { ok, err } from "@/lib/api-utils";
 
 // GET /api/corrections?url=<url> — browser extension endpoint
-// Returns corrections, affirmations, and translations for a given URL.
+// Reads from the KV store (where the React SPA stores all data)
+// and returns corrections, affirmations, and translations for a given URL.
+//
+// ── PRIVACY BY DESIGN ──
+// This endpoint is intentionally STATELESS and BLIND.
+// We do NOT log, store, or record:
+//   - The queried URL
+//   - The requester's IP address
+//   - Any request headers, user-agent strings, or fingerprints
+//   - Any association between a user account and the URLs they query
+//
+// The URL is used solely as an in-memory filter key against existing
+// submission data, then discarded. No database writes occur.
+// No analytics. No telemetry. No server-side query cache.
+//
+// The only URLs stored on our servers are article URLs that submitters
+// voluntarily publish when creating corrections. A reader's browsing
+// activity must never be observable by Trust Assembly.
+
+const VER = "v6";
+const SK_SUBS = `ta-s-${VER}`;
+const SK_USERS = `ta-u-${VER}`;
+const SK_ORGS = `ta-o-${VER}`;
+const SK_TRANSLATIONS = `ta-trans-${VER}`;
+
+async function kvGet(key: string): Promise<unknown> {
+  const result = await sql`SELECT value FROM kv_store WHERE key = ${key}`;
+  if (result.rows.length === 0 || !result.rows[0].value) return null;
+  return JSON.parse(result.rows[0].value);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
@@ -12,122 +42,90 @@ export async function GET(request: NextRequest) {
     return err("url query parameter is required");
   }
 
-  // Fetch approved/consensus corrections and affirmations for this URL
-  const submissions = await sql`
-    SELECT
-      s.id, s.submission_type, s.original_headline, s.replacement,
-      s.author, s.reasoning, s.status,
-      u.username AS submitted_by,
-      u.display_name AS submitted_by_display_name,
-      u.total_wins, u.total_losses, u.current_streak,
-      u.gender, u.age, u.country, u.state, u.political_affiliation,
-      o.name AS org_name
-    FROM submissions s
-    JOIN users u ON u.id = s.submitted_by
-    JOIN organizations o ON o.id = s.org_id
-    WHERE s.url = ${url}
-      AND s.status IN ('approved', 'consensus')
-    ORDER BY s.created_at DESC
-  `;
+  try {
+    const [subsRaw, usersRaw, orgsRaw, transRaw] = await Promise.all([
+      kvGet(SK_SUBS),
+      kvGet(SK_USERS),
+      kvGet(SK_ORGS),
+      kvGet(SK_TRANSLATIONS),
+    ]);
 
-  // Fetch evidence for all matched submissions
-  const submissionIds = submissions.rows.map((r) => r.id);
+    const subs = (subsRaw as Record<string, Record<string, unknown>>) || {};
+    const users = (usersRaw as Record<string, Record<string, unknown>>) || {};
+    const orgs = (orgsRaw as Record<string, Record<string, unknown>>) || {};
+    const trans = (transRaw as Record<string, Record<string, unknown>>) || {};
 
-  let evidenceBySubmission: Record<string, Array<{ url: string; explanation: string }>> = {};
-
-  if (submissionIds.length > 0) {
-    const evidence = await sql.query(
-      `SELECT submission_id, url, explanation
-       FROM submission_evidence
-       WHERE submission_id = ANY($1)
-       ORDER BY sort_order`,
-      [submissionIds]
+    // Find submissions matching this URL with approved/consensus status
+    const matching = Object.values(subs).filter(
+      (s: Record<string, unknown>) =>
+        s.url === url &&
+        (s.status === "approved" || s.status === "consensus")
     );
 
-    for (const e of evidence.rows) {
-      if (!evidenceBySubmission[e.submission_id]) {
-        evidenceBySubmission[e.submission_id] = [];
+    const corrections: unknown[] = [];
+    const affirmations: unknown[] = [];
+
+    for (const sub of matching) {
+      const submitter = users[sub.submittedBy as string] as Record<string, unknown> | undefined;
+      const org = orgs[sub.orgId as string] as Record<string, unknown> | undefined;
+      const totalReviews = ((submitter?.wins as number) || 0) + ((submitter?.losses as number) || 0);
+      const trustScore = totalReviews > 0
+        ? Math.round(((submitter?.wins as number) || 0) / totalReviews * 100)
+        : null;
+
+      const item = {
+        id: sub.id,
+        submissionType: sub.submissionType,
+        originalHeadline: sub.originalHeadline,
+        replacement: sub.replacement,
+        author: sub.author,
+        reasoning: sub.reasoning,
+        evidence: sub.evidence || [],
+        submittedBy: sub.submittedBy,
+        orgName: org?.name || "",
+        status: sub.status,
+        trustScore,
+        profile: {
+          displayName: submitter?.displayName || submitter?.username || "",
+          gender: submitter?.gender,
+          age: submitter?.age,
+          country: submitter?.country,
+          state: submitter?.state,
+          politicalAffiliation: submitter?.politicalAffiliation,
+          currentStreak: submitter?.streak || 0,
+        },
+      };
+
+      if (sub.submissionType === "affirmation") {
+        affirmations.push(item);
+      } else {
+        corrections.push(item);
       }
-      evidenceBySubmission[e.submission_id].push({
-        url: e.url,
-        explanation: e.explanation,
-      });
     }
-  }
 
-  // Build corrections and affirmations arrays
-  const corrections = [];
-  const affirmations = [];
+    // Get approved translations (these apply globally, not per-URL)
+    const translations = Object.values(trans)
+      .filter((t: Record<string, unknown>) => t.status === "approved")
+      .map((t: Record<string, unknown>) => ({
+        id: t.id,
+        original: t.original,
+        translated: t.translated,
+        type: t.type,
+        orgName: (orgs[t.orgId as string] as Record<string, unknown>)?.name || "",
+        status: t.status,
+      }));
 
-  for (const row of submissions.rows) {
-    const totalReviews = row.total_wins + row.total_losses;
-    const trustScore = totalReviews > 0
-      ? Math.round((row.total_wins / totalReviews) * 100)
-      : null;
-
-    const item = {
-      id: row.id,
-      submissionType: row.submission_type,
-      originalHeadline: row.original_headline,
-      replacement: row.replacement,
-      author: row.author,
-      reasoning: row.reasoning,
-      evidence: evidenceBySubmission[row.id] || [],
-      submittedBy: row.submitted_by,
-      orgName: row.org_name,
-      status: row.status,
-      trustScore,
-      profile: {
-        displayName: row.submitted_by_display_name,
-        gender: row.gender,
-        age: row.age,
-        country: row.country,
-        state: row.state,
-        politicalAffiliation: row.political_affiliation,
-        currentStreak: row.current_streak,
+    return ok({
+      corrections,
+      affirmations,
+      translations,
+      meta: {
+        totalReviews: corrections.length + affirmations.length,
+        highestConsensus: matching.some((s) => s.status === "consensus"),
       },
-    };
-
-    if (row.submission_type === "correction") {
-      corrections.push(item);
-    } else {
-      affirmations.push(item);
-    }
+    });
+  } catch (e) {
+    console.error("Error fetching corrections:", e);
+    return err("Internal error", 500);
   }
-
-  // Fetch all approved translations — these are global language replacements
-  // (e.g. "Enhanced interrogation techniques" → "Torture") applied across all pages
-  const translationRows = await sql`
-    SELECT
-      t.id, t.original_text, t.translated_text, t.translation_type,
-      t.status,
-      o.name AS org_name
-    FROM translations t
-    JOIN organizations o ON o.id = t.org_id
-    WHERE t.status = 'approved'
-    ORDER BY t.created_at DESC
-  `;
-
-  const translations = translationRows.rows.map((t) => ({
-    id: t.id,
-    original: t.original_text,
-    translated: t.translated_text,
-    type: t.translation_type,
-    orgName: t.org_name,
-    status: t.status,
-  }));
-
-  // Compute meta
-  const totalReviews = corrections.length + affirmations.length;
-  const highestConsensus = submissions.rows.some((r) => r.status === "consensus");
-
-  return ok({
-    corrections,
-    affirmations,
-    translations,
-    meta: {
-      totalReviews,
-      highestConsensus,
-    },
-  });
 }
