@@ -1508,13 +1508,13 @@ function RegisterScreen({ onRegister }) {
       diPartnerUsername = partnerName;
     }
 
-    const now = new Date().toISOString(); const salt = genSalt(); const ph = await hashPw(form.password, salt); const tok = genToken();
+    const now = new Date().toISOString(); const salt = genSalt(); const ph = await hashPw(form.password, salt);
     const gpId = await ensureGeneralPublic();
     const displayName = form.username.trim().replace(/\s+/g, " ");
 
     // Register via server API (sets HTTP-only session cookie, stores in users table)
     try {
-      await fetch("/api/auth/register", {
+      const regRes = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1527,7 +1527,8 @@ function RegisterScreen({ onRegister }) {
           bio: (form.bio || "").substring(0, 500),
         }),
       });
-    } catch (e) { /* Server auth is supplementary — KV store is primary for now */ }
+      if (!regRes.ok) { const data = await regRes.json().catch(() => ({})); setError(data.error || "Registration failed."); setLoading(false); return; }
+    } catch (e) { setError("Network error. Please try again."); setLoading(false); return; }
 
     const user = {
       id: gid(), username: uname, displayName, realName: form.realName.trim().replace(/\s+/g, " "),
@@ -1544,9 +1545,8 @@ function RegisterScreen({ onRegister }) {
       disputeWins: 0, disputeLosses: 0,
       // Digital Intelligence fields
       isDI: isDigitalIntelligence, diPartner: diPartnerUsername, diApproved: false,
-      sessionToken: tok
     };
-    users[uname] = user; await sS(SK.USERS, users); await sS(SK.SESSION, { username: uname, token: tok });
+    users[uname] = user; await sS(SK.USERS, users);
     // Add to General Public
     const orgs = (await sG(SK.ORGS)) || {};
     if (orgs[gpId] && !orgs[gpId].members.includes(uname)) { orgs[gpId].members.push(uname); await sS(SK.ORGS, orgs); }
@@ -1653,12 +1653,14 @@ function LoginScreen({ onLogin, onGoRegister }) {
   const go = async () => {
     setError(""); if (!username.trim()) return setError("Enter username."); if (!password) return setError("Enter password.");
     setLoading(true);
-    // Also call server API to set HTTP-only session cookie
-    try { await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: username.trim().toLowerCase(), password }) }); } catch {}
+    // Authenticate via server API (sets HTTP-only session cookie)
+    try {
+      const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: username.trim().toLowerCase(), password }) });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Login failed."); setLoading(false); return; }
+    } catch { setError("Network error. Please try again."); setLoading(false); return; }
+    // Load user profile from KV store
     const users = (await sG(SK.USERS)) || {}; const u = users[username.trim().toLowerCase()];
     if (!u) { setError("No citizen found."); setLoading(false); return; }
-    if (u.passwordHash && u.salt) { const h = await hashPw(password, u.salt); if (h !== u.passwordHash) { setError("Incorrect password."); setLoading(false); return; } }
-    const tok = genToken(); u.sessionToken = tok; users[u.username] = u; await sS(SK.USERS, users); await sS(SK.SESSION, { username: u.username, token: tok });
     setLoading(false); onLogin(u);
   };
   return (
@@ -4696,8 +4698,16 @@ export default function TrustAssembly() {
     (async () => {
       try {
         await loadSyntheticData();
-        const session = await sG(SK.SESSION);
-        if (session?.username && session?.token) { const users = (await sG(SK.USERS)) || {}; const u = users[session.username]; if (u && u.sessionToken === session.token) { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); } else { await sS(SK.SESSION, null); } }
+        // Restore session from HTTP-only cookie via /api/auth/me
+        const meRes = await fetch("/api/auth/me");
+        if (meRes.ok) {
+          const serverUser = await meRes.json();
+          if (serverUser?.username) {
+            const users = (await sG(SK.USERS)) || {};
+            const u = users[serverUser.username];
+            if (u) { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
+          }
+        }
       } catch (e) { console.error("Init error:", e); }
       setLoading(false);
     })();
@@ -4713,8 +4723,8 @@ export default function TrustAssembly() {
   useEffect(() => { if (user) refreshUser(); }, [screen]);
 
   const logout = async () => {
-    try { if (user) { const users = (await sG(SK.USERS)) || {}; if (users[user.username]) { users[user.username].sessionToken = null; await sS(SK.USERS, users); } } } catch {}
-    await sS(SK.SESSION, null); setUser(null); setScreen("login");
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
+    setUser(null); setScreen("login");
   };
 
   if (loading) return <div className="ta-root"><Loader /></div>;
