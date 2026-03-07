@@ -4678,6 +4678,7 @@ export default function TrustAssembly() {
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExtDetails, setShowExtDetails] = useState(false);
+  const [showManifesto, setShowManifesto] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -4770,7 +4771,53 @@ export default function TrustAssembly() {
             <div style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: ".12em", color: "#B8963E", marginBottom: 6, fontStyle: "italic" }}>Truth Will Out.</div>
             <div style={{ fontFamily: "var(--body)", fontSize: 13, color: "#5A5650", marginBottom: 24 }}>A republic of citizens verifying truth through adversarial review.</div>
             <CitizenCounter />
-            <p style={{ fontSize: 15, lineHeight: 1.7, color: "#2B2B2B", marginBottom: 28 }}>Submit headline corrections. Face random jury review. Build reputation through honesty. Everything is transparent. Nothing is hidden.</p>
+
+            {/* Opening Statement */}
+            <div style={{ textAlign: "left", maxWidth: 520, margin: "0 auto 28px", padding: "20px 24px", background: "#fff", border: "1px solid #DCD8D0", borderLeft: "4px solid #B8963E", borderRadius: 2 }}>
+              <p style={{ fontSize: 16, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, margin: 0 }}>
+                The Trust Assembly is an experiment in self-government.
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>
+                It begins with a simple question: what happens when ordinary people are given a place to reason together in public, under fair rules, with truth as the aim rather than attention?
+              </p>
+              {!showManifesto && (
+                <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12, color: "#B8963E" }} onClick={() => setShowManifesto(true)}>
+                  Read more
+                </button>
+              )}
+              {showManifesto && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                    We believe the answer matters. Much of the modern internet has become a kind of continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different: a place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.
+                  </p>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                    This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.
+                  </p>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                    What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.
+                  </p>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                    We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed: one that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.
+                  </p>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                    Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem: a place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.
+                  </p>
+                  <p style={{ fontSize: 15, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "0 0 16px" }}>
+                    We hope to build a lighthouse on a hill.
+                  </p>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 16px", padding: "12px 16px", background: "#F0EDE6", borderRadius: 2 }}>
+                    To succeed in this institution, you must make sense to those who agree with you. And you must make sense to those who do not. Everything worth building in civilization rests on that foundation.
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }} onClick={() => setScreen("register")}>Submit a Correction</button>
+                    <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }} onClick={() => { setShowExtDetails(true); document.querySelector('.ta-link-btn[style*="Installation"]')?.scrollIntoView({ behavior: "smooth" }); }}>Get the Extension</button>
+                  </div>
+                  <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12, color: "#7A7570" }} onClick={() => setShowManifesto(false)}>
+                    Collapse
+                  </button>
+                </div>
+              )}
+            </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
               <a href="/trust-assembly-chrome.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }}>Download Chrome Extension</button></a>
               <a href="/trust-assembly-firefox.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }}>Download Firefox Extension</button></a>
