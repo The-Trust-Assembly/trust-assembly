@@ -2654,7 +2654,7 @@ function ConsensusScreen() {
   );
 }
 
-function FeedScreen({ user }) {
+function FeedScreen({ user, onNavigate }) {
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
   const [disputingId, setDisputingId] = useState(null);
@@ -2692,6 +2692,14 @@ function FeedScreen({ user }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Record</h2>
+      {user && !Object.values(subs || {}).some(s => s.submittedBy === user.username) && (
+        <div style={{ padding: 16, background: "#fff", border: "1.5px solid #B8963E", borderRadius: 2, marginBottom: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 18, marginBottom: 6 }}>⚖</div>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 17, fontWeight: 600, color: "var(--navy)", marginBottom: 6 }}>Read a headline. Think it's wrong?</div>
+          <div style={{ fontSize: 13, color: "#5A5650", marginBottom: 12, lineHeight: 1.6 }}>Submit a correction and a random jury of your fellow citizens will weigh the evidence.</div>
+          <button className="ta-btn-primary" onClick={() => onNavigate && onNavigate("submit")}>Submit Your First Correction</button>
+        </div>
+      )}
       {disputeSuccess && <div className="ta-success">{disputeSuccess}</div>}
       {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#5B2D8E" : sub.status === "approved" ? "#1B5E3F" : sub.status === "rejected" || sub.status === "disputed" ? "#C4573F" : "#C4900A"}` }}>
@@ -3467,7 +3475,7 @@ function OrgScreen({ user, onUpdate }) {
                   {isActive && <span style={{ fontSize: 8, padding: "2px 6px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>★ ACTIVE</span>}
                   {isGP && <span style={{ fontSize: 8, padding: "2px 6px", background: "#E5EFED", color: "#2A6B6B", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>🏛 HOME</span>}
                 </div>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{o.members.length} members · {checkEnrollment(o).label}{st.total > 0 ? ` · ${st.total} subs` : ""}{(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? ` · Trust: ${r.trustScore}%` : r.total > 0 ? ` · ${r.total}/20 reviews` : ""; })()}</div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{o.members.length} members · {(() => { const enr = checkEnrollment(o); const founders = o.founders || [o.createdBy]; const isFounder = founders.includes(user.username); if (enr.mode === "tribal" && isFounder) return "You are the founder"; return enr.label; })()}{st.total > 0 ? ` · ${st.total} subs` : ""}{(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? ` · Trust: ${r.trustScore}%` : r.total > 0 ? ` · ${r.total}/20 reviews` : ""; })()}</div>
               </div>
               <div style={{ display: "flex", gap: 4 }}>
                 {!isActive && <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={() => switchActive(o.id)}>Set Active</button>}
@@ -4669,8 +4677,11 @@ const NAV_TOP = [
   { key: "feed", label: "Record" }, { key: "orgs", label: "Assemblies" }, { key: "submit", label: "Submit" }, { key: "review", label: "Review" },
 ];
 const NAV_BOT = [
-  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "profile", label: "Citizen" }, { key: "audit", label: "Ledger" },
-  { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" }, { key: "vision", label: "Vision" }, { key: "extensions", label: "Extension" },
+  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "profile", label: "Citizen" },
+];
+const NAV_MORE = [
+  { key: "audit", label: "Ledger" }, { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" },
+  { key: "about", label: "About" }, { key: "vision", label: "Vision" }, { key: "extensions", label: "Extension" },
 ];
 
 export default function TrustAssembly() {
@@ -4679,6 +4690,7 @@ export default function TrustAssembly() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExtDetails, setShowExtDetails] = useState(false);
   const [showManifesto, setShowManifesto] = useState(false);
+  const [showMoreNav, setShowMoreNav] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -4837,13 +4849,17 @@ export default function TrustAssembly() {
             <div className="ta-header-inner">
               <div className="ta-masthead"><img src={CREST_IMG} style={{ width: 36, height: 36, marginRight: 10, verticalAlign: "middle" }} alt="" /><h1 style={{ display: "inline" }}>The Trust Assembly</h1><div className="ta-masthead-sub">Truth Will Out. <span style={{ background: "#D4850A", color: "#fff", padding: "1px 6px", borderRadius: 2, fontSize: 10, fontWeight: 700, marginLeft: 6, letterSpacing: "0.1em" }}>BETA</span></div></div>
               <nav className="ta-nav">{NAV_TOP.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}{n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}</button>)}</nav>
-              <nav className="ta-nav ta-nav-secondary">{NAV_BOT.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}</button>)}</nav>
+              <nav className="ta-nav ta-nav-secondary">
+                {NAV_BOT.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}</button>)}
+                <button className={showMoreNav || NAV_MORE.some(n => n.key === screen) ? "active" : ""} onClick={() => setShowMoreNav(v => !v)} style={{ position: "relative" }}>More {showMoreNav ? "▴" : "▾"}</button>
+              </nav>
+              {showMoreNav && <nav className="ta-nav ta-nav-secondary" style={{ borderTop: "none", paddingTop: 0 }}>{NAV_MORE.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</button>)}</nav>}
             </div>
             <div className="ta-user-bar"><span>{isDIUser(user) ? "🤖 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span><button className="ta-btn-ghost" style={{ color: "#7A7570" }} onClick={logout}>Sign Out</button></div>
           </div>
           <div className="ta-content">
             <CitizenCounter />
-            {screen === "feed" && <FeedScreen user={user} />}
+            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} />}
             {screen === "review" && <ReviewScreen user={user} />}
