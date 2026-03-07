@@ -32,8 +32,8 @@ const RESERVED_USERNAMES = new Set(["admin", "administrator", "system", "moderat
 const DISPOSABLE_EMAIL_DOMAINS = new Set(["mailinator.com", "guerrillamail.com", "tempmail.com", "throwaway.email", "yopmail.com", "sharklasers.com", "guerrillamailblock.com", "grr.la", "guerrillamail.info", "guerrillamail.net", "trashmail.com", "trashmail.me", "trashmail.net", "10minutemail.com", "temp-mail.org", "fakeinbox.com", "maildrop.cc", "dispostable.com", "mailnesia.com", "getairmail.com", "mohmal.com", "burnermail.io"]);
 
 function sanitizeUsername(raw) {
-  // Strip ALL whitespace including zero-width chars, then lowercase
-  return raw.replace(/[\s\u200B\u200C\u200D\uFEFF\u00A0]/g, "").toLowerCase();
+  // Strip ALL whitespace including zero-width chars, leading @, then lowercase
+  return raw.replace(/[\s\u200B\u200C\u200D\uFEFF\u00A0]/g, "").replace(/^@+/, "").toLowerCase();
 }
 
 function valUsername(uname) {
