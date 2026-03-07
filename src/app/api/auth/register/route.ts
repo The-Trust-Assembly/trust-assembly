@@ -9,8 +9,13 @@ let schemaMigrated = false;
 async function ensureEmailNotUnique() {
   if (schemaMigrated) return;
   try {
+    // Try common constraint naming patterns
     await sql`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key`;
-  } catch { /* constraint may not exist */ }
+    await sql`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_unique`;
+    // Also drop any unique index on email
+    await sql`DROP INDEX IF EXISTS users_email_key`;
+    await sql`DROP INDEX IF EXISTS idx_users_email_unique`;
+  } catch { /* constraints may not exist */ }
   schemaMigrated = true;
 }
 
