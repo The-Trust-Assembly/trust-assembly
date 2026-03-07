@@ -4628,6 +4628,25 @@ function ExtensionsScreen() {
         </div>
       </div>
 
+      {/* Privacy — browsing blind */}
+      <div className="ta-card" style={{ borderLeft: "4px solid #1B5E3F", marginBottom: 18 }}>
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--evergreen)" }}>Your Browsing Is Private — By Design</h3>
+        <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+          <div style={{ marginBottom: 10 }}>The Trust Assembly extension sends the URL of the page you're reading to our server so we can check whether any corrections, affirmations, or translations exist for it. <strong>That's it.</strong> Here's what we don't do:</div>
+          <div style={{ marginBottom: 6, paddingLeft: 16 }}>
+            <div style={{ marginBottom: 4 }}>⛔ <strong>No browsing history is stored.</strong> We don't log which URLs are queried. The server reads the URL, checks for matching corrections in memory, and returns the result. Nothing is written.</div>
+            <div style={{ marginBottom: 4 }}>⛔ <strong>No IP logging.</strong> We don't record your IP address, browser fingerprint, or any request metadata.</div>
+            <div style={{ marginBottom: 4 }}>⛔ <strong>No analytics or tracking.</strong> There are no pixels, beacons, or third-party scripts. No Google Analytics. No telemetry.</div>
+            <div style={{ marginBottom: 4 }}>⛔ <strong>No user association.</strong> The extension doesn't send your Trust Assembly username or session with URL lookups. The query is anonymous.</div>
+            <div style={{ marginBottom: 4 }}>⛔ <strong>No server-side cache of queries.</strong> We don't maintain a record of what pages were checked or how often.</div>
+          </div>
+          <div style={{ marginBottom: 10 }}>The only URLs we store are the ones <em>submitters voluntarily publish</em> when they submit a correction — that's the article they're correcting, and it's public by design. Your reading activity is completely invisible to us.</div>
+          <div style={{ padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, fontSize: 12 }}>
+            <strong>Technical detail:</strong> Results are cached in your browser's <code style={{ background: "#E8E4DC", padding: "1px 4px", borderRadius: 2 }}>sessionStorage</code> for 5 minutes to reduce network requests. This cache is local to your machine, per-tab, and cleared automatically when you close the tab. We never see it.
+          </div>
+        </div>
+      </div>
+
       {/* What it does */}
       <div className="ta-card">
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>What the Extension Does</h3>

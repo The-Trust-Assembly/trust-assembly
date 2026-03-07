@@ -5,6 +5,22 @@ import { ok, err } from "@/lib/api-utils";
 // GET /api/corrections?url=<url> — browser extension endpoint
 // Reads from the KV store (where the React SPA stores all data)
 // and returns corrections, affirmations, and translations for a given URL.
+//
+// ── PRIVACY BY DESIGN ──
+// This endpoint is intentionally STATELESS and BLIND.
+// We do NOT log, store, or record:
+//   - The queried URL
+//   - The requester's IP address
+//   - Any request headers, user-agent strings, or fingerprints
+//   - Any association between a user account and the URLs they query
+//
+// The URL is used solely as an in-memory filter key against existing
+// submission data, then discarded. No database writes occur.
+// No analytics. No telemetry. No server-side query cache.
+//
+// The only URLs stored on our servers are article URLs that submitters
+// voluntarily publish when creating corrections. A reader's browsing
+// activity must never be observable by Trust Assembly.
 
 const VER = "v6";
 const SK_SUBS = `ta-s-${VER}`;
