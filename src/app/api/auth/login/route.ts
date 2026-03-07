@@ -11,11 +11,13 @@ export async function POST(request: NextRequest) {
     return err("username and password are required");
   }
 
-  // Look up user by username or email
+  // Look up user by username or email (prefer username match since emails may be shared by DIs)
   const result = await sql`
     SELECT id, username, display_name, password_hash
     FROM users
     WHERE username = ${username.toLowerCase()} OR email = ${username.toLowerCase()}
+    ORDER BY (username = ${username.toLowerCase()}) DESC
+    LIMIT 1
   `;
 
   if (result.rows.length === 0) {

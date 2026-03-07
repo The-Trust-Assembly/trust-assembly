@@ -60,7 +60,7 @@ CREATE TABLE users (
   username      VARCHAR(30) UNIQUE NOT NULL CHECK (username = lower(username) AND length(username) >= 3),
   display_name  VARCHAR(100) NOT NULL,
   real_name     VARCHAR(200),
-  email         VARCHAR(320) UNIQUE NOT NULL,
+  email         VARCHAR(320) NOT NULL,  -- not unique: DIs may share partner's email
   password_hash TEXT NOT NULL,
   salt          TEXT NOT NULL,
 
