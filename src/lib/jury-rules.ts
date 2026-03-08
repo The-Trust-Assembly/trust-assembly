@@ -1,0 +1,34 @@
+// ============================================================
+// Jury rules and constants — shared between API routes
+// Mirrors the logic from trust-assembly-v5.jsx so the server
+// can resolve votes independently of the client.
+// ============================================================
+
+export const TRUSTED_STREAK = 10;
+export const CROSS_GROUP_DECEPTION_MULT = 9;
+export const JURY_POOL_MULTIPLIER = 3;
+
+/** Jury size scales with assembly membership */
+export function getJurySize(memberCount: number): number {
+  if (memberCount >= 10000) return 13;
+  if (memberCount >= 1000) return 11;
+  if (memberCount >= 101) return 9;
+  if (memberCount >= 51) return 7;
+  if (memberCount >= 21) return 5;
+  return 3;
+}
+
+/** Super jury: ~2× regular, always odd, minimum 7 */
+export function getSuperJurySize(memberCount: number): number {
+  if (memberCount >= 10000) return 17;
+  if (memberCount >= 1000) return 15;
+  if (memberCount >= 101) return 13;
+  if (memberCount >= 51) return 11;
+  if (memberCount >= 21) return 9;
+  return 7;
+}
+
+/** Simple majority: floor(n/2) + 1 */
+export function getMajority(jurySize: number): number {
+  return Math.floor(jurySize / 2) + 1;
+}

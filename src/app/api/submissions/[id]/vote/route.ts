@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
+import { tryResolveSubmission } from "@/lib/vote-resolution";
 
 // POST /api/submissions/[id]/vote — cast a jury vote
 export async function POST(
@@ -81,5 +82,16 @@ export async function POST(
     VALUES ('Vote cast', ${session.sub}, 'submission', ${id})
   `;
 
-  return ok({ status: "voted", approve });
+  // Attempt to resolve — checks if majority reached, updates status,
+  // reputation, vault entries, and promotes to cross-group if applicable.
+  const resolution = await tryResolveSubmission(id, juryRole);
+
+  return ok({
+    status: resolution.resolved ? "resolved" : "voted",
+    approve,
+    resolution: resolution.resolved ? {
+      outcome: resolution.outcome,
+      promotedToCrossGroup: resolution.promotedToCrossGroup,
+    } : undefined,
+  });
 }

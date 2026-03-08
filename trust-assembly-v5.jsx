@@ -182,16 +182,324 @@ const SPONSOR_MIN_REVIEWS = 10;       // Review-only members need 10+ completed 
 const SPONSOR_MIN_TENURE_DAYS = 30;   // Review-only members need 30 days membership to sponsor
 
 // Location data — launch countries only
-const COUNTRIES = [{ value: "United States", label: "United States" }, { value: "Canada", label: "Canada" }, { value: "England", label: "England" }];
+const COUNTRIES = [
+  { value: "Afghanistan", label: "Afghanistan" },
+  { value: "Albania", label: "Albania" },
+  { value: "Algeria", label: "Algeria" },
+  { value: "Andorra", label: "Andorra" },
+  { value: "Angola", label: "Angola" },
+  { value: "Antigua and Barbuda", label: "Antigua and Barbuda" },
+  { value: "Argentina", label: "Argentina" },
+  { value: "Armenia", label: "Armenia" },
+  { value: "Australia", label: "Australia" },
+  { value: "Austria", label: "Austria" },
+  { value: "Azerbaijan", label: "Azerbaijan" },
+  { value: "Bahamas", label: "Bahamas" },
+  { value: "Bahrain", label: "Bahrain" },
+  { value: "Bangladesh", label: "Bangladesh" },
+  { value: "Barbados", label: "Barbados" },
+  { value: "Belarus", label: "Belarus" },
+  { value: "Belgium", label: "Belgium" },
+  { value: "Belize", label: "Belize" },
+  { value: "Benin", label: "Benin" },
+  { value: "Bhutan", label: "Bhutan" },
+  { value: "Bolivia", label: "Bolivia" },
+  { value: "Bosnia and Herzegovina", label: "Bosnia and Herzegovina" },
+  { value: "Botswana", label: "Botswana" },
+  { value: "Brazil", label: "Brazil" },
+  { value: "Brunei", label: "Brunei" },
+  { value: "Bulgaria", label: "Bulgaria" },
+  { value: "Burkina Faso", label: "Burkina Faso" },
+  { value: "Burundi", label: "Burundi" },
+  { value: "Cabo Verde", label: "Cabo Verde" },
+  { value: "Cambodia", label: "Cambodia" },
+  { value: "Cameroon", label: "Cameroon" },
+  { value: "Canada", label: "Canada" },
+  { value: "Central African Republic", label: "Central African Republic" },
+  { value: "Chad", label: "Chad" },
+  { value: "Chile", label: "Chile" },
+  { value: "China", label: "China" },
+  { value: "Colombia", label: "Colombia" },
+  { value: "Comoros", label: "Comoros" },
+  { value: "Congo (Democratic Republic)", label: "Congo (Democratic Republic)" },
+  { value: "Congo (Republic)", label: "Congo (Republic)" },
+  { value: "Costa Rica", label: "Costa Rica" },
+  { value: "Croatia", label: "Croatia" },
+  { value: "Cuba", label: "Cuba" },
+  { value: "Cyprus", label: "Cyprus" },
+  { value: "Czech Republic", label: "Czech Republic" },
+  { value: "Denmark", label: "Denmark" },
+  { value: "Djibouti", label: "Djibouti" },
+  { value: "Dominica", label: "Dominica" },
+  { value: "Dominican Republic", label: "Dominican Republic" },
+  { value: "East Timor", label: "East Timor" },
+  { value: "Ecuador", label: "Ecuador" },
+  { value: "Egypt", label: "Egypt" },
+  { value: "El Salvador", label: "El Salvador" },
+  { value: "Equatorial Guinea", label: "Equatorial Guinea" },
+  { value: "Eritrea", label: "Eritrea" },
+  { value: "Estonia", label: "Estonia" },
+  { value: "Eswatini", label: "Eswatini" },
+  { value: "Ethiopia", label: "Ethiopia" },
+  { value: "Fiji", label: "Fiji" },
+  { value: "Finland", label: "Finland" },
+  { value: "France", label: "France" },
+  { value: "Gabon", label: "Gabon" },
+  { value: "Gambia", label: "Gambia" },
+  { value: "Georgia", label: "Georgia (Country)" },
+  { value: "Germany", label: "Germany" },
+  { value: "Ghana", label: "Ghana" },
+  { value: "Greece", label: "Greece" },
+  { value: "Grenada", label: "Grenada" },
+  { value: "Guatemala", label: "Guatemala" },
+  { value: "Guinea", label: "Guinea" },
+  { value: "Guinea-Bissau", label: "Guinea-Bissau" },
+  { value: "Guyana", label: "Guyana" },
+  { value: "Haiti", label: "Haiti" },
+  { value: "Honduras", label: "Honduras" },
+  { value: "Hungary", label: "Hungary" },
+  { value: "Iceland", label: "Iceland" },
+  { value: "India", label: "India" },
+  { value: "Indonesia", label: "Indonesia" },
+  { value: "Iran", label: "Iran" },
+  { value: "Iraq", label: "Iraq" },
+  { value: "Ireland", label: "Ireland" },
+  { value: "Israel", label: "Israel" },
+  { value: "Italy", label: "Italy" },
+  { value: "Ivory Coast", label: "Ivory Coast" },
+  { value: "Jamaica", label: "Jamaica" },
+  { value: "Japan", label: "Japan" },
+  { value: "Jordan", label: "Jordan" },
+  { value: "Kazakhstan", label: "Kazakhstan" },
+  { value: "Kenya", label: "Kenya" },
+  { value: "Kiribati", label: "Kiribati" },
+  { value: "Kosovo", label: "Kosovo" },
+  { value: "Kuwait", label: "Kuwait" },
+  { value: "Kyrgyzstan", label: "Kyrgyzstan" },
+  { value: "Laos", label: "Laos" },
+  { value: "Latvia", label: "Latvia" },
+  { value: "Lebanon", label: "Lebanon" },
+  { value: "Lesotho", label: "Lesotho" },
+  { value: "Liberia", label: "Liberia" },
+  { value: "Libya", label: "Libya" },
+  { value: "Liechtenstein", label: "Liechtenstein" },
+  { value: "Lithuania", label: "Lithuania" },
+  { value: "Luxembourg", label: "Luxembourg" },
+  { value: "Madagascar", label: "Madagascar" },
+  { value: "Malawi", label: "Malawi" },
+  { value: "Malaysia", label: "Malaysia" },
+  { value: "Maldives", label: "Maldives" },
+  { value: "Mali", label: "Mali" },
+  { value: "Malta", label: "Malta" },
+  { value: "Marshall Islands", label: "Marshall Islands" },
+  { value: "Mauritania", label: "Mauritania" },
+  { value: "Mauritius", label: "Mauritius" },
+  { value: "Mexico", label: "Mexico" },
+  { value: "Micronesia", label: "Micronesia" },
+  { value: "Moldova", label: "Moldova" },
+  { value: "Monaco", label: "Monaco" },
+  { value: "Mongolia", label: "Mongolia" },
+  { value: "Montenegro", label: "Montenegro" },
+  { value: "Morocco", label: "Morocco" },
+  { value: "Mozambique", label: "Mozambique" },
+  { value: "Myanmar", label: "Myanmar" },
+  { value: "Namibia", label: "Namibia" },
+  { value: "Nauru", label: "Nauru" },
+  { value: "Nepal", label: "Nepal" },
+  { value: "Netherlands", label: "Netherlands" },
+  { value: "New Zealand", label: "New Zealand" },
+  { value: "Nicaragua", label: "Nicaragua" },
+  { value: "Niger", label: "Niger" },
+  { value: "Nigeria", label: "Nigeria" },
+  { value: "North Korea", label: "North Korea" },
+  { value: "North Macedonia", label: "North Macedonia" },
+  { value: "Norway", label: "Norway" },
+  { value: "Oman", label: "Oman" },
+  { value: "Pakistan", label: "Pakistan" },
+  { value: "Palau", label: "Palau" },
+  { value: "Palestine", label: "Palestine" },
+  { value: "Panama", label: "Panama" },
+  { value: "Papua New Guinea", label: "Papua New Guinea" },
+  { value: "Paraguay", label: "Paraguay" },
+  { value: "Peru", label: "Peru" },
+  { value: "Philippines", label: "Philippines" },
+  { value: "Poland", label: "Poland" },
+  { value: "Portugal", label: "Portugal" },
+  { value: "Qatar", label: "Qatar" },
+  { value: "Romania", label: "Romania" },
+  { value: "Russia", label: "Russia" },
+  { value: "Rwanda", label: "Rwanda" },
+  { value: "Saint Kitts and Nevis", label: "Saint Kitts and Nevis" },
+  { value: "Saint Lucia", label: "Saint Lucia" },
+  { value: "Saint Vincent and the Grenadines", label: "Saint Vincent and the Grenadines" },
+  { value: "Samoa", label: "Samoa" },
+  { value: "San Marino", label: "San Marino" },
+  { value: "Sao Tome and Principe", label: "Sao Tome and Principe" },
+  { value: "Saudi Arabia", label: "Saudi Arabia" },
+  { value: "Senegal", label: "Senegal" },
+  { value: "Serbia", label: "Serbia" },
+  { value: "Seychelles", label: "Seychelles" },
+  { value: "Sierra Leone", label: "Sierra Leone" },
+  { value: "Singapore", label: "Singapore" },
+  { value: "Slovakia", label: "Slovakia" },
+  { value: "Slovenia", label: "Slovenia" },
+  { value: "Solomon Islands", label: "Solomon Islands" },
+  { value: "Somalia", label: "Somalia" },
+  { value: "South Africa", label: "South Africa" },
+  { value: "South Korea", label: "South Korea" },
+  { value: "South Sudan", label: "South Sudan" },
+  { value: "Spain", label: "Spain" },
+  { value: "Sri Lanka", label: "Sri Lanka" },
+  { value: "Sudan", label: "Sudan" },
+  { value: "Suriname", label: "Suriname" },
+  { value: "Sweden", label: "Sweden" },
+  { value: "Switzerland", label: "Switzerland" },
+  { value: "Syria", label: "Syria" },
+  { value: "Taiwan", label: "Taiwan" },
+  { value: "Tajikistan", label: "Tajikistan" },
+  { value: "Tanzania", label: "Tanzania" },
+  { value: "Thailand", label: "Thailand" },
+  { value: "Togo", label: "Togo" },
+  { value: "Tonga", label: "Tonga" },
+  { value: "Trinidad and Tobago", label: "Trinidad and Tobago" },
+  { value: "Tunisia", label: "Tunisia" },
+  { value: "Turkey", label: "Turkey" },
+  { value: "Turkmenistan", label: "Turkmenistan" },
+  { value: "Tuvalu", label: "Tuvalu" },
+  { value: "Uganda", label: "Uganda" },
+  { value: "Ukraine", label: "Ukraine" },
+  { value: "United Arab Emirates", label: "United Arab Emirates" },
+  { value: "United Kingdom", label: "United Kingdom" },
+  { value: "United States", label: "United States" },
+  { value: "Uruguay", label: "Uruguay" },
+  { value: "Uzbekistan", label: "Uzbekistan" },
+  { value: "Vanuatu", label: "Vanuatu" },
+  { value: "Vatican City", label: "Vatican City" },
+  { value: "Venezuela", label: "Venezuela" },
+  { value: "Vietnam", label: "Vietnam" },
+  { value: "Yemen", label: "Yemen" },
+  { value: "Zambia", label: "Zambia" },
+  { value: "Zimbabwe", label: "Zimbabwe" },
+];
 const STATES_BY_COUNTRY = {
   "United States": ["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming","District of Columbia"],
   "Canada": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
-  "England": ["East Midlands","East of England","London","North East","North West","South East","South West","West Midlands","Yorkshire and the Humber"],
+  "United Kingdom": ["England","Scotland","Wales","Northern Ireland"],
+  "Australia": ["New South Wales","Victoria","Queensland","South Australia","Western Australia","Tasmania","Australian Capital Territory","Northern Territory"],
+  "Germany": ["Baden-Württemberg","Bavaria","Berlin","Brandenburg","Bremen","Hamburg","Hesse","Lower Saxony","Mecklenburg-Vorpommern","North Rhine-Westphalia","Rhineland-Palatinate","Saarland","Saxony","Saxony-Anhalt","Schleswig-Holstein","Thuringia"],
+  "France": ["Auvergne-Rhône-Alpes","Bourgogne-Franche-Comté","Brittany","Centre-Val de Loire","Corsica","Grand Est","Hauts-de-France","Île-de-France","Normandy","Nouvelle-Aquitaine","Occitanie","Pays de la Loire","Provence-Alpes-Côte d'Azur"],
+  "India": ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi"],
+  "Brazil": ["Acre","Alagoas","Amapá","Amazonas","Bahia","Ceará","Distrito Federal","Espírito Santo","Goiás","Maranhão","Mato Grosso","Mato Grosso do Sul","Minas Gerais","Pará","Paraíba","Paraná","Pernambuco","Piauí","Rio de Janeiro","Rio Grande do Norte","Rio Grande do Sul","Rondônia","Roraima","Santa Catarina","São Paulo","Sergipe","Tocantins"],
+  "Mexico": ["Aguascalientes","Baja California","Baja California Sur","Campeche","Chiapas","Chihuahua","Coahuila","Colima","Durango","Guanajuato","Guerrero","Hidalgo","Jalisco","México","Mexico City","Michoacán","Morelos","Nayarit","Nuevo León","Oaxaca","Puebla","Querétaro","Quintana Roo","San Luis Potosí","Sinaloa","Sonora","Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatán","Zacatecas"],
+  "Japan": ["Hokkaido","Aomori","Iwate","Miyagi","Akita","Yamagata","Fukushima","Ibaraki","Tochigi","Gunma","Saitama","Chiba","Tokyo","Kanagawa","Niigata","Toyama","Ishikawa","Fukui","Yamanashi","Nagano","Gifu","Shizuoka","Aichi","Mie","Shiga","Kyoto","Osaka","Hyogo","Nara","Wakayama","Tottori","Shimane","Okayama","Hiroshima","Yamaguchi","Tokushima","Kagawa","Ehime","Kochi","Fukuoka","Saga","Nagasaki","Kumamoto","Oita","Miyazaki","Kagoshima","Okinawa"],
+  "South Korea": ["Seoul","Busan","Daegu","Incheon","Gwangju","Daejeon","Ulsan","Sejong","Gyeonggi","Gangwon","Chungbuk","Chungnam","Jeonbuk","Jeonnam","Gyeongbuk","Gyeongnam","Jeju"],
+  "Italy": ["Abruzzo","Basilicata","Calabria","Campania","Emilia-Romagna","Friuli Venezia Giulia","Lazio","Liguria","Lombardy","Marche","Molise","Piedmont","Puglia","Sardinia","Sicily","Trentino-Alto Adige","Tuscany","Umbria","Veneto","Aosta Valley"],
+  "Spain": ["Andalusia","Aragon","Asturias","Balearic Islands","Basque Country","Canary Islands","Cantabria","Castile and León","Castile-La Mancha","Catalonia","Extremadura","Galicia","La Rioja","Madrid","Murcia","Navarre","Valencian Community"],
+  "China": ["Anhui","Beijing","Chongqing","Fujian","Gansu","Guangdong","Guangxi","Guizhou","Hainan","Hebei","Heilongjiang","Henan","Hubei","Hunan","Inner Mongolia","Jiangsu","Jiangxi","Jilin","Liaoning","Ningxia","Qinghai","Shaanxi","Shandong","Shanghai","Shanxi","Sichuan","Tianjin","Tibet","Xinjiang","Yunnan","Zhejiang"],
+  "Nigeria": ["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT Abuja","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"],
+  "South Africa": ["Eastern Cape","Free State","Gauteng","KwaZulu-Natal","Limpopo","Mpumalanga","North West","Northern Cape","Western Cape"],
+  "Argentina": ["Buenos Aires","Catamarca","Chaco","Chubut","Córdoba","Corrientes","Entre Ríos","Formosa","Jujuy","La Pampa","La Rioja","Mendoza","Misiones","Neuquén","Río Negro","Salta","San Juan","San Luis","Santa Cruz","Santa Fe","Santiago del Estero","Tierra del Fuego","Tucumán"],
+  "Indonesia": ["Aceh","Bali","Banten","Bengkulu","Central Java","Central Kalimantan","Central Sulawesi","East Java","East Kalimantan","East Nusa Tenggara","Gorontalo","Jakarta","Jambi","Lampung","Maluku","North Kalimantan","North Maluku","North Sulawesi","North Sumatra","Papua","Riau","South Kalimantan","South Sulawesi","South Sumatra","Southeast Sulawesi","West Java","West Kalimantan","West Nusa Tenggara","West Papua","West Sulawesi","West Sumatra","Yogyakarta"],
+  "Philippines": ["Abra","Agusan del Norte","Agusan del Sur","Aklan","Albay","Antique","Apayao","Aurora","Bataan","Batanes","Batangas","Benguet","Bohol","Bukidnon","Bulacan","Cagayan","Camarines Norte","Camarines Sur","Camiguin","Capiz","Catanduanes","Cavite","Cebu","Davao de Oro","Davao del Norte","Davao del Sur","Davao Occidental","Davao Oriental","Dinagat Islands","Eastern Samar","Guimaras","Ifugao","Ilocos Norte","Ilocos Sur","Iloilo","Isabela","Kalinga","La Union","Laguna","Lanao del Norte","Lanao del Sur","Leyte","Maguindanao del Norte","Maguindanao del Sur","Marinduque","Masbate","Metro Manila","Misamis Occidental","Misamis Oriental","Mountain Province","Negros Occidental","Negros Oriental","Northern Samar","Nueva Ecija","Nueva Vizcaya","Occidental Mindoro","Oriental Mindoro","Palawan","Pampanga","Pangasinan","Quezon","Quirino","Rizal","Romblon","Samar","Sarangani","Siquijor","Sorsogon","South Cotabato","Southern Leyte","Sultan Kudarat","Sulu","Surigao del Norte","Surigao del Sur","Tarlac","Tawi-Tawi","Zambales","Zamboanga del Norte","Zamboanga del Sur","Zamboanga Sibugay"],
+  "Pakistan": ["Balochistan","Islamabad","Khyber Pakhtunkhwa","Punjab","Sindh","Azad Kashmir","Gilgit-Baltistan"],
+  "Russia": ["Moscow","Saint Petersburg","Krasnodar Krai","Sverdlovsk Oblast","Rostov Oblast","Tatarstan","Bashkortostan","Chelyabinsk Oblast","Samara Oblast","Nizhny Novgorod Oblast","Novosibirsk Oblast"],
+  "Turkey": ["Adana","Ankara","Antalya","Bursa","Diyarbakır","Gaziantep","Istanbul","Izmir","Kayseri","Konya","Mersin","Samsun","Trabzon"],
+  "Egypt": ["Alexandria","Aswan","Asyut","Cairo","Dakahlia","Faiyum","Gharbia","Giza","Ismailia","Kafr el-Sheikh","Luxor","Matrouh","Minya","Port Said","Qalyubia","Red Sea","Sharqia","Sohag","South Sinai","Suez"],
+  "Kenya": ["Baringo","Bomet","Bungoma","Busia","Elgeyo-Marakwet","Embu","Garissa","Homa Bay","Isiolo","Kajiado","Kakamega","Kericho","Kiambu","Kilifi","Kirinyaga","Kisii","Kisumu","Kitui","Kwale","Laikipia","Lamu","Machakos","Makueni","Mandera","Marsabit","Meru","Migori","Mombasa","Murang'a","Nairobi","Nakuru","Nandi","Narok","Nyamira","Nyandarua","Nyeri","Samburu","Siaya","Taita-Taveta","Tana River","Tharaka-Nithi","Trans-Nzoia","Turkana","Uasin Gishu","Vihiga","Wajir","West Pokot"],
+  "Colombia": ["Amazonas","Antioquia","Arauca","Atlántico","Bogotá","Bolívar","Boyacá","Caldas","Caquetá","Casanare","Cauca","Cesar","Chocó","Córdoba","Cundinamarca","Guainía","Guaviare","Huila","La Guajira","Magdalena","Meta","Nariño","Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés","Santander","Sucre","Tolima","Valle del Cauca","Vaupés","Vichada"],
+  "Thailand": ["Bangkok","Chiang Mai","Chiang Rai","Chonburi","Khon Kaen","Nakhon Ratchasima","Nonthaburi","Pathum Thani","Phuket","Samut Prakan","Songkhla","Surat Thani","Udon Thani"],
+  "Poland": ["Greater Poland","Kuyavian-Pomeranian","Lesser Poland","Łódź","Lower Silesian","Lublin","Lubusz","Masovian","Opole","Podkarpackie","Podlaskie","Pomeranian","Silesian","Świętokrzyskie","Warmian-Masurian","West Pomeranian"],
+  "Ukraine": ["Cherkasy","Chernihiv","Chernivtsi","Dnipropetrovsk","Donetsk","Ivano-Frankivsk","Kharkiv","Kherson","Khmelnytskyi","Kyiv","Kirovohrad","Luhansk","Lviv","Mykolaiv","Odesa","Poltava","Rivne","Sumy","Ternopil","Vinnytsia","Volyn","Zakarpattia","Zaporizhzhia","Zhytomyr"],
+  "Iran": ["Alborz","Ardabil","Bushehr","Chaharmahal and Bakhtiari","East Azerbaijan","Esfahan","Fars","Gilan","Golestan","Hamadan","Hormozgan","Ilam","Kerman","Kermanshah","Khorasan Razavi","Khuzestan","Kohgiluyeh and Boyer-Ahmad","Kurdistan","Lorestan","Markazi","Mazandaran","North Khorasan","Qazvin","Qom","Semnan","Sistan and Baluchestan","South Khorasan","Tehran","West Azerbaijan","Yazd","Zanjan"],
+  "Iraq": ["Al Anbar","Babil","Baghdad","Basra","Dhi Qar","Diyala","Duhok","Erbil","Karbala","Kirkuk","Maysan","Muthanna","Najaf","Nineveh","Qadisiyyah","Saladin","Sulaymaniyah","Wasit"],
+  "Saudi Arabia": ["Asir","Bahah","Eastern Province","Ha'il","Jazan","Jawf","Madinah","Makkah","Najran","Northern Borders","Qassim","Riyadh","Tabuk"],
+  "Ethiopia": ["Addis Ababa","Afar","Amhara","Benishangul-Gumuz","Dire Dawa","Gambela","Harari","Oromia","Sidama","Somali","South West Ethiopia","Southern Nations","Tigray"],
+  "Bangladesh": ["Barishal","Chattogram","Dhaka","Khulna","Mymensingh","Rajshahi","Rangpur","Sylhet"],
+  "Vietnam": ["An Giang","Ba Ria-Vung Tau","Bac Giang","Bac Kan","Bac Lieu","Bac Ninh","Ben Tre","Binh Dinh","Binh Duong","Binh Phuoc","Binh Thuan","Ca Mau","Can Tho","Cao Bang","Da Nang","Dak Lak","Dak Nong","Dien Bien","Dong Nai","Dong Thap","Gia Lai","Ha Giang","Ha Nam","Ha Noi","Ha Tinh","Hai Duong","Hai Phong","Hau Giang","Ho Chi Minh City","Hoa Binh","Hung Yen","Khanh Hoa","Kien Giang","Kon Tum","Lai Chau","Lam Dong","Lang Son","Lao Cai","Long An","Nam Dinh","Nghe An","Ninh Binh","Ninh Thuan","Phu Tho","Phu Yen","Quang Binh","Quang Nam","Quang Ngai","Quang Ninh","Quang Tri","Soc Trang","Son La","Tay Ninh","Thai Binh","Thai Nguyen","Thanh Hoa","Thua Thien-Hue","Tien Giang","Tra Vinh","Tuyen Quang","Vinh Long","Vinh Phuc","Yen Bai"],
+  "Malaysia": ["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"],
+  "Ghana": ["Ahafo","Ashanti","Bono","Bono East","Central","Eastern","Greater Accra","North East","Northern","Oti","Savannah","Upper East","Upper West","Volta","Western","Western North"],
+  "Nepal": ["Bagmati","Gandaki","Karnali","Koshi","Lumbini","Madhesh","Sudurpashchim"],
+  "Sri Lanka": ["Central","Eastern","North Central","North Western","Northern","Sabaragamuwa","Southern","Uva","Western"],
+  "Sweden": ["Blekinge","Dalarna","Gävleborg","Gotland","Halland","Jämtland","Jönköping","Kalmar","Kronoberg","Norrbotten","Örebro","Östergötland","Skåne","Södermanland","Stockholm","Uppsala","Värmland","Västerbotten","Västernorrland","Västmanland","Västra Götaland"],
+  "Norway": ["Agder","Innlandet","Møre og Romsdal","Nordland","Oslo","Rogaland","Troms og Finnmark","Trøndelag","Vestfold og Telemark","Vestland","Viken"],
+  "Denmark": ["Capital Region","Central Denmark","North Denmark","Region Zealand","Southern Denmark"],
+  "Finland": ["Åland","Central Finland","Central Ostrobothnia","Kainuu","Kanta-Häme","Kymenlaakso","Lapland","North Karelia","North Ostrobothnia","North Savo","Ostrobothnia","Päijät-Häme","Pirkanmaa","Satakunta","South Karelia","South Ostrobothnia","South Savo","Southwest Finland","Uusimaa"],
+  "Switzerland": ["Aargau","Appenzell Ausserrhoden","Appenzell Innerrhoden","Basel-Landschaft","Basel-Stadt","Bern","Fribourg","Geneva","Glarus","Graubünden","Jura","Lucerne","Neuchâtel","Nidwalden","Obwalden","Schaffhausen","Schwyz","Solothurn","St. Gallen","Thurgau","Ticino","Uri","Valais","Vaud","Zug","Zurich"],
+  "Austria": ["Burgenland","Carinthia","Lower Austria","Salzburg","Styria","Tyrol","Upper Austria","Vienna","Vorarlberg"],
+  "Belgium": ["Brussels-Capital","Flanders","Wallonia"],
+  "Netherlands": ["Drenthe","Flevoland","Friesland","Gelderland","Groningen","Limburg","North Brabant","North Holland","Overijssel","South Holland","Utrecht","Zeeland"],
+  "Ireland": ["Carlow","Cavan","Clare","Cork","Donegal","Dublin","Galway","Kerry","Kildare","Kilkenny","Laois","Leitrim","Limerick","Longford","Louth","Mayo","Meath","Monaghan","Offaly","Roscommon","Sligo","Tipperary","Waterford","Westmeath","Wexford","Wicklow"],
+  "Portugal": ["Aveiro","Beja","Braga","Bragança","Castelo Branco","Coimbra","Évora","Faro","Guarda","Leiria","Lisbon","Portalegre","Porto","Santarém","Setúbal","Viana do Castelo","Vila Real","Viseu","Azores","Madeira"],
+  "Greece": ["Attica","Central Greece","Central Macedonia","Crete","Eastern Macedonia and Thrace","Epirus","Ionian Islands","North Aegean","Peloponnese","South Aegean","Thessaly","Western Greece","Western Macedonia"],
+  "Czech Republic": ["Central Bohemian","Hradec Králové","Karlovy Vary","Liberec","Moravian-Silesian","Olomouc","Pardubice","Plzeň","Prague","South Bohemian","South Moravian","Ústí nad Labem","Vysočina","Zlín"],
+  "Romania": ["Alba","Arad","Argeș","Bacău","Bihor","Bistrița-Năsăud","Botoșani","Brăila","Brașov","Bucharest","Buzău","Călărași","Caraș-Severin","Cluj","Constanța","Covasna","Dâmbovița","Dolj","Galați","Giurgiu","Gorj","Harghita","Hunedoara","Ialomița","Iași","Ilfov","Maramureș","Mehedinți","Mureș","Neamț","Olt","Prahova","Sălaj","Satu Mare","Sibiu","Suceava","Teleorman","Timiș","Tulcea","Vaslui","Vâlcea","Vrancea"],
+  "Hungary": ["Bács-Kiskun","Baranya","Békés","Borsod-Abaúj-Zemplén","Budapest","Csongrád-Csanád","Fejér","Győr-Moson-Sopron","Hajdú-Bihar","Heves","Jász-Nagykun-Szolnok","Komárom-Esztergom","Nógrád","Pest","Somogy","Szabolcs-Szatmár-Bereg","Tolna","Vas","Veszprém","Zala"],
+  "New Zealand": ["Auckland","Bay of Plenty","Canterbury","Gisborne","Hawke's Bay","Manawatū-Whanganui","Marlborough","Nelson","Northland","Otago","Southland","Taranaki","Tasman","Waikato","Wellington","West Coast"],
+  "Israel": ["Central","Haifa","Jerusalem","Northern","Southern","Tel Aviv"],
+  "Chile": ["Antofagasta","Araucanía","Arica y Parinacota","Atacama","Aysén","Biobío","Coquimbo","Los Lagos","Los Ríos","Magallanes","Maule","Ñuble","O'Higgins","Santiago Metropolitan","Tarapacá","Valparaíso"],
+  "Peru": ["Amazonas","Áncash","Apurímac","Arequipa","Ayacucho","Cajamarca","Callao","Cusco","Huancavelica","Huánuco","Ica","Junín","La Libertad","Lambayeque","Lima","Loreto","Madre de Dios","Moquegua","Pasco","Piura","Puno","San Martín","Tacna","Tumbes","Ucayali"],
 };
 const PARTIES_BY_COUNTRY = {
   "United States": ["Democratic Party","Republican Party","Libertarian Party","Green Party","Constitution Party","Forward Party","Working Families Party","No Labels","Reform Party","Independent"],
   "Canada": ["Liberal Party","Conservative Party","New Democratic Party (NDP)","Bloc Québécois","Green Party","People's Party","Canadian Future Party","Maverick Party","Christian Heritage Party","Independent"],
-  "England": ["Conservative Party","Labour Party","Liberal Democrats","Reform UK","Green Party","Social Democratic Party","Workers Party of Britain","Heritage Party","English Democrats","Independent"],
+  "United Kingdom": ["Conservative Party","Labour Party","Liberal Democrats","Reform UK","Green Party","Scottish National Party","Plaid Cymru","Social Democratic Party","Workers Party of Britain","Independent"],
+  "Australia": ["Australian Labor Party","Liberal Party","National Party","Greens","One Nation","United Australia Party","Centre Alliance","Katter's Australian Party","Independent"],
+  "Germany": ["CDU/CSU","SPD","Alliance 90/The Greens","FDP","AfD","The Left","BSW","Independent"],
+  "France": ["Renaissance","National Rally","La France Insoumise","The Republicans","Europe Ecology – The Greens","Socialist Party","Reconquest","French Communist Party","Independent"],
+  "India": ["Bharatiya Janata Party (BJP)","Indian National Congress","Aam Aadmi Party","Communist Party of India (Marxist)","Bahujan Samaj Party","Samajwadi Party","Trinamool Congress","Dravida Munnetra Kazhagam","Independent"],
+  "Brazil": ["Workers' Party (PT)","Liberal Party (PL)","Brazilian Social Democracy Party (PSDB)","Progressives (PP)","Brazilian Democratic Movement (MDB)","Socialism and Liberty Party (PSOL)","Democrats (DEM)","Podemos","Independent"],
+  "Mexico": ["Morena","National Action Party (PAN)","Institutional Revolutionary Party (PRI)","Citizens' Movement (MC)","Labor Party (PT)","Green Party (PVEM)","Independent"],
+  "Japan": ["Liberal Democratic Party","Constitutional Democratic Party","Komeito","Japan Innovation Party","Japanese Communist Party","Democratic Party for the People","Reiwa Shinsengumi","Social Democratic Party","Independent"],
+  "South Korea": ["People Power Party","Democratic Party of Korea","Rebuilding Korea Party","Reform Party","New Future Party","Independent"],
+  "Italy": ["Brothers of Italy","Democratic Party","Five Star Movement","Lega","Forza Italia","Italia Viva","Green and Left Alliance","Independent"],
+  "Spain": ["Spanish Socialist Workers' Party (PSOE)","People's Party (PP)","Vox","Sumar","Podemos","Esquerra Republicana","Junts","Basque Nationalist Party","Independent"],
+  "Netherlands": ["VVD","PVV","NSC","GroenLinks-PvdA","D66","BBB","CDA","SP","ChristenUnie","Party for the Animals","Independent"],
+  "Sweden": ["Social Democrats","Moderate Party","Sweden Democrats","Centre Party","Left Party","Christian Democrats","Liberals","Green Party","Independent"],
+  "Norway": ["Labour Party","Conservative Party","Centre Party","Progress Party","Socialist Left Party","Red Party","Liberal Party","Christian Democratic Party","Green Party","Independent"],
+  "Denmark": ["Social Democrats","Venstre","Moderates","Liberal Alliance","Conservative People's Party","Socialist People's Party","Denmark Democrats","Red-Green Alliance","Radikale Venstre","Independent"],
+  "Finland": ["Social Democratic Party","National Coalition Party","Finns Party","Centre Party","Green League","Left Alliance","Swedish People's Party","Christian Democrats","Independent"],
+  "Switzerland": ["Swiss People's Party (SVP)","Social Democratic Party (SP)","FDP.The Liberals","The Centre","Green Party","Green Liberal Party","Independent"],
+  "Austria": ["Austrian People's Party (ÖVP)","Social Democratic Party (SPÖ)","Freedom Party (FPÖ)","The Greens","NEOS","Independent"],
+  "Belgium": ["N-VA","Vlaams Belang","Open Vld","CD&V","Vooruit","PS","MR","Ecolo","Groen","PTB-PVDA","Les Engagés","DéFI","Independent"],
+  "Ireland": ["Fine Gael","Fianna Fáil","Sinn Féin","Green Party","Labour Party","Social Democrats","People Before Profit","Aontú","Independent"],
+  "Poland": ["Civic Platform (PO)","Law and Justice (PiS)","Third Way (Poland 2050/PSL)","New Left","Confederation","Independent"],
+  "Czech Republic": ["ANO","SPOLU (ODS/TOP 09/KDU-ČSL)","Pirates and Mayors","SPD","Communist Party","Independent"],
+  "Romania": ["Social Democratic Party (PSD)","National Liberal Party (PNL)","Alliance for the Union of Romanians (AUR)","Save Romania Union (USR)","UDMR","Independent"],
+  "Hungary": ["Fidesz","Democratic Coalition","United for Hungary","Our Homeland Movement","Momentum","Independent"],
+  "Greece": ["New Democracy","SYRIZA","PASOK","Communist Party of Greece (KKE)","Greek Solution","MeRA25","Independent"],
+  "Portugal": ["Social Democratic Party (PSD)","Socialist Party (PS)","Chega","Liberal Initiative","Left Bloc","Portuguese Communist Party","Livre","Independent"],
+  "Turkey": ["Justice and Development Party (AKP)","Republican People's Party (CHP)","Peoples' Democratic Party (HDP)","Nationalist Movement Party (MHP)","İYİ Party","Independent"],
+  "Israel": ["Likud","Yesh Atid","National Unity","Shas","United Torah Judaism","Israel Beiteinu","Labor Party","Meretz","Ra'am","Hadash-Ta'al","Religious Zionism","Independent"],
+  "South Africa": ["African National Congress (ANC)","Democratic Alliance (DA)","Economic Freedom Fighters (EFF)","Inkatha Freedom Party (IFP)","ActionSA","Independent"],
+  "Nigeria": ["All Progressives Congress (APC)","Peoples Democratic Party (PDP)","Labour Party","New Nigeria Peoples Party (NNPP)","Independent"],
+  "Kenya": ["Kenya Kwanza","Azimio la Umoja","Orange Democratic Movement","United Democratic Alliance","Wiper Democratic Movement","Independent"],
+  "Egypt": ["Nation's Future Party","Republican People's Party","New Wafd Party","Free Egyptians Party","Egyptian Social Democratic Party","Independent"],
+  "Ghana": ["New Patriotic Party (NPP)","National Democratic Congress (NDC)","Convention People's Party","Independent"],
+  "Colombia": ["Historic Pact","Liberal Party","Conservative Party","Centro Democrático","Green Alliance","Radical Change","Independent"],
+  "Argentina": ["La Libertad Avanza","Juntos por el Cambio","Unión por la Patria","Peronism","Radical Civic Union","Independent"],
+  "Chile": ["Republican Party","Chile Vamos","Broad Front","Communist Party of Chile","Christian Democratic Party","Independent"],
+  "Peru": ["Fuerza Popular","Free Peru","Alliance for Progress","Popular Action","Podemos Peru","Independent"],
+  "Philippines": ["PDP-Laban","Lakas-CMD","Nacionalista Party","Liberal Party","Aksyon Demokratiko","Makabayan Coalition","Independent"],
+  "Indonesia": ["PDI-P","Golkar","Gerindra","NasDem","PKB","Democratic Party","PKS","PAN","Independent"],
+  "Pakistan": ["Pakistan Tehreek-e-Insaf (PTI)","Pakistan Muslim League-N (PML-N)","Pakistan Peoples Party (PPP)","Muttahida Qaumi Movement (MQM)","Jamiat Ulema-e-Islam (JUI-F)","Independent"],
+  "Bangladesh": ["Bangladesh Awami League","Bangladesh Nationalist Party (BNP)","Jatiya Party","Jamaat-e-Islami","Independent"],
+  "Thailand": ["Pheu Thai Party","Move Forward Party","Bhumjaithai Party","Palang Pracharath Party","United Thai Nation","Democrat Party","Independent"],
+  "Vietnam": ["Communist Party of Vietnam"],
+  "Malaysia": ["Pakatan Harapan","Perikatan Nasional","Barisan Nasional","Gabungan Parti Sarawak","Independent"],
+  "China": ["Communist Party of China"],
+  "Russia": ["United Russia","Communist Party","Liberal Democratic Party","A Just Russia","New People","Independent"],
+  "Ukraine": ["Servant of the People","European Solidarity","Batkivshchyna","Opposition Platform","Holos","Independent"],
+  "Iran": ["Principalist Coalition","Reformist Front","Independent"],
+  "Iraq": ["State of Law Coalition","Kurdistan Democratic Party","Patriotic Union of Kurdistan","Sadrist Movement","Taqadum","Independent"],
+  "Saudi Arabia": [],
+  "Ethiopia": ["Prosperity Party","Tigray People's Liberation Front","National Movement of Amhara","Oromo Liberation Front","Independent"],
+  "Sri Lanka": ["Sri Lanka Podujana Peramuna","Samagi Jana Balawegaya","National People's Power","Tamil National Alliance","Independent"],
+  "Nepal": ["Nepali Congress","CPN (UML)","CPN (Maoist Centre)","Rastriya Swatantra Party","Rastriya Prajatantra Party","Independent"],
+  "New Zealand": ["Labour Party","National Party","ACT New Zealand","Green Party of Aotearoa","Te Pāti Māori","New Zealand First","Independent"],
+  "Singapore": ["People's Action Party","Workers' Party","Progress Singapore Party","Independent"],
+  "Cuba": ["Communist Party of Cuba"],
+  "North Korea": ["Workers' Party of Korea"],
+  "Myanmar": ["National League for Democracy","Union Solidarity and Development Party","Shan Nationalities League for Democracy","Independent"],
 };
 
 // ── Scoring Weights (★ = community-votable in future elections) ──
@@ -1440,6 +1748,7 @@ function DiscoveryFeed({ onLogin, onRegister }) {
                 <StatusPill status={sub.status} />
               </div>
               <SubHeadline sub={sub} size={12} />
+              <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all", display: "block", marginTop: 3 }}>{sub.url}</a>
               <button className="ta-link-btn" style={{ fontSize: 12, marginTop: 4 }} onClick={onLogin}>Sign in to review →</button>
             </div>
           </div>
@@ -1600,11 +1909,12 @@ function RegisterScreen({ onRegister }) {
         <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.gender ? "#1B2A4A" : "#5A5650" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am a Digital Intelligence</option></select></div>
         {!form.isDI && <div className="ta-field"><label>Age</label><input value={form.age} onChange={e => s("age", e.target.value)} placeholder="e.g. 34" /></div>}
       </div>
+      <div style={{ fontSize: 11, color: "#5A5650", lineHeight: 1.6, marginBottom: 14, padding: "8px 12px", background: "#F0EDE6", borderRadius: 2 }}>The Trust Assembly asks demographic questions to identify politically salient populations, not to engage in any particular cultural debate. We follow a descriptivist approach when adding values and are driven only by the question of whether large identifiable populations with shared values exist.</div>
 
       {!form.isDI && <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div className="ta-field"><label>Country *</label><select value={form.country} onChange={e => { s("country", e.target.value); s("region", ""); s("politicalAffiliation", ""); }} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.country ? "#1B2A4A" : "#5A5650" }}><option value="">Select country</option>{COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
-        {form.country && STATES_BY_COUNTRY[form.country] && <div className="ta-field"><label>{form.country === "Canada" ? "Province / Territory" : form.country === "England" ? "Region" : "State"}</label><select value={form.region} onChange={e => s("region", e.target.value)} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.region ? "#1B2A4A" : "#5A5650" }}><option value="">Select</option>{STATES_BY_COUNTRY[form.country].map(r => <option key={r} value={r}>{r}</option>)}</select></div>}
+        {form.country && STATES_BY_COUNTRY[form.country] && <div className="ta-field"><label>{form.country === "Canada" ? "Province / Territory" : form.country === "United Kingdom" ? "Nation" : form.country === "United States" ? "State" : "Region"}</label><select value={form.region} onChange={e => s("region", e.target.value)} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.region ? "#1B2A4A" : "#5A5650" }}><option value="">Select</option>{STATES_BY_COUNTRY[form.country].map(r => <option key={r} value={r}>{r}</option>)}</select></div>}
       </div>
 
       {form.country && PARTIES_BY_COUNTRY[form.country] && <div style={{ padding: 12, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 14 }}>
@@ -1676,9 +1986,35 @@ function LoginScreen({ onLogin, onGoRegister }) {
   );
 }
 
+// --- Auto-save drafts to localStorage (debounced, invisible to user) ---
+const DRAFT_DEBOUNCE = 500;
+function useDraft(key, state, restoreFn) {
+  const timer = useRef(null);
+  const restored = useRef(false);
+  // Restore once on mount
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) { const parsed = JSON.parse(raw); restoreFn(parsed); }
+    } catch {}
+  }, []);
+  // Save on every state change (debounced)
+  const isFirst = useRef(true);
+  useEffect(() => {
+    if (isFirst.current) { isFirst.current = false; return; }
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
+    }, DRAFT_DEBOUNCE);
+    return () => clearTimeout(timer.current);
+  }, [state]);
+}
+function clearDraft(key) { try { localStorage.removeItem(key); } catch {} }
+
 function SubmitScreen({ user, onUpdate }) {
-  const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction" });
-  const [inlineMode, setInlineMode] = useState(false);
+  const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [inlineEdits, setInlineEdits] = useState([{ original: "", replacement: "", reasoning: "" }]);
   const [standingCorrection, setStandingCorrection] = useState({ assertion: "", evidence: "" });
   const [submitArg, setSubmitArg] = useState("");
@@ -1690,21 +2026,36 @@ function SubmitScreen({ user, onUpdate }) {
   const [evidenceUrls, setEvidenceUrls] = useState([{ url: "", explanation: "" }]);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [loading, setLoading] = useState(false);
   const [myOrgs, setMyOrgs] = useState([]);
+  const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+
+  // Auto-save draft
+  const draftState = useMemo(() => ({ form, inlineEdits, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds }), [form, inlineEdits, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds]);
+  useDraft("ta_draft_submit", draftState, (d) => {
+    if (d.form) setForm(f => ({ ...f, ...d.form }));
+    if (d.inlineEdits) setInlineEdits(d.inlineEdits);
+    if (d.standingCorrection) setStandingCorrection(d.standingCorrection);
+    if (d.submitArg !== undefined) setSubmitArg(d.submitArg);
+    if (d.submitBelief !== undefined) setSubmitBelief(d.submitBelief);
+    if (d.submitTranslation) setSubmitTranslation(d.submitTranslation);
+    if (d.linkedEntries) setLinkedEntries(d.linkedEntries);
+    if (d.evidenceUrls) setEvidenceUrls(d.evidenceUrls);
+    if (d.selectedOrgIds) setSelectedOrgIds(d.selectedOrgIds);
+  });
 
   useEffect(() => { (async () => {
     const allOrgs = (await sG(SK.ORGS)) || {};
     const ids = user.orgIds || (user.orgId ? [user.orgId] : []);
-    setMyOrgs(ids.map(id => allOrgs[id]).filter(Boolean));
+    const orgs = ids.map(id => allOrgs[id]).filter(Boolean);
+    setMyOrgs(orgs);
+    // Default to user's active org (only if no draft restored)
+    if (user.orgId && selectedOrgIds.length === 0) setSelectedOrgIds([user.orgId]);
   })(); }, [user.orgId, user.orgIds]);
 
-  const activeOrg = myOrgs.find(o => o.id === user.orgId);
+  const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || myOrgs.find(o => o.id === user.orgId);
 
-  const switchOrg = async (oid) => {
-    const users = (await sG(SK.USERS)) || {};
-    users[user.username] = { ...users[user.username], orgId: oid };
-    await sS(SK.USERS, users);
-    onUpdate({ ...user, orgId: oid });
-    setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); // clear on org switch
+  const toggleOrg = (oid) => {
+    setSelectedOrgIds(prev => prev.includes(oid) ? prev.filter(id => id !== oid) : [...prev, oid]);
+    setLinkedEntries([]); setVaultSearch(""); setVaultResults([]);
   };
 
   const searchVault = async (query) => {
@@ -1734,7 +2085,8 @@ function SubmitScreen({ user, onUpdate }) {
 
   const go = async () => {
     setError(""); setSuccess("");
-    if (!user.orgId) return setError("Join an Assembly first.");
+    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
+    if (targetOrgIds.length === 0) return setError("Select at least one Assembly.");
     if (!form.url.trim() || !form.originalHeadline.trim()) return setError("URL and original headline required.");
     if (form.submissionType === "correction" && !form.replacement.trim()) return setError("Corrected headline required for corrections.");
     if (!form.reasoning.trim()) return setError("Reasoning is mandatory.");
@@ -1744,124 +2096,153 @@ function SubmitScreen({ user, onUpdate }) {
     if (form.reasoning.trim().length > 2000) return setError("Reasoning: 2000 character maximum.");
     if (!/^https?:\/\/.+\..+/.test(form.url.trim())) return setError("Article URL must start with http:// or https://");
     setLoading(true);
-    const orgs = (await sG(SK.ORGS)) || {}; const org = orgs[user.orgId];
-    if (!org) { setError("Assembly not found."); setLoading(false); return; }
-    const now = new Date().toISOString();
-    const allUsers = (await sG(SK.USERS)) || {};
-    const submitter = allUsers[user.username] || user;
-
-    // DI checks
-    const submitterIsDI = isDIUser(submitter);
-    if (submitterIsDI) {
-      const susp = isDISuspended(submitter, allUsers);
-      if (susp.suspended) { setError(`🤖 ${susp.reason}`); setLoading(false); return; }
-      // Daily limit: floor(members / 2), max 100
-      const limit = getDISubmissionLimit(org);
-      const todayCount = await getDIDailyCount(user.username, user.orgId);
-      if (todayCount >= limit) { setError(`🤖 Daily submission limit reached (${limit}/day in ${org.name}). Limit is half the Assembly membership, max 100.`); setLoading(false); return; }
-    }
-
-    const hasEnough = org.members.length >= 5;
-    // Check Trusted Contributor status — skip jury if earned (not available for DIs)
-    const trusted = !submitterIsDI && isTrustedContributor(submitter, user.orgId);
-    let jurors = [], jurySeed = 0, rulesApplied = [], status = submitterIsDI ? "di_pending" : "pending_jury";
-    let trustedSkip = false;
-    if (submitterIsDI) {
-      // DI submissions always go to partner pre-review first
-      status = "di_pending";
-    } else if (trusted) {
-      status = "approved"; trustedSkip = true;
-    } else if (hasEnough) {
-      const result = await selectJury(user.orgId, user.username);
-      if (!result.error) { jurors = result.jurors; jurySeed = result.seed; rulesApplied = result.rulesApplied; status = "pending_review"; }
-    }
-    // Filter non-empty inline edits
+    // Filter non-empty inline edits and evidence (shared across all assemblies)
     const validEdits = inlineEdits.filter(e => e.original.trim() && e.replacement.trim());
     const validEvidence = evidenceUrls.filter(e => e.url.trim());
-    // Validate evidence URLs
     for (const ev of validEvidence) {
       if (!/^https?:\/\/.+\..+/.test(ev.url.trim())) { setError("Evidence URLs must start with http:// or https://"); setLoading(false); return; }
     }
-    const jurySeats = getJurySize(org.members.length);
-    const sub = {
-      id: gid(), url: form.url.trim(), originalHeadline: form.originalHeadline.trim(),
-      replacement: form.replacement.trim(), reasoning: form.reasoning.trim(),
-      author: form.author.trim() || null, submissionType: form.submissionType,
-      evidence: validEvidence, inlineEdits: validEdits.length > 0 ? validEdits : [],
-      standingCorrection: standingCorrection.assertion.trim() ? standingCorrection : null,
-      argumentEntry: submitArg.trim() ? { content: submitArg.trim() } : null,
-      beliefEntry: submitBelief.trim() ? { content: submitBelief.trim() } : null,
-      translationEntry: submitTranslation.original.trim() && submitTranslation.translated.trim() ? submitTranslation : null,
-      linkedVaultEntries: linkedEntries.length > 0 ? linkedEntries.map(e => ({ id: e.id, type: e.type, label: e.label, detail: e.detail || null })) : [],
-      submittedBy: user.username, orgId: user.orgId, orgName: org.name,
-      status, jurors, jurySeed, jurySeats, acceptedJurors: [], acceptedAt: {}, votes: {}, trustedSkip,
-      isDI: submitterIsDI, diPartner: submitterIsDI ? submitter.diPartner : null,
-      crossGroupJurors: [], crossGroupVotes: {}, crossGroupSeed: 0,
-      crossGroupAcceptedJurors: [], crossGroupAcceptedAt: {},
-      createdAt: now, resolvedAt: trustedSkip ? now : null,
-      auditTrail: [{ time: now, action: submitterIsDI
-        ? `🤖 Submitted by @${user.username} (Digital Intelligence, partner: @${submitter.diPartner}) — awaiting partner pre-approval`
-        : trustedSkip
-        ? `🛡 Submitted by @${user.username} (Trusted Contributor — jury skipped, disputable)`
-        : `Submitted by @${user.username}. ${status === "pending_review" ? `Jury pool (${jurors.length}): ${jurors.map(j => "@" + j).join(", ")} — ${jurySeats} seats. (seed:${jurySeed}). Rules: ${rulesApplied.join(", ") || "none"}` : `Queued — ${org.members.length} members, 5 needed.`}` }],
-    };
-    const subs = (await sG(SK.SUBS)) || {}; subs[sub.id] = sub;
-    // Trusted skip: count as win, promote to cross-group
-    if (trustedSkip) {
-      const usrs = (await sG(SK.USERS)) || {};
-      const sm = usrs[user.username];
-      if (sm) {
-        sm.totalWins = (sm.totalWins || 0) + 1; sm.currentStreak = (sm.currentStreak || 0) + 1;
-        sm.assemblyStreaks = sm.assemblyStreaks || {};
-        sm.assemblyStreaks[user.orgId] = (sm.assemblyStreaks[user.orgId] || 0) + 1;
-        usrs[user.username] = sm; await sS(SK.USERS, usrs);
-      }
-      // Auto-promote to cross-group review
-      const crossResult = await selectCrossGroupJury(sub.orgId, sub.submittedBy);
-      if (!crossResult.error && crossResult.jurors.length >= 3) {
-        sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
-        sub.status = "cross_review"; sub.resolvedAt = null;
-        sub.auditTrail.push({ time: now, action: `Auto-promoted to cross-group review (Trusted Contributor). ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}. Jury: ${crossResult.jurors.map(j => "@" + j).join(", ")}` });
-      }
+
+    const allOrgs = (await sG(SK.ORGS)) || {};
+    const now = new Date().toISOString();
+    const allUsers = (await sG(SK.USERS)) || {};
+    const submitter = allUsers[user.username] || user;
+    const submitterIsDI = isDIUser(submitter);
+
+    if (submitterIsDI) {
+      const susp = isDISuspended(submitter, allUsers);
+      if (susp.suspended) { setError(`🤖 ${susp.reason}`); setLoading(false); return; }
     }
+
+    const subs = (await sG(SK.SUBS)) || {};
+    const audit = (await sG(SK.AUDIT)) || [];
+    const submittedNames = [];
+
+    for (const orgId of targetOrgIds) {
+      const org = allOrgs[orgId];
+      if (!org) continue;
+
+      // DI daily limit per assembly
+      if (submitterIsDI) {
+        const limit = getDISubmissionLimit(org);
+        const todayCount = await getDIDailyCount(user.username, orgId);
+        if (todayCount >= limit) continue;
+      }
+
+      const hasEnough = org.members.length >= 5;
+      const trusted = !submitterIsDI && isTrustedContributor(submitter, orgId);
+      let jurors = [], jurySeed = 0, rulesApplied = [], status = submitterIsDI ? "di_pending" : "pending_jury";
+      let trustedSkip = false;
+      if (submitterIsDI) {
+        status = "di_pending";
+      } else if (trusted) {
+        status = "approved"; trustedSkip = true;
+      } else if (hasEnough) {
+        const result = await selectJury(orgId, user.username);
+        if (!result.error) { jurors = result.jurors; jurySeed = result.seed; rulesApplied = result.rulesApplied; status = "pending_review"; }
+      }
+      const jurySeats = getJurySize(org.members.length);
+      const sub = {
+        id: gid(), url: form.url.trim(), originalHeadline: form.originalHeadline.trim(),
+        replacement: form.replacement.trim(), reasoning: form.reasoning.trim(),
+        author: form.author.trim() || null, submissionType: form.submissionType,
+        evidence: validEvidence, inlineEdits: validEdits.length > 0 ? validEdits : [],
+        standingCorrection: standingCorrection.assertion.trim() ? standingCorrection : null,
+        argumentEntry: submitArg.trim() ? { content: submitArg.trim() } : null,
+        beliefEntry: submitBelief.trim() ? { content: submitBelief.trim() } : null,
+        translationEntry: submitTranslation.original.trim() && submitTranslation.translated.trim() ? submitTranslation : null,
+        linkedVaultEntries: linkedEntries.length > 0 ? linkedEntries.map(e => ({ id: e.id, type: e.type, label: e.label, detail: e.detail || null })) : [],
+        submittedBy: user.username, orgId, orgName: org.name,
+        status, jurors, jurySeed, jurySeats, acceptedJurors: [], acceptedAt: {}, votes: {}, trustedSkip,
+        isDI: submitterIsDI, diPartner: submitterIsDI ? submitter.diPartner : null,
+        crossGroupJurors: [], crossGroupVotes: {}, crossGroupSeed: 0,
+        crossGroupAcceptedJurors: [], crossGroupAcceptedAt: {},
+        createdAt: now, resolvedAt: trustedSkip ? now : null,
+        auditTrail: [{ time: now, action: submitterIsDI
+          ? `🤖 Submitted by @${user.username} (Digital Intelligence, partner: @${submitter.diPartner}) — awaiting partner pre-approval`
+          : trustedSkip
+          ? `🛡 Submitted by @${user.username} (Trusted Contributor — jury skipped, disputable)`
+          : `Submitted by @${user.username}. ${status === "pending_review" ? `Jury pool (${jurors.length}): ${jurors.map(j => "@" + j).join(", ")} — ${jurySeats} seats. (seed:${jurySeed}). Rules: ${rulesApplied.join(", ") || "none"}` : `Queued — ${org.members.length} members, 5 needed.`}` }],
+      };
+      subs[sub.id] = sub;
+
+      if (trustedSkip) {
+        const usrs = (await sG(SK.USERS)) || {};
+        const sm = usrs[user.username];
+        if (sm) {
+          sm.totalWins = (sm.totalWins || 0) + 1; sm.currentStreak = (sm.currentStreak || 0) + 1;
+          sm.assemblyStreaks = sm.assemblyStreaks || {};
+          sm.assemblyStreaks[orgId] = (sm.assemblyStreaks[orgId] || 0) + 1;
+          usrs[user.username] = sm; await sS(SK.USERS, usrs);
+        }
+        const crossResult = await selectCrossGroupJury(sub.orgId, sub.submittedBy);
+        if (!crossResult.error && crossResult.jurors.length >= 3) {
+          sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
+          sub.status = "cross_review"; sub.resolvedAt = null;
+          sub.auditTrail.push({ time: now, action: `Auto-promoted to cross-group review (Trusted Contributor). ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}. Jury: ${crossResult.jurors.map(j => "@" + j).join(", ")}` });
+        }
+      }
+
+      // Save vault entries for first org only to avoid duplicates
+      if (submittedNames.length === 0) {
+        if (standingCorrection.assertion.trim()) {
+          const standing = (await sG(SK.VAULT)) || {};
+          const scId = gid();
+          standing[scId] = { id: scId, orgId, orgName: org.name, assertion: standingCorrection.assertion.trim(), evidence: standingCorrection.evidence.trim(), submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, votes: {} };
+          await sS(SK.VAULT, standing);
+        }
+        if (submitArg.trim()) {
+          const allArgs = (await sG(SK.ARGS)) || {};
+          const argId = gid();
+          allArgs[argId] = { id: argId, orgId, orgName: org.name, content: submitArg.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          await sS(SK.ARGS, allArgs);
+        }
+        if (submitBelief.trim()) {
+          const allBeliefs = (await sG(SK.BELIEFS)) || {};
+          const bId = gid();
+          allBeliefs[bId] = { id: bId, orgId, orgName: org.name, content: submitBelief.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          await sS(SK.BELIEFS, allBeliefs);
+        }
+        if (submitTranslation.original.trim() && submitTranslation.translated.trim()) {
+          const allTrans = (await sG(SK.TRANSLATIONS)) || {};
+          const tId = gid();
+          allTrans[tId] = { id: tId, orgId, orgName: org.name, original: submitTranslation.original.trim(), translated: submitTranslation.translated.trim(), type: submitTranslation.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
+          await sS(SK.TRANSLATIONS, allTrans);
+        }
+      }
+
+      const typeLabel = form.submissionType === "affirmation" ? "Affirmation" : "Correction";
+      audit.push({ time: now, action: `${typeLabel} by @${user.username}: "${form.submissionType === "affirmation" ? form.originalHeadline : form.replacement}" → ${org.name} [${status}]${trustedSkip ? " (Trusted)" : ""}` });
+      submittedNames.push(org.name);
+    }
+
     await sS(SK.SUBS, subs);
-    // Save standing correction to assembly vault
-    if (standingCorrection.assertion.trim()) {
-      const standing = (await sG(SK.VAULT)) || {};
-      const scId = gid();
-      standing[scId] = { id: scId, orgId: user.orgId, orgName: org.name, assertion: standingCorrection.assertion.trim(), evidence: standingCorrection.evidence.trim(), submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, votes: {} };
-      await sS(SK.VAULT, standing);
-    }
-    // Save argument to vault
-    if (submitArg.trim()) {
-      const allArgs = (await sG(SK.ARGS)) || {};
-      const argId = gid();
-      allArgs[argId] = { id: argId, orgId: user.orgId, orgName: org.name, content: submitArg.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
-      await sS(SK.ARGS, allArgs);
-    }
-    // Save foundational belief to vault
-    if (submitBelief.trim()) {
-      const allBeliefs = (await sG(SK.BELIEFS)) || {};
-      const bId = gid();
-      allBeliefs[bId] = { id: bId, orgId: user.orgId, orgName: org.name, content: submitBelief.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
-      await sS(SK.BELIEFS, allBeliefs);
-    }
-    // Save translation to vault
-    if (submitTranslation.original.trim() && submitTranslation.translated.trim()) {
-      const allTrans = (await sG(SK.TRANSLATIONS)) || {};
-      const tId = gid();
-      allTrans[tId] = { id: tId, orgId: user.orgId, orgName: org.name, original: submitTranslation.original.trim(), translated: submitTranslation.translated.trim(), type: submitTranslation.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
-      await sS(SK.TRANSLATIONS, allTrans);
-    }
-    const typeLabel = form.submissionType === "affirmation" ? "Affirmation" : "Correction";
-    const audit = (await sG(SK.AUDIT)) || []; audit.push({ time: now, action: `${typeLabel} by @${user.username}: "${form.submissionType === "affirmation" ? form.originalHeadline : form.replacement}" [${status}]${trustedSkip ? " (Trusted)" : ""}` }); await sS(SK.AUDIT, audit);
-    setLoading(false); setSuccess(submitterIsDI ? "🤖 Submitted. Awaiting partner pre-approval before jury review." : trustedSkip ? "🛡 Approved (Trusted Contributor). Promoted to cross-group review. Disputable by any member." : status === "pending_review" ? `Filed. Jury pool drawn — ${jurySeats} seats, first to accept are seated.` : "Queued. Jury assigned when assembly reaches 5 members.");
-    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction" }); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArg(""); setSubmitBelief(""); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
+    await sS(SK.AUDIT, audit);
+    setLoading(false);
+    if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
+    setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
+    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArg(""); setSubmitBelief(""); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
+    clearDraft("ta_draft_submit");
   };
 
   return (
     <div>
-      <div className="ta-section-rule" /><h2 className="ta-section-head">Submit Correction</h2>
+      <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
+
+      {/* What you're about to do */}
+      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #D4CFC4", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#1B2A4A", marginBottom: 4 }}>
+          {form.submissionType === "affirmation"
+            ? "You're affirming an accurate headline for the public record."
+            : "You're correcting a misleading headline and submitting it for jury review."}
+        </div>
+        <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
+          {form.submissionType === "affirmation"
+            ? "Identify an accurate headline, provide your evidence, and submit. Fellow citizens will verify your affirmation."
+            : "Identify the article, propose a truthful replacement, explain your reasoning, and submit. A jury of fellow citizens will review your correction."}
+        </div>
+      </div>
+
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #6B1520", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#6B1520", lineHeight: 1.6 }}>⚠ <strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
 
       {/* DI Status Banner */}
@@ -1879,7 +2260,7 @@ function SubmitScreen({ user, onUpdate }) {
         if (tp.current > 0) return <div style={{ padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>🎯 Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
         return null;
       })()}
-      <p style={{ color: "#5A5650", marginBottom: 10, lineHeight: 1.6, fontSize: 14 }}>{form.submissionType === "affirmation" ? "Identify an accurate headline. Affirm it with supporting evidence. Optionally add in-line evidence annotations and vault entries to strengthen the public record." : "Identify a misleading headline. Propose a truthful replacement. Optionally add in-line article edits and vault entries — Standing Corrections (facts), Arguments (reasoning), Foundational Beliefs (axioms), and Translations (plain-language replacements for propaganda or jargon) — to build your Assembly's shared knowledge."}</p>
+
       {/* Submission Type Toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 2, overflow: "hidden", border: "1.5px solid #D4CFC4" }}>
         {[["correction", "🔴 Correction", "This headline is misleading"], ["affirmation", "🟢 Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
@@ -1889,46 +2270,84 @@ function SubmitScreen({ user, onUpdate }) {
           </button>
         ))}
       </div>
-      <div style={{ padding: 12, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>
-        <strong style={{ color: "#1B5E3F" }}>Before you submit:</strong> Be factual. The system is designed to reward being straightforward, transparent, and honest. Stick to what you can prove — corrections backed by evidence and clear reasoning survive review. Editorial opinions, exaggerations, and anything you can't source will cost you. If you're not sure, that's okay — describe your uncertainty in the reasoning field. Jurors respect intellectual honesty more than false confidence.
-      </div>
-      {/* Org picker */}
+
+      {/* Org picker — multi-select */}
       {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submitting from:</div>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => <button key={o.id} onClick={() => switchOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${o.id === user.orgId ? "#1B5E3F" : "#D4CFC4"}`, background: o.id === user.orgId ? "#1B5E3F" : "#fff", color: o.id === user.orgId ? "#fff" : "#5A5650", borderRadius: 2, cursor: "pointer", fontWeight: o.id === user.orgId ? 700 : 400 }}>{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>)}
+          {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#1B5E3F" : "#D4CFC4"}`, background: sel ? "#1B5E3F" : "#fff", color: sel ? "#fff" : "#5A5650", borderRadius: 2, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
         </div>
       </div>}
       {error && <div className="ta-error">{error}</div>}
       {success && <div className="ta-success">{success}</div>}
-      <div className="ta-card">
-        <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
-          <div className="ta-field"><label>Author <span style={{ fontWeight: 400, color: "#7A7570" }}>(optional)</span></label><input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Who wrote the article" maxLength={200} /></div>
-        </div>
-        {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "#C4573F" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "#C4573F" }} placeholder="Your corrected headline" maxLength={500} /></div>}
-        {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#1B5E3F" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
-        <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
-        <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
 
-        {/* Inline edits toggle */}
-        <div style={{ borderTop: "1px solid #DCD8D0", paddingTop: 14, marginTop: 14 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
-            <input type="checkbox" checked={inlineMode} onChange={e => setInlineMode(e.target.checked)} style={{ accentColor: "#1B2A4A" }} />
-            <span>Submit In-Line Article Edits</span>
-          </label>
-          {inlineMode && (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Jurors vote on each edit independently — up to 20 per article.</p>
-              <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />
-            </div>
-          )}
-        </div>
+      {/* ── STEP 1: The Article ── */}
+      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: "2px 2px 0 0" }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 1 ? 0 : 1 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: form.url && form.originalHeadline ? "#1B5E3F" : "#1B2A4A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{form.url && form.originalHeadline ? "✓" : "1"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>The Article</div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>Paste the URL and headline you want to {form.submissionType === "affirmation" ? "affirm" : "correct"}</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {form._step === 1 && <div style={{ marginTop: 12 }}>
+          <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
+            <div className="ta-field"><label>Author <span style={{ fontWeight: 400, color: "#7A7570" }}>(optional)</span></label><input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Who wrote the article" maxLength={200} /></div>
+          </div>
+        </div>}
+      </div>
 
-        {/* Assembly Vault */}
-        <div style={{ borderTop: "1px solid #DCD8D0", paddingTop: 14, marginTop: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Optional: Assembly Vault Entries</div>
+      {/* ── STEP 2: Your Case ── */}
+      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 2 ? 0 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: (form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "#1B5E3F" : "#1B2A4A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "✓" : "2"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>Your Case</div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>{form.submissionType === "affirmation" ? "Explain why this headline is accurate" : "Propose the corrected headline and explain why"}</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {form._step === 2 && <div style={{ marginTop: 12 }}>
+          {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "#C4573F" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "#C4573F" }} placeholder="Your corrected headline" maxLength={500} /></div>}
+          {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#1B5E3F" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
+          <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
+          <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
+          <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>
+            <strong style={{ color: "#1B5E3F" }}>Tip:</strong> Stick to what you can prove. Corrections backed by evidence and clear reasoning survive review. Jurors respect intellectual honesty more than false confidence.
+          </div>
+        </div>}
+      </div>
+
+      {/* ── STEP 3: In-Line Edits (optional) ── */}
+      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 3 ? 0 : 3 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: inlineEdits.some(e => e.original && e.replacement) ? "#1B5E3F" : "#D4CFC4", color: inlineEdits.some(e => e.original && e.replacement) ? "#fff" : "#5A5650", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{inlineEdits.some(e => e.original && e.replacement) ? "✓" : "3"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>In-Line Article Edits <span style={{ fontWeight: 400, color: "#7A7570", fontSize: 11 }}>optional</span></div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>Propose specific text changes within the article body. Jurors vote on each edit independently.</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {form._step === 3 && <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.</p>
+          <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />
+        </div>}
+      </div>
+
+      {/* ── STEP 4: Assembly Vault (optional) ── */}
+      <div className="ta-card" style={{ borderRadius: "0 0 2px 2px" }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 4 ? 0 : 4 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#1B5E3F" : "#D4CFC4", color: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#fff" : "#5A5650", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "✓" : "4"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>Assembly Vault <span style={{ fontWeight: 400, color: "#7A7570", fontSize: 11 }}>optional</span></div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>Link reusable facts, arguments, beliefs, or translations to strengthen your submission.</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 4 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {form._step === 4 && <div style={{ marginTop: 12 }}>
           <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 12, lineHeight: 1.6 }}>Link existing vault entries to strengthen your correction, or propose new ones. Linked entries are voted on by jurors — each time one survives review, it gains reputation.</p>
 
           {/* Linked entries chips */}
@@ -2008,11 +2427,12 @@ function SubmitScreen({ user, onUpdate }) {
               </div>
             </div>
           </details>
-        </div>
+        </div>}
+      </div>
 
-        <div style={{ marginTop: 16 }}>
-          <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "Filing..." : "Submit for Review"}</button>
-        </div>
+      {/* ── Sticky Submit Button ── */}
+      <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #F0EDE6 8px)", paddingTop: 12, paddingBottom: 8, zIndex: 10 }}>
+        <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ width: "100%", padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
         <LegalDisclaimer short />
       </div>
     </div>
@@ -2039,6 +2459,40 @@ function ReviewScreen({ user }) {
     setJuryScore(js);
   }, [user.username]);
   useEffect(() => { load(); }, []);
+
+  // Auto-save vote draft per submission
+  const voteDraftKey = reviewingId ? `ta_draft_vote_${reviewingId}` : null;
+  const voteDraftTimer = useRef(null);
+  const voteState = useMemo(() => ({ voteNote, newsRating, funRating, lieChecked, editVotes, vaultVotes }), [voteNote, newsRating, funRating, lieChecked, editVotes, vaultVotes]);
+  // Restore draft when opening a review
+  const lastRestoredId = useRef(null);
+  useEffect(() => {
+    if (!reviewingId || lastRestoredId.current === reviewingId) return;
+    lastRestoredId.current = reviewingId;
+    try {
+      const raw = localStorage.getItem(`ta_draft_vote_${reviewingId}`);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.voteNote) setVoteNote(d.voteNote);
+        if (d.newsRating !== undefined) setNewsRating(d.newsRating);
+        if (d.funRating !== undefined) setFunRating(d.funRating);
+        if (d.lieChecked !== undefined) setLieChecked(d.lieChecked);
+        if (d.editVotes) setEditVotes(d.editVotes);
+        if (d.vaultVotes) setVaultVotes(d.vaultVotes);
+      }
+    } catch {}
+  }, [reviewingId]);
+  // Save draft on change (debounced)
+  const voteInitSkip = useRef(true);
+  useEffect(() => {
+    if (!voteDraftKey) return;
+    if (voteInitSkip.current) { voteInitSkip.current = false; return; }
+    clearTimeout(voteDraftTimer.current);
+    voteDraftTimer.current = setTimeout(() => {
+      try { localStorage.setItem(voteDraftKey, JSON.stringify(voteState)); } catch {}
+    }, DRAFT_DEBOUNCE);
+    return () => clearTimeout(voteDraftTimer.current);
+  }, [voteState, voteDraftKey]);
 
   // Accept jury seat — first-come-first-seated
   const acceptJurySeat = async (subId, isCross) => {
@@ -2210,6 +2664,7 @@ function ReviewScreen({ user }) {
       }
     }
     allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
+    clearDraft(`ta_draft_vote_${subId}`); voteInitSkip.current = true; lastRestoredId.current = null;
     setReviewingId(null); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false); setEditVotes({}); setVaultVotes({}); load();
   };
 
@@ -2229,6 +2684,7 @@ function ReviewScreen({ user }) {
     if (!vc3.allowed) return alert(vc3.reason);
     const result = await resolveDispute(disputeId, user.username, upheld, voteNote, lieChecked);
     if (result.error) return;
+    clearDraft(`ta_draft_vote_${disputeId}`); voteInitSkip.current = true; lastRestoredId.current = null;
     setReviewingId(null); setVoteNote(""); setLieChecked(false); load();
   };
 
@@ -2240,7 +2696,7 @@ function ReviewScreen({ user }) {
     return (
     <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#2A6B6B" : "#C4900A"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+        <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", background: "#F0EDE6", padding: "1px 5px", borderRadius: 2 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />
@@ -2343,35 +2799,41 @@ function ReviewScreen({ user }) {
 
       {reviewingId === sub.id ? (
         <div style={{ marginTop: 12, padding: 14, background: "#FDFBF5", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 4 }}>Headline Correction Verdict</div>
-          <div style={{ fontSize: 10, color: "#5A5650", marginBottom: 10, fontStyle: "italic" }}>You have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10 }}>Headline Correction Verdict</div>
           <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
           <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
           <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning..." /></div>
           <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="ta-btn-primary" style={{ background: "#1B5E3F" }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
-            <button className="ta-btn-primary" style={{ background: "#C4573F" }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject</button>
-            <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
-            <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse (Conflict of Interest)</button>
+          <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FDFBF5 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="ta-btn-primary" style={{ background: "#1B5E3F", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
+              <button className="ta-btn-primary" style={{ background: "#C4573F", flex: 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject</button>
+              <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
+              <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse</button>
+            </div>
+            <LegalDisclaimer short />
           </div>
-          <LegalDisclaimer short />
         </div>
       ) : (() => {
         const accepted = isCross ? (sub.crossGroupAcceptedJurors || []) : (sub.acceptedJurors || []);
         const seats = isCross ? (sub.crossGroupJurySize || sub.crossGroupJurors.length) : (sub.jurySeats || sub.jurors.length);
         const alreadyAccepted = accepted.includes(user.username);
-        return alreadyAccepted ? (
-          <button className="ta-btn-secondary" style={{ marginTop: 10 }} onClick={() => {
-            setReviewingId(sub.id); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false);
-            const ev = {}; if (sub.inlineEdits) sub.inlineEdits.forEach((_, i) => { ev[i] = true; }); setEditVotes(ev);
-            const vv = {}; if (sub.linkedVaultEntries) sub.linkedVaultEntries.forEach(e => { vv[e.id] = true; }); setVaultVotes(vv);
-          }}>Continue Review</button>
-        ) : (
+        const startReview = () => {
+          setReviewingId(sub.id); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false);
+          const ev = {}; if (sub.inlineEdits) sub.inlineEdits.forEach((_, i) => { ev[i] = true; }); setEditVotes(ev);
+          const vv = {}; if (sub.linkedVaultEntries) sub.linkedVaultEntries.forEach(e => { vv[e.id] = true; }); setVaultVotes(vv);
+        };
+        return (
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 4 }}>{accepted.length}/{seats} seats filled · {seats - accepted.length} remaining</div>
-            <button className="ta-btn-secondary" onClick={() => acceptJurySeat(sub.id, isCross)}>Accept Jury Seat</button>
-            <div style={{ fontSize: 10, color: "#7A7570", marginTop: 4 }}>You have 6 hours to complete your review once you accept. If you're unable to finish, your seat will be opened to another juror.</div>
+            {!alreadyAccepted
+              ? <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
+              : <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>Your 6-hour review window is still active. Pick up where you left off.</div>
+            }
+            <button className="ta-btn-secondary" onClick={async () => {
+              if (!alreadyAccepted) await acceptJurySeat(sub.id, isCross);
+              startReview();
+            }}>{alreadyAccepted ? "Continue Review" : "Accept Seat & Review"}</button>
           </div>
         );
       })()}
@@ -2382,6 +2844,17 @@ function ReviewScreen({ user }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Review Queue</h2>
+
+      {/* What you're about to do */}
+      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #D4CFC4", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#1B2A4A", marginBottom: 4 }}>
+          You're reviewing submissions from fellow citizens.
+        </div>
+        <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
+          Read the headline, the proposed correction, and the reasoning. Then vote to approve or reject. Your verdict is permanent and public — take your time, weigh the evidence.
+        </div>
+      </div>
+
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #6B1520", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#6B1520", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "#E6E8F0", border: "1.5px solid #4A5899", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#4A5899", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #DCD8D0" }}>
@@ -2631,7 +3104,7 @@ function VaultScreen({ user }) {
   );
 }
 
-function ConsensusScreen() {
+function ConsensusScreen({ onViewCitizen }) {
   const [subs, setSubs] = useState([]); const [loading, setLoading] = useState(true);
   useEffect(() => { (async () => { const s = (await sG(SK.SUBS)) || {}; setSubs(Object.values(s).filter(x => x.status === "consensus").sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false); })(); }, []);
   return (
@@ -2645,7 +3118,7 @@ function ConsensusScreen() {
       {loading ? <Loader /> : subs.length === 0 ? <Empty text="No consensus corrections yet. When a correction survives cross-group review, it appears here." /> :
         subs.map(sub => (
           <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {fDate(sub.resolvedAt)}</span><StatusPill status="consensus" /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> · {sub.orgName} · {fDate(sub.resolvedAt)}</span><StatusPill status="consensus" /></div>
             <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
             <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
               <SubHeadline sub={sub} />
@@ -2659,7 +3132,7 @@ function ConsensusScreen() {
   );
 }
 
-function FeedScreen({ user, onNavigate }) {
+function FeedScreen({ user, onNavigate, onViewCitizen }) {
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
   const [disputingId, setDisputingId] = useState(null);
@@ -2709,13 +3182,14 @@ function FeedScreen({ user, onNavigate }) {
       {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#5B2D8E" : sub.status === "approved" ? "#1B5E3F" : sub.status === "rejected" || sub.status === "disputed" ? "#C4573F" : "#C4900A"}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
+            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E6E8F0", color: "#4A5899", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
               <StatusPill status={sub.status} />
             </div>
           </div>
+          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
           <div style={{ margin: "6px 0", padding: 8, background: "#FAF8F2", borderRadius: 2 }}>
             <SubHeadline sub={sub} size={13} />
           </div>
@@ -2780,15 +3254,17 @@ function JuryScoreCard({ username }) {
   );
 }
 
-function ProfileScreen({ user }) {
+function ProfileScreen({ user, onViewCitizen }) {
   const [u, setU] = useState(user);
   const [orgs, setOrgs] = useState({});
   const [juryScore, setJuryScore] = useState(null);
+  const [diAgents, setDiAgents] = useState([]);
   useEffect(() => { (async () => {
     const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setU(all[user.username]);
     setOrgs((await sG(SK.ORGS)) || {});
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
+    setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
   })(); }, [user.username]);
   const p = computeProfile(u);
   const pi = PROFILES[p.profile];
@@ -2825,7 +3301,7 @@ function ProfileScreen({ user }) {
               @{u.displayName || u.username}
             </h3>
             <div style={{ color: "#5A5650", fontSize: 13, marginTop: 3 }}>@{u.username}</div>
-            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: @{u.diPartner} · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
+            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} style={{ fontSize: 12, color: "#4A5899" }} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
@@ -2882,6 +3358,13 @@ function ProfileScreen({ user }) {
       </div>
       {/* Jury Score */}
       <JuryScoreCard username={u.username} />
+      {/* Registered Digital Intelligences */}
+      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
+        </div>
+      </div>}
       <div className="ta-card">
         <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "3px 12px", fontSize: 13 }}>
           {[["Username", "@" + u.username], ["Signed Up", fDate(u.signupDate)], ["Account Age", daysSince(u.signupDate) + " days"]].map(([l, v], i) => (
@@ -2897,6 +3380,94 @@ function ProfileScreen({ user }) {
       </div>
     </div>
   );
+}
+
+function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
+  const [u, setU] = useState(null);
+  const [orgs, setOrgs] = useState({});
+  const [subs, setSubs] = useState({});
+  const [diAgents, setDiAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  useEffect(() => { (async () => {
+    const all = (await sG(SK.USERS)) || {};
+    const target = all[username];
+    if (!target) { setNotFound(true); setLoading(false); return; }
+    setU(target);
+    setOrgs((await sG(SK.ORGS)) || {});
+    setSubs((await sG(SK.SUBS)) || {});
+    // Find DI agents registered to this user
+    const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
+    setDiAgents(agents);
+    setLoading(false);
+  })(); }, [username]);
+  if (loading) return <Loader />;
+  if (notFound) return <div><div className="ta-section-rule" /><button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button><Empty text={`Citizen @${username} not found.`} /></div>;
+  const p = computeProfile(u);
+  const pi = PROFILES[p.profile];
+  const myOrgIds = u.orgIds || (u.orgId ? [u.orgId] : []);
+  const myOrgs = myOrgIds.map(id => orgs[id]).filter(Boolean);
+  const userSubs = Object.values(subs).filter(s => s.submittedBy === username).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return (
+    <div>
+      <div className="ta-section-rule" />
+      <button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button>
+      <h2 className="ta-section-head">Citizen Record</h2>
+      <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4A5899" : pi.color}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
+              {isDIUser(u) && <span style={{ marginRight: 6 }}>🤖</span>}
+              @{u.displayName || u.username}
+            </h3>
+            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
+          </div>
+          <Badge profile={p.profile} score={p.trustScore} />
+        </div>
+        {myOrgs.length > 0 && <div style={{ marginTop: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 2, background: o.isGeneralPublic ? "#E5EFED" : "#F0EDE6", color: o.isGeneralPublic ? "#2A6B6B" : "#5A5650" }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>)}
+        </div>}
+        <div style={{ marginTop: 14, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: pi.color, marginBottom: 4 }}>Profile: {p.profile}</div>
+          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{pi.desc}</div>
+        </div>
+        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          {[["#1B5E3F", p.wins, "Wins"], ["#C4573F", p.losses, "Losses"], ["#B8963E", p.disputeWins, "Disp. Wins"], ["#2A6B6B", p.streak, "Streak"]].map(([c, n, l], i) => (
+            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F0EDE6", borderRadius: 2 }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 700, color: c }}>{n}</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginTop: 3 }}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12, color: "#5A5650" }}>Signed up {fDate(u.signupDate)} · {daysSince(u.signupDate)} days</div>
+      </div>
+      <JuryScoreCard username={username} />
+      {/* Registered Digital Intelligences */}
+      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
+        </div>
+      </div>}
+      {/* Recent submissions */}
+      {userSubs.length > 0 && <div className="ta-card">
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Recent Submissions ({userSubs.length})</div>
+        {userSubs.slice(0, 10).map(sub => (
+          <div key={sub.id} style={{ padding: "8px 0", borderBottom: "1px solid #DCD8D0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+              <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}</span>
+              <StatusPill status={sub.status} />
+            </div>
+            <SubHeadline sub={sub} size={12} />
+          </div>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
+function UsernameLink({ username, onClick, style }) {
+  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#1B2A4A", fontFamily: "var(--mono)", fontSize: 10, textDecoration: "underline", textDecorationColor: "#D4CFC4", ...style }}>@{username}</button>;
 }
 
 function AuditScreen() {
@@ -3081,7 +3652,7 @@ function AssemblyGuide() {
   );
 }
 
-function OrgScreen({ user, onUpdate }) {
+function OrgScreen({ user, onUpdate, onViewCitizen }) {
   const [orgs, setOrgs] = useState(null); const [subs, setSubs] = useState(null); const [apps, setApps] = useState(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false); const [newOrg, setNewOrg] = useState({ name: "", description: "", charter: "" });
@@ -3214,6 +3785,17 @@ function OrgScreen({ user, onUpdate }) {
     setOrgs(up);
   };
 
+  const followedOrgIds = user.followedOrgIds || [];
+  const isFollowing = (oid) => followedOrgIds.includes(oid);
+  const followOrg = async (oid) => {
+    const newFollowed = [...followedOrgIds, oid];
+    await updateUser({ followedOrgIds: newFollowed });
+  };
+  const unfollowOrg = async (oid) => {
+    const newFollowed = followedOrgIds.filter(id => id !== oid);
+    await updateUser({ followedOrgIds: newFollowed });
+  };
+
   const switchActive = async (oid) => {
     if (!isMember(oid)) return;
     await updateUser({ orgId: oid });
@@ -3314,7 +3896,14 @@ function OrgScreen({ user, onUpdate }) {
       <div>
         <div className="ta-section-rule" />
         <button className="ta-btn-ghost" onClick={() => setViewingOrg(null)} style={{ marginBottom: 10 }}>← Back to Assemblies</button>
-        <h2 className="ta-section-head">{vo.name}</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <h2 className="ta-section-head" style={{ margin: 0 }}>{vo.name}</h2>
+          {!isMember(viewingOrg) && (
+            isFollowing(viewingOrg)
+              ? <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 12px" }} onClick={() => unfollowOrg(viewingOrg)}>Following ✓</button>
+              : <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 12px", borderColor: "#2A6B6B", color: "#2A6B6B" }} onClick={() => followOrg(viewingOrg)}>Follow</button>
+          )}
+        </div>
         {error && <div className="ta-error">{error}</div>}
         {success && <div className="ta-success">{success}</div>}
 
@@ -3430,7 +4019,7 @@ function OrgScreen({ user, onUpdate }) {
         <div className="ta-card">
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Members ({vo.members.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {vo.members.slice(0, 50).map(m => <span key={m} style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "2px 6px", background: "#F0EDE6", borderRadius: 2, color: "#2B2B2B" }}>@{m}</span>)}
+            {vo.members.slice(0, 50).map(m => <span key={m} style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "2px 6px", background: "#F0EDE6", borderRadius: 2, color: "#2B2B2B" }}><UsernameLink username={m} onClick={onViewCitizen} /></span>)}
             {vo.members.length > 50 && <span style={{ fontSize: 10, color: "#7A7570" }}>+{vo.members.length - 50} more</span>}
           </div>
         </div>
@@ -3490,6 +4079,29 @@ function OrgScreen({ user, onUpdate }) {
           </div>
         );
       })}
+
+      {/* Following */}
+      {(() => {
+        const followedOrgs = followedOrgIds.map(id => orgs[id]).filter(Boolean).filter(o => !isMember(o.id));
+        if (followedOrgs.length === 0) return null;
+        return <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 8 }}>Following ({followedOrgs.length})</div>
+          {followedOrgs.map(o => {
+            const st = orgStats[o.id] || {};
+            return (
+              <div key={o.id} className="ta-card" style={{ borderLeft: "4px solid #8E9AAB", opacity: 0.85 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#D4CFC4" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
+                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{o.members.length} members{st.total > 0 ? ` · ${st.total} subs` : ""}</div>
+                  </div>
+                  <button className="ta-btn-ghost" style={{ color: "#7A7570", fontSize: 10 }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>;
+      })()}
 
       {/* Pending apps I've submitted */}
       {myPendingApps.length > 0 && <div style={{ marginTop: 14 }}>
@@ -3603,12 +4215,15 @@ function OrgScreen({ user, onUpdate }) {
                     {(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? <span style={{ color: "#5B2D8E", fontWeight: 700 }}>Trust: {r.trustScore}%</span> : null; })()}
                   </div>
                 </div>
-                <div style={{ marginLeft: 12 }}>
+                <div style={{ marginLeft: 12, display: "flex", flexDirection: "column", gap: 4 }}>
                   {hasPending ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A" }}>Pending...</span>
                   : atLimit ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{MAX_ORGS}/{MAX_ORGS}</span>
                   : enr.mode === "open" ? <button className="ta-btn-secondary" onClick={() => joinOrg(o.id)}>Join</button>
                   : enr.mode === "tribal" ? <button className="ta-btn-secondary" style={{ borderColor: "#C2632A", color: "#C2632A" }} onClick={() => joinOrg(o.id)}>Apply</button>
                   : <button className="ta-btn-secondary" onClick={() => joinOrg(o.id)}>Apply</button>}
+                  {isFollowing(o.id)
+                    ? <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#7A7570" }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
+                    : <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#2A6B6B" }} onClick={() => followOrg(o.id)}>Follow</button>}
                 </div>
               </div>
             </div>
@@ -3722,6 +4337,18 @@ function VisionScreen() {
 function AboutScreen() {
   return (
     <div><div className="ta-section-rule" /><h2 className="ta-section-head">About</h2>
+      <div style={{ padding: "20px 24px", background: "#fff", border: "1px solid #DCD8D0", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 14 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B8963E", marginBottom: 10 }}>Mission Statement</div>
+        <p style={{ fontSize: 16, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, margin: 0 }}>The Trust Assembly is an experiment in self-government.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>It begins with a simple question: what happens when ordinary people are given a place to reason together in public, under fair rules, with truth as the aim rather than attention?</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different. A place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed. One that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem. A place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.</p>
+        <p style={{ fontSize: 15, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "12px 0 0" }}>We hope to build a lighthouse on a hill.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0", padding: "12px 16px", background: "#F0EDE6", borderRadius: 2 }}>To succeed in this institution, you must make sense to those who agree with you. And you must make sense to those who do not. Everything worth building in civilization rests on that foundation.</p>
+      </div>
       <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "#2B2B2B" }}>
         <p style={{ marginBottom: 14 }}>The Trust Assembly was created by a technologist and writer who grew tired of watching institutional trust decay while no one built anything to replace it.</p>
         <p style={{ marginBottom: 14 }}>The core insight: truth is the only thing that survives adversarial review. Structure conflict correctly — where winning requires being right — and selfishness serves honesty. This is mechanism design applied to editorial integrity.</p>
@@ -4690,12 +5317,36 @@ const NAV_MORE = [
 ];
 
 export default function TrustAssembly() {
-  const [user, setUser] = useState(null); const [screen, setScreen] = useState("login"); const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExtDetails, setShowExtDetails] = useState(false);
   const [showManifesto, setShowManifesto] = useState(false);
   const [showMoreNav, setShowMoreNav] = useState(false);
+  const [viewingCitizen, setViewingCitizen] = useState(null);
+
+  // Browser history integration for back-button support
+  const skipPush = useRef(false);
+  const setScreen = useCallback((s) => {
+    setScreenRaw(s);
+    if (!skipPush.current) {
+      window.history.pushState({ screen: s }, "", "");
+    }
+    skipPush.current = false;
+  }, []);
+
+  useEffect(() => {
+    const onPop = (e) => {
+      if (e.state && e.state.screen) {
+        skipPush.current = true;
+        setScreenRaw(e.state.screen);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    // Seed initial state
+    window.history.replaceState({ screen }, "", "");
+    return () => window.removeEventListener("popstate", onPop);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     (async () => {
@@ -4813,7 +5464,7 @@ export default function TrustAssembly() {
               {showManifesto && (
                 <div style={{ marginTop: 12 }}>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
-                    We believe the answer matters. Much of the modern internet has become a kind of continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different: a place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.
+                    We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different. A place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.
                   </p>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
                     This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.
@@ -4822,10 +5473,10 @@ export default function TrustAssembly() {
                     What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.
                   </p>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
-                    We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed: one that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.
+                    We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed. One that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.
                   </p>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
-                    Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem: a place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.
+                    Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem. A place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.
                   </p>
                   <p style={{ fontSize: 15, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "0 0 16px" }}>
                     We hope to build a lighthouse on a hill.
@@ -4872,19 +5523,23 @@ export default function TrustAssembly() {
           </div>
           <div className="ta-content">
             <CitizenCounter />
-            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} />}
-            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} />}
+            {viewingCitizen ? (
+              <CitizenLookupScreen username={viewingCitizen} onBack={() => setViewingCitizen(null)} onViewCitizen={setViewingCitizen} />
+            ) : <>
+            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={setViewingCitizen} />}
+            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={setViewingCitizen} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
-            {screen === "consensus" && <ConsensusScreen />}
-            {screen === "profile" && <ProfileScreen user={user} />}
+            {screen === "consensus" && <ConsensusScreen onViewCitizen={setViewingCitizen} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={setViewingCitizen} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
             {screen === "about" && <AboutScreen />}
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
+            </>}
           </div>
         </div>
       )}
