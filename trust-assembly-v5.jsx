@@ -5325,26 +5325,56 @@ export default function TrustAssembly() {
   const [showMoreNav, setShowMoreNav] = useState(false);
   const [viewingCitizen, setViewingCitizen] = useState(null);
 
-  // Browser history integration for back-button support
+  // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
   const setScreen = useCallback((s) => {
     setScreenRaw(s);
     if (!skipPush.current) {
-      window.history.pushState({ screen: s }, "", "");
+      window.history.pushState({ screen: s, citizen: null }, "", "#" + s);
     }
     skipPush.current = false;
   }, []);
 
+  // Wrap setViewingCitizen to also push history
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  const navigateToCitizen = useCallback((username) => {
+    if (!username) { window.history.back(); return; }
+    setViewingCitizen(username);
+    window.history.pushState({ screen: screenRef.current, citizen: username }, "", "#citizen/" + encodeURIComponent(username));
+  }, []);
+
   useEffect(() => {
     const onPop = (e) => {
-      if (e.state && e.state.screen) {
-        skipPush.current = true;
-        setScreenRaw(e.state.screen);
+      skipPush.current = true;
+      if (e.state) {
+        if (e.state.citizen) {
+          setViewingCitizen(e.state.citizen);
+        } else {
+          setViewingCitizen(null);
+          if (e.state.screen) setScreenRaw(e.state.screen);
+        }
+      } else {
+        // Handle initial/hashless state — parse from URL hash
+        setViewingCitizen(null);
+        const hash = window.location.hash.slice(1);
+        if (hash && !hash.startsWith("citizen/")) setScreenRaw(hash);
       }
+      skipPush.current = false;
     };
     window.addEventListener("popstate", onPop);
-    // Seed initial state
-    window.history.replaceState({ screen }, "", "");
+
+    // On mount: restore from hash if present (deep link / reload support)
+    const hash = window.location.hash.slice(1);
+    if (hash.startsWith("citizen/")) {
+      const username = decodeURIComponent(hash.slice(8));
+      setViewingCitizen(username);
+    } else if (hash && hash !== "login" && hash !== "register") {
+      setScreenRaw(hash);
+    }
+
+    // Seed initial history entry
+    window.history.replaceState({ screen, citizen: null }, "", window.location.hash || "#" + screen);
     return () => window.removeEventListener("popstate", onPop);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -5524,15 +5554,15 @@ export default function TrustAssembly() {
           <div className="ta-content">
             <CitizenCounter />
             {viewingCitizen ? (
-              <CitizenLookupScreen username={viewingCitizen} onBack={() => setViewingCitizen(null)} onViewCitizen={setViewingCitizen} />
+              <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={setViewingCitizen} />}
-            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={setViewingCitizen} />}
+            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={navigateToCitizen} />}
+            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
-            {screen === "consensus" && <ConsensusScreen onViewCitizen={setViewingCitizen} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={setViewingCitizen} />}
+            {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
