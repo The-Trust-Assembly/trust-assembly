@@ -1987,7 +1987,6 @@ function LoginScreen({ onLogin, onGoRegister }) {
 
 function SubmitScreen({ user, onUpdate }) {
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
-  const [inlineMode, setInlineMode] = useState(false);
   const [inlineEdits, setInlineEdits] = useState([{ original: "", replacement: "", reasoning: "" }]);
   const [standingCorrection, setStandingCorrection] = useState({ assertion: "", evidence: "" });
   const [submitArg, setSubmitArg] = useState("");
@@ -2249,7 +2248,7 @@ function SubmitScreen({ user, onUpdate }) {
           </div>
           <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
-        {(form._step === 1 || form._step === undefined || form._step === 0) && <div style={{ marginTop: 12, display: (form._step === 1 || form._step === undefined) ? "block" : "none" }}>
+        {form._step === 1 && <div style={{ marginTop: 12 }}>
           <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
@@ -2748,11 +2747,14 @@ function ReviewScreen({ user }) {
         return (
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 4 }}>{accepted.length}/{seats} seats filled · {seats - accepted.length} remaining</div>
-            {!alreadyAccepted && <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>}
+            {!alreadyAccepted
+              ? <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
+              : <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>Your 6-hour review window is still active. Pick up where you left off.</div>
+            }
             <button className="ta-btn-secondary" onClick={async () => {
               if (!alreadyAccepted) await acceptJurySeat(sub.id, isCross);
               startReview();
-            }}>Review This Submission</button>
+            }}>{alreadyAccepted ? "Continue Review" : "Accept Seat & Review"}</button>
           </div>
         );
       })()}
