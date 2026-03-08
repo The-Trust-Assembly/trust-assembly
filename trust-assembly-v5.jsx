@@ -1909,6 +1909,7 @@ function RegisterScreen({ onRegister }) {
         <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.gender ? "#1B2A4A" : "#5A5650" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am a Digital Intelligence</option></select></div>
         {!form.isDI && <div className="ta-field"><label>Age</label><input value={form.age} onChange={e => s("age", e.target.value)} placeholder="e.g. 34" /></div>}
       </div>
+      <div style={{ fontSize: 11, color: "#5A5650", lineHeight: 1.6, marginBottom: 14, padding: "8px 12px", background: "#F0EDE6", borderRadius: 2 }}>The Trust Assembly asks demographic questions to identify politically salient populations, not to engage in any particular cultural debate. We follow a descriptivist approach when adding values and are driven only by the question of whether large identifiable populations with shared values exist.</div>
 
       {!form.isDI && <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -4336,6 +4337,18 @@ function VisionScreen() {
 function AboutScreen() {
   return (
     <div><div className="ta-section-rule" /><h2 className="ta-section-head">About</h2>
+      <div style={{ padding: "20px 24px", background: "#fff", border: "1px solid #DCD8D0", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 14 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B8963E", marginBottom: 10 }}>Mission Statement</div>
+        <p style={{ fontSize: 16, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, margin: 0 }}>The Trust Assembly is an experiment in self-government.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>It begins with a simple question: what happens when ordinary people are given a place to reason together in public, under fair rules, with truth as the aim rather than attention?</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different — a place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed — one that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem — a place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.</p>
+        <p style={{ fontSize: 15, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "12px 0 0" }}>We hope to build a lighthouse on a hill.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0", padding: "12px 16px", background: "#F0EDE6", borderRadius: 2 }}>To succeed in this institution, you must make sense to those who agree with you. And you must make sense to those who do not. Everything worth building in civilization rests on that foundation.</p>
+      </div>
       <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "#2B2B2B" }}>
         <p style={{ marginBottom: 14 }}>The Trust Assembly was created by a technologist and writer who grew tired of watching institutional trust decay while no one built anything to replace it.</p>
         <p style={{ marginBottom: 14 }}>The core insight: truth is the only thing that survives adversarial review. Structure conflict correctly — where winning requires being right — and selfishness serves honesty. This is mechanism design applied to editorial integrity.</p>
@@ -5451,7 +5464,7 @@ export default function TrustAssembly() {
               {showManifesto && (
                 <div style={{ marginTop: 12 }}>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
-                    We believe the answer matters. Much of the modern internet has become a kind of continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different: a place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.
+                    We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different — a place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.
                   </p>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
                     This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.
@@ -5460,10 +5473,10 @@ export default function TrustAssembly() {
                     What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.
                   </p>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
-                    We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed: one that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.
+                    We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed — one that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.
                   </p>
                   <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
-                    Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem: a place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.
+                    Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem — a place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.
                   </p>
                   <p style={{ fontSize: 15, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "0 0 16px" }}>
                     We hope to build a lighthouse on a hill.
