@@ -1985,6 +1985,33 @@ function LoginScreen({ onLogin, onGoRegister }) {
   );
 }
 
+// --- Auto-save drafts to localStorage (debounced, invisible to user) ---
+const DRAFT_DEBOUNCE = 500;
+function useDraft(key, state, restoreFn) {
+  const timer = useRef(null);
+  const restored = useRef(false);
+  // Restore once on mount
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) { const parsed = JSON.parse(raw); restoreFn(parsed); }
+    } catch {}
+  }, []);
+  // Save on every state change (debounced)
+  const isFirst = useRef(true);
+  useEffect(() => {
+    if (isFirst.current) { isFirst.current = false; return; }
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
+    }, DRAFT_DEBOUNCE);
+    return () => clearTimeout(timer.current);
+  }, [state]);
+}
+function clearDraft(key) { try { localStorage.removeItem(key); } catch {} }
+
 function SubmitScreen({ user, onUpdate }) {
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [inlineEdits, setInlineEdits] = useState([{ original: "", replacement: "", reasoning: "" }]);
@@ -2000,13 +2027,27 @@ function SubmitScreen({ user, onUpdate }) {
   const [myOrgs, setMyOrgs] = useState([]);
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
 
+  // Auto-save draft
+  const draftState = useMemo(() => ({ form, inlineEdits, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds }), [form, inlineEdits, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds]);
+  useDraft("ta_draft_submit", draftState, (d) => {
+    if (d.form) setForm(f => ({ ...f, ...d.form }));
+    if (d.inlineEdits) setInlineEdits(d.inlineEdits);
+    if (d.standingCorrection) setStandingCorrection(d.standingCorrection);
+    if (d.submitArg !== undefined) setSubmitArg(d.submitArg);
+    if (d.submitBelief !== undefined) setSubmitBelief(d.submitBelief);
+    if (d.submitTranslation) setSubmitTranslation(d.submitTranslation);
+    if (d.linkedEntries) setLinkedEntries(d.linkedEntries);
+    if (d.evidenceUrls) setEvidenceUrls(d.evidenceUrls);
+    if (d.selectedOrgIds) setSelectedOrgIds(d.selectedOrgIds);
+  });
+
   useEffect(() => { (async () => {
     const allOrgs = (await sG(SK.ORGS)) || {};
     const ids = user.orgIds || (user.orgId ? [user.orgId] : []);
     const orgs = ids.map(id => allOrgs[id]).filter(Boolean);
     setMyOrgs(orgs);
-    // Default to user's active org
-    if (user.orgId) setSelectedOrgIds([user.orgId]);
+    // Default to user's active org (only if no draft restored)
+    if (user.orgId && selectedOrgIds.length === 0) setSelectedOrgIds([user.orgId]);
   })(); }, [user.orgId, user.orgIds]);
 
   const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || myOrgs.find(o => o.id === user.orgId);
@@ -2180,6 +2221,7 @@ function SubmitScreen({ user, onUpdate }) {
     if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
     setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArg(""); setSubmitBelief(""); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
+    clearDraft("ta_draft_submit");
   };
 
   return (
@@ -2417,6 +2459,40 @@ function ReviewScreen({ user }) {
   }, [user.username]);
   useEffect(() => { load(); }, []);
 
+  // Auto-save vote draft per submission
+  const voteDraftKey = reviewingId ? `ta_draft_vote_${reviewingId}` : null;
+  const voteDraftTimer = useRef(null);
+  const voteState = useMemo(() => ({ voteNote, newsRating, funRating, lieChecked, editVotes, vaultVotes }), [voteNote, newsRating, funRating, lieChecked, editVotes, vaultVotes]);
+  // Restore draft when opening a review
+  const lastRestoredId = useRef(null);
+  useEffect(() => {
+    if (!reviewingId || lastRestoredId.current === reviewingId) return;
+    lastRestoredId.current = reviewingId;
+    try {
+      const raw = localStorage.getItem(`ta_draft_vote_${reviewingId}`);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.voteNote) setVoteNote(d.voteNote);
+        if (d.newsRating !== undefined) setNewsRating(d.newsRating);
+        if (d.funRating !== undefined) setFunRating(d.funRating);
+        if (d.lieChecked !== undefined) setLieChecked(d.lieChecked);
+        if (d.editVotes) setEditVotes(d.editVotes);
+        if (d.vaultVotes) setVaultVotes(d.vaultVotes);
+      }
+    } catch {}
+  }, [reviewingId]);
+  // Save draft on change (debounced)
+  const voteInitSkip = useRef(true);
+  useEffect(() => {
+    if (!voteDraftKey) return;
+    if (voteInitSkip.current) { voteInitSkip.current = false; return; }
+    clearTimeout(voteDraftTimer.current);
+    voteDraftTimer.current = setTimeout(() => {
+      try { localStorage.setItem(voteDraftKey, JSON.stringify(voteState)); } catch {}
+    }, DRAFT_DEBOUNCE);
+    return () => clearTimeout(voteDraftTimer.current);
+  }, [voteState, voteDraftKey]);
+
   // Accept jury seat — first-come-first-seated
   const acceptJurySeat = async (subId, isCross) => {
     const allSubs = (await sG(SK.SUBS)) || {};
@@ -2587,6 +2663,7 @@ function ReviewScreen({ user }) {
       }
     }
     allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
+    clearDraft(`ta_draft_vote_${subId}`); voteInitSkip.current = true; lastRestoredId.current = null;
     setReviewingId(null); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false); setEditVotes({}); setVaultVotes({}); load();
   };
 
@@ -2606,6 +2683,7 @@ function ReviewScreen({ user }) {
     if (!vc3.allowed) return alert(vc3.reason);
     const result = await resolveDispute(disputeId, user.username, upheld, voteNote, lieChecked);
     if (result.error) return;
+    clearDraft(`ta_draft_vote_${disputeId}`); voteInitSkip.current = true; lastRestoredId.current = null;
     setReviewingId(null); setVoteNote(""); setLieChecked(false); load();
   };
 
