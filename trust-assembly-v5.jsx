@@ -1440,6 +1440,7 @@ function DiscoveryFeed({ onLogin, onRegister }) {
                 <StatusPill status={sub.status} />
               </div>
               <SubHeadline sub={sub} size={12} />
+              <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all", display: "block", marginTop: 3 }}>{sub.url}</a>
               <button className="ta-link-btn" style={{ fontSize: 12, marginTop: 4 }} onClick={onLogin}>Sign in to review →</button>
             </div>
           </div>
@@ -1690,21 +1691,22 @@ function SubmitScreen({ user, onUpdate }) {
   const [evidenceUrls, setEvidenceUrls] = useState([{ url: "", explanation: "" }]);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [loading, setLoading] = useState(false);
   const [myOrgs, setMyOrgs] = useState([]);
+  const [selectedOrgIds, setSelectedOrgIds] = useState([]);
 
   useEffect(() => { (async () => {
     const allOrgs = (await sG(SK.ORGS)) || {};
     const ids = user.orgIds || (user.orgId ? [user.orgId] : []);
-    setMyOrgs(ids.map(id => allOrgs[id]).filter(Boolean));
+    const orgs = ids.map(id => allOrgs[id]).filter(Boolean);
+    setMyOrgs(orgs);
+    // Default to user's active org
+    if (user.orgId) setSelectedOrgIds([user.orgId]);
   })(); }, [user.orgId, user.orgIds]);
 
-  const activeOrg = myOrgs.find(o => o.id === user.orgId);
+  const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || myOrgs.find(o => o.id === user.orgId);
 
-  const switchOrg = async (oid) => {
-    const users = (await sG(SK.USERS)) || {};
-    users[user.username] = { ...users[user.username], orgId: oid };
-    await sS(SK.USERS, users);
-    onUpdate({ ...user, orgId: oid });
-    setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); // clear on org switch
+  const toggleOrg = (oid) => {
+    setSelectedOrgIds(prev => prev.includes(oid) ? prev.filter(id => id !== oid) : [...prev, oid]);
+    setLinkedEntries([]); setVaultSearch(""); setVaultResults([]);
   };
 
   const searchVault = async (query) => {
@@ -1734,7 +1736,8 @@ function SubmitScreen({ user, onUpdate }) {
 
   const go = async () => {
     setError(""); setSuccess("");
-    if (!user.orgId) return setError("Join an Assembly first.");
+    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
+    if (targetOrgIds.length === 0) return setError("Select at least one Assembly.");
     if (!form.url.trim() || !form.originalHeadline.trim()) return setError("URL and original headline required.");
     if (form.submissionType === "correction" && !form.replacement.trim()) return setError("Corrected headline required for corrections.");
     if (!form.reasoning.trim()) return setError("Reasoning is mandatory.");
@@ -1744,118 +1747,131 @@ function SubmitScreen({ user, onUpdate }) {
     if (form.reasoning.trim().length > 2000) return setError("Reasoning: 2000 character maximum.");
     if (!/^https?:\/\/.+\..+/.test(form.url.trim())) return setError("Article URL must start with http:// or https://");
     setLoading(true);
-    const orgs = (await sG(SK.ORGS)) || {}; const org = orgs[user.orgId];
-    if (!org) { setError("Assembly not found."); setLoading(false); return; }
-    const now = new Date().toISOString();
-    const allUsers = (await sG(SK.USERS)) || {};
-    const submitter = allUsers[user.username] || user;
-
-    // DI checks
-    const submitterIsDI = isDIUser(submitter);
-    if (submitterIsDI) {
-      const susp = isDISuspended(submitter, allUsers);
-      if (susp.suspended) { setError(`🤖 ${susp.reason}`); setLoading(false); return; }
-      // Daily limit: floor(members / 2), max 100
-      const limit = getDISubmissionLimit(org);
-      const todayCount = await getDIDailyCount(user.username, user.orgId);
-      if (todayCount >= limit) { setError(`🤖 Daily submission limit reached (${limit}/day in ${org.name}). Limit is half the Assembly membership, max 100.`); setLoading(false); return; }
-    }
-
-    const hasEnough = org.members.length >= 5;
-    // Check Trusted Contributor status — skip jury if earned (not available for DIs)
-    const trusted = !submitterIsDI && isTrustedContributor(submitter, user.orgId);
-    let jurors = [], jurySeed = 0, rulesApplied = [], status = submitterIsDI ? "di_pending" : "pending_jury";
-    let trustedSkip = false;
-    if (submitterIsDI) {
-      // DI submissions always go to partner pre-review first
-      status = "di_pending";
-    } else if (trusted) {
-      status = "approved"; trustedSkip = true;
-    } else if (hasEnough) {
-      const result = await selectJury(user.orgId, user.username);
-      if (!result.error) { jurors = result.jurors; jurySeed = result.seed; rulesApplied = result.rulesApplied; status = "pending_review"; }
-    }
-    // Filter non-empty inline edits
+    // Filter non-empty inline edits and evidence (shared across all assemblies)
     const validEdits = inlineEdits.filter(e => e.original.trim() && e.replacement.trim());
     const validEvidence = evidenceUrls.filter(e => e.url.trim());
-    // Validate evidence URLs
     for (const ev of validEvidence) {
       if (!/^https?:\/\/.+\..+/.test(ev.url.trim())) { setError("Evidence URLs must start with http:// or https://"); setLoading(false); return; }
     }
-    const jurySeats = getJurySize(org.members.length);
-    const sub = {
-      id: gid(), url: form.url.trim(), originalHeadline: form.originalHeadline.trim(),
-      replacement: form.replacement.trim(), reasoning: form.reasoning.trim(),
-      author: form.author.trim() || null, submissionType: form.submissionType,
-      evidence: validEvidence, inlineEdits: validEdits.length > 0 ? validEdits : [],
-      standingCorrection: standingCorrection.assertion.trim() ? standingCorrection : null,
-      argumentEntry: submitArg.trim() ? { content: submitArg.trim() } : null,
-      beliefEntry: submitBelief.trim() ? { content: submitBelief.trim() } : null,
-      translationEntry: submitTranslation.original.trim() && submitTranslation.translated.trim() ? submitTranslation : null,
-      linkedVaultEntries: linkedEntries.length > 0 ? linkedEntries.map(e => ({ id: e.id, type: e.type, label: e.label, detail: e.detail || null })) : [],
-      submittedBy: user.username, orgId: user.orgId, orgName: org.name,
-      status, jurors, jurySeed, jurySeats, acceptedJurors: [], acceptedAt: {}, votes: {}, trustedSkip,
-      isDI: submitterIsDI, diPartner: submitterIsDI ? submitter.diPartner : null,
-      crossGroupJurors: [], crossGroupVotes: {}, crossGroupSeed: 0,
-      crossGroupAcceptedJurors: [], crossGroupAcceptedAt: {},
-      createdAt: now, resolvedAt: trustedSkip ? now : null,
-      auditTrail: [{ time: now, action: submitterIsDI
-        ? `🤖 Submitted by @${user.username} (Digital Intelligence, partner: @${submitter.diPartner}) — awaiting partner pre-approval`
-        : trustedSkip
-        ? `🛡 Submitted by @${user.username} (Trusted Contributor — jury skipped, disputable)`
-        : `Submitted by @${user.username}. ${status === "pending_review" ? `Jury pool (${jurors.length}): ${jurors.map(j => "@" + j).join(", ")} — ${jurySeats} seats. (seed:${jurySeed}). Rules: ${rulesApplied.join(", ") || "none"}` : `Queued — ${org.members.length} members, 5 needed.`}` }],
-    };
-    const subs = (await sG(SK.SUBS)) || {}; subs[sub.id] = sub;
-    // Trusted skip: count as win, promote to cross-group
-    if (trustedSkip) {
-      const usrs = (await sG(SK.USERS)) || {};
-      const sm = usrs[user.username];
-      if (sm) {
-        sm.totalWins = (sm.totalWins || 0) + 1; sm.currentStreak = (sm.currentStreak || 0) + 1;
-        sm.assemblyStreaks = sm.assemblyStreaks || {};
-        sm.assemblyStreaks[user.orgId] = (sm.assemblyStreaks[user.orgId] || 0) + 1;
-        usrs[user.username] = sm; await sS(SK.USERS, usrs);
-      }
-      // Auto-promote to cross-group review
-      const crossResult = await selectCrossGroupJury(sub.orgId, sub.submittedBy);
-      if (!crossResult.error && crossResult.jurors.length >= 3) {
-        sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
-        sub.status = "cross_review"; sub.resolvedAt = null;
-        sub.auditTrail.push({ time: now, action: `Auto-promoted to cross-group review (Trusted Contributor). ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}. Jury: ${crossResult.jurors.map(j => "@" + j).join(", ")}` });
-      }
+
+    const allOrgs = (await sG(SK.ORGS)) || {};
+    const now = new Date().toISOString();
+    const allUsers = (await sG(SK.USERS)) || {};
+    const submitter = allUsers[user.username] || user;
+    const submitterIsDI = isDIUser(submitter);
+
+    if (submitterIsDI) {
+      const susp = isDISuspended(submitter, allUsers);
+      if (susp.suspended) { setError(`🤖 ${susp.reason}`); setLoading(false); return; }
     }
+
+    const subs = (await sG(SK.SUBS)) || {};
+    const audit = (await sG(SK.AUDIT)) || [];
+    const submittedNames = [];
+
+    for (const orgId of targetOrgIds) {
+      const org = allOrgs[orgId];
+      if (!org) continue;
+
+      // DI daily limit per assembly
+      if (submitterIsDI) {
+        const limit = getDISubmissionLimit(org);
+        const todayCount = await getDIDailyCount(user.username, orgId);
+        if (todayCount >= limit) continue;
+      }
+
+      const hasEnough = org.members.length >= 5;
+      const trusted = !submitterIsDI && isTrustedContributor(submitter, orgId);
+      let jurors = [], jurySeed = 0, rulesApplied = [], status = submitterIsDI ? "di_pending" : "pending_jury";
+      let trustedSkip = false;
+      if (submitterIsDI) {
+        status = "di_pending";
+      } else if (trusted) {
+        status = "approved"; trustedSkip = true;
+      } else if (hasEnough) {
+        const result = await selectJury(orgId, user.username);
+        if (!result.error) { jurors = result.jurors; jurySeed = result.seed; rulesApplied = result.rulesApplied; status = "pending_review"; }
+      }
+      const jurySeats = getJurySize(org.members.length);
+      const sub = {
+        id: gid(), url: form.url.trim(), originalHeadline: form.originalHeadline.trim(),
+        replacement: form.replacement.trim(), reasoning: form.reasoning.trim(),
+        author: form.author.trim() || null, submissionType: form.submissionType,
+        evidence: validEvidence, inlineEdits: validEdits.length > 0 ? validEdits : [],
+        standingCorrection: standingCorrection.assertion.trim() ? standingCorrection : null,
+        argumentEntry: submitArg.trim() ? { content: submitArg.trim() } : null,
+        beliefEntry: submitBelief.trim() ? { content: submitBelief.trim() } : null,
+        translationEntry: submitTranslation.original.trim() && submitTranslation.translated.trim() ? submitTranslation : null,
+        linkedVaultEntries: linkedEntries.length > 0 ? linkedEntries.map(e => ({ id: e.id, type: e.type, label: e.label, detail: e.detail || null })) : [],
+        submittedBy: user.username, orgId, orgName: org.name,
+        status, jurors, jurySeed, jurySeats, acceptedJurors: [], acceptedAt: {}, votes: {}, trustedSkip,
+        isDI: submitterIsDI, diPartner: submitterIsDI ? submitter.diPartner : null,
+        crossGroupJurors: [], crossGroupVotes: {}, crossGroupSeed: 0,
+        crossGroupAcceptedJurors: [], crossGroupAcceptedAt: {},
+        createdAt: now, resolvedAt: trustedSkip ? now : null,
+        auditTrail: [{ time: now, action: submitterIsDI
+          ? `🤖 Submitted by @${user.username} (Digital Intelligence, partner: @${submitter.diPartner}) — awaiting partner pre-approval`
+          : trustedSkip
+          ? `🛡 Submitted by @${user.username} (Trusted Contributor — jury skipped, disputable)`
+          : `Submitted by @${user.username}. ${status === "pending_review" ? `Jury pool (${jurors.length}): ${jurors.map(j => "@" + j).join(", ")} — ${jurySeats} seats. (seed:${jurySeed}). Rules: ${rulesApplied.join(", ") || "none"}` : `Queued — ${org.members.length} members, 5 needed.`}` }],
+      };
+      subs[sub.id] = sub;
+
+      if (trustedSkip) {
+        const usrs = (await sG(SK.USERS)) || {};
+        const sm = usrs[user.username];
+        if (sm) {
+          sm.totalWins = (sm.totalWins || 0) + 1; sm.currentStreak = (sm.currentStreak || 0) + 1;
+          sm.assemblyStreaks = sm.assemblyStreaks || {};
+          sm.assemblyStreaks[orgId] = (sm.assemblyStreaks[orgId] || 0) + 1;
+          usrs[user.username] = sm; await sS(SK.USERS, usrs);
+        }
+        const crossResult = await selectCrossGroupJury(sub.orgId, sub.submittedBy);
+        if (!crossResult.error && crossResult.jurors.length >= 3) {
+          sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
+          sub.status = "cross_review"; sub.resolvedAt = null;
+          sub.auditTrail.push({ time: now, action: `Auto-promoted to cross-group review (Trusted Contributor). ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}. Jury: ${crossResult.jurors.map(j => "@" + j).join(", ")}` });
+        }
+      }
+
+      // Save vault entries for first org only to avoid duplicates
+      if (submittedNames.length === 0) {
+        if (standingCorrection.assertion.trim()) {
+          const standing = (await sG(SK.VAULT)) || {};
+          const scId = gid();
+          standing[scId] = { id: scId, orgId, orgName: org.name, assertion: standingCorrection.assertion.trim(), evidence: standingCorrection.evidence.trim(), submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, votes: {} };
+          await sS(SK.VAULT, standing);
+        }
+        if (submitArg.trim()) {
+          const allArgs = (await sG(SK.ARGS)) || {};
+          const argId = gid();
+          allArgs[argId] = { id: argId, orgId, orgName: org.name, content: submitArg.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          await sS(SK.ARGS, allArgs);
+        }
+        if (submitBelief.trim()) {
+          const allBeliefs = (await sG(SK.BELIEFS)) || {};
+          const bId = gid();
+          allBeliefs[bId] = { id: bId, orgId, orgName: org.name, content: submitBelief.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          await sS(SK.BELIEFS, allBeliefs);
+        }
+        if (submitTranslation.original.trim() && submitTranslation.translated.trim()) {
+          const allTrans = (await sG(SK.TRANSLATIONS)) || {};
+          const tId = gid();
+          allTrans[tId] = { id: tId, orgId, orgName: org.name, original: submitTranslation.original.trim(), translated: submitTranslation.translated.trim(), type: submitTranslation.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
+          await sS(SK.TRANSLATIONS, allTrans);
+        }
+      }
+
+      const typeLabel = form.submissionType === "affirmation" ? "Affirmation" : "Correction";
+      audit.push({ time: now, action: `${typeLabel} by @${user.username}: "${form.submissionType === "affirmation" ? form.originalHeadline : form.replacement}" → ${org.name} [${status}]${trustedSkip ? " (Trusted)" : ""}` });
+      submittedNames.push(org.name);
+    }
+
     await sS(SK.SUBS, subs);
-    // Save standing correction to assembly vault
-    if (standingCorrection.assertion.trim()) {
-      const standing = (await sG(SK.VAULT)) || {};
-      const scId = gid();
-      standing[scId] = { id: scId, orgId: user.orgId, orgName: org.name, assertion: standingCorrection.assertion.trim(), evidence: standingCorrection.evidence.trim(), submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, votes: {} };
-      await sS(SK.VAULT, standing);
-    }
-    // Save argument to vault
-    if (submitArg.trim()) {
-      const allArgs = (await sG(SK.ARGS)) || {};
-      const argId = gid();
-      allArgs[argId] = { id: argId, orgId: user.orgId, orgName: org.name, content: submitArg.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
-      await sS(SK.ARGS, allArgs);
-    }
-    // Save foundational belief to vault
-    if (submitBelief.trim()) {
-      const allBeliefs = (await sG(SK.BELIEFS)) || {};
-      const bId = gid();
-      allBeliefs[bId] = { id: bId, orgId: user.orgId, orgName: org.name, content: submitBelief.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
-      await sS(SK.BELIEFS, allBeliefs);
-    }
-    // Save translation to vault
-    if (submitTranslation.original.trim() && submitTranslation.translated.trim()) {
-      const allTrans = (await sG(SK.TRANSLATIONS)) || {};
-      const tId = gid();
-      allTrans[tId] = { id: tId, orgId: user.orgId, orgName: org.name, original: submitTranslation.original.trim(), translated: submitTranslation.translated.trim(), type: submitTranslation.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
-      await sS(SK.TRANSLATIONS, allTrans);
-    }
-    const typeLabel = form.submissionType === "affirmation" ? "Affirmation" : "Correction";
-    const audit = (await sG(SK.AUDIT)) || []; audit.push({ time: now, action: `${typeLabel} by @${user.username}: "${form.submissionType === "affirmation" ? form.originalHeadline : form.replacement}" [${status}]${trustedSkip ? " (Trusted)" : ""}` }); await sS(SK.AUDIT, audit);
-    setLoading(false); setSuccess(submitterIsDI ? "🤖 Submitted. Awaiting partner pre-approval before jury review." : trustedSkip ? "🛡 Approved (Trusted Contributor). Promoted to cross-group review. Disputable by any member." : status === "pending_review" ? `Filed. Jury pool drawn — ${jurySeats} seats, first to accept are seated.` : "Queued. Jury assigned when assembly reaches 5 members.");
+    await sS(SK.AUDIT, audit);
+    setLoading(false);
+    if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
+    setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
     setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction" }); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArg(""); setSubmitBelief(""); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
   };
 
@@ -1892,11 +1908,11 @@ function SubmitScreen({ user, onUpdate }) {
       <div style={{ padding: 12, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>
         <strong style={{ color: "#1B5E3F" }}>Before you submit:</strong> Be factual. The system is designed to reward being straightforward, transparent, and honest. Stick to what you can prove — corrections backed by evidence and clear reasoning survive review. Editorial opinions, exaggerations, and anything you can't source will cost you. If you're not sure, that's okay — describe your uncertainty in the reasoning field. Jurors respect intellectual honesty more than false confidence.
       </div>
-      {/* Org picker */}
+      {/* Org picker — multi-select */}
       {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submitting from:</div>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => <button key={o.id} onClick={() => switchOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${o.id === user.orgId ? "#1B5E3F" : "#D4CFC4"}`, background: o.id === user.orgId ? "#1B5E3F" : "#fff", color: o.id === user.orgId ? "#fff" : "#5A5650", borderRadius: 2, cursor: "pointer", fontWeight: o.id === user.orgId ? 700 : 400 }}>{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>)}
+          {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#1B5E3F" : "#D4CFC4"}`, background: sel ? "#1B5E3F" : "#fff", color: sel ? "#fff" : "#5A5650", borderRadius: 2, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
         </div>
       </div>}
       {error && <div className="ta-error">{error}</div>}
@@ -2240,7 +2256,7 @@ function ReviewScreen({ user }) {
     return (
     <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#2A6B6B" : "#C4900A"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+        <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", background: "#F0EDE6", padding: "1px 5px", borderRadius: 2 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />
@@ -2631,7 +2647,7 @@ function VaultScreen({ user }) {
   );
 }
 
-function ConsensusScreen() {
+function ConsensusScreen({ onViewCitizen }) {
   const [subs, setSubs] = useState([]); const [loading, setLoading] = useState(true);
   useEffect(() => { (async () => { const s = (await sG(SK.SUBS)) || {}; setSubs(Object.values(s).filter(x => x.status === "consensus").sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false); })(); }, []);
   return (
@@ -2645,7 +2661,7 @@ function ConsensusScreen() {
       {loading ? <Loader /> : subs.length === 0 ? <Empty text="No consensus corrections yet. When a correction survives cross-group review, it appears here." /> :
         subs.map(sub => (
           <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {fDate(sub.resolvedAt)}</span><StatusPill status="consensus" /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> · {sub.orgName} · {fDate(sub.resolvedAt)}</span><StatusPill status="consensus" /></div>
             <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
             <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
               <SubHeadline sub={sub} />
@@ -2659,7 +2675,7 @@ function ConsensusScreen() {
   );
 }
 
-function FeedScreen({ user, onNavigate }) {
+function FeedScreen({ user, onNavigate, onViewCitizen }) {
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
   const [disputingId, setDisputingId] = useState(null);
@@ -2709,13 +2725,14 @@ function FeedScreen({ user, onNavigate }) {
       {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#5B2D8E" : sub.status === "approved" ? "#1B5E3F" : sub.status === "rejected" || sub.status === "disputed" ? "#C4573F" : "#C4900A"}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
+            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E6E8F0", color: "#4A5899", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
               <StatusPill status={sub.status} />
             </div>
           </div>
+          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
           <div style={{ margin: "6px 0", padding: 8, background: "#FAF8F2", borderRadius: 2 }}>
             <SubHeadline sub={sub} size={13} />
           </div>
@@ -2780,15 +2797,17 @@ function JuryScoreCard({ username }) {
   );
 }
 
-function ProfileScreen({ user }) {
+function ProfileScreen({ user, onViewCitizen }) {
   const [u, setU] = useState(user);
   const [orgs, setOrgs] = useState({});
   const [juryScore, setJuryScore] = useState(null);
+  const [diAgents, setDiAgents] = useState([]);
   useEffect(() => { (async () => {
     const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setU(all[user.username]);
     setOrgs((await sG(SK.ORGS)) || {});
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
+    setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
   })(); }, [user.username]);
   const p = computeProfile(u);
   const pi = PROFILES[p.profile];
@@ -2825,7 +2844,7 @@ function ProfileScreen({ user }) {
               @{u.displayName || u.username}
             </h3>
             <div style={{ color: "#5A5650", fontSize: 13, marginTop: 3 }}>@{u.username}</div>
-            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: @{u.diPartner} · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
+            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} style={{ fontSize: 12, color: "#4A5899" }} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
@@ -2882,6 +2901,13 @@ function ProfileScreen({ user }) {
       </div>
       {/* Jury Score */}
       <JuryScoreCard username={u.username} />
+      {/* Registered Digital Intelligences */}
+      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
+        </div>
+      </div>}
       <div className="ta-card">
         <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "3px 12px", fontSize: 13 }}>
           {[["Username", "@" + u.username], ["Signed Up", fDate(u.signupDate)], ["Account Age", daysSince(u.signupDate) + " days"]].map(([l, v], i) => (
@@ -2897,6 +2923,94 @@ function ProfileScreen({ user }) {
       </div>
     </div>
   );
+}
+
+function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
+  const [u, setU] = useState(null);
+  const [orgs, setOrgs] = useState({});
+  const [subs, setSubs] = useState({});
+  const [diAgents, setDiAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  useEffect(() => { (async () => {
+    const all = (await sG(SK.USERS)) || {};
+    const target = all[username];
+    if (!target) { setNotFound(true); setLoading(false); return; }
+    setU(target);
+    setOrgs((await sG(SK.ORGS)) || {});
+    setSubs((await sG(SK.SUBS)) || {});
+    // Find DI agents registered to this user
+    const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
+    setDiAgents(agents);
+    setLoading(false);
+  })(); }, [username]);
+  if (loading) return <Loader />;
+  if (notFound) return <div><div className="ta-section-rule" /><button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button><Empty text={`Citizen @${username} not found.`} /></div>;
+  const p = computeProfile(u);
+  const pi = PROFILES[p.profile];
+  const myOrgIds = u.orgIds || (u.orgId ? [u.orgId] : []);
+  const myOrgs = myOrgIds.map(id => orgs[id]).filter(Boolean);
+  const userSubs = Object.values(subs).filter(s => s.submittedBy === username).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return (
+    <div>
+      <div className="ta-section-rule" />
+      <button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button>
+      <h2 className="ta-section-head">Citizen Record</h2>
+      <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4A5899" : pi.color}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
+              {isDIUser(u) && <span style={{ marginRight: 6 }}>🤖</span>}
+              @{u.displayName || u.username}
+            </h3>
+            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
+          </div>
+          <Badge profile={p.profile} score={p.trustScore} />
+        </div>
+        {myOrgs.length > 0 && <div style={{ marginTop: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 2, background: o.isGeneralPublic ? "#E5EFED" : "#F0EDE6", color: o.isGeneralPublic ? "#2A6B6B" : "#5A5650" }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>)}
+        </div>}
+        <div style={{ marginTop: 14, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: pi.color, marginBottom: 4 }}>Profile: {p.profile}</div>
+          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{pi.desc}</div>
+        </div>
+        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          {[["#1B5E3F", p.wins, "Wins"], ["#C4573F", p.losses, "Losses"], ["#B8963E", p.disputeWins, "Disp. Wins"], ["#2A6B6B", p.streak, "Streak"]].map(([c, n, l], i) => (
+            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F0EDE6", borderRadius: 2 }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 700, color: c }}>{n}</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginTop: 3 }}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12, color: "#5A5650" }}>Signed up {fDate(u.signupDate)} · {daysSince(u.signupDate)} days</div>
+      </div>
+      <JuryScoreCard username={username} />
+      {/* Registered Digital Intelligences */}
+      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
+        </div>
+      </div>}
+      {/* Recent submissions */}
+      {userSubs.length > 0 && <div className="ta-card">
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Recent Submissions ({userSubs.length})</div>
+        {userSubs.slice(0, 10).map(sub => (
+          <div key={sub.id} style={{ padding: "8px 0", borderBottom: "1px solid #DCD8D0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+              <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}</span>
+              <StatusPill status={sub.status} />
+            </div>
+            <SubHeadline sub={sub} size={12} />
+          </div>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
+function UsernameLink({ username, onClick, style }) {
+  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#1B2A4A", fontFamily: "var(--mono)", fontSize: 10, textDecoration: "underline", textDecorationColor: "#D4CFC4", ...style }}>@{username}</button>;
 }
 
 function AuditScreen() {
@@ -3081,7 +3195,7 @@ function AssemblyGuide() {
   );
 }
 
-function OrgScreen({ user, onUpdate }) {
+function OrgScreen({ user, onUpdate, onViewCitizen }) {
   const [orgs, setOrgs] = useState(null); const [subs, setSubs] = useState(null); const [apps, setApps] = useState(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false); const [newOrg, setNewOrg] = useState({ name: "", description: "", charter: "" });
@@ -3214,6 +3328,17 @@ function OrgScreen({ user, onUpdate }) {
     setOrgs(up);
   };
 
+  const followedOrgIds = user.followedOrgIds || [];
+  const isFollowing = (oid) => followedOrgIds.includes(oid);
+  const followOrg = async (oid) => {
+    const newFollowed = [...followedOrgIds, oid];
+    await updateUser({ followedOrgIds: newFollowed });
+  };
+  const unfollowOrg = async (oid) => {
+    const newFollowed = followedOrgIds.filter(id => id !== oid);
+    await updateUser({ followedOrgIds: newFollowed });
+  };
+
   const switchActive = async (oid) => {
     if (!isMember(oid)) return;
     await updateUser({ orgId: oid });
@@ -3314,7 +3439,14 @@ function OrgScreen({ user, onUpdate }) {
       <div>
         <div className="ta-section-rule" />
         <button className="ta-btn-ghost" onClick={() => setViewingOrg(null)} style={{ marginBottom: 10 }}>← Back to Assemblies</button>
-        <h2 className="ta-section-head">{vo.name}</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <h2 className="ta-section-head" style={{ margin: 0 }}>{vo.name}</h2>
+          {!isMember(viewingOrg) && (
+            isFollowing(viewingOrg)
+              ? <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 12px" }} onClick={() => unfollowOrg(viewingOrg)}>Following ✓</button>
+              : <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 12px", borderColor: "#2A6B6B", color: "#2A6B6B" }} onClick={() => followOrg(viewingOrg)}>Follow</button>
+          )}
+        </div>
         {error && <div className="ta-error">{error}</div>}
         {success && <div className="ta-success">{success}</div>}
 
@@ -3430,7 +3562,7 @@ function OrgScreen({ user, onUpdate }) {
         <div className="ta-card">
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Members ({vo.members.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {vo.members.slice(0, 50).map(m => <span key={m} style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "2px 6px", background: "#F0EDE6", borderRadius: 2, color: "#2B2B2B" }}>@{m}</span>)}
+            {vo.members.slice(0, 50).map(m => <span key={m} style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "2px 6px", background: "#F0EDE6", borderRadius: 2, color: "#2B2B2B" }}><UsernameLink username={m} onClick={onViewCitizen} /></span>)}
             {vo.members.length > 50 && <span style={{ fontSize: 10, color: "#7A7570" }}>+{vo.members.length - 50} more</span>}
           </div>
         </div>
@@ -3490,6 +3622,29 @@ function OrgScreen({ user, onUpdate }) {
           </div>
         );
       })}
+
+      {/* Following */}
+      {(() => {
+        const followedOrgs = followedOrgIds.map(id => orgs[id]).filter(Boolean).filter(o => !isMember(o.id));
+        if (followedOrgs.length === 0) return null;
+        return <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 8 }}>Following ({followedOrgs.length})</div>
+          {followedOrgs.map(o => {
+            const st = orgStats[o.id] || {};
+            return (
+              <div key={o.id} className="ta-card" style={{ borderLeft: "4px solid #8E9AAB", opacity: 0.85 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#D4CFC4" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
+                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{o.members.length} members{st.total > 0 ? ` · ${st.total} subs` : ""}</div>
+                  </div>
+                  <button className="ta-btn-ghost" style={{ color: "#7A7570", fontSize: 10 }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>;
+      })()}
 
       {/* Pending apps I've submitted */}
       {myPendingApps.length > 0 && <div style={{ marginTop: 14 }}>
@@ -3603,12 +3758,15 @@ function OrgScreen({ user, onUpdate }) {
                     {(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? <span style={{ color: "#5B2D8E", fontWeight: 700 }}>Trust: {r.trustScore}%</span> : null; })()}
                   </div>
                 </div>
-                <div style={{ marginLeft: 12 }}>
+                <div style={{ marginLeft: 12, display: "flex", flexDirection: "column", gap: 4 }}>
                   {hasPending ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A" }}>Pending...</span>
                   : atLimit ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{MAX_ORGS}/{MAX_ORGS}</span>
                   : enr.mode === "open" ? <button className="ta-btn-secondary" onClick={() => joinOrg(o.id)}>Join</button>
                   : enr.mode === "tribal" ? <button className="ta-btn-secondary" style={{ borderColor: "#C2632A", color: "#C2632A" }} onClick={() => joinOrg(o.id)}>Apply</button>
                   : <button className="ta-btn-secondary" onClick={() => joinOrg(o.id)}>Apply</button>}
+                  {isFollowing(o.id)
+                    ? <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#7A7570" }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
+                    : <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#2A6B6B" }} onClick={() => followOrg(o.id)}>Follow</button>}
                 </div>
               </div>
             </div>
@@ -4690,12 +4848,36 @@ const NAV_MORE = [
 ];
 
 export default function TrustAssembly() {
-  const [user, setUser] = useState(null); const [screen, setScreen] = useState("login"); const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExtDetails, setShowExtDetails] = useState(false);
   const [showManifesto, setShowManifesto] = useState(false);
   const [showMoreNav, setShowMoreNav] = useState(false);
+  const [viewingCitizen, setViewingCitizen] = useState(null);
+
+  // Browser history integration for back-button support
+  const skipPush = useRef(false);
+  const setScreen = useCallback((s) => {
+    setScreenRaw(s);
+    if (!skipPush.current) {
+      window.history.pushState({ screen: s }, "", "");
+    }
+    skipPush.current = false;
+  }, []);
+
+  useEffect(() => {
+    const onPop = (e) => {
+      if (e.state && e.state.screen) {
+        skipPush.current = true;
+        setScreenRaw(e.state.screen);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    // Seed initial state
+    window.history.replaceState({ screen }, "", "");
+    return () => window.removeEventListener("popstate", onPop);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     (async () => {
@@ -4872,19 +5054,23 @@ export default function TrustAssembly() {
           </div>
           <div className="ta-content">
             <CitizenCounter />
-            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} />}
-            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} />}
+            {viewingCitizen ? (
+              <CitizenLookupScreen username={viewingCitizen} onBack={() => setViewingCitizen(null)} onViewCitizen={setViewingCitizen} />
+            ) : <>
+            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={setViewingCitizen} />}
+            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={setViewingCitizen} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
-            {screen === "consensus" && <ConsensusScreen />}
-            {screen === "profile" && <ProfileScreen user={user} />}
+            {screen === "consensus" && <ConsensusScreen onViewCitizen={setViewingCitizen} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={setViewingCitizen} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
             {screen === "about" && <AboutScreen />}
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
+            </>}
           </div>
         </div>
       )}
