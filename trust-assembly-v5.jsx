@@ -1986,7 +1986,7 @@ function LoginScreen({ onLogin, onGoRegister }) {
 }
 
 function SubmitScreen({ user, onUpdate }) {
-  const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction" });
+  const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [inlineMode, setInlineMode] = useState(false);
   const [inlineEdits, setInlineEdits] = useState([{ original: "", replacement: "", reasoning: "" }]);
   const [standingCorrection, setStandingCorrection] = useState({ assertion: "", evidence: "" });
@@ -2180,12 +2180,27 @@ function SubmitScreen({ user, onUpdate }) {
     setLoading(false);
     if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
-    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction" }); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArg(""); setSubmitBelief(""); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
+    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArg(""); setSubmitBelief(""); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
   };
 
   return (
     <div>
-      <div className="ta-section-rule" /><h2 className="ta-section-head">Submit Correction</h2>
+      <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
+
+      {/* What you're about to do */}
+      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #D4CFC4", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#1B2A4A", marginBottom: 4 }}>
+          {form.submissionType === "affirmation"
+            ? "You're affirming an accurate headline for the public record."
+            : "You're correcting a misleading headline and submitting it for jury review."}
+        </div>
+        <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
+          {form.submissionType === "affirmation"
+            ? "Identify an accurate headline, provide your evidence, and submit. Fellow citizens will verify your affirmation."
+            : "Identify the article, propose a truthful replacement, explain your reasoning, and submit. A jury of fellow citizens will review your correction."}
+        </div>
+      </div>
+
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #6B1520", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#6B1520", lineHeight: 1.6 }}>⚠ <strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
 
       {/* DI Status Banner */}
@@ -2203,7 +2218,7 @@ function SubmitScreen({ user, onUpdate }) {
         if (tp.current > 0) return <div style={{ padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>🎯 Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
         return null;
       })()}
-      <p style={{ color: "#5A5650", marginBottom: 10, lineHeight: 1.6, fontSize: 14 }}>{form.submissionType === "affirmation" ? "Identify an accurate headline. Affirm it with supporting evidence. Optionally add in-line evidence annotations and vault entries to strengthen the public record." : "Identify a misleading headline. Propose a truthful replacement. Optionally add in-line article edits and vault entries — Standing Corrections (facts), Arguments (reasoning), Foundational Beliefs (axioms), and Translations (plain-language replacements for propaganda or jargon) — to build your Assembly's shared knowledge."}</p>
+
       {/* Submission Type Toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 2, overflow: "hidden", border: "1.5px solid #D4CFC4" }}>
         {[["correction", "🔴 Correction", "This headline is misleading"], ["affirmation", "🟢 Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
@@ -2213,9 +2228,7 @@ function SubmitScreen({ user, onUpdate }) {
           </button>
         ))}
       </div>
-      <div style={{ padding: 12, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 16, fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>
-        <strong style={{ color: "#1B5E3F" }}>Before you submit:</strong> Be factual. The system is designed to reward being straightforward, transparent, and honest. Stick to what you can prove — corrections backed by evidence and clear reasoning survive review. Editorial opinions, exaggerations, and anything you can't source will cost you. If you're not sure, that's okay — describe your uncertainty in the reasoning field. Jurors respect intellectual honesty more than false confidence.
-      </div>
+
       {/* Org picker — multi-select */}
       {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2 }}>
         <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
@@ -2225,34 +2238,74 @@ function SubmitScreen({ user, onUpdate }) {
       </div>}
       {error && <div className="ta-error">{error}</div>}
       {success && <div className="ta-success">{success}</div>}
-      <div className="ta-card">
-        <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
-          <div className="ta-field"><label>Author <span style={{ fontWeight: 400, color: "#7A7570" }}>(optional)</span></label><input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Who wrote the article" maxLength={200} /></div>
-        </div>
-        {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "#C4573F" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "#C4573F" }} placeholder="Your corrected headline" maxLength={500} /></div>}
-        {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#1B5E3F" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
-        <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
-        <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
 
-        {/* Inline edits toggle */}
-        <div style={{ borderTop: "1px solid #DCD8D0", paddingTop: 14, marginTop: 14 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
-            <input type="checkbox" checked={inlineMode} onChange={e => setInlineMode(e.target.checked)} style={{ accentColor: "#1B2A4A" }} />
-            <span>Submit In-Line Article Edits</span>
-          </label>
-          {inlineMode && (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Jurors vote on each edit independently — up to 20 per article.</p>
-              <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />
-            </div>
-          )}
-        </div>
+      {/* ── STEP 1: The Article ── */}
+      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: "2px 2px 0 0" }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 1 ? 0 : 1 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: form.url && form.originalHeadline ? "#1B5E3F" : "#1B2A4A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{form.url && form.originalHeadline ? "✓" : "1"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>The Article</div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>Paste the URL and headline you want to {form.submissionType === "affirmation" ? "affirm" : "correct"}</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {(form._step === 1 || form._step === undefined || form._step === 0) && <div style={{ marginTop: 12, display: (form._step === 1 || form._step === undefined) ? "block" : "none" }}>
+          <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
+            <div className="ta-field"><label>Author <span style={{ fontWeight: 400, color: "#7A7570" }}>(optional)</span></label><input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Who wrote the article" maxLength={200} /></div>
+          </div>
+        </div>}
+      </div>
 
-        {/* Assembly Vault */}
-        <div style={{ borderTop: "1px solid #DCD8D0", paddingTop: 14, marginTop: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Optional: Assembly Vault Entries</div>
+      {/* ── STEP 2: Your Case ── */}
+      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 2 ? 0 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: (form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "#1B5E3F" : "#1B2A4A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "✓" : "2"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>Your Case</div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>{form.submissionType === "affirmation" ? "Explain why this headline is accurate" : "Propose the corrected headline and explain why"}</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {form._step === 2 && <div style={{ marginTop: 12 }}>
+          {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "#C4573F" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "#C4573F" }} placeholder="Your corrected headline" maxLength={500} /></div>}
+          {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#1B5E3F" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
+          <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
+          <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
+          <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>
+            <strong style={{ color: "#1B5E3F" }}>Tip:</strong> Stick to what you can prove. Corrections backed by evidence and clear reasoning survive review. Jurors respect intellectual honesty more than false confidence.
+          </div>
+        </div>}
+      </div>
+
+      {/* ── STEP 3: In-Line Edits (optional) ── */}
+      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 3 ? 0 : 3 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: inlineEdits.some(e => e.original && e.replacement) ? "#1B5E3F" : "#D4CFC4", color: inlineEdits.some(e => e.original && e.replacement) ? "#fff" : "#5A5650", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{inlineEdits.some(e => e.original && e.replacement) ? "✓" : "3"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>In-Line Article Edits <span style={{ fontWeight: 400, color: "#7A7570", fontSize: 11 }}>optional</span></div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>Propose specific text changes within the article body. Jurors vote on each edit independently.</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {form._step === 3 && <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.</p>
+          <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />
+        </div>}
+      </div>
+
+      {/* ── STEP 4: Assembly Vault (optional) ── */}
+      <div className="ta-card" style={{ borderRadius: "0 0 2px 2px" }}>
+        <button onClick={() => setForm(f => ({ ...f, _step: f._step === 4 ? 0 : 4 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#1B5E3F" : "#D4CFC4", color: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#fff" : "#5A5650", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "✓" : "4"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>Assembly Vault <span style={{ fontWeight: 400, color: "#7A7570", fontSize: 11 }}>optional</span></div>
+            <div style={{ fontSize: 11, color: "#7A7570" }}>Link reusable facts, arguments, beliefs, or translations to strengthen your submission.</div>
+          </div>
+          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 4 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </button>
+        {form._step === 4 && <div style={{ marginTop: 12 }}>
           <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 12, lineHeight: 1.6 }}>Link existing vault entries to strengthen your correction, or propose new ones. Linked entries are voted on by jurors — each time one survives review, it gains reputation.</p>
 
           {/* Linked entries chips */}
@@ -2332,11 +2385,12 @@ function SubmitScreen({ user, onUpdate }) {
               </div>
             </div>
           </details>
-        </div>
+        </div>}
+      </div>
 
-        <div style={{ marginTop: 16 }}>
-          <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "Filing..." : "Submit for Review"}</button>
-        </div>
+      {/* ── Sticky Submit Button ── */}
+      <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #F0EDE6 8px)", paddingTop: 12, paddingBottom: 8, zIndex: 10 }}>
+        <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ width: "100%", padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
         <LegalDisclaimer short />
       </div>
     </div>
@@ -2667,35 +2721,38 @@ function ReviewScreen({ user }) {
 
       {reviewingId === sub.id ? (
         <div style={{ marginTop: 12, padding: 14, background: "#FDFBF5", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 4 }}>Headline Correction Verdict</div>
-          <div style={{ fontSize: 10, color: "#5A5650", marginBottom: 10, fontStyle: "italic" }}>You have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10 }}>Headline Correction Verdict</div>
           <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
           <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
           <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning..." /></div>
           <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="ta-btn-primary" style={{ background: "#1B5E3F" }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
-            <button className="ta-btn-primary" style={{ background: "#C4573F" }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject</button>
-            <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
-            <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse (Conflict of Interest)</button>
+          <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FDFBF5 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="ta-btn-primary" style={{ background: "#1B5E3F", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
+              <button className="ta-btn-primary" style={{ background: "#C4573F", flex: 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject</button>
+              <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
+              <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse</button>
+            </div>
+            <LegalDisclaimer short />
           </div>
-          <LegalDisclaimer short />
         </div>
       ) : (() => {
         const accepted = isCross ? (sub.crossGroupAcceptedJurors || []) : (sub.acceptedJurors || []);
         const seats = isCross ? (sub.crossGroupJurySize || sub.crossGroupJurors.length) : (sub.jurySeats || sub.jurors.length);
         const alreadyAccepted = accepted.includes(user.username);
-        return alreadyAccepted ? (
-          <button className="ta-btn-secondary" style={{ marginTop: 10 }} onClick={() => {
-            setReviewingId(sub.id); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false);
-            const ev = {}; if (sub.inlineEdits) sub.inlineEdits.forEach((_, i) => { ev[i] = true; }); setEditVotes(ev);
-            const vv = {}; if (sub.linkedVaultEntries) sub.linkedVaultEntries.forEach(e => { vv[e.id] = true; }); setVaultVotes(vv);
-          }}>Continue Review</button>
-        ) : (
+        const startReview = () => {
+          setReviewingId(sub.id); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false);
+          const ev = {}; if (sub.inlineEdits) sub.inlineEdits.forEach((_, i) => { ev[i] = true; }); setEditVotes(ev);
+          const vv = {}; if (sub.linkedVaultEntries) sub.linkedVaultEntries.forEach(e => { vv[e.id] = true; }); setVaultVotes(vv);
+        };
+        return (
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 4 }}>{accepted.length}/{seats} seats filled · {seats - accepted.length} remaining</div>
-            <button className="ta-btn-secondary" onClick={() => acceptJurySeat(sub.id, isCross)}>Accept Jury Seat</button>
-            <div style={{ fontSize: 10, color: "#7A7570", marginTop: 4 }}>You have 6 hours to complete your review once you accept. If you're unable to finish, your seat will be opened to another juror.</div>
+            {!alreadyAccepted && <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>}
+            <button className="ta-btn-secondary" onClick={async () => {
+              if (!alreadyAccepted) await acceptJurySeat(sub.id, isCross);
+              startReview();
+            }}>Review This Submission</button>
           </div>
         );
       })()}
@@ -2706,6 +2763,17 @@ function ReviewScreen({ user }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Review Queue</h2>
+
+      {/* What you're about to do */}
+      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #D4CFC4", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#1B2A4A", marginBottom: 4 }}>
+          You're reviewing submissions from fellow citizens.
+        </div>
+        <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
+          Read the headline, the proposed correction, and the reasoning. Then vote to approve or reject. Your verdict is permanent and public — take your time, weigh the evidence.
+        </div>
+      </div>
+
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #6B1520", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#6B1520", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "#E6E8F0", border: "1.5px solid #4A5899", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#4A5899", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #DCD8D0" }}>
