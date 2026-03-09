@@ -58,7 +58,12 @@ const TA = {
 
   async _authedFetch(url, opts = {}) {
     const headers = { ...opts.headers, ...(await this._authHeaders()) };
-    return fetch(url, { ...opts, headers });
+    const res = await fetch(url, { ...opts, headers });
+    // Auto-clear expired tokens
+    if (res.status === 401) {
+      await storageRemove([TOKEN_KEY, USER_KEY, "ta-assemblies"]);
+    }
+    return res;
   },
 
   /**
