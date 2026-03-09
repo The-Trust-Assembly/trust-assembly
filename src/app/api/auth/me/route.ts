@@ -1,9 +1,10 @@
+import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, unauthorized } from "@/lib/api-utils";
 
-export async function GET() {
-  const session = await getCurrentUser();
+export async function GET(request: NextRequest) {
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const result = await sql`

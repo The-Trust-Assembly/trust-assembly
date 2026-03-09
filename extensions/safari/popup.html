@@ -5,7 +5,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 340px;
+      width: 380px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #FDFBF5;
       color: #2B2B2B;
@@ -21,6 +21,49 @@
     .header-icon { font-size: 20px; }
     .header-title { font-size: 15px; font-weight: 700; letter-spacing: 0.03em; }
     .header-motto { font-size: 9px; opacity: 0.6; letter-spacing: 0.1em; text-transform: uppercase; }
+    .header-user {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .header-user .username { font-weight: 600; }
+    .header-user button {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #F0EDE6;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .header-user button:hover { background: rgba(255,255,255,0.25); }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid #DCD8D0;
+      background: #F0EDE6;
+    }
+    .tab-bar button {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: none;
+      background: none;
+      color: #7A7570;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-bar button.active {
+      color: #1B2A4A;
+      border-bottom-color: #B8963E;
+    }
+    .tab-bar button:hover { color: #1B2A4A; }
 
     .status {
       padding: 12px 16px;
@@ -53,6 +96,9 @@
     .correction-item.type-correction { border-left: 3px solid #C4573F; }
     .correction-item.type-affirmation { border-left: 3px solid #1B5E3F; }
     .correction-item.type-translation { border-left: 3px solid #D4850A; }
+    /* Color-coding by approval status */
+    .correction-item.status-approved { border-left: 4px solid #1B5E3F; }
+    .correction-item.status-consensus { border-left: 4px solid #5B2D8E; }
 
     .meta { font-size: 9px; color: #7A7570; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
     .headline-old { font-size: 12px; text-decoration: line-through; color: #5A5650; }
@@ -62,6 +108,31 @@
     .trans-orig { text-decoration: line-through; color: #5A5650; }
     .trans-arrow { color: #D4850A; font-weight: 700; }
     .trans-result { color: #D4850A; font-weight: 700; }
+
+    /* Relationship badge */
+    .rel-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 1px 5px;
+      border-radius: 2px;
+      margin-left: 4px;
+    }
+    .rel-badge.joined { background: #1B5E3F; color: #fff; }
+    .rel-badge.followed { background: #2A6B6B; color: #fff; }
+
+    /* Collapsed group */
+    .conflict-others {
+      font-size: 10px;
+      color: #B8963E;
+      cursor: pointer;
+      padding: 4px 10px;
+      margin-bottom: 8px;
+    }
+    .conflict-others:hover { text-decoration: underline; }
+    .conflict-hidden { display: none; }
 
     .footer {
       padding: 10px 16px;
@@ -102,6 +173,97 @@
       color: #5A5650;
     }
     .toggle-row input { margin-left: 8px; }
+
+    /* Login form */
+    .login-panel {
+      padding: 16px;
+      border-bottom: 1px solid #DCD8D0;
+    }
+    .login-panel h3 { font-size: 13px; margin-bottom: 10px; color: #1B2A4A; }
+    .login-panel input {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 12px;
+      background: #fff;
+    }
+    .login-panel .login-btn {
+      width: 100%;
+      padding: 8px;
+      background: #1B2A4A;
+      color: #F0EDE6;
+      border: none;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .login-panel .login-btn:hover { background: #2A3D6A; }
+    .login-panel .login-error { color: #C4573F; font-size: 11px; margin-top: 6px; }
+    .login-panel .login-hint { font-size: 10px; color: #B0A89C; margin-top: 8px; }
+
+    /* Submit form */
+    .submit-panel {
+      padding: 12px 16px;
+    }
+    .submit-panel h3 { font-size: 13px; margin-bottom: 10px; color: #1B2A4A; }
+    .submit-panel label { font-size: 11px; color: #5A5650; display: block; margin-bottom: 3px; }
+    .submit-panel input, .submit-panel select, .submit-panel textarea {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 12px;
+      background: #fff;
+    }
+    .submit-panel textarea { resize: vertical; min-height: 60px; }
+    .submit-panel .submit-btn {
+      width: 100%;
+      padding: 8px;
+      background: #1B5E3F;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .submit-panel .submit-btn:hover { background: #247A51; }
+    .submit-msg { font-size: 11px; margin-top: 6px; }
+    .submit-msg.error { color: #C4573F; }
+    .submit-msg.success { color: #1B5E3F; }
+
+    /* Assemblies panel */
+    .assemblies-panel {
+      padding: 12px 16px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .assemblies-panel h3 { font-size: 13px; margin-bottom: 10px; color: #1B2A4A; }
+    .assembly-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #F0EDE6;
+    }
+    .assembly-row .name { font-size: 12px; font-weight: 600; }
+    .assembly-row .role { font-size: 10px; color: #7A7570; }
+    .assembly-row button {
+      font-size: 10px;
+      padding: 3px 10px;
+      border: 1px solid #DCD8D0;
+      border-radius: 2px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .assembly-row button:hover { background: #F0EDE6; }
+    .assembly-row button.following { background: #2A6B6B; color: #fff; border-color: #2A6B6B; }
   </style>
 </head>
 <body>
@@ -111,10 +273,30 @@
       <div class="header-title">Trust Assembly</div>
       <div class="header-motto">Truth Will Out</div>
     </div>
+    <div class="header-user" id="header-user" style="display:none">
+      <span class="username" id="header-username"></span>
+      <button id="btn-signout">Sign Out</button>
+    </div>
   </div>
 
-  <div id="content">
-    <div class="loading">Checking this page...</div>
+  <div class="tab-bar" id="tab-bar">
+    <button class="active" data-tab="corrections">Corrections</button>
+    <button data-tab="submit">Submit</button>
+    <button data-tab="assemblies">Assemblies</button>
+  </div>
+
+  <div id="tab-corrections">
+    <div id="content">
+      <div class="loading">Checking this page...</div>
+    </div>
+  </div>
+
+  <div id="tab-submit" style="display:none">
+    <div id="submit-gate"></div>
+  </div>
+
+  <div id="tab-assemblies" style="display:none">
+    <div id="assemblies-content"></div>
   </div>
 
   <div class="settings">

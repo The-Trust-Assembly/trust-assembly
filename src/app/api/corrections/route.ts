@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
         reasoning: sub.reasoning,
         evidence: sub.evidence || [],
         submittedBy: sub.submittedBy,
+        orgId: sub.orgId || "",
         orgName: org?.name || "",
         status: sub.status,
         trustScore,
