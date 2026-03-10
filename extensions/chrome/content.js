@@ -254,7 +254,7 @@
 
   // ── Render a single correction card ──
   function renderCorrectionCard(sub, assemblies) {
-    const profile = sub.profile || "Citizen";
+    const profile = sub.profile?.displayName || "Citizen";
     const score = sub.trustScore != null ? sub.trustScore : "—";
     const borderColor = statusBorderColor(sub.status);
     return `
@@ -332,7 +332,7 @@
 
     // Affirmations
     data.affirmations.forEach(sub => {
-      const profile = sub.profile || "Citizen";
+      const profile = sub.profile?.displayName || "Citizen";
       const score = sub.trustScore != null ? sub.trustScore : "—";
       const borderColor = statusBorderColor(sub.status);
       html += `
