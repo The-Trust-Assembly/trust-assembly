@@ -37,5 +37,6 @@ export async function POST(request: NextRequest) {
     id: user.id,
     username: user.username,
     displayName: user.display_name,
+    token, // Returned for browser extension (cross-origin bearer auth)
   });
 }

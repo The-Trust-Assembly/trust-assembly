@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 
 // GET /api/submissions — list submissions (filterable)
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/submissions — file a correction or affirmation
 export async function POST(request: NextRequest) {
-  const session = await getCurrentUser();
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const body = await request.json();

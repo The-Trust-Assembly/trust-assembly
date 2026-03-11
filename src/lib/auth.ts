@@ -65,3 +65,18 @@ export async function getCurrentUser(): Promise<JWTPayload | null> {
   if (!token) return null;
   return verifyToken(token);
 }
+
+/**
+ * Extract user from Authorization: Bearer <token> header.
+ * Used by the browser extension which cannot use HTTP-only cookies.
+ * Falls back to cookie-based auth if no header present.
+ */
+export async function getCurrentUserFromRequest(request: Request): Promise<JWTPayload | null> {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    return verifyToken(token);
+  }
+  // Fall back to cookie-based auth
+  return getCurrentUser();
+}

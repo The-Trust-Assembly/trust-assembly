@@ -211,10 +211,97 @@
     document.body.appendChild(badge);
   }
 
+  // ── Conflict resolution ──
+  // Group corrections by originalHeadline. Within each group, pick winner by:
+  // 1. Highest trustScore (descending)
+  // 2. Ties: alphabetical by orgName (ascending)
+  function resolveConflicts(corrections) {
+    const groups = {};
+    corrections.forEach(sub => {
+      const key = (sub.originalHeadline || "").toLowerCase().trim();
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(sub);
+    });
+    return Object.values(groups).map(items => {
+      items.sort((a, b) => {
+        const sa = a.trustScore ?? -1;
+        const sb = b.trustScore ?? -1;
+        if (sb !== sa) return sb - sa;
+        return (a.orgName || "").localeCompare(b.orgName || "");
+      });
+      return { winner: items[0], others: items.slice(1) };
+    });
+  }
+
+  // ── Relationship badge (Joined/Followed) ──
+  function relBadge(orgId, assemblies) {
+    if (!assemblies || !orgId) return "";
+    if (assemblies.joined && assemblies.joined.some(o => o.id === orgId)) {
+      return '<span style="display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 5px;border-radius:2px;margin-left:4px;background:#1B5E3F;color:#fff">Joined</span>';
+    }
+    if (assemblies.followed && assemblies.followed.some(o => o.id === orgId)) {
+      return '<span style="display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 5px;border-radius:2px;margin-left:4px;background:#2A6B6B;color:#fff">Followed</span>';
+    }
+    return "";
+  }
+
+  // ── Status color for card border ──
+  function statusBorderColor(status) {
+    if (status === "consensus") return COLORS.purple;
+    if (status === "approved") return "#1B5E3F";
+    return COLORS.gold;
+  }
+
+  // ── Render a single correction card ──
+  function renderCorrectionCard(sub, assemblies) {
+    const profile = sub.profile?.displayName || "Citizen";
+    const score = sub.trustScore != null ? sub.trustScore : "—";
+    const borderColor = statusBorderColor(sub.status);
+    return `
+      <div class="ta-ext-card ta-ext-card-correction" style="border-left-color:${borderColor}">
+        <div class="ta-ext-card-meta">
+          <span class="ta-ext-profile-badge" style="border-color:${COLORS.red}; color:${COLORS.red}">
+            ${profile} · ${score}
+          </span>
+          <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}${relBadge(sub.orgId, assemblies)}</span>
+        </div>
+        <div class="ta-ext-headline-original">${escapeHtml(sub.originalHeadline)}</div>
+        <div class="ta-ext-headline-replacement">${escapeHtml(sub.replacement)}</div>
+        ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
+        <div class="ta-ext-reasoning">${escapeHtml(sub.reasoning)}</div>
+        ${sub.evidence && sub.evidence.length > 0 ? `
+          <div class="ta-ext-evidence">
+            ${sub.evidence.map(e => `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.explanation || e.url)}</a>`).join("")}
+          </div>` : ""}
+        <div class="ta-ext-card-status ta-ext-status-${sub.status || "approved"}">${formatStatus(sub.status)}</div>
+      </div>
+    `;
+  }
+
   // ── Side Panel ──
   function togglePanel(data) {
     const existing = document.getElementById(PANEL_ID);
     if (existing) { existing.remove(); return; }
+
+    // Try to load cached assemblies for badges
+    let assemblies = null;
+    try {
+      const stored = sessionStorage.getItem("ta-assemblies-cache");
+      if (stored) assemblies = JSON.parse(stored);
+    } catch (e) {}
+    // Also try from extension storage (async, but we render sync — fill on next open)
+    if (!assemblies) {
+      try {
+        const storage = (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) ? chrome.storage.local : null;
+        if (storage) {
+          storage.get(["ta-assemblies"], (result) => {
+            if (result["ta-assemblies"]) {
+              try { sessionStorage.setItem("ta-assemblies-cache", result["ta-assemblies"]); } catch (e) {}
+            }
+          });
+        }
+      } catch (e) {}
+    }
 
     const panel = document.createElement("div");
     panel.id = PANEL_ID;
@@ -228,42 +315,33 @@
       <div class="ta-ext-panel-body">
     `;
 
-    // Corrections
-    data.corrections.forEach(sub => {
-      const profile = sub.profile || "Citizen";
-      const score = sub.trustScore != null ? sub.trustScore : "—";
-      html += `
-        <div class="ta-ext-card ta-ext-card-correction">
-          <div class="ta-ext-card-meta">
-            <span class="ta-ext-profile-badge" style="border-color:${COLORS.red}; color:${COLORS.red}">
-              ${profile} · ${score}
-            </span>
-            <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}</span>
-          </div>
-          <div class="ta-ext-headline-original">${escapeHtml(sub.originalHeadline)}</div>
-          <div class="ta-ext-headline-replacement">${escapeHtml(sub.replacement)}</div>
-          ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
-          <div class="ta-ext-reasoning">${escapeHtml(sub.reasoning)}</div>
-          ${sub.evidence && sub.evidence.length > 0 ? `
-            <div class="ta-ext-evidence">
-              ${sub.evidence.map(e => `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.explanation || e.url)}</a>`).join("")}
-            </div>` : ""}
-          <div class="ta-ext-card-status ta-ext-status-${sub.status || "approved"}">${formatStatus(sub.status)}</div>
-        </div>
-      `;
+    // Corrections — conflict-resolved
+    const resolved = resolveConflicts(data.corrections);
+    resolved.forEach(group => {
+      // Winner: full display
+      html += renderCorrectionCard(group.winner, assemblies);
+      // Others: collapsed
+      if (group.others.length > 0) {
+        const gid = "ta-cg-" + Math.random().toString(36).slice(2, 8);
+        html += `<div style="font-size:10px;color:${COLORS.gold};cursor:pointer;padding:2px 12px 8px" onclick="var el=document.getElementById('${gid}');el.style.display=el.style.display==='none'?'':'none'">See ${group.others.length} other correction${group.others.length !== 1 ? "s" : ""}</div>`;
+        html += `<div id="${gid}" style="display:none">`;
+        group.others.forEach(sub => { html += renderCorrectionCard(sub, assemblies); });
+        html += `</div>`;
+      }
     });
 
     // Affirmations
     data.affirmations.forEach(sub => {
-      const profile = sub.profile || "Citizen";
+      const profile = sub.profile?.displayName || "Citizen";
       const score = sub.trustScore != null ? sub.trustScore : "—";
+      const borderColor = statusBorderColor(sub.status);
       html += `
-        <div class="ta-ext-card ta-ext-card-affirmation">
+        <div class="ta-ext-card ta-ext-card-affirmation" style="border-left-color:${borderColor}">
           <div class="ta-ext-card-meta">
             <span class="ta-ext-profile-badge" style="border-color:${COLORS.green}; color:${COLORS.green}">
               ${profile} · ${score}
             </span>
-            <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}</span>
+            <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}${relBadge(sub.orgId, assemblies)}</span>
           </div>
           <div class="ta-ext-headline-affirmed">✓ ${escapeHtml(sub.originalHeadline)}</div>
           ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
