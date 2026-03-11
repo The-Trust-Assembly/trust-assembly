@@ -991,7 +991,7 @@ const PROFILES = {
   "New Citizen": { desc: "Insufficient data for profile. Submit and get reviewed.", color: "#B0A89C" },
 };
 
-function computeProfile(user) {
+function computeProfile(user, extraData) {
   const wins = user.totalWins || 0;
   const losses = user.totalLosses || 0;
   const total = wins + losses;
@@ -1008,13 +1008,15 @@ function computeProfile(user) {
   const disputeLosses = user.disputeLosses || 0;
   const lies = user.deliberateLies || 0;
 
-  // ── NEW SCORING FORMULA ──
-  // Trust Score = √(Points) × Quality / Drag  +  Cassandra Bonus
+  // ── SCORING FORMULA ──
+  // Trust Score = 100 (base) + √(Points) × Quality / Drag + Cassandra Bonus + Badge Bonus
   //
+  // Base 100   — everyone starts with reputation; you can only lose it through bad behavior
   // √(Points)  — diminishing returns on volume; showing up matters but can't farm
   // Quality    — capped and exponentiated; trivial work is penalized, important work amplified
   // Drag       — losses under √ (diminishing), lies linear (no mercy)
   // Cassandra  — additive bonus, scales with impact × persistence (coming soon)
+  // Badges     — +1 per badge earned (achievement bonus)
 
   const streakBonus = Math.floor(streak / W.streakInterval);
   const rawPoints = wins * W.win + disputeWins * W.disputeWin + streakBonus;
@@ -1038,12 +1040,23 @@ function computeProfile(user) {
     return sum + W.vindicationBase * impact * persistence;
   }, 0);
 
-  const trustScore = Math.round((base + cassandraBonus) * 10) / 10; // 1 decimal
+  // Badge bonus: +1 per badge earned (requires orgs, subs, allUsers data)
+  let badgeBonus = 0;
+  let badgeCount = 0;
+  if (extraData && extraData.allUsers && extraData.allOrgs && extraData.allSubs) {
+    const badges = computeBadges(user, extraData.allUsers, extraData.allOrgs, extraData.allSubs);
+    badgeCount = badges.length;
+    badgeBonus = badgeCount;
+  }
+
+  const BASE_REPUTATION = 100;
+  const trustScore = Math.round((BASE_REPUTATION + base + cassandraBonus + badgeBonus) * 10) / 10; // 1 decimal
 
   // Profile labels: based on score threshold + quality dimensions
+  // (thresholds adjusted for base-100 system)
   let profile = "New Citizen";
   if (total >= 3) {
-    const hiScore = trustScore >= 1.5; // replaces old accuracy check
+    const hiScore = (trustScore - BASE_REPUTATION) >= 1.5; // compare earned score against old threshold
     const hiNews = avgNews >= 5.5;
     const hiFun = avgFun >= 5.5;
     if (hiScore && hiNews && hiFun) profile = "Oracle";
@@ -1056,7 +1069,7 @@ function computeProfile(user) {
     else profile = "Apprentice";
   }
 
-  return { trustScore, profile, rawAccuracy: total > 0 ? Math.round((wins / total) * 100) : 50, avgNews: avgNews.toFixed(1), avgFun: avgFun.toFixed(1), wins, losses, lies, total, streak, streakBonus, qualityRaw: qualityRaw.toFixed(2), quality: quality.toFixed(2), drag: drag.toFixed(1), cassandraBonus: cassandraBonus.toFixed(1), vindications: vindications.length, disputeWins, disputeLosses, required, highTrust };
+  return { trustScore, profile, rawAccuracy: total > 0 ? Math.round((wins / total) * 100) : 50, avgNews: avgNews.toFixed(1), avgFun: avgFun.toFixed(1), wins, losses, lies, total, streak, streakBonus, qualityRaw: qualityRaw.toFixed(2), quality: quality.toFixed(2), drag: drag.toFixed(1), cassandraBonus: cassandraBonus.toFixed(1), vindications: vindications.length, disputeWins, disputeLosses, required, highTrust, badgeBonus, badgeCount };
 }
 
 // ── Citizen Badges ──
@@ -1076,6 +1089,13 @@ const CITIZEN_BADGES = {
   million:          { id: "million",             icon: "👑",  label: "Millionaire",         desc: "1,000,000 submissions — legendary",              color: "#1B2A4A", tier: "legendary" },
   // Trust badges (per assembly)
   trustedContributor: { id: "trustedContributor", icon: "🛡",  label: "Trusted Contributor", desc: "Earned trusted status in an assembly",          color: "#1B5E3F", tier: "gold" },
+  // Founder milestone badges (assembly reaches jury scaling thresholds)
+  founderFive:      { id: "founderFive",         icon: "🌱",  label: "Jury Ready",          desc: "Founded an assembly that reached 5 members",    color: "#1B5E3F", tier: "bronze" },
+  founderTwentyOne: { id: "founderTwentyOne",    icon: "🌳",  label: "Growing Assembly",    desc: "Founded an assembly that reached 21 members",   color: "#2A6B6B", tier: "silver" },
+  founderFiftyOne:  { id: "founderFiftyOne",     icon: "⚖️",  label: "Full Bench",          desc: "Founded an assembly that reached 51 members",   color: "#B8963E", tier: "gold" },
+  founderHundredOne:{ id: "founderHundredOne",   icon: "🏛",  label: "Centurion Founder",   desc: "Founded an assembly that reached 101 members",  color: "#C2632A", tier: "gold" },
+  founderThousand:  { id: "founderThousand",     icon: "⭐",  label: "Grand Founder",       desc: "Founded an assembly that reached 1,000 members",color: "#5B2D8E", tier: "platinum" },
+  founderTenK:      { id: "founderTenK",         icon: "🏔",  label: "Legendary Founder",   desc: "Founded an assembly that reached 10,000 members",color: "#1B2A4A", tier: "legendary" },
   // Early adopter badges
   firstHundred:     { id: "firstHundred",        icon: "🔱",  label: "First Hundred",       desc: "Among the first 100 citizens to join",          color: "#5B2D8E", tier: "legendary" },
   firstThousand:    { id: "firstThousand",       icon: "🌿",  label: "First Thousand",      desc: "Among the first 1,000 citizens to join",        color: "#1B5E3F", tier: "gold" },
@@ -1100,6 +1120,22 @@ function computeBadges(userObj, allUsers, allOrgs, allSubs) {
   // Assembly Creator — user is listed as createdBy on any org
   const createdOrgs = Object.values(allOrgs).filter(o => o.createdBy === username && !o.isGeneralPublic);
   if (createdOrgs.length > 0) badges.push({ ...CITIZEN_BADGES.assemblyCreator, count: createdOrgs.length });
+
+  // Founder milestones — assembly reaches jury scaling thresholds
+  const FOUNDER_THRESHOLDS = [
+    [5,     "founderFive"],
+    [21,    "founderTwentyOne"],
+    [51,    "founderFiftyOne"],
+    [101,   "founderHundredOne"],
+    [1000,  "founderThousand"],
+    [10000, "founderTenK"],
+  ];
+  createdOrgs.forEach(o => {
+    const mc = (o.members || []).length;
+    FOUNDER_THRESHOLDS.forEach(([threshold, key]) => {
+      if (mc >= threshold) badges.push({ ...CITIZEN_BADGES[key], detail: o.name });
+    });
+  });
 
   // Assembly Member — member of any non-GP org
   const memberOrgs = Object.values(allOrgs).filter(o => !o.isGeneralPublic && o.members && o.members.includes(username));
@@ -3398,7 +3434,7 @@ function ProfileScreen({ user, onViewCitizen }) {
     setJuryScore(js);
     setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
   })(); }, [user.username]);
-  const p = computeProfile(u);
+  const p = computeProfile(u, { allUsers, allOrgs: orgs, allSubs });
   const pi = PROFILES[p.profile];
   const myOrgIds = u.orgIds || (u.orgId ? [u.orgId] : []);
   const myOrgs = myOrgIds.map(id => orgs[id]).filter(Boolean);
@@ -3542,7 +3578,7 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
   })(); }, [username]);
   if (loading) return <Loader />;
   if (notFound) return <div><div className="ta-section-rule" /><button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button><Empty text={`Citizen @${username} not found.`} /></div>;
-  const p = computeProfile(u);
+  const p = computeProfile(u, { allUsers, allOrgs: orgs, allSubs: subs });
   const pi = PROFILES[p.profile];
   const myOrgIds = u.orgIds || (u.orgId ? [u.orgId] : []);
   const myOrgs = myOrgIds.map(id => orgs[id]).filter(Boolean);
