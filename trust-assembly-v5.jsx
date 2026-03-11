@@ -3045,39 +3045,61 @@ function VaultScreen({ user }) {
   const [loading, setLoading] = useState(true);
   const [newArg, setNewArg] = useState(""); const [newBelief, setNewBelief] = useState("");
   const [newTrans, setNewTrans] = useState({ original: "", translated: "", type: "clarity" });
+  const [myOrgs, setMyOrgs] = useState([]);
+  const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+  const [orgsMap, setOrgsMap] = useState({});
+
+  const toggleOrg = (oid) => { setSelectedOrgIds(prev => prev.includes(oid) ? prev.filter(id => id !== oid) : [...prev, oid]); };
 
   const load = async () => {
+    const allOrgs = (await sG(SK.ORGS)) || {};
+    setOrgsMap(allOrgs);
+    const ids = user.orgIds || (user.orgId ? [user.orgId] : []);
+    const orgs = ids.map(id => allOrgs[id]).filter(Boolean);
+    setMyOrgs(orgs);
+    if (selectedOrgIds.length === 0 && user.orgId) setSelectedOrgIds([user.orgId]);
+    const myOrgSet = new Set(ids);
     const v = (await sG(SK.VAULT)) || {}; const a = (await sG(SK.ARGS)) || {}; const b = (await sG(SK.BELIEFS)) || {}; const t = (await sG(SK.TRANSLATIONS)) || {};
-    if (user.orgId) {
-      setVault(Object.values(v).filter(x => x.orgId === user.orgId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      setArgs(Object.values(a).filter(x => x.orgId === user.orgId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      setBeliefs(Object.values(b).filter(x => x.orgId === user.orgId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-      setTranslations(Object.values(t).filter(x => x.orgId === user.orgId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    }
+    setVault(Object.values(v).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setArgs(Object.values(a).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setBeliefs(Object.values(b).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setTranslations(Object.values(t).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     setLoading(false);
   };
-  useEffect(() => { load(); }, [user.orgId]);
+  useEffect(() => { load(); }, [user.orgId, user.orgIds]);
 
-  const addArg = async () => { if (!newArg.trim() || !user.orgId) return; const orgs = (await sG(SK.ORGS)) || {}; const all = (await sG(SK.ARGS)) || {}; const id = gid(); all[id] = { id, orgId: user.orgId, orgName: orgs[user.orgId]?.name || "", content: newArg.trim(), submittedBy: user.username, createdAt: new Date().toISOString() }; await sS(SK.ARGS, all); setNewArg(""); load(); };
-  const addBelief = async () => { if (!newBelief.trim() || !user.orgId) return; const orgs = (await sG(SK.ORGS)) || {}; const all = (await sG(SK.BELIEFS)) || {}; const id = gid(); all[id] = { id, orgId: user.orgId, orgName: orgs[user.orgId]?.name || "", content: newBelief.trim(), submittedBy: user.username, createdAt: new Date().toISOString() }; await sS(SK.BELIEFS, all); setNewBelief(""); load(); };
-  const addTrans = async () => { if (!newTrans.original.trim() || !newTrans.translated.trim() || !user.orgId) return; const orgs = (await sG(SK.ORGS)) || {}; const all = (await sG(SK.TRANSLATIONS)) || {}; const id = gid(); all[id] = { id, orgId: user.orgId, orgName: orgs[user.orgId]?.name || "", original: newTrans.original.trim(), translated: newTrans.translated.trim(), type: newTrans.type, submittedBy: user.username, status: "pending", createdAt: new Date().toISOString(), survivalCount: 0 }; await sS(SK.TRANSLATIONS, all); setNewTrans({ original: "", translated: "", type: "clarity" }); load(); };
+  const addArg = async () => { if (!newArg.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.ARGS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", content: newArg.trim(), submittedBy: user.username, createdAt: new Date().toISOString() }; } await sS(SK.ARGS, all); setNewArg(""); load(); };
+  const addBelief = async () => { if (!newBelief.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.BELIEFS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", content: newBelief.trim(), submittedBy: user.username, createdAt: new Date().toISOString() }; } await sS(SK.BELIEFS, all); setNewBelief(""); load(); };
+  const addTrans = async () => { if (!newTrans.original.trim() || !newTrans.translated.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.TRANSLATIONS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", original: newTrans.original.trim(), translated: newTrans.translated.trim(), type: newTrans.type, submittedBy: user.username, status: "pending", createdAt: new Date().toISOString(), survivalCount: 0 }; } await sS(SK.TRANSLATIONS, all); setNewTrans({ original: "", translated: "", type: "clarity" }); load(); };
+
+  const OrgLabel = ({ orgId }) => { const o = orgsMap[orgId]; if (!o) return null; return <span style={{ fontSize: 9, padding: "1px 5px", fontFamily: "var(--mono)", borderRadius: 2, background: o.isGeneralPublic ? "#E5EFED" : "#F0EDE6", color: o.isGeneralPublic ? "#2A6B6B" : "#5A5650", marginRight: 4 }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>; };
+
+  const AssemblySelector = () => myOrgs.length > 1 ? (
+    <div style={{ marginBottom: 10, padding: 8, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2 }}>
+      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none" }}>(select one or more)</span></div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#1B5E3F" : "#D4CFC4"}`, background: sel ? "#1B5E3F" : "#fff", color: sel ? "#fff" : "#5A5650", borderRadius: 2, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
+      </div>
+    </div>
+  ) : null;
 
   const TRANS_TYPES = { clarity: "Clarity", propaganda: "Anti-Propaganda", euphemism: "Euphemism", satirical: "Satirical" };
   const tabs = [["vault", "Corrections"], ["args", "Arguments"], ["beliefs", "Beliefs"], ["trans", "Translations"]];
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Vaults</h2>
+      <p style={{ color: "#5A5650", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. You see entries from all your assemblies below. When adding new entries, choose which assembly or assemblies to submit to.</p>
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #DCD8D0" }}>
         {tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #1B2A4A" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#1B2A4A" : "#7A7570", fontWeight: tab === k ? 700 : 400 }}>{l}</button>)}
       </div>
       {loading ? <Loader /> : <>
-        {tab === "vault" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Standing Corrections — reusable facts verified through jury review. Each time a correction is linked to a submission and survives review, it gains reputation.</p>{vault.length === 0 ? <Empty text="No vault entries yet. Submit one with your next correction." /> : vault.map(v => <div key={v.id} className="ta-card" style={{ borderLeft: "4px solid #D4CFC4" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{v.submittedBy} · {sDate(v.createdAt)}{v.survivalCount > 0 ? ` · survived ${v.survivalCount} review${v.survivalCount !== 1 ? "s" : ""}` : ""}</span><StatusPill status={v.status} /></div><div style={{ fontFamily: "var(--serif)", fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>{v.assertion}</div>{v.evidence && <div style={{ fontSize: 12, color: "#2A6B6B", marginTop: 3 }}>{v.evidence}</div>}</div>)}</div>}
-        {tab === "args" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Argument Vault — store fundamental arguments your Assembly uses across corrections. Reusable rhetorical and logical tools.</p>{args.map(a => <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #2A6B6B" }}><div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 4 }}>@{a.submittedBy} · {sDate(a.createdAt)}{a.survivalCount > 0 ? ` · survived ${a.survivalCount} review${a.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{a.content}</div></div>)}{args.length === 0 && <Empty text="No arguments stored yet." />}<div style={{ marginTop: 14 }}><div className="ta-field"><label>New Argument</label><textarea value={newArg} onChange={e => setNewArg(e.target.value)} rows={2} placeholder="A reusable argument your Assembly makes..." /></div><button className="ta-btn-primary" onClick={addArg}>Add to Argument Vault</button></div></div>}
-        {tab === "beliefs" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Foundational Belief Vault — core beliefs your Assembly holds as axioms. Not claims of fact but starting premises.</p>{beliefs.map(b => <div key={b.id} className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}><div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 4 }}>@{b.submittedBy} · {sDate(b.createdAt)}{b.survivalCount > 0 ? ` · survived ${b.survivalCount} review${b.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6, fontStyle: "italic" }}>{b.content}</div></div>)}{beliefs.length === 0 && <Empty text="No foundational beliefs stored yet." />}<div style={{ marginTop: 14 }}><div className="ta-field"><label>New Foundational Belief</label><textarea value={newBelief} onChange={e => setNewBelief(e.target.value)} rows={2} placeholder="A core belief your Assembly holds..." /></div><button className="ta-btn-primary" onClick={addBelief}>Add to Belief Vault</button></div></div>}
+        {tab === "vault" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Standing Corrections — reusable facts verified through jury review. Each time a correction is linked to a submission and survives review, it gains reputation.</p>{vault.length === 0 ? <Empty text="No vault entries yet. Submit one with your next correction." /> : vault.map(v => <div key={v.id} className="ta-card" style={{ borderLeft: "4px solid #D4CFC4" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><OrgLabel orgId={v.orgId} />@{v.submittedBy} · {sDate(v.createdAt)}{v.survivalCount > 0 ? ` · survived ${v.survivalCount} review${v.survivalCount !== 1 ? "s" : ""}` : ""}</span><StatusPill status={v.status} /></div><div style={{ fontFamily: "var(--serif)", fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>{v.assertion}</div>{v.evidence && <div style={{ fontSize: 12, color: "#2A6B6B", marginTop: 3 }}>{v.evidence}</div>}</div>)}</div>}
+        {tab === "args" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Argument Vault — store fundamental arguments your Assembly uses across corrections. Reusable rhetorical and logical tools.</p>{args.map(a => <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #2A6B6B" }}><div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={a.orgId} />@{a.submittedBy} · {sDate(a.createdAt)}{a.survivalCount > 0 ? ` · survived ${a.survivalCount} review${a.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{a.content}</div></div>)}{args.length === 0 && <Empty text="No arguments stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Argument</label><textarea value={newArg} onChange={e => setNewArg(e.target.value)} rows={2} placeholder="A reusable argument your Assembly makes..." /></div><button className="ta-btn-primary" onClick={addArg} disabled={selectedOrgIds.length === 0}>Add to Argument Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
+        {tab === "beliefs" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Foundational Belief Vault — core beliefs your Assembly holds as axioms. Not claims of fact but starting premises.</p>{beliefs.map(b => <div key={b.id} className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}><div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={b.orgId} />@{b.submittedBy} · {sDate(b.createdAt)}{b.survivalCount > 0 ? ` · survived ${b.survivalCount} review${b.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6, fontStyle: "italic" }}>{b.content}</div></div>)}{beliefs.length === 0 && <Empty text="No foundational beliefs stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Foundational Belief</label><textarea value={newBelief} onChange={e => setNewBelief(e.target.value)} rows={2} placeholder="A core belief your Assembly holds..." /></div><button className="ta-btn-primary" onClick={addBelief} disabled={selectedOrgIds.length === 0}>Add to Belief Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
         {tab === "trans" && <div>
           <p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Translation Vault — plain-language replacements for jargon, spin, propaganda, and euphemisms. Approved translations can be applied automatically by the browser extension across all articles. Categories: Clarity (strip jargon), Anti-Propaganda (rename spin), Euphemism (call it what it is), Satirical (approved humor).</p>
           {translations.map(t => <div key={t.id} className="ta-card" style={{ borderLeft: "4px solid #D4850A" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><OrgLabel orgId={t.orgId} />@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
               <span style={{ textDecoration: "line-through", color: "#5A5650" }}>{t.original}</span>
               <span style={{ color: "#D4850A", fontWeight: 700 }}>→</span>
@@ -3087,6 +3109,7 @@ function VaultScreen({ user }) {
           {translations.length === 0 && <Empty text="No translations stored yet. Propose one with your next submission, or add directly below." />}
           <div style={{ marginTop: 14, padding: 12, background: "#FDF8F0", border: "1px solid #D4850A40", borderRadius: 2 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#D4850A", marginBottom: 8, fontWeight: 700 }}>New Translation</div>
+            <AssemblySelector />
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "start", marginBottom: 8 }}>
               <input value={newTrans.original} onChange={e => setNewTrans({ ...newTrans, original: e.target.value })} placeholder='e.g. "Quantitative easing"' style={{ padding: "8px 10px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 12, borderRadius: 2 }} />
               <span style={{ padding: "8px 4px", color: "#D4850A", fontWeight: 700 }}>→</span>
@@ -3094,7 +3117,7 @@ function VaultScreen({ user }) {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <select value={newTrans.type} onChange={e => setNewTrans({ ...newTrans, type: e.target.value })} style={{ padding: "6px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 11, borderRadius: 2, fontFamily: "var(--mono)" }}><option value="clarity">Clarity</option><option value="propaganda">Anti-Propaganda</option><option value="euphemism">Euphemism</option><option value="satirical">Satirical</option></select>
-              <button className="ta-btn-primary" onClick={addTrans}>Add to Translation Vault</button>
+              <button className="ta-btn-primary" onClick={addTrans} disabled={selectedOrgIds.length === 0}>Add to Translation Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button>
             </div>
           </div>
         </div>}
