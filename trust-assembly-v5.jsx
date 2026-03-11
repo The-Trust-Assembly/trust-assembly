@@ -953,10 +953,10 @@ async function resolveDispute(disputeId, voterUsername, approve, note, lieChecke
     d.resolvedAt = now;
     d.deliberateLieFinding = wasLie;
     d.auditTrail.push({ time: now, action: `RESOLVED: ${d.status.toUpperCase()} (${upheld}/${vc} upheld)${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
-    // Reveal anonymous identities now that dispute voting is complete
+    // Reveal disputer and original submitter — jurors remain permanently anonymous
     if (d.anonMap) {
-      const reveals = Object.entries(d.anonMap).map(([real, anon]) => `${anon} → @${real}`).join(", ");
-      d.auditTrail.push({ time: now, action: `🔓 Blind review complete — identities revealed: ${reveals}` });
+      const parties = [[d.disputedBy, "disputer"], [d.originalSubmitter, "original submitter"]].filter(([u]) => d.anonMap[u]).map(([u, role]) => `${d.anonMap[u]} was @${u} (${role})`).join(", ");
+      d.auditTrail.push({ time: now, action: `🔓 Blind review complete — parties revealed: ${parties}. Juror identities remain sealed.` });
     }
 
     // Score impacts
@@ -1542,9 +1542,9 @@ async function voteConcession(concessionId, voterUsername, approve) {
     const resolveWeekly = await getWeeklyConcessionCount(c.orgId);
     c.recoveryAtResolution = getConcessionRecovery(c.rejectedAt, resolveWeekly);
     c.auditTrail.push({ time: now, action: `RESOLVED: ${passes ? "CONCESSION ACCEPTED" : "CONCESSION REJECTED"} (${approvals}/${vc}). ${passes ? `Recovery: ${Math.round(c.recoveryAtResolution * 100)}%` : "Assembly holds position."}` });
-    if (c.anonMap) {
-      const reveals = Object.entries(c.anonMap).map(([real, anon]) => `${anon} → @${real}`).join(", ");
-      c.auditTrail.push({ time: now, action: `🔓 Blind review complete — identities revealed: ${reveals}` });
+    // Reveal proposer — jurors remain permanently anonymous
+    if (c.anonMap && c.anonMap[c.proposedBy]) {
+      c.auditTrail.push({ time: now, action: `🔓 Blind review complete — proposer revealed: ${c.anonMap[c.proposedBy]} was @${c.proposedBy}. Juror identities remain sealed.` });
     }
 
     if (passes) {
@@ -2769,10 +2769,9 @@ function ReviewScreen({ user }) {
       const wasLie = lieCount > allVotes.length / 2;
       sub.deliberateLieFinding = wasLie;
       sub.auditTrail.push({ time: now, action: `RESOLVED: ${outcome.toUpperCase()} (${app}/${vc} approved)${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
-      // Reveal anonymous identities now that voting is complete
-      if (sub.anonMap) {
-        const reveals = Object.entries(sub.anonMap).map(([real, anon]) => `${anon} → @${real}`).join(", ");
-        sub.auditTrail.push({ time: now, action: `🔓 Blind review complete — identities revealed: ${reveals}` });
+      // Reveal submitter identity now that voting is complete — jurors remain permanently anonymous
+      if (sub.anonMap && sub.anonMap[sub.submittedBy]) {
+        sub.auditTrail.push({ time: now, action: `🔓 Blind review complete — submitter revealed: ${sub.anonMap[sub.submittedBy]} was @${sub.submittedBy}. Juror identities remain sealed.` });
       }
       // Resolve each inline edit independently
       if (sub.inlineEdits && sub.inlineEdits.length > 0) {
