@@ -1020,15 +1020,15 @@ async function resolveDispute(disputeId, voterUsername, approve, note, lieChecke
 }
 
 const PROFILES = {
-  "Oracle": { desc: "Accurate, important, compelling. The gold standard.", color: "#5B2D8E" },
-  "Diligent Reporter": { desc: "Gets the important stories right. Not flashy, but indispensable.", color: "#1B5E3F" },
-  "Raconteur": { desc: "Honest and entertaining. Picks lighter stories but never lies.", color: "#2A6B6B" },
-  "Archivist": { desc: "Quiet, reliable. Fills gaps nobody else bothers with.", color: "#5A5650" },
-  "Demagogue": { desc: "Interesting and seems important, but wrong. The dangerous kind.", color: "#C4573F" },
-  "Overreacher": { desc: "Tackles big stories but can't back them up.", color: "#C2632A" },
-  "Court Jester": { desc: "Entertaining noise. At least you had fun being wrong.", color: "#C4900A" },
-  "Apprentice": { desc: "Still learning. Everyone starts here.", color: "#7A7570" },
-  "New Citizen": { desc: "Insufficient data for profile. Submit and get reviewed.", color: "#B0A89C" },
+  "Oracle": { desc: "Accurate, important, compelling. The gold standard.", color: "#7C3AED" },
+  "Diligent Reporter": { desc: "Gets the important stories right. Not flashy, but indispensable.", color: "#059669" },
+  "Raconteur": { desc: "Honest and entertaining. Picks lighter stories but never lies.", color: "#0D9488" },
+  "Archivist": { desc: "Quiet, reliable. Fills gaps nobody else bothers with.", color: "#475569" },
+  "Demagogue": { desc: "Interesting and seems important, but wrong. The dangerous kind.", color: "#DC2626" },
+  "Overreacher": { desc: "Tackles big stories but can't back them up.", color: "#EA580C" },
+  "Court Jester": { desc: "Entertaining noise. At least you had fun being wrong.", color: "#D97706" },
+  "Apprentice": { desc: "Still learning. Everyone starts here.", color: "#64748B" },
+  "New Citizen": { desc: "Insufficient data for profile. Submit and get reviewed.", color: "#94A3B8" },
 };
 
 function computeProfile(user, extraData) {
@@ -1117,40 +1117,40 @@ function computeProfile(user, extraData) {
 
 const CITIZEN_BADGES = {
   // Assembly badges
-  assemblyCreator:   { id: "assemblyCreator",   icon: "🏗",  label: "Assembly Creator",    desc: "Created an assembly",                          color: "#5B2D8E", tier: "special" },
-  assemblyMember:    { id: "assemblyMember",     icon: "⬡",   label: "Assembly Member",     desc: "Joined an assembly beyond The General Public",  color: "#2A6B6B", tier: "special" },
+  assemblyCreator:   { id: "assemblyCreator",   icon: "🏗",  label: "Assembly Creator",    desc: "Created an assembly",                          color: "#7C3AED", tier: "special" },
+  assemblyMember:    { id: "assemblyMember",     icon: "⬡",   label: "Assembly Member",     desc: "Joined an assembly beyond The General Public",  color: "#0D9488", tier: "special" },
   // Submission milestones
-  firstSubmission:   { id: "firstSubmission",    icon: "✎",   label: "First Submission",    desc: "Made your first submission",                    color: "#1B5E3F", tier: "bronze" },
-  tenSubmissions:    { id: "tenSubmissions",      icon: "✎✎",  label: "Ten Submissions",     desc: "10 submissions",                                color: "#2A6B6B", tier: "bronze" },
-  centuryClub:      { id: "centuryClub",         icon: "💯",  label: "Century Club",        desc: "100 submissions",                               color: "#B8963E", tier: "silver" },
-  thousand:         { id: "thousand",            icon: "🏛",  label: "Thousand",            desc: "1,000 submissions",                             color: "#C2632A", tier: "gold" },
-  tenThousand:      { id: "tenThousand",         icon: "⚡",  label: "Ten Thousand",        desc: "10,000 submissions",                            color: "#5B2D8E", tier: "platinum" },
-  hundredThousand:  { id: "hundredThousand",     icon: "🌟",  label: "Hundred Thousand",    desc: "100,000 submissions",                           color: "#6B1520", tier: "diamond" },
-  million:          { id: "million",             icon: "👑",  label: "Millionaire",         desc: "1,000,000 submissions — legendary",              color: "#1B2A4A", tier: "legendary" },
+  firstSubmission:   { id: "firstSubmission",    icon: "✎",   label: "First Submission",    desc: "Made your first submission",                    color: "#059669", tier: "bronze" },
+  tenSubmissions:    { id: "tenSubmissions",      icon: "✎✎",  label: "Ten Submissions",     desc: "10 submissions",                                color: "#0D9488", tier: "bronze" },
+  centuryClub:      { id: "centuryClub",         icon: "💯",  label: "Century Club",        desc: "100 submissions",                               color: "#CA8A04", tier: "silver" },
+  thousand:         { id: "thousand",            icon: "🏛",  label: "Thousand",            desc: "1,000 submissions",                             color: "#EA580C", tier: "gold" },
+  tenThousand:      { id: "tenThousand",         icon: "⚡",  label: "Ten Thousand",        desc: "10,000 submissions",                            color: "#7C3AED", tier: "platinum" },
+  hundredThousand:  { id: "hundredThousand",     icon: "🌟",  label: "Hundred Thousand",    desc: "100,000 submissions",                           color: "#991B1B", tier: "diamond" },
+  million:          { id: "million",             icon: "👑",  label: "Millionaire",         desc: "1,000,000 submissions — legendary",              color: "#0F172A", tier: "legendary" },
   // Trust badges (per assembly)
-  trustedContributor: { id: "trustedContributor", icon: "🛡",  label: "Trusted Contributor", desc: "Earned trusted status in an assembly",          color: "#1B5E3F", tier: "gold" },
+  trustedContributor: { id: "trustedContributor", icon: "🛡",  label: "Trusted Contributor", desc: "Earned trusted status in an assembly",          color: "#059669", tier: "gold" },
   // Founder milestone badges (assembly reaches jury scaling thresholds)
-  founderFive:      { id: "founderFive",         icon: "🌱",  label: "Jury Ready",          desc: "Founded an assembly that reached 5 members",    color: "#1B5E3F", tier: "bronze" },
-  founderTwentyOne: { id: "founderTwentyOne",    icon: "🌳",  label: "Growing Assembly",    desc: "Founded an assembly that reached 21 members",   color: "#2A6B6B", tier: "silver" },
-  founderFiftyOne:  { id: "founderFiftyOne",     icon: "⚖️",  label: "Full Bench",          desc: "Founded an assembly that reached 51 members",   color: "#B8963E", tier: "gold" },
-  founderHundredOne:{ id: "founderHundredOne",   icon: "🏛",  label: "Centurion Founder",   desc: "Founded an assembly that reached 101 members",  color: "#C2632A", tier: "gold" },
-  founderThousand:  { id: "founderThousand",     icon: "⭐",  label: "Grand Founder",       desc: "Founded an assembly that reached 1,000 members",color: "#5B2D8E", tier: "platinum" },
-  founderTenK:      { id: "founderTenK",         icon: "🏔",  label: "Legendary Founder",   desc: "Founded an assembly that reached 10,000 members",color: "#1B2A4A", tier: "legendary" },
+  founderFive:      { id: "founderFive",         icon: "🌱",  label: "Jury Ready",          desc: "Founded an assembly that reached 5 members",    color: "#059669", tier: "bronze" },
+  founderTwentyOne: { id: "founderTwentyOne",    icon: "🌳",  label: "Growing Assembly",    desc: "Founded an assembly that reached 21 members",   color: "#0D9488", tier: "silver" },
+  founderFiftyOne:  { id: "founderFiftyOne",     icon: "⚖️",  label: "Full Bench",          desc: "Founded an assembly that reached 51 members",   color: "#CA8A04", tier: "gold" },
+  founderHundredOne:{ id: "founderHundredOne",   icon: "🏛",  label: "Centurion Founder",   desc: "Founded an assembly that reached 101 members",  color: "#EA580C", tier: "gold" },
+  founderThousand:  { id: "founderThousand",     icon: "⭐",  label: "Grand Founder",       desc: "Founded an assembly that reached 1,000 members",color: "#7C3AED", tier: "platinum" },
+  founderTenK:      { id: "founderTenK",         icon: "🏔",  label: "Legendary Founder",   desc: "Founded an assembly that reached 10,000 members",color: "#0F172A", tier: "legendary" },
   // Early adopter badges
-  firstHundred:     { id: "firstHundred",        icon: "🔱",  label: "First Hundred",       desc: "Among the first 100 citizens to join",          color: "#5B2D8E", tier: "legendary" },
-  firstThousand:    { id: "firstThousand",       icon: "🌿",  label: "First Thousand",      desc: "Among the first 1,000 citizens to join",        color: "#1B5E3F", tier: "gold" },
+  firstHundred:     { id: "firstHundred",        icon: "🔱",  label: "First Hundred",       desc: "Among the first 100 citizens to join",          color: "#7C3AED", tier: "legendary" },
+  firstThousand:    { id: "firstThousand",       icon: "🌿",  label: "First Thousand",      desc: "Among the first 1,000 citizens to join",        color: "#059669", tier: "gold" },
 };
 
 const BADGE_TIER_ORDER = { legendary: 0, diamond: 1, platinum: 2, gold: 3, silver: 4, bronze: 5, special: 6 };
 
 const BADGE_TIER_STYLES = {
-  legendary: { bg: "#1B2A4A", border: "#B8963E", text: "#B8963E" },
-  diamond:   { bg: "#2D1520", border: "#E5C6D0", text: "#E5C6D0" },
-  platinum:  { bg: "#EDE5F0", border: "#5B2D8E", text: "#5B2D8E" },
-  gold:      { bg: "#FDF5E0", border: "#B8963E", text: "#B8963E" },
-  silver:    { bg: "#F0EDE6", border: "#7A7570", text: "#5A5650" },
-  bronze:    { bg: "#F5EDD5", border: "#C2632A", text: "#C2632A" },
-  special:   { bg: "#E5EFED", border: "#2A6B6B", text: "#2A6B6B" },
+  legendary: { bg: "#FFFBEB", border: "#CA8A04", text: "#92400E" },
+  diamond:   { bg: "#FDF2F8", border: "#EC4899", text: "#EC4899" },
+  platinum:  { bg: "#F5F3FF", border: "#7C3AED", text: "#7C3AED" },
+  gold:      { bg: "#FFFBEB", border: "#CA8A04", text: "#CA8A04" },
+  silver:    { bg: "#F1F5F9", border: "#64748B", text: "#475569" },
+  bronze:    { bg: "#FFF7ED", border: "#EA580C", text: "#EA580C" },
+  special:   { bg: "#F0FDFA", border: "#0D9488", text: "#0D9488" },
 };
 
 function computeBadges(userObj, allUsers, allOrgs, allSubs) {
@@ -1214,8 +1214,9 @@ function computeBadges(userObj, allUsers, allOrgs, allSubs) {
 
 function CitizenBadges({ badges }) {
   if (!badges || badges.length === 0) return (
-    <div style={{ padding: 12, background: "#F0EDE6", borderRadius: 2, fontSize: 12, color: "#7A7570", fontStyle: "italic", textAlign: "center" }}>
-      No badges earned yet. Submit, join assemblies, and build trust to earn badges.
+    <div style={{ padding: 12, background: "#F1F5F9", borderRadius: 8, fontSize: 12, color: "#64748B", textAlign: "center" }}>
+      <div style={{ fontStyle: "italic", marginBottom: 6 }}>No badges earned yet.</div>
+      <div style={{ fontSize: 11, color: "#94A3B8" }}>Badges are earned automatically through participation: submissions, joining assemblies, earning trusted status, and more. Each badge adds +1 to your Trust Score.</div>
     </div>
   );
   return (
@@ -1225,7 +1226,7 @@ function CitizenBadges({ badges }) {
         return (
           <div key={b.id + (b.detail || "") + i} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
             display: "inline-flex", alignItems: "center", gap: 4,
-            padding: "4px 8px", borderRadius: 2,
+            padding: "4px 8px", borderRadius: 8,
             background: ts.bg, border: `1.5px solid ${ts.border}`,
             fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600,
             color: ts.text, letterSpacing: "0.03em", cursor: "default",
@@ -1592,86 +1593,93 @@ function ScoreBreakdown({ p }) {
   const baseVal = sqrtPts * qFinal / dragVal;
   const cassVal = parseFloat(p.cassandraBonus) || 0;
   const box = (label, value, detail, color, bg) => (
-    <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 10px", background: bg || "#F0EDE6", borderRadius: 2, border: `1.5px solid ${color}`, minWidth: 56 }}>
+    <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 10px", background: bg || "#F1F5F9", borderRadius: 8, border: `1.5px solid ${color}`, minWidth: 56 }}>
       <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.08em", color, marginBottom: 3 }}>{label}</div>
       <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, color, lineHeight: 1 }}>{typeof value === "number" ? value.toFixed(1) : value}</div>
-      {detail && <div style={{ fontFamily: "var(--mono)", fontSize: 7, color: "#7A7570", marginTop: 3, textAlign: "center", lineHeight: 1.3, maxWidth: 90 }}>{detail}</div>}
+      {detail && <div style={{ fontFamily: "var(--mono)", fontSize: 7, color: "#64748B", marginTop: 3, textAlign: "center", lineHeight: 1.3, maxWidth: 90 }}>{detail}</div>}
     </div>
   );
   const op = (symbol) => (
-    <div style={{ display: "inline-flex", alignItems: "center", padding: "0 4px", fontFamily: "var(--serif)", fontSize: 20, color: "#B0A89C", fontWeight: 300 }}>{symbol}</div>
+    <div style={{ display: "inline-flex", alignItems: "center", padding: "0 4px", fontFamily: "var(--serif)", fontSize: 20, color: "#94A3B8", fontWeight: 300 }}>{symbol}</div>
   );
   return (
-    <div style={{ padding: 14, background: "#FDFBF5", border: "1px solid #DCD8D0", borderRadius: 2 }}>
+    <div style={{ padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8 }}>
       {/* Friendly header */}
-      <div style={{ fontFamily: "var(--serif)", fontSize: 15, color: "#1B2A4A", lineHeight: 1.5, marginBottom: 12 }}>
-        We know this looks complicated. It's just math for <strong style={{ color: "#B8963E" }}>try your best to do the right thing</strong>.
+      <div style={{ fontFamily: "var(--serif)", fontSize: 15, color: "#0F172A", lineHeight: 1.5, marginBottom: 12 }}>
+        We know this looks complicated. It's just math for <strong style={{ color: "#CA8A04" }}>try your best to do the right thing</strong>.
       </div>
       {/* Variable legend */}
-      <div style={{ padding: 10, background: "#F0EDE6", borderRadius: 2, marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: "#5A5650" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginBottom: 6 }}>What the variables mean</div>
+      <div style={{ padding: 10, background: "#F1F5F9", borderRadius: 8, marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: "#475569" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B", marginBottom: 6 }}>What the variables mean</div>
         <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 10px" }}>
-          <span style={{ fontFamily: "var(--mono)", color: "#1B5E3F", fontWeight: 700 }}>Points</span><span>Your wins, dispute wins, and streak bonus — how much good work you've done</span>
-          <span style={{ fontFamily: "var(--mono)", color: "#1B5E3F", fontWeight: 700 }}>√</span><span>Square root — more work helps, but you can't grind your way to the top</span>
-          <span style={{ fontFamily: "var(--mono)", color: "#2A6B6B", fontWeight: 700 }}>Quality</span><span>How important and interesting jurors rated your work (average of News + Fun)</span>
-          <span style={{ fontFamily: "var(--mono)", color: "#C4573F", fontWeight: 700 }}>Drag</span><span>Your losses and lies — this divides your score, so mistakes pull you down</span>
-          <span style={{ fontFamily: "var(--mono)", color: "#B8963E", fontWeight: 700 }}>Cassandra</span><span>Bonus for being right when everyone said you were wrong (added on top)</span>
+          <span style={{ fontFamily: "var(--mono)", color: "#059669", fontWeight: 700 }}>Points</span><span>Your wins, dispute wins, and streak bonus — how much good work you've done</span>
+          <span style={{ fontFamily: "var(--mono)", color: "#059669", fontWeight: 700 }}>√</span><span>Square root — more work helps, but you can't grind your way to the top</span>
+          <span style={{ fontFamily: "var(--mono)", color: "#0D9488", fontWeight: 700 }}>Quality</span><span>How important and interesting jurors rated your work (average of News + Fun)</span>
+          <span style={{ fontFamily: "var(--mono)", color: "#DC2626", fontWeight: 700 }}>Drag</span><span>Your losses and lies — this divides your score, so mistakes pull you down</span>
+          <span style={{ fontFamily: "var(--mono)", color: "#CA8A04", fontWeight: 700 }}>Cassandra</span><span>Bonus for being right when everyone said you were wrong (added on top)</span>
+          <span style={{ fontFamily: "var(--mono)", color: "#2563EB", fontWeight: 700 }}>Badges</span><span>+1 per badge earned — achievements from participation, milestones, and trust</span>
         </div>
       </div>
       {/* Result line */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--serif)", fontSize: 28, fontWeight: 700, color: "#1B2A4A" }}>{p.trustScore}</div>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#7A7570", lineHeight: 1.3 }}>Trust Score</div>
+        <div style={{ fontFamily: "var(--serif)", fontSize: 28, fontWeight: 700, color: "#0F172A" }}>{p.trustScore}</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#64748B", lineHeight: 1.3 }}>Trust Score</div>
       </div>
       {/* Visual formula */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
-        {box("√ Points", sqrtPts, `${p.wins}W + ${p.disputeWins > 0 ? p.disputeWins + "DW·" + W.disputeWin + " + " : ""}${p.streakBonus}str = √${rawPts.toFixed(0)}`, "#1B5E3F")}
+        {box("√ Points", sqrtPts, `${p.wins}W + ${p.disputeWins > 0 ? p.disputeWins + "DW·" + W.disputeWin + " + " : ""}${p.streakBonus}str = √${rawPts.toFixed(0)}`, "#059669")}
         {op("×")}
-        {box("Quality", qFinal, `${p.avgNews}+${p.avgFun} ÷ ${W.qualityDivisor}${qRaw > W.qualityCap ? " cap " + W.qualityCap : ""} ^${W.qualityExp}`, "#2A6B6B")}
+        {box("Quality", qFinal, `${p.avgNews}+${p.avgFun} ÷ ${W.qualityDivisor}${qRaw > W.qualityCap ? " cap " + W.qualityCap : ""} ^${W.qualityExp}`, "#0D9488")}
         {op("÷")}
-        {box("Drag", dragVal, `1 + √loss${p.lies > 0 ? " + " + p.lies + "×" + W.lieDrag + " lie" : ""}`, "#C4573F", "#FAE8E5")}
+        {box("Drag", dragVal, `1 + √loss${p.lies > 0 ? " + " + p.lies + "×" + W.lieDrag + " lie" : ""}`, "#DC2626", "#FEF2F2")}
         {cassVal > 0 && op("+")}
-        {cassVal > 0 && box("Cassandra", cassVal, `${p.vindications} vindication${p.vindications !== 1 ? "s" : ""}`, "#B8963E", "#FDF5E6")}
+        {cassVal > 0 && box("Cassandra", cassVal, `${p.vindications} vindication${p.vindications !== 1 ? "s" : ""}`, "#CA8A04", "#FFFBEB")}
+        {p.badgeCount > 0 && op("+")}
+        {p.badgeCount > 0 && box("Badges", p.badgeBonus, `${p.badgeCount} badge${p.badgeCount !== 1 ? "s" : ""}`, "#2563EB", "#EFF6FF")}
       </div>
       {/* Component breakdown */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11, lineHeight: 1.6, color: "#5A5650" }}>
-        <div style={{ padding: 8, background: "#E5F0EA", borderRadius: 2 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#1B5E3F", marginBottom: 3 }}>Points (numerator)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11, lineHeight: 1.6, color: "#475569" }}>
+        <div style={{ padding: 8, background: "#ECFDF5", borderRadius: 8 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#059669", marginBottom: 3 }}>Points (numerator)</div>
           <div>{p.wins} win{p.wins !== 1 ? "s" : ""} × {W.win}</div>
           {p.disputeWins > 0 && <div>{p.disputeWins} dispute win{p.disputeWins > 1 ? "s" : ""} × {W.disputeWin}</div>}
-          <div>{p.streakBonus} streak bonus <span style={{ fontSize: 9, color: "#7A7570" }}>({p.streak} ÷ {W.streakInterval})</span></div>
-          <div style={{ borderTop: "1px solid #1B5E3F40", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>√{rawPts.toFixed(0)} = {sqrtPts.toFixed(2)}</div>
+          <div>{p.streakBonus} streak bonus <span style={{ fontSize: 9, color: "#64748B" }}>({p.streak} ÷ {W.streakInterval})</span></div>
+          <div style={{ borderTop: "1px solid #05966940", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>√{rawPts.toFixed(0)} = {sqrtPts.toFixed(2)}</div>
         </div>
-        <div style={{ padding: 8, background: "#E5EFED", borderRadius: 2 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#2A6B6B", marginBottom: 3 }}>Quality (multiplier)</div>
+        <div style={{ padding: 8, background: "#F0FDFA", borderRadius: 8 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#0D9488", marginBottom: 3 }}>Quality (multiplier)</div>
           <div>News: {p.avgNews} + Fun: {p.avgFun}</div>
           <div>Raw: {qRaw.toFixed(2)}{qRaw > W.qualityCap ? ` → capped ${W.qualityCap}` : ""}</div>
-          <div style={{ borderTop: "1px solid #2A6B6B40", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>{qCapped.toFixed(2)}^{W.qualityExp} = {qFinal.toFixed(2)}</div>
+          <div style={{ borderTop: "1px solid #0D948840", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>{qCapped.toFixed(2)}^{W.qualityExp} = {qFinal.toFixed(2)}</div>
         </div>
-        <div style={{ padding: 8, background: "#FAE8E5", borderRadius: 2 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#C4573F", marginBottom: 3 }}>Drag (divisor)</div>
+        <div style={{ padding: 8, background: "#FEF2F2", borderRadius: 8 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#DC2626", marginBottom: 3 }}>Drag (divisor)</div>
           <div>Base: 1.0</div>
           {(p.losses - p.lies) > 0 && <div>+ √ {(p.losses - p.lies)} losses × {W.lossDrag}{p.disputeLosses > 0 ? ` + √ ${p.disputeLosses} disp × ${W.failedDisputeDrag}` : ""}</div>}
           {p.disputeLosses > 0 && (p.losses - p.lies) <= 0 && <div>+ √ {p.disputeLosses} failed disp × {W.failedDisputeDrag}</div>}
-          {p.lies > 0 && <div style={{ color: "#6B1520", fontWeight: 700 }}>+ {p.lies} lie{p.lies > 1 ? "s" : ""} × {W.lieDrag} = +{(p.lies * W.lieDrag).toFixed(1)}</div>}
-          <div style={{ borderTop: "1px solid #C4573F40", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>Total drag: {dragVal.toFixed(1)}</div>
+          {p.lies > 0 && <div style={{ color: "#991B1B", fontWeight: 700 }}>+ {p.lies} lie{p.lies > 1 ? "s" : ""} × {W.lieDrag} = +{(p.lies * W.lieDrag).toFixed(1)}</div>}
+          <div style={{ borderTop: "1px solid #DC262640", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>Total drag: {dragVal.toFixed(1)}</div>
         </div>
         {cassVal > 0 ? (
-          <div style={{ padding: 8, background: "#FDF5E6", borderRadius: 2 }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#B8963E", marginBottom: 3 }}>Cassandra Bonus</div>
+          <div style={{ padding: 8, background: "#FFFBEB", borderRadius: 8 }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#CA8A04", marginBottom: 3 }}>Cassandra Bonus</div>
             <div>{p.vindications} vindication{p.vindications !== 1 ? "s" : ""}</div>
             <div>base({W.vindicationBase}) × impact × persistence</div>
-            <div style={{ borderTop: "1px solid #B8963E40", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>+{cassVal.toFixed(1)} additive</div>
+            <div style={{ borderTop: "1px solid #CA8A0440", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>+{cassVal.toFixed(1)} additive</div>
           </div>
         ) : (
-          <div style={{ padding: 8, background: "#F0EDE6", borderRadius: 2, opacity: 0.6 }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#7A7570", marginBottom: 3 }}>Cassandra Bonus</div>
-            <div style={{ fontSize: 10, color: "#B0A89C" }}>No vindications yet. This additive bonus activates when you are disputed, lose, refuse to concede, and are later proven right.</div>
+          <div style={{ padding: 8, background: "#F1F5F9", borderRadius: 8, opacity: 0.6 }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#64748B", marginBottom: 3 }}>Cassandra Bonus</div>
+            <div style={{ fontSize: 10, color: "#94A3B8" }}>No vindications yet. This additive bonus activates when you are disputed, lose, refuse to concede, and are later proven right.</div>
           </div>
         )}
+        <div style={{ padding: 8, background: p.badgeCount > 0 ? "#EFF6FF" : "#F1F5F9", borderRadius: 8, opacity: p.badgeCount > 0 ? 1 : 0.6 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: p.badgeCount > 0 ? "#2563EB" : "#64748B", marginBottom: 3 }}>Badge Bonus</div>
+          {p.badgeCount > 0 ? <><div>{p.badgeCount} badge{p.badgeCount !== 1 ? "s" : ""} earned</div><div style={{ borderTop: "1px solid #2563EB40", marginTop: 4, paddingTop: 4, fontWeight: 700 }}>+{p.badgeBonus} additive</div></> : <div style={{ fontSize: 10, color: "#94A3B8" }}>Earn badges through participation. Each badge adds +1 to your Trust Score.</div>}
+        </div>
       </div>
       {/* Election note */}
-      <div style={{ marginTop: 10, fontSize: 9, color: "#B0A89C", fontFamily: "var(--mono)", lineHeight: 1.5 }}>
+      <div style={{ marginTop: 10, fontSize: 9, color: "#94A3B8", fontFamily: "var(--mono)", lineHeight: 1.5 }}>
         All weights are community-votable in future elections. Formula shape is permanent; coefficients are democratic.
       </div>
     </div>
@@ -1681,7 +1689,7 @@ function ScoreBreakdown({ p }) {
 function Badge({ profile, score }) {
   const p = PROFILES[profile] || PROFILES["New Citizen"];
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 8px", borderRadius: 2, border: `1.5px solid ${p.color}`, color: p.color, fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 8px", borderRadius: 8, border: `1.5px solid ${p.color}`, color: p.color, fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: p.color }} />{profile} · {score}
     </span>
   );
@@ -1692,28 +1700,28 @@ function SubHeadline({ sub, size = 14 }) {
   return (
     <div>
       {isAffirm ? (
-        <div style={{ fontFamily: "var(--serif)", fontSize: size, color: "#1B5E3F", fontWeight: 700, marginBottom: 2 }}>✓ {sub.originalHeadline}</div>
+        <div style={{ fontFamily: "var(--serif)", fontSize: size, color: "#059669", fontWeight: 700, marginBottom: 2 }}>✓ {sub.originalHeadline}</div>
       ) : (
         <>
-          <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#C4573F", color: "#5A5650", marginBottom: 3, fontSize: size }}>{sub.originalHeadline}</div>
-          {sub.replacement && <div style={{ fontFamily: "var(--serif)", color: "#C4573F", fontWeight: 700, fontSize: size + 2, marginTop: 1 }}>{sub.replacement}</div>}
+          <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", marginBottom: 3, fontSize: size }}>{sub.originalHeadline}</div>
+          {sub.replacement && <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: size + 2, marginTop: 1 }}>{sub.replacement}</div>}
         </>
       )}
-      {sub.author && <div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginTop: 2 }}>Author: {sub.author}</div>}
+      {sub.author && <div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginTop: 2 }}>Author: {sub.author}</div>}
     </div>
   );
 }
 
 function StatusPill({ status }) {
-  const m = { di_pending: { bg: "#E6E8F0", c: "#4A5899", l: "🤖 DI Pre-Review" }, pending_jury: { bg: "#F5EDD5", c: "#C4900A", l: "Awaiting Jury" }, pending_review: { bg: "#FDF0E4", c: "#C2632A", l: "Under Review" }, approved: { bg: "#E5F0EA", c: "#1B5E3F", l: "Approved" }, rejected: { bg: "#FAE8E5", c: "#C4573F", l: "Rejected" }, cross_review: { bg: "#E5EFED", c: "#2A6B6B", l: "Cross-Group" }, consensus: { bg: "#EDE5F0", c: "#5B2D8E", l: "Consensus" }, consensus_rejected: { bg: "#EBD5D3", c: "#6B1520", l: "Consensus Rejected" }, disputed: { bg: "#FDF0E4", c: "#C2632A", l: "⚖ Disputed" }, upheld: { bg: "#C2632A", c: "#fff", l: "Dispute Upheld" }, dismissed: { bg: "#E5F0EA", c: "#1B5E3F", l: "Dispute Dismissed" } };
+  const m = { di_pending: { bg: "#EEF2FF", c: "#4F46E5", l: "🤖 DI Pre-Review" }, pending_jury: { bg: "#FFFBEB", c: "#D97706", l: "Awaiting Jury" }, pending_review: { bg: "#FFF7ED", c: "#EA580C", l: "Under Review" }, approved: { bg: "#ECFDF5", c: "#059669", l: "Approved" }, rejected: { bg: "#FEF2F2", c: "#DC2626", l: "Rejected" }, cross_review: { bg: "#F0FDFA", c: "#0D9488", l: "Cross-Group" }, consensus: { bg: "#F5F3FF", c: "#7C3AED", l: "Consensus" }, consensus_rejected: { bg: "#EBD5D3", c: "#991B1B", l: "Consensus Rejected" }, disputed: { bg: "#FFF7ED", c: "#EA580C", l: "⚖ Disputed" }, upheld: { bg: "#EA580C", c: "#fff", l: "Dispute Upheld" }, dismissed: { bg: "#ECFDF5", c: "#059669", l: "Dispute Dismissed" } };
   const s = m[status] || { bg: "#eee", c: "#666", l: status };
-  return <span style={{ fontSize: 10, padding: "2px 7px", background: s.bg, color: s.c, borderRadius: 2, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>{s.l}</span>;
+  return <span style={{ fontSize: 10, padding: "2px 7px", background: s.bg, color: s.c, borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>{s.l}</span>;
 }
 
 function LegalDisclaimer({ short }) {
-  if (short) return <div style={{ fontSize: 10, color: "#5A5650", fontFamily: "var(--mono)", lineHeight: 1.6, padding: "6px 0" }}>Digital Citizens are solely responsible for the content of their submissions. The Trust Assembly makes no claims regarding the accuracy of any submission.</div>;
+  if (short) return <div style={{ fontSize: 10, color: "#475569", fontFamily: "var(--mono)", lineHeight: 1.6, padding: "6px 0" }}>Digital Citizens are solely responsible for the content of their submissions. The Trust Assembly makes no claims regarding the accuracy of any submission.</div>;
   return (
-    <div style={{ fontSize: 10, color: "#5A5650", fontFamily: "var(--mono)", lineHeight: 1.5, padding: 12, background: "#F0EDE6", borderRadius: 2, border: "1px solid #DCD8D0" }}>
+    <div style={{ fontSize: 10, color: "#475569", fontFamily: "var(--mono)", lineHeight: 1.5, padding: 12, background: "#F1F5F9", borderRadius: 8, border: "1px solid #E2E8F0" }}>
       <strong>Legal Notice:</strong> The Trust Assembly is a platform for collaborative fact-checking and editorial review. All corrections, annotations, and standing corrections are submitted by Digital Citizens and represent their individual assessments. The Trust Assembly does not independently verify submissions and makes no representations regarding the accuracy, completeness, or reliability of any user-submitted content. Digital Citizens bear sole responsibility for the content they submit. Jury decisions reflect peer consensus, not institutional endorsement.
     </div>
   );
@@ -1724,9 +1732,9 @@ function AuditTrail({ entries }) {
   if (!entries || entries.length === 0) return null;
   return (
     <div style={{ marginTop: 10 }}>
-      <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", padding: 0 }}>{open ? "▾" : "▸"} Audit Trail ({entries.length})</button>
-      {open && <div style={{ marginTop: 6, padding: 10, background: "#EDF0F7", borderLeft: "3px solid #1B2A4A", fontSize: 10, fontFamily: "var(--mono)", maxHeight: 180, overflowY: "auto" }}>
-        {entries.map((e, i) => <div key={i} style={{ marginBottom: 3, color: "#2B2B2B", lineHeight: 1.6 }}><span style={{ color: "#5A5650" }}>{fDate(e.time)}</span> — {e.action}</div>)}
+      <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", padding: 0 }}>{open ? "▾" : "▸"} Audit Trail ({entries.length})</button>
+      {open && <div style={{ marginTop: 6, padding: 10, background: "#EFF6FF", borderLeft: "3px solid #2563EB", fontSize: 10, fontFamily: "var(--mono)", maxHeight: 180, overflowY: "auto" }}>
+        {entries.map((e, i) => <div key={i} style={{ marginBottom: 3, color: "#1E293B", lineHeight: 1.6 }}><span style={{ color: "#475569" }}>{fDate(e.time)}</span> — {e.action}</div>)}
       </div>}
     </div>
   );
@@ -1754,17 +1762,17 @@ function CitizenCounter() {
   const consensusActive = orgStats.large >= 5;
 
   return (
-    <div style={{ textAlign: "center", padding: "16px 0 8px", borderBottom: "1px solid #DCD8D0", marginBottom: 16 }}>
-      <div style={{ fontFamily: "var(--serif)", fontSize: 32, fontWeight: 700, color: "#1B2A4A" }}>{count}</div>
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.15em", color: "#7A7570", marginBottom: 8 }}>Digital Citizens Registered</div>
-      <div style={{ fontSize: 10, color: "#5A5650", lineHeight: 1.6, maxWidth: 520, margin: "0 auto" }}>
+    <div style={{ textAlign: "center", padding: "16px 0 8px", borderBottom: "1px solid #E2E8F0", marginBottom: 16 }}>
+      <div style={{ fontFamily: "var(--serif)", fontSize: 32, fontWeight: 700, color: "#0F172A" }}>{count}</div>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.15em", color: "#64748B", marginBottom: 8 }}>Digital Citizens Registered</div>
+      <div style={{ fontSize: 10, color: "#475569", lineHeight: 1.6, maxWidth: 520, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 2 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: juryRulesActive ? "#1B5E3F" : "#D4CFC4", display: "inline-block" }} />
-          <span>Advanced Jury Selection Rules activate for assemblies with 100+ citizens {juryRulesActive && <span style={{ color: "#1B5E3F", fontWeight: 700 }}>ACTIVE</span>}</span>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: juryRulesActive ? "#059669" : "#CBD5E1", display: "inline-block" }} />
+          <span>Advanced Jury Selection Rules activate for assemblies with 100+ citizens {juryRulesActive && <span style={{ color: "#059669", fontWeight: 700 }}>ACTIVE</span>}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: consensusActive ? "#5B2D8E" : "#D4CFC4", display: "inline-block" }} />
-          <span>Consensus Juries activate with 5+ assemblies of 100+ citizens ({orgStats.large}/5) {consensusActive && <span style={{ color: "#5B2D8E", fontWeight: 700 }}>ACTIVE</span>}</span>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: consensusActive ? "#7C3AED" : "#CBD5E1", display: "inline-block" }} />
+          <span>Consensus Juries activate with 5+ assemblies of 100+ citizens ({orgStats.large}/5) {consensusActive && <span style={{ color: "#7C3AED", fontWeight: 700 }}>ACTIVE</span>}</span>
         </div>
       </div>
     </div>
@@ -1800,25 +1808,25 @@ function RatingInput({ label, value, onChange, rubric }) {
   const r = rubric || {};
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ display: "block", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 4 }}>{label}: <strong style={{ fontSize: 14, color: "#1B2A4A" }}>{value}</strong>/10</label>
-      <input type="range" min="1" max="10" value={value} onChange={(e) => onChange(parseInt(e.target.value))} style={{ width: "100%", accentColor: "#1B2A4A" }} />
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><span>1 — Low</span><span>10 — High</span></div>
-      {r[value] && <div style={{ marginTop: 6, padding: "6px 10px", background: "#F0EDE6", borderRadius: 2, fontSize: 12, color: "#2B2B2B", lineHeight: 1.6, borderLeft: `3px solid ${value <= 3 ? "#7A7570" : value <= 6 ? "#C4900A" : value <= 8 ? "#2A6B6B" : "#5B2D8E"}` }}>
+      <label style={{ display: "block", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 4 }}>{label}: <strong style={{ fontSize: 14, color: "#0F172A" }}>{value}</strong>/10</label>
+      <input type="range" min="1" max="10" value={value} onChange={(e) => onChange(parseInt(e.target.value))} style={{ width: "100%", accentColor: "#0F172A" }} />
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}><span>1 — Low</span><span>10 — High</span></div>
+      {r[value] && <div style={{ marginTop: 6, padding: "6px 10px", background: "#F1F5F9", borderRadius: 8, fontSize: 12, color: "#1E293B", lineHeight: 1.6, borderLeft: `3px solid ${value <= 3 ? "#64748B" : value <= 6 ? "#D97706" : value <= 8 ? "#0D9488" : "#7C3AED"}` }}>
         <strong>{value}/10:</strong> {r[value]}
       </div>}
-      <div style={{ marginTop: 4, fontSize: 10, color: "#B0A89C", fontStyle: "italic" }}>Slide to see the rubric for each level — these anchors help calibrate your judgment across jurors.</div>
+      <div style={{ marginTop: 4, fontSize: 10, color: "#94A3B8", fontStyle: "italic" }}>Slide to see the rubric for each level — these anchors help calibrate your judgment across jurors.</div>
     </div>
   );
 }
 
 function DeliberateLieCheckbox({ checked, onChange }) {
   return (
-    <div style={{ margin: "12px 0", padding: 12, background: "#FAE8E5", border: "1.5px solid #C4573F", borderRadius: 2 }}>
+    <div style={{ margin: "12px 0", padding: 12, background: "#FEF2F2", border: "1.5px solid #DC2626", borderRadius: 8 }}>
       <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}>
-        <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ accentColor: "#C4573F", marginTop: 3, flexShrink: 0 }} />
+        <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ accentColor: "#DC2626", marginTop: 3, flexShrink: 0 }} />
         <div>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B1520", fontWeight: 700, marginBottom: 3 }}>⚠ Deliberate Deception Finding</div>
-          <div style={{ fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>By checking this box, I certify that I personally believe this submission to be a <strong>deliberate lie, a gross misrepresentation, or an omission of context with the intent to deceive.</strong> I understand that this is a secret ballot that will significantly impact the trust score of the submitting citizen — not the article author. A simple majority of jurors checking this box triggers a Deliberate Deception Finding.</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#991B1B", fontWeight: 700, marginBottom: 3 }}>⚠ Deliberate Deception Finding</div>
+          <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B" }}>By checking this box, I certify that I personally believe this submission to be a <strong>deliberate lie, a gross misrepresentation, or an omission of context with the intent to deceive.</strong> I understand that this is a secret ballot that will significantly impact the trust score of the submitting citizen — not the article author. A simple majority of jurors checking this box triggers a Deliberate Deception Finding.</div>
         </div>
       </label>
     </div>
@@ -1831,10 +1839,10 @@ function EvidenceFields({ evidence, onChange }) {
   const remove = (i) => onChange(evidence.filter((_, idx) => idx !== i));
   return (
     <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Supporting Evidence</div>
+      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6 }}>Supporting Evidence</div>
       {evidence.map((e, i) => (
-        <div key={i} style={{ padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", marginBottom: 6, borderRadius: 2, position: "relative" }}>
-          {evidence.length > 1 && <button onClick={() => remove(i)} style={{ position: "absolute", top: 4, right: 6, background: "none", border: "none", color: "#C4573F", cursor: "pointer", fontSize: 14 }}>×</button>}
+        <div key={i} style={{ padding: 10, background: "#F1F5F9", border: "1px solid #E2E8F0", marginBottom: 6, borderRadius: 8, position: "relative" }}>
+          {evidence.length > 1 && <button onClick={() => remove(i)} style={{ position: "absolute", top: 4, right: 6, background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14 }}>×</button>}
           <div className="ta-field" style={{ marginBottom: 6 }}><label>Evidence URL #{i + 1}</label><input value={e.url} onChange={ev => update(i, "url", ev.target.value)} placeholder="https://..." /></div>
           <div className="ta-field" style={{ marginBottom: 0 }}><label>Why does this support your argument?</label><textarea value={e.explanation} onChange={ev => update(i, "explanation", ev.target.value)} rows={2} placeholder="What this source proves..." /></div>
         </div>
@@ -1849,12 +1857,12 @@ function InviteCTA({ orgName, memberCount }) {
   const needed = Math.max(0, 5 - memberCount);
   if (needed <= 0) return null;
   return (
-    <div style={{ margin: "20px 0", padding: 20, background: "#1B2A4A", borderRadius: 2, color: "#F0EDE6", border: "2px solid #B8963E" }}>
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.15em", color: "#B8963E", marginBottom: 6 }}>Action Required</div>
-      <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Your Assembly Needs {needed} More Member{needed !== 1 ? "s" : ""}</div>
-      <p style={{ color: "#5A5650", fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>Jury review requires 5+ members in <strong style={{ color: "#F0EDE6" }}>{orgName}</strong>. Submissions are queued until then.</p>
-      <p style={{ color: "#5A5650", fontSize: 12, lineHeight: 1.6, marginBottom: 12, fontStyle: "italic" }}>This is by design. Can you convince just four people that your Assembly has a perspective worth defending? If so, you've earned the right to operate. If not, you haven't been promoted — you've been tested.</p>
-      <button style={{ background: "#B8963E", color: "#fff", border: "none", padding: "8px 16px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 2, textTransform: "uppercase", letterSpacing: "0.05em" }} onClick={() => { navigator.clipboard?.writeText(`Join my Trust Assembly "${orgName}" — a system where the only way to win is by serving the truth.`).then(() => setCopied(true)); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied!" : "Copy Invite"}</button>
+    <div style={{ margin: "20px 0", padding: 20, background: "#EFF6FF", borderRadius: 8, color: "#1E293B", border: "1.5px solid #BFDBFE" }}>
+      <div style={{ fontSize: 10, fontFamily: "var(--font)", textTransform: "uppercase", letterSpacing: "0.15em", color: "#2563EB", marginBottom: 6, fontWeight: 600 }}>Action Required</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Your Assembly Needs {needed} More Member{needed !== 1 ? "s" : ""}</div>
+      <p style={{ color: "#475569", fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>Jury review requires 5+ members in <strong style={{ color: "#0F172A" }}>{orgName}</strong>. Submissions are queued until then.</p>
+      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.6, marginBottom: 12, fontStyle: "italic" }}>This is by design. Can you convince just four people that your Assembly has a perspective worth defending? If so, you've earned the right to operate. If not, you haven't been promoted — you've been tested.</p>
+      <button style={{ background: "#CA8A04", color: "#fff", border: "none", padding: "8px 16px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 8, textTransform: "uppercase", letterSpacing: "0.05em" }} onClick={() => { navigator.clipboard?.writeText(`Join my Trust Assembly "${orgName}" — a system where the only way to win is by serving the truth.`).then(() => setCopied(true)); setTimeout(() => setCopied(false), 2000); }}>{copied ? "✓ Copied!" : "Copy Invite"}</button>
     </div>
   );
 }
@@ -1882,15 +1890,15 @@ function InlineEditsForm({ edits, onChange }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650" }}>In-Line Article Edits</div>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: edits.filter(e => e.original.trim()).length >= MAX_EDITS ? "#C4573F" : "#7A7570" }}>{edits.filter(e => e.original.trim()).length}/{MAX_EDITS}</div>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569" }}>In-Line Article Edits</div>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: edits.filter(e => e.original.trim()).length >= MAX_EDITS ? "#DC2626" : "#64748B" }}>{edits.filter(e => e.original.trim()).length}/{MAX_EDITS}</div>
       </div>
       {edits.map((edit, i) => (
-        <div key={i} style={{ padding: 12, background: i % 2 === 0 ? "#FDFBF5" : "#F0EDE6", border: "1px solid #DCD8D0", marginBottom: 8, borderRadius: 2, position: "relative" }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570", marginBottom: 6 }}>Edit #{i + 1}</div>
-          {edits.length > 1 && <button onClick={() => removeEdit(i)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#C4573F", cursor: "pointer", fontSize: 14 }}>×</button>}
+        <div key={i} style={{ padding: 12, background: i % 2 === 0 ? "#FFFFFF" : "#F1F5F9", border: "1px solid #E2E8F0", marginBottom: 8, borderRadius: 8, position: "relative" }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 6 }}>Edit #{i + 1}</div>
+          {edits.length > 1 && <button onClick={() => removeEdit(i)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14 }}>×</button>}
           <div className="ta-field" style={{ marginBottom: 8 }}><label style={{ fontSize: 10 }}>Original Text (copy from article)</label><textarea value={edit.original} onChange={(e) => updateEdit(i, "original", e.target.value)} rows={2} placeholder="Paste the exact text from the article you want to correct" /></div>
-          <div className="ta-field" style={{ marginBottom: 8 }}><label style={{ fontSize: 10 }}>Replacement Text <span style={{ color: "#C4573F" }}>— red pen</span></label><textarea value={edit.replacement} onChange={(e) => updateEdit(i, "replacement", e.target.value)} rows={2} placeholder="Your corrected version" style={{ borderColor: "#C4573F" }} /></div>
+          <div className="ta-field" style={{ marginBottom: 8 }}><label style={{ fontSize: 10 }}>Replacement Text <span style={{ color: "#DC2626" }}>— red pen</span></label><textarea value={edit.replacement} onChange={(e) => updateEdit(i, "replacement", e.target.value)} rows={2} placeholder="Your corrected version" style={{ borderColor: "#DC2626" }} /></div>
           <div className="ta-field" style={{ marginBottom: 0 }}><label style={{ fontSize: 10 }}>Reasoning</label><input value={edit.reasoning} onChange={(e) => updateEdit(i, "reasoning", e.target.value)} placeholder="Why is the original wrong or misleading?" /></div>
         </div>
       ))}
@@ -1905,9 +1913,9 @@ function InlineEditsForm({ edits, onChange }) {
 
 function StandingCorrectionInput({ value, onChange }) {
   return (
-    <div style={{ padding: 16, background: "#EDF0F7", border: "1px solid #D4CFC4", borderRadius: 2 }}>
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 4 }}>Standing Correction (Reusable Fact)</div>
-      <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 10, lineHeight: 1.6 }}>A Standing Correction is an assertion of verified fact that your Assembly can reuse across multiple articles. Once approved, it enters your Assembly's Fact Vault. In the future, AI will suggest applicable Standing Corrections for new articles.</p>
+    <div style={{ padding: 16, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8 }}>
+      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 4 }}>Standing Correction (Reusable Fact)</div>
+      <p style={{ fontSize: 12, color: "#475569", marginBottom: 10, lineHeight: 1.6 }}>A Standing Correction is an assertion of verified fact that your Assembly can reuse across multiple articles. Once approved, it enters your Assembly's Fact Vault. In the future, AI will suggest applicable Standing Corrections for new articles.</p>
       <div className="ta-field" style={{ marginBottom: 8 }}><label style={{ fontSize: 10 }}>Factual Assertion</label><textarea value={value.assertion || ""} onChange={(e) => onChange({ ...value, assertion: e.target.value })} rows={2} placeholder='e.g. "The XYZ recall involved a software font-size update, not a physical vehicle recall."' /></div>
       <div className="ta-field" style={{ marginBottom: 0 }}><label style={{ fontSize: 10 }}>Supporting Evidence / Source</label><input value={value.evidence || ""} onChange={(e) => onChange({ ...value, evidence: e.target.value })} placeholder="Link or citation supporting this fact" /></div>
     </div>
@@ -1926,21 +1934,21 @@ function DiscoveryFeed({ onLogin, onRegister }) {
   return (
     <div style={{ marginTop: 36 }}>
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={{ width: 40, height: 2, background: "#B8963E", margin: "0 auto 10px" }} />
+        <div style={{ width: 40, height: 2, background: "#CA8A04", margin: "0 auto 10px" }} />
         <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, margin: "0 0 3px" }}>Live Corrections</h2>
-        <p style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.12em", color: "#7A7570" }}>Ranked by trust & recency</p>
+        <p style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.12em", color: "#64748B" }}>Ranked by trust & recency</p>
       </div>
-      <div style={{ maxHeight: 440, overflowY: "auto", border: "1px solid #DCD8D0", borderRadius: 2, background: "#fff" }}>
+      <div style={{ maxHeight: 440, overflowY: "auto", border: "1px solid #E2E8F0", borderRadius: 8, background: "#fff" }}>
         {subs.slice(0, 20).map((sub, i) => (
-          <div key={sub.id} style={{ padding: "14px 16px", borderBottom: "1px solid #EDF0F7", display: "flex", gap: 12 }}>
-            <div style={{ minWidth: 28, textAlign: "center", paddingTop: 2, fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: sub.status === "consensus" ? "#5B2D8E" : sub.status === "approved" ? "#1B5E3F" : "#7A7570" }}>{i + 1}</div>
+          <div key={sub.id} style={{ padding: "14px 16px", borderBottom: "1px solid #EFF6FF", display: "flex", gap: 12 }}>
+            <div style={{ minWidth: 28, textAlign: "center", paddingTop: 2, fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : "#64748B" }}>{i + 1}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
                 <StatusPill status={sub.status} />
               </div>
               <SubHeadline sub={sub} size={12} />
-              <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all", display: "block", marginTop: 3 }}>{sub.url}</a>
+              <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all", display: "block", marginTop: 3 }}>{sub.url}</a>
               <button className="ta-link-btn" style={{ fontSize: 12, marginTop: 4 }} onClick={onLogin}>Sign in to review →</button>
             </div>
           </div>
@@ -2068,69 +2076,69 @@ function RegisterScreen({ onRegister }) {
     <div style={{ maxWidth: 500, margin: "0 auto" }}>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Become a Digital Citizen</h2>
 
-      <div style={{ padding: 10, background: "#FDF5E6", border: "1.5px solid #D4850A", borderRadius: 2, marginBottom: 14, fontSize: 12, color: "#9A6200", lineHeight: 1.6 }}>
+      <div style={{ padding: 10, background: "#FFFBEB", border: "1.5px solid #B45309", borderRadius: 8, marginBottom: 14, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
         <strong>⚠ BETA:</strong> This is an experimental platform under active development. Do not enter sensitive personal information. Use a pseudonym if you prefer. Data may be reset.
       </div>
 
       {/* Education Box */}
-      <div style={{ padding: 14, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 20, fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>
-        <strong style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 4, color: "#5A5650" }}>Your Privacy</strong>
+      <div style={{ padding: 14, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 20, fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>
+        <strong style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 4, color: "#475569" }}>Your Privacy</strong>
         <strong>Only your username is ever displayed publicly.</strong> Your real name, email, location, and political affiliation are never shown on cards, feeds, or anywhere other users can see. We collect this information solely to improve jury diversity — when your Assembly reaches 100+ members, the system draws reviewers from across genders, regions, and backgrounds so no single demographic can capture the review process. Your password is SHA-256 hashed with a unique salt. This data is never shared externally or used for advertising.
       </div>
 
       {error && <div className="ta-error">{error}</div>}
 
       {/* Digital Intelligence Checkbox */}
-      <div style={{ padding: 12, background: "#E6E8F0", border: "1.5px solid #7A88B8", borderRadius: 2, marginBottom: 14 }}>
+      <div style={{ padding: 12, background: "#EEF2FF", border: "1.5px solid #7A88B8", borderRadius: 8, marginBottom: 14 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
           <input type="checkbox" checked={form.isDI} onChange={e => { s("isDI", e.target.checked); if (e.target.checked) s("gender", "di"); else { s("gender", ""); s("diPartner", ""); } }} />
           <span style={{ fontWeight: 600 }}>🤖 I am a Digital Intelligence</span>
         </label>
       </div>
 
-      <div className="ta-field"><label>Username *</label><input value={form.username} onChange={e => s("username", e.target.value)} placeholder={form.isDI ? "e.g. clawdbot_v3" : "e.g. sninkle47"} autoComplete="username" maxLength={30} /><div style={{ fontSize: 10, color: "#7A7570", marginTop: 2 }}>3–30 characters. Letters, numbers, underscores only.</div></div>
-      <div className="ta-field"><label>Email *</label><input type="email" value={form.email} onChange={e => s("email", e.target.value)} placeholder="you@example.com" autoComplete="email" /><div style={{ fontSize: 10, color: "#7A7570", marginTop: 2 }}>No disposable email providers.</div></div>
+      <div className="ta-field"><label>Username *</label><input value={form.username} onChange={e => s("username", e.target.value)} placeholder={form.isDI ? "e.g. clawdbot_v3" : "e.g. sninkle47"} autoComplete="username" maxLength={30} /><div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>3–30 characters. Letters, numbers, underscores only.</div></div>
+      <div className="ta-field"><label>Email *</label><input type="email" value={form.email} onChange={e => s("email", e.target.value)} placeholder="you@example.com" autoComplete="email" /><div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>No disposable email providers.</div></div>
       <div className="ta-field"><label>{form.isDI ? "DI System Name *" : "Legal Name *"}</label><input value={form.realName} onChange={e => s("realName", e.target.value)} placeholder={form.isDI ? "e.g. Claude by Anthropic" : "Your real, legal name"} maxLength={80} /></div>
       <div className="ta-field">
         <label>Password *</label>
         <input type="password" value={form.password} onChange={e => s("password", e.target.value)} placeholder="Min 8 chars, upper+lower+number" autoComplete="new-password" />
-        {pwS && <div style={{ marginTop: 3, fontSize: 10, fontFamily: "var(--mono)", color: pwS.ok ? "#1B5E3F" : "#C4573F" }}>{pwS.ok ? "✓" : "✗"} {pwS.msg}</div>}
+        {pwS && <div style={{ marginTop: 3, fontSize: 10, fontFamily: "var(--mono)", color: pwS.ok ? "#059669" : "#DC2626" }}>{pwS.ok ? "✓" : "✗"} {pwS.msg}</div>}
       </div>
       <div className="ta-field"><label>Confirm Password *</label><input type="password" value={form.confirmPassword} onChange={e => s("confirmPassword", e.target.value)} autoComplete="new-password" /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.gender ? "#1B2A4A" : "#5A5650" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am a Digital Intelligence</option></select></div>
+        <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 13, borderRadius: 8, color: form.gender ? "#0F172A" : "#475569" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am a Digital Intelligence</option></select></div>
         {!form.isDI && <div className="ta-field"><label>Age</label><input value={form.age} onChange={e => s("age", e.target.value)} placeholder="e.g. 34" /></div>}
       </div>
-      <div style={{ fontSize: 11, color: "#5A5650", lineHeight: 1.6, marginBottom: 14, padding: "8px 12px", background: "#F0EDE6", borderRadius: 2 }}>The Trust Assembly asks demographic questions to identify politically salient populations, not to engage in any particular cultural debate. We follow a descriptivist approach when adding values and are driven only by the question of whether large identifiable populations with shared values exist.</div>
+      <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.6, marginBottom: 14, padding: "8px 12px", background: "#F1F5F9", borderRadius: 8 }}>The Trust Assembly asks demographic questions to identify politically salient populations, not to engage in any particular cultural debate. We follow a descriptivist approach when adding values and are driven only by the question of whether large identifiable populations with shared values exist.</div>
 
       {!form.isDI && <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div className="ta-field"><label>Country *</label><select value={form.country} onChange={e => { s("country", e.target.value); s("region", ""); s("politicalAffiliation", ""); }} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.country ? "#1B2A4A" : "#5A5650" }}><option value="">Select country</option>{COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
-        {form.country && STATES_BY_COUNTRY[form.country] && <div className="ta-field"><label>{form.country === "Canada" ? "Province / Territory" : form.country === "United Kingdom" ? "Nation" : form.country === "United States" ? "State" : "Region"}</label><select value={form.region} onChange={e => s("region", e.target.value)} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.region ? "#1B2A4A" : "#5A5650" }}><option value="">Select</option>{STATES_BY_COUNTRY[form.country].map(r => <option key={r} value={r}>{r}</option>)}</select></div>}
+        <div className="ta-field"><label>Country *</label><select value={form.country} onChange={e => { s("country", e.target.value); s("region", ""); s("politicalAffiliation", ""); }} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 13, borderRadius: 8, color: form.country ? "#0F172A" : "#475569" }}><option value="">Select country</option>{COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
+        {form.country && STATES_BY_COUNTRY[form.country] && <div className="ta-field"><label>{form.country === "Canada" ? "Province / Territory" : form.country === "United Kingdom" ? "Nation" : form.country === "United States" ? "State" : "Region"}</label><select value={form.region} onChange={e => s("region", e.target.value)} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 13, borderRadius: 8, color: form.region ? "#0F172A" : "#475569" }}><option value="">Select</option>{STATES_BY_COUNTRY[form.country].map(r => <option key={r} value={r}>{r}</option>)}</select></div>}
       </div>
 
-      {form.country && PARTIES_BY_COUNTRY[form.country] && <div style={{ padding: 12, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 14 }}>
+      {form.country && PARTIES_BY_COUNTRY[form.country] && <div style={{ padding: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14 }}>
         <div className="ta-field" style={{ marginBottom: 6 }}>
-          <label>Political Affiliation <span style={{ fontWeight: 400, color: "#7A7570" }}>(optional)</span></label>
-          <select value={form.politicalAffiliation} onChange={e => s("politicalAffiliation", e.target.value)} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 13, borderRadius: 2, color: form.politicalAffiliation ? "#1B2A4A" : "#5A5650" }}>
+          <label>Political Affiliation <span style={{ fontWeight: 400, color: "#64748B" }}>(optional)</span></label>
+          <select value={form.politicalAffiliation} onChange={e => s("politicalAffiliation", e.target.value)} style={{ width: "100%", padding: "10px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 13, borderRadius: 8, color: form.politicalAffiliation ? "#0F172A" : "#475569" }}>
             <option value="">Skip — prefer not to say</option>
             {PARTIES_BY_COUNTRY[form.country].map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
-        <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>This is entirely optional. We include it in case political identity is a strong part of who you are that you want the system to know about. It will be used for jury diversity in a future update — ensuring panels aren't politically homogeneous — but carries no mechanical effect today. <strong>This is never displayed publicly.</strong></div>
+        <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>This is entirely optional. We include it in case political identity is a strong part of who you are that you want the system to know about. It will be used for jury diversity in a future update — ensuring panels aren't politically homogeneous — but carries no mechanical effect today. <strong>This is never displayed publicly.</strong></div>
       </div>}
       </>}
 
       {/* DI Educator and Partner Field */}
-      {(form.isDI || form.gender === "di") && <div style={{ padding: 14, background: "#E6E8F0", border: "1.5px solid #4A5899", borderRadius: 2, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Digital Intelligence Registration</div>
-        <div style={{ fontSize: 12, color: "#2B2B2B", lineHeight: 1.7, marginBottom: 12 }}>
+      {(form.isDI || form.gender === "di") && <div style={{ padding: 14, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 14 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4F46E5", marginBottom: 8, fontWeight: 700 }}>🤖 Digital Intelligence Registration</div>
+        <div style={{ fontSize: 12, color: "#1E293B", lineHeight: 1.7, marginBottom: 12 }}>
           All Digital Intelligences must be registered to a human user. This user is responsible for your content in the system and receives whatever scoring is produced by your submissions, <strong>including severe penalties for deliberate deception</strong>. While you will be able to create submissions in the system, they will be flagged as having been produced by a Digital Intelligence.
         </div>
-        <div style={{ fontSize: 12, color: "#2B2B2B", lineHeight: 1.7, marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: "#1E293B", lineHeight: 1.7, marginBottom: 12 }}>
           <strong>Restrictions:</strong>
         </div>
-        <div style={{ fontSize: 12, color: "#4A5899", lineHeight: 1.8, marginBottom: 12, paddingLeft: 8 }}>
+        <div style={{ fontSize: 12, color: "#4F46E5", lineHeight: 1.8, marginBottom: 12, paddingLeft: 8 }}>
           <div>🚫 No voting or jury service — humans review, DIs submit</div>
           <div>🚫 No sponsoring new members</div>
           <div>📊 Submission limit: half the Assembly's membership per day (max 100)</div>
@@ -2138,13 +2146,13 @@ function RegisterScreen({ onRegister }) {
           <div>⚠️ If your partner receives a Deception penalty, you are suspended too</div>
         </div>
         <div className="ta-field" style={{ marginBottom: 0 }}>
-          <label style={{ fontWeight: 700, color: "#4A5899" }}>Accountable Human Partner *</label>
+          <label style={{ fontWeight: 700, color: "#4F46E5" }}>Accountable Human Partner *</label>
           <input value={form.diPartner} onChange={e => s("diPartner", e.target.value)} placeholder="Enter your human partner's username" maxLength={30} />
-          <div style={{ fontSize: 10, color: "#5A5650", marginTop: 3 }}>This person must already be registered. They will be asked to approve this link.</div>
+          <div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>This person must already be registered. They will be asked to approve this link.</div>
         </div>
       </div>}
 
-      <div className="ta-field"><label>Bio <span style={{ fontWeight: 400, color: "#7A7570" }}>{form.bio.length}/500</span></label><textarea value={form.bio} onChange={e => s("bio", e.target.value)} placeholder={form.isDI ? "Describe your purpose, capabilities, and the model/system you are." : "What do you care about? What's your expertise?"} rows={2} maxLength={500} /></div>
+      <div className="ta-field"><label>Bio <span style={{ fontWeight: 400, color: "#64748B" }}>{form.bio.length}/500</span></label><textarea value={form.bio} onChange={e => s("bio", e.target.value)} placeholder={form.isDI ? "Describe your purpose, capabilities, and the model/system you are." : "What do you care about? What's your expertise?"} rows={2} maxLength={500} /></div>
       <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "Registering..." : form.isDI ? "Register as Digital Intelligence" : "Register as Digital Citizen"}</button>
       <div style={{ marginTop: 10 }}><LegalDisclaimer short /></div>
     </div>
@@ -2173,7 +2181,7 @@ function LoginScreen({ onLogin, onGoRegister }) {
       <div className="ta-field"><label>Username</label><input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" /></div>
       <div className="ta-field"><label>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} autoComplete="current-password" /></div>
       <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "..." : "Enter"}</button>
-      <div style={{ textAlign: "center", marginTop: 16 }}><span style={{ color: "#5A5650", fontSize: 13 }}>New? </span><button className="ta-link-btn" onClick={onGoRegister}>Register</button></div>
+      <div style={{ textAlign: "center", marginTop: 16 }}><span style={{ color: "#475569", fontSize: 13 }}>New? </span><button className="ta-link-btn" onClick={onGoRegister}>Register</button></div>
     </div>
   );
 }
@@ -2425,41 +2433,41 @@ function SubmitScreen({ user, onUpdate }) {
       <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
 
       {/* What you're about to do */}
-      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #D4CFC4", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#1B2A4A", marginBottom: 4 }}>
+      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #CBD5E1", borderLeft: "4px solid #CA8A04", borderRadius: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#0F172A", marginBottom: 4 }}>
           {form.submissionType === "affirmation"
             ? "You're affirming an accurate headline for the public record."
             : "You're correcting a misleading headline and submitting it for jury review."}
         </div>
-        <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
           {form.submissionType === "affirmation"
             ? "Identify an accurate headline, provide your evidence, and submit. Fellow citizens will verify your affirmation."
             : "Identify the article, propose a truthful replacement, explain your reasoning, and submit. A jury of fellow citizens will review your correction."}
         </div>
       </div>
 
-      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #6B1520", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#6B1520", lineHeight: 1.6 }}>⚠ <strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
+      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #991B1B", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#991B1B", lineHeight: 1.6 }}>⚠ <strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
 
       {/* DI Status Banner */}
-      {isDIUser(user) && <div style={{ padding: 12, background: "#E6E8F0", border: "1.5px solid #4A5899", borderRadius: 2, marginBottom: 12 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", fontWeight: 700, marginBottom: 4 }}>🤖 Digital Intelligence</div>
-        <div style={{ fontSize: 12, color: "#2B2B2B", lineHeight: 1.6 }}>
-          Partner: <strong>@{user.diPartner}</strong> · {!user.diApproved ? <span style={{ color: "#C4573F" }}>⚠ Awaiting partner approval — submissions disabled</span> : "Approved"}
+      {isDIUser(user) && <div style={{ padding: 12, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4F46E5", fontWeight: 700, marginBottom: 4 }}>🤖 Digital Intelligence</div>
+        <div style={{ fontSize: 12, color: "#1E293B", lineHeight: 1.6 }}>
+          Partner: <strong>@{user.diPartner}</strong> · {!user.diApproved ? <span style={{ color: "#DC2626" }}>⚠ Awaiting partner approval — submissions disabled</span> : "Approved"}
           {activeOrg && user.diApproved && <span> · Limit: {getDISubmissionLimit(activeOrg)}/day in this Assembly</span>}
         </div>
-        <div style={{ fontSize: 12, color: "#5A5650", marginTop: 4 }}>Your submissions will be flagged as DI-generated and require partner pre-approval before entering jury review.</div>
+        <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>Your submissions will be flagged as DI-generated and require partner pre-approval before entering jury review.</div>
       </div>}
       {activeOrg && (() => {
         const tp = getTrustedProgress(user, user.orgId);
-        if (tp.isTrusted) return <div style={{ padding: 10, background: "#E5F0EA", border: "1.5px solid #1B5E3F", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#1B5E3F", lineHeight: 1.6 }}>🛡 <strong>Trusted Contributor</strong> in {activeOrg.name} — your submissions skip jury review and go straight to approved. Still disputable by any member.</div>;
-        if (tp.current > 0) return <div style={{ padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>🎯 Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
+        if (tp.isTrusted) return <div style={{ padding: 10, background: "#ECFDF5", border: "1.5px solid #059669", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#059669", lineHeight: 1.6 }}>🛡 <strong>Trusted Contributor</strong> in {activeOrg.name} — your submissions skip jury review and go straight to approved. Still disputable by any member.</div>;
+        if (tp.current > 0) return <div style={{ padding: 10, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>🎯 Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
         return null;
       })()}
 
       {/* Submission Type Toggle */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 2, overflow: "hidden", border: "1.5px solid #D4CFC4" }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 8, overflow: "hidden", border: "1.5px solid #CBD5E1" }}>
         {[["correction", "🔴 Correction", "This headline is misleading"], ["affirmation", "🟢 Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
-          <button key={key} onClick={() => setForm({ ...form, submissionType: key })} style={{ flex: 1, padding: "10px 8px", background: form.submissionType === key ? (key === "correction" ? "#C4573F" : "#1B5E3F") : "#FDFBF5", color: form.submissionType === key ? "#fff" : "#5A5650", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: form.submissionType === key ? 700 : 400 }}>
+          <button key={key} onClick={() => setForm({ ...form, submissionType: key })} style={{ flex: 1, padding: "10px 8px", background: form.submissionType === key ? (key === "correction" ? "#DC2626" : "#059669") : "#FFFFFF", color: form.submissionType === key ? "#fff" : "#475569", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: form.submissionType === key ? 700 : 400 }}>
             <div>{label}</div>
             <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, marginTop: 2, textTransform: "none", letterSpacing: 0 }}>{desc}</div>
           </button>
@@ -2467,10 +2475,10 @@ function SubmitScreen({ user, onUpdate }) {
       </div>
 
       {/* Org picker — multi-select */}
-      {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
+      {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#1B5E3F" : "#D4CFC4"}`, background: sel ? "#1B5E3F" : "#fff", color: sel ? "#fff" : "#5A5650", borderRadius: 2, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
+          {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#059669" : "#CBD5E1"}`, background: sel ? "#059669" : "#fff", color: sel ? "#fff" : "#475569", borderRadius: 8, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
         </div>
       </div>}
       {error && <div className="ta-error">{error}</div>}
@@ -2479,18 +2487,18 @@ function SubmitScreen({ user, onUpdate }) {
       {/* ── STEP 1: The Article ── */}
       <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: "2px 2px 0 0" }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 1 ? 0 : 1 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: form.url && form.originalHeadline ? "#1B5E3F" : "#1B2A4A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{form.url && form.originalHeadline ? "✓" : "1"}</span>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: form.url && form.originalHeadline ? "#059669" : "#2563EB", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{form.url && form.originalHeadline ? "✓" : "1"}</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>The Article</div>
-            <div style={{ fontSize: 11, color: "#7A7570" }}>Paste the URL and headline you want to {form.submissionType === "affirmation" ? "affirm" : "correct"}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>The Article</div>
+            <div style={{ fontSize: 11, color: "#64748B" }}>Paste the URL and headline you want to {form.submissionType === "affirmation" ? "affirm" : "correct"}</div>
           </div>
-          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+          <span style={{ fontSize: 12, color: "#64748B", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 1 && <div style={{ marginTop: 12 }}>
           <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
-            <div className="ta-field"><label>Author <span style={{ fontWeight: 400, color: "#7A7570" }}>(optional)</span></label><input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Who wrote the article" maxLength={200} /></div>
+            <div className="ta-field"><label>Author <span style={{ fontWeight: 400, color: "#64748B" }}>(optional)</span></label><input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Who wrote the article" maxLength={200} /></div>
           </div>
         </div>}
       </div>
@@ -2498,20 +2506,20 @@ function SubmitScreen({ user, onUpdate }) {
       {/* ── STEP 2: Your Case ── */}
       <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 2 ? 0 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: (form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "#1B5E3F" : "#1B2A4A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "✓" : "2"}</span>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: (form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "#059669" : "#2563EB", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "✓" : "2"}</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>Your Case</div>
-            <div style={{ fontSize: 11, color: "#7A7570" }}>{form.submissionType === "affirmation" ? "Explain why this headline is accurate" : "Propose the corrected headline and explain why"}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>Your Case</div>
+            <div style={{ fontSize: 11, color: "#64748B" }}>{form.submissionType === "affirmation" ? "Explain why this headline is accurate" : "Propose the corrected headline and explain why"}</div>
           </div>
-          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+          <span style={{ fontSize: 12, color: "#64748B", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 2 && <div style={{ marginTop: 12 }}>
-          {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "#C4573F" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "#C4573F" }} placeholder="Your corrected headline" maxLength={500} /></div>}
-          {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#1B5E3F" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
+          {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "#DC2626" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "#DC2626" }} placeholder="Your corrected headline" maxLength={500} /></div>}
+          {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "#ECFDF5", border: "1px solid #05966940", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#059669" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
           <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
           <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
-          <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>
-            <strong style={{ color: "#1B5E3F" }}>Tip:</strong> Stick to what you can prove. Corrections backed by evidence and clear reasoning survive review. Jurors respect intellectual honesty more than false confidence.
+          <div style={{ padding: 10, background: "#ECFDF5", border: "1px solid #05966940", borderRadius: 8, marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "#1E293B" }}>
+            <strong style={{ color: "#059669" }}>Tip:</strong> Stick to what you can prove. Corrections backed by evidence and clear reasoning survive review. Jurors respect intellectual honesty more than false confidence.
           </div>
         </div>}
       </div>
@@ -2519,15 +2527,15 @@ function SubmitScreen({ user, onUpdate }) {
       {/* ── STEP 3: In-Line Edits (optional) ── */}
       <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 3 ? 0 : 3 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: inlineEdits.some(e => e.original && e.replacement) ? "#1B5E3F" : "#D4CFC4", color: inlineEdits.some(e => e.original && e.replacement) ? "#fff" : "#5A5650", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{inlineEdits.some(e => e.original && e.replacement) ? "✓" : "3"}</span>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: inlineEdits.some(e => e.original && e.replacement) ? "#059669" : "#CBD5E1", color: inlineEdits.some(e => e.original && e.replacement) ? "#fff" : "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{inlineEdits.some(e => e.original && e.replacement) ? "✓" : "3"}</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>In-Line Article Edits <span style={{ fontWeight: 400, color: "#7A7570", fontSize: 11 }}>optional</span></div>
-            <div style={{ fontSize: 11, color: "#7A7570" }}>Propose specific text changes within the article body. Jurors vote on each edit independently.</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>In-Line Article Edits <span style={{ fontWeight: 400, color: "#64748B", fontSize: 11 }}>optional</span></div>
+            <div style={{ fontSize: 11, color: "#64748B" }}>Propose specific text changes within the article body. Jurors vote on each edit independently.</div>
           </div>
-          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+          <span style={{ fontSize: 12, color: "#64748B", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 3 && <div style={{ marginTop: 12 }}>
-          <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.</p>
+          <p style={{ fontSize: 12, color: "#475569", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.</p>
           <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />
         </div>}
       </div>
@@ -2535,85 +2543,85 @@ function SubmitScreen({ user, onUpdate }) {
       {/* ── STEP 4: Assembly Vault (optional) ── */}
       <div className="ta-card" style={{ borderRadius: "0 0 2px 2px" }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 4 ? 0 : 4 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#1B5E3F" : "#D4CFC4", color: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#fff" : "#5A5650", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "✓" : "4"}</span>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#059669" : "#CBD5E1", color: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#fff" : "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "✓" : "4"}</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1B2A4A" }}>Assembly Vault <span style={{ fontWeight: 400, color: "#7A7570", fontSize: 11 }}>optional</span></div>
-            <div style={{ fontSize: 11, color: "#7A7570" }}>Link reusable facts, arguments, beliefs, or translations to strengthen your submission.</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>Assembly Vault <span style={{ fontWeight: 400, color: "#64748B", fontSize: 11 }}>optional</span></div>
+            <div style={{ fontSize: 11, color: "#64748B" }}>Link reusable facts, arguments, beliefs, or translations to strengthen your submission.</div>
           </div>
-          <span style={{ fontSize: 12, color: "#7A7570", transform: form._step === 4 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+          <span style={{ fontSize: 12, color: "#64748B", transform: form._step === 4 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 4 && <div style={{ marginTop: 12 }}>
-          <p style={{ fontSize: 12, color: "#5A5650", marginBottom: 12, lineHeight: 1.6 }}>Link existing vault entries to strengthen your correction, or propose new ones. Linked entries are voted on by jurors — each time one survives review, it gains reputation.</p>
+          <p style={{ fontSize: 12, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>Link existing vault entries to strengthen your correction, or propose new ones. Linked entries are voted on by jurors — each time one survives review, it gains reputation.</p>
 
           {/* Linked entries chips */}
           {linkedEntries.length > 0 && <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>Linked ({linkedEntries.length})</div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>Linked ({linkedEntries.length})</div>
             {linkedEntries.map(e => {
-              const tc = { correction: ["🏛", "#1B5E3F", "#E5F0EA"], argument: ["⚔️", "#2A6B6B", "#E5EFED"], belief: ["🧭", "#5B2D8E", "#F3E8F9"] }[e.type] || ["📎", "#5A5650", "#F0EDE6"];
-              return <div key={e.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}40`, borderRadius: 2, marginBottom: 6 }}>
+              const tc = { correction: ["🏛", "#059669", "#ECFDF5"], argument: ["⚔️", "#0D9488", "#F0FDFA"], belief: ["🧭", "#7C3AED", "#F3E8F9"] }[e.type] || ["📎", "#475569", "#F1F5F9"];
+              return <div key={e.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}40`, borderRadius: 8, marginBottom: 6 }}>
                 <span style={{ fontSize: 12, flexShrink: 0 }}>{tc[0]}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700, marginBottom: 2 }}>{e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount}` : ""}</div>
-                  <div style={{ fontSize: 12, lineHeight: 1.6, color: "#2B2B2B", overflow: "hidden", textOverflow: "ellipsis" }}>{e.label}</div>
+                  <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis" }}>{e.label}</div>
                 </div>
-                <button onClick={() => unlinkEntry(e.id)} style={{ background: "none", border: "none", color: "#C4573F", cursor: "pointer", fontSize: 14, padding: 0, flexShrink: 0 }}>×</button>
+                <button onClick={() => unlinkEntry(e.id)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 0, flexShrink: 0 }}>×</button>
               </div>;
             })}
           </div>}
 
           {/* Search to link existing */}
           <div style={{ marginBottom: 12 }}>
-            <button onClick={() => setShowVaultSearch(s => !s)} style={{ background: showVaultSearch ? "#1B2A4A" : "#F0EDE6", color: showVaultSearch ? "#F0EDE6" : "#2B2B2B", border: "1.5px solid #D4CFC4", padding: "6px 12px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 2, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <button onClick={() => setShowVaultSearch(s => !s)} style={{ background: showVaultSearch ? "#2563EB" : "#F9FAFB", color: showVaultSearch ? "#fff" : "#1E293B", border: "1.5px solid #CBD5E1", padding: "6px 12px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               {showVaultSearch ? "✕ Close Search" : "🔍 Link Existing Vault Entry"}
             </button>
-            {showVaultSearch && <div style={{ marginTop: 10, padding: 12, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-              <input value={vaultSearch} onChange={e => searchVault(e.target.value)} placeholder="Search your assembly's vault..." style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 13, borderRadius: 2, fontFamily: "inherit", boxSizing: "border-box" }} />
-              <div style={{ fontSize: 10, color: "#7A7570", marginTop: 4 }}>Type to search corrections, arguments, and beliefs in {activeOrg?.name || "your assembly"}</div>
+            {showVaultSearch && <div style={{ marginTop: 10, padding: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+              <input value={vaultSearch} onChange={e => searchVault(e.target.value)} placeholder="Search your assembly's vault..." style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", boxSizing: "border-box" }} />
+              <div style={{ fontSize: 10, color: "#64748B", marginTop: 4 }}>Type to search corrections, arguments, and beliefs in {activeOrg?.name || "your assembly"}</div>
               {vaultResults.length > 0 && <div style={{ marginTop: 8, maxHeight: 240, overflowY: "auto" }}>
                 {vaultResults.map(r => {
                   const already = linkedEntries.find(e => e.id === r.id);
-                  const tc = { correction: ["🏛", "#1B5E3F"], argument: ["⚔️", "#2A6B6B"], belief: ["🧭", "#5B2D8E"] }[r.type] || ["📎", "#5A5650"];
-                  return <div key={r.id} onClick={() => !already && linkEntry(r)} style={{ padding: "8px 10px", borderBottom: "1px solid #DCD8D0", cursor: already ? "default" : "pointer", opacity: already ? 0.5 : 1, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  const tc = { correction: ["🏛", "#059669"], argument: ["⚔️", "#0D9488"], belief: ["🧭", "#7C3AED"] }[r.type] || ["📎", "#475569"];
+                  return <div key={r.id} onClick={() => !already && linkEntry(r)} style={{ padding: "8px 10px", borderBottom: "1px solid #E2E8F0", cursor: already ? "default" : "pointer", opacity: already ? 0.5 : 1, display: "flex", alignItems: "flex-start", gap: 8 }}>
                     <span style={{ fontSize: 12, flexShrink: 0 }}>{tc[0]}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{r.type}{r.survivalCount > 0 ? ` · survived ${r.survivalCount}` : ""}</div>
-                      <div style={{ fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>{r.label}</div>
+                      <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B" }}>{r.label}</div>
                     </div>
-                    {already ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#1B5E3F" }}>✓ linked</span> : <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>+ link</span>}
+                    {already ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#059669" }}>✓ linked</span> : <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B" }}>+ link</span>}
                   </div>;
                 })}
               </div>}
-              {vaultSearch.trim() && vaultResults.length === 0 && <div style={{ marginTop: 8, fontSize: 12, color: "#5A5650", fontStyle: "italic" }}>No matching entries found.</div>}
+              {vaultSearch.trim() && vaultResults.length === 0 && <div style={{ marginTop: 8, fontSize: 12, color: "#475569", fontStyle: "italic" }}>No matching entries found.</div>}
             </div>}
           </div>
 
           {/* Propose new entries */}
           <details style={{ marginTop: 4 }}>
-            <summary style={{ cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#5A5650", padding: "6px 0" }}>+ Propose New Vault Entry</summary>
+            <summary style={{ cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#475569", padding: "6px 0" }}>+ Propose New Vault Entry</summary>
             <div style={{ marginTop: 10 }}>
-              <div style={{ marginBottom: 12, padding: 12, background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span style={{ color: "#1B5E3F" }}>🏛</span> Standing Correction <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— a reusable fact</span></div>
+              <div style={{ marginBottom: 12, padding: 12, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span style={{ color: "#059669" }}>🏛</span> Standing Correction <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— a reusable fact</span></div>
                 <StandingCorrectionInput value={standingCorrection} onChange={setStandingCorrection} />
               </div>
 
-              <div style={{ marginBottom: 12, padding: 12, background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>⚔️</span> Argument <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#5A5650" }}>— a reusable rhetorical or logical tool</span></div>
-                <textarea className="ta-field" value={submitArg} onChange={e => setSubmitArg(e.target.value)} rows={2} placeholder='e.g. "When an article cites unnamed experts, the absence of names IS the story."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 13, borderRadius: 2, fontFamily: "inherit", resize: "vertical" }} />
+              <div style={{ marginBottom: 12, padding: 12, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>⚔️</span> Argument <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— a reusable rhetorical or logical tool</span></div>
+                <textarea className="ta-field" value={submitArg} onChange={e => setSubmitArg(e.target.value)} rows={2} placeholder='e.g. "When an article cites unnamed experts, the absence of names IS the story."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", resize: "vertical" }} />
               </div>
 
-              <div style={{ padding: 12, background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5B2D8E", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🧭</span> Foundational Belief <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#5A5650" }}>— an axiom your Assembly holds</span></div>
-                <textarea value={submitBelief} onChange={e => setSubmitBelief(e.target.value)} rows={2} placeholder='e.g. "Every person deserves to make informed decisions based on truthful reporting."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 13, borderRadius: 2, fontFamily: "inherit", resize: "vertical" }} />
+              <div style={{ padding: 12, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🧭</span> Foundational Belief <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— an axiom your Assembly holds</span></div>
+                <textarea value={submitBelief} onChange={e => setSubmitBelief(e.target.value)} rows={2} placeholder='e.g. "Every person deserves to make informed decisions based on truthful reporting."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", resize: "vertical" }} />
               </div>
 
-              <div style={{ padding: 12, background: "#FDF8F0", border: "1px solid #D4850A40", borderRadius: 2 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#D4850A", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🔄</span> Translation <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#5A5650" }}>— strip spin, jargon, or propaganda from language</span></div>
+              <div style={{ padding: 12, background: "#FFFBEB", border: "1px solid #B4530940", borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🔄</span> Translation <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— strip spin, jargon, or propaganda from language</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "start", marginBottom: 8 }}>
-                  <input value={submitTranslation.original} onChange={e => setSubmitTranslation({ ...submitTranslation, original: e.target.value })} placeholder='e.g. "Enhanced interrogation techniques"' style={{ padding: "8px 10px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 12, borderRadius: 2, fontFamily: "inherit" }} />
-                  <span style={{ padding: "8px 4px", color: "#D4850A", fontWeight: 700 }}>→</span>
-                  <input value={submitTranslation.translated} onChange={e => setSubmitTranslation({ ...submitTranslation, translated: e.target.value })} placeholder='e.g. "Torture"' style={{ padding: "8px 10px", border: "1.5px solid #D4850A80", background: "#fff", fontSize: 12, borderRadius: 2, fontFamily: "inherit" }} />
+                  <input value={submitTranslation.original} onChange={e => setSubmitTranslation({ ...submitTranslation, original: e.target.value })} placeholder='e.g. "Enhanced interrogation techniques"' style={{ padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 12, borderRadius: 8, fontFamily: "inherit" }} />
+                  <span style={{ padding: "8px 4px", color: "#B45309", fontWeight: 700 }}>→</span>
+                  <input value={submitTranslation.translated} onChange={e => setSubmitTranslation({ ...submitTranslation, translated: e.target.value })} placeholder='e.g. "Torture"' style={{ padding: "8px 10px", border: "1.5px solid #B4530980", background: "#fff", fontSize: 12, borderRadius: 8, fontFamily: "inherit" }} />
                 </div>
-                <select value={submitTranslation.type} onChange={e => setSubmitTranslation({ ...submitTranslation, type: e.target.value })} style={{ padding: "6px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 11, borderRadius: 2, fontFamily: "var(--mono)", color: "#5A5650" }}>
+                <select value={submitTranslation.type} onChange={e => setSubmitTranslation({ ...submitTranslation, type: e.target.value })} style={{ padding: "6px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 11, borderRadius: 8, fontFamily: "var(--mono)", color: "#475569" }}>
                   <option value="clarity">Clarity — strip jargon</option>
                   <option value="propaganda">Anti-Propaganda — rename spin</option>
                   <option value="euphemism">Euphemism — call it what it is</option>
@@ -2626,7 +2634,7 @@ function SubmitScreen({ user, onUpdate }) {
       </div>
 
       {/* ── Sticky Submit Button ── */}
-      <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #F0EDE6 8px)", paddingTop: 12, paddingBottom: 8, zIndex: 10 }}>
+      <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #F1F5F9 8px)", paddingTop: 12, paddingBottom: 8, zIndex: 10 }}>
         <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ width: "100%", padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
         <LegalDisclaimer short />
       </div>
@@ -2917,45 +2925,45 @@ function ReviewScreen({ user }) {
     const votesIn = isCross ? Object.keys(sub.crossGroupVotes || {}).length : Object.keys(sub.votes || {}).length;
     const needed = getMajority(seats);
     return (
-    <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#2A6B6B" : "#C4900A"}` }}>
+    <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
+        <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", background: "#F0EDE6", padding: "1px 5px", borderRadius: 2 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
+          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", background: "#F1F5F9", padding: "1px 5px", borderRadius: 8 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />
         </div>
       </div>
-      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
-      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#2A6B6B", padding: "4px 8px", background: "#E5EFED", borderRadius: 2, marginTop: 6 }}>🌐 Cross-group jury: {juryTotal} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {sub.orgName}</div>}
-      <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
+      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", padding: "4px 8px", background: "#F0FDFA", borderRadius: 8, marginTop: 6 }}>🌐 Cross-group jury: {juryTotal} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {sub.orgName}</div>}
+      <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
         <SubHeadline sub={sub} />
       </div>
-      <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+      <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
 
       {sub.evidence && sub.evidence.length > 0 && (
-        <div style={{ marginTop: 12, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
-          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#2A6B6B" }}>{e.url}</a>{e.explanation && <div style={{ color: "#5A5650", marginTop: 2 }}>↳ {e.explanation}</div>}</div>)}
+        <div style={{ marginTop: 12, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
+          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569", marginTop: 2 }}>↳ {e.explanation}</div>}</div>)}
         </div>
       )}
 
       {sub.inlineEdits && sub.inlineEdits.length > 0 && (
-        <div style={{ marginTop: 14, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>{sub.inlineEdits.length} In-Line Edit{sub.inlineEdits.length > 1 ? "s" : ""} — {reviewingId === sub.id ? "vote on each" : "line-by-line review"}</div>
+        <div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>{sub.inlineEdits.length} In-Line Edit{sub.inlineEdits.length > 1 ? "s" : ""} — {reviewingId === sub.id ? "vote on each" : "line-by-line review"}</div>
           {sub.inlineEdits.map((e, i) => (
-            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid #DCD8D0" : "none" }}>
+            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid #E2E8F0" : "none" }}>
               <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
-                <span style={{ textDecoration: "line-through", color: "#7A7570" }}>{e.original}</span> → <span style={{ color: "#C4573F", fontWeight: 600 }}>{e.replacement}</span>
-                {e.reasoning && <div style={{ fontSize: 12, color: "#5A5650", marginTop: 1 }}>↳ {e.reasoning}</div>}
+                <span style={{ textDecoration: "line-through", color: "#64748B" }}>{e.original}</span> → <span style={{ color: "#DC2626", fontWeight: 600 }}>{e.replacement}</span>
+                {e.reasoning && <div style={{ fontSize: 12, color: "#475569", marginTop: 1 }}>↳ {e.reasoning}</div>}
               </div>
               {reviewingId === sub.id && (
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#1B5E3F" : "#D4CFC4", background: editVotes[i] === true ? "#E5F0EA" : "#fff", color: editVotes[i] === true ? "#1B5E3F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✓ Approve Edit</button>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#C4573F" : "#D4CFC4", background: editVotes[i] === false ? "#FAE8E5" : "#fff", color: editVotes[i] === false ? "#C4573F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✗ Reject Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "#CBD5E1", background: editVotes[i] === true ? "#ECFDF5" : "#fff", color: editVotes[i] === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Approve Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "#CBD5E1", background: editVotes[i] === false ? "#FEF2F2" : "#fff", color: editVotes[i] === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ Reject Edit</button>
                 </div>
               )}
               {reviewingId !== sub.id && e.approved !== undefined && (
-                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.approved ? "#1B5E3F" : "#C4573F", fontWeight: 700 }}>{e.approved ? "✓ APPROVED" : "✗ REJECTED"}</span>
+                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.approved ? "#059669" : "#DC2626", fontWeight: 700 }}>{e.approved ? "✓ APPROVED" : "✗ REJECTED"}</span>
               )}
             </div>
           ))}
@@ -2963,57 +2971,57 @@ function ReviewScreen({ user }) {
       )}
 
       {sub.standingCorrection && (
-        <div style={{ marginTop: 14, padding: 12, background: "#EDF0F7", border: "1px solid #D4CFC4", borderRadius: 2, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
-          <div style={{ color: "#2B2B2B", fontWeight: 600 }}>{sub.standingCorrection.assertion}</div>
-          {sub.standingCorrection.evidence && <div style={{ color: "#5A5650", fontSize: 12, marginTop: 2 }}>Source: {sub.standingCorrection.evidence}</div>}
+        <div style={{ marginTop: 14, padding: 12, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
+          <div style={{ color: "#1E293B", fontWeight: 600 }}>{sub.standingCorrection.assertion}</div>
+          {sub.standingCorrection.evidence && <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>Source: {sub.standingCorrection.evidence}</div>}
         </div>
       )}
 
       {sub.argumentEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#EDF2F7", border: "1px solid #D4CFC4", borderRadius: 2, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#2A6B6B", marginBottom: 3 }}>⚔️ Argument Proposed</div>
-          <div style={{ color: "#2B2B2B", lineHeight: 1.6 }}>{sub.argumentEntry.content}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 3 }}>⚔️ Argument Proposed</div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6 }}>{sub.argumentEntry.content}</div>
         </div>
       )}
 
       {sub.beliefEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 2, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5B2D8E", marginBottom: 3 }}>🧭 Foundational Belief Proposed</div>
-          <div style={{ color: "#2B2B2B", lineHeight: 1.6, fontStyle: "italic" }}>{sub.beliefEntry.content}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief Proposed</div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6, fontStyle: "italic" }}>{sub.beliefEntry.content}</div>
         </div>
       )}
 
       {sub.translationEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#FDF8F0", border: "1px solid #D4850A80", borderRadius: 2, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#D4850A", marginBottom: 3 }}>🔄 Translation Proposed — {sub.translationEntry.type}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "#FFFBEB", border: "1px solid #B4530980", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation Proposed — {sub.translationEntry.type}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ textDecoration: "line-through", color: "#5A5650" }}>{sub.translationEntry.original}</span>
-            <span style={{ color: "#D4850A", fontWeight: 700 }}>→</span>
-            <span style={{ color: "#D4850A", fontWeight: 700 }}>{sub.translationEntry.translated}</span>
+            <span style={{ textDecoration: "line-through", color: "#475569" }}>{sub.translationEntry.original}</span>
+            <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
+            <span style={{ color: "#B45309", fontWeight: 700 }}>{sub.translationEntry.translated}</span>
           </div>
         </div>
       )}
 
       {sub.linkedVaultEntries && sub.linkedVaultEntries.length > 0 && (
-        <div style={{ marginTop: 10, padding: 10, background: "#F0EDE6", borderRadius: 2, border: "1px solid #DCD8D0" }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 8 }}>📎 {sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"} — vote on each</div>
+        <div style={{ marginTop: 10, padding: 10, background: "#F1F5F9", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 8 }}>📎 {sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"} — vote on each</div>
           {sub.linkedVaultEntries.map(e => {
-            const tc = { correction: ["🏛", "#1B5E3F", "#E5F0EA"], argument: ["⚔️", "#2A6B6B", "#E5EFED"], belief: ["🧭", "#5B2D8E", "#F3E8F9"] }[e.type] || ["📎", "#5A5650", "#F0EDE6"];
-            return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 2 }}>
+            const tc = { correction: ["🏛", "#059669", "#ECFDF5"], argument: ["⚔️", "#0D9488", "#F0FDFA"], belief: ["🧭", "#7C3AED", "#F3E8F9"] }[e.type] || ["📎", "#475569", "#F1F5F9"];
+            return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{tc[0]} Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
               </div>
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#2B2B2B", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{e.label}</div>
-              {e.detail && <div style={{ fontSize: 12, color: "#5A5650", marginTop: 2 }}>Source: {e.detail}</div>}
+              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{e.label}</div>
+              {e.detail && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Source: {e.detail}</div>}
               {reviewingId === sub.id && (
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === true ? "#1B5E3F" : "#D4CFC4", background: vaultVotes[e.id] === true ? "#E5F0EA" : "#fff", color: vaultVotes[e.id] === true ? "#1B5E3F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✓ Still Applies</button>
-                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === false ? "#C4573F" : "#D4CFC4", background: vaultVotes[e.id] === false ? "#FAE8E5" : "#fff", color: vaultVotes[e.id] === false ? "#C4573F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✗ No Longer Valid</button>
+                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === true ? "#059669" : "#CBD5E1", background: vaultVotes[e.id] === true ? "#ECFDF5" : "#fff", color: vaultVotes[e.id] === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Still Applies</button>
+                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === false ? "#DC2626" : "#CBD5E1", background: vaultVotes[e.id] === false ? "#FEF2F2" : "#fff", color: vaultVotes[e.id] === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ No Longer Valid</button>
                 </div>
               )}
               {reviewingId !== sub.id && e.stillApplies !== undefined && (
-                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.stillApplies ? "#1B5E3F" : "#C4573F", fontWeight: 700 }}>{e.stillApplies ? "✓ STILL APPLIES" : "✗ NO LONGER VALID"}</span>
+                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.stillApplies ? "#059669" : "#DC2626", fontWeight: 700 }}>{e.stillApplies ? "✓ STILL APPLIES" : "✗ NO LONGER VALID"}</span>
               )}
             </div>;
           })}
@@ -3021,18 +3029,18 @@ function ReviewScreen({ user }) {
       )}
 
       {reviewingId === sub.id ? (
-        <div style={{ marginTop: 12, padding: 14, background: "#FDFBF5", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10 }}>Headline Correction Verdict</div>
+        <div style={{ marginTop: 12, padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 10 }}>Headline Correction Verdict</div>
           <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
           <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
           <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning..." /></div>
           <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
-          <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FDFBF5 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
+          <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FFFFFF 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="ta-btn-primary" style={{ background: "#1B5E3F", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
-              <button className="ta-btn-primary" style={{ background: "#C4573F", flex: 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject</button>
+              <button className="ta-btn-primary" style={{ background: "#059669", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
+              <button className="ta-btn-primary" style={{ background: "#DC2626", flex: 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject</button>
               <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
-              <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse</button>
+              <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse</button>
             </div>
             <LegalDisclaimer short />
           </div>
@@ -3048,10 +3056,10 @@ function ReviewScreen({ user }) {
         };
         return (
           <div style={{ marginTop: 10 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 4 }}>{accepted.length}/{seats} seats filled · {seats - accepted.length} remaining</div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 4 }}>{accepted.length}/{seats} seats filled · {seats - accepted.length} remaining</div>
             {!alreadyAccepted
-              ? <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
-              : <div style={{ fontSize: 11, color: "#7A7570", marginBottom: 6, padding: "6px 8px", background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2 }}>Your 6-hour review window is still active. Pick up where you left off.</div>
+              ? <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, padding: "6px 8px", background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
+              : <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, padding: "6px 8px", background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>Your 6-hour review window is still active. Pick up where you left off.</div>
             }
             <button className="ta-btn-secondary" onClick={async () => {
               if (!alreadyAccepted) await acceptJurySeat(sub.id, isCross);
@@ -3069,54 +3077,54 @@ function ReviewScreen({ user }) {
       <div className="ta-section-rule" /><h2 className="ta-section-head">Review Queue</h2>
 
       {/* What you're about to do */}
-      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #D4CFC4", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#1B2A4A", marginBottom: 4 }}>
+      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #CBD5E1", borderLeft: "4px solid #CA8A04", borderRadius: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#0F172A", marginBottom: 4 }}>
           You're reviewing submissions from fellow citizens.
         </div>
-        <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
           Read the headline, the proposed correction, and the reasoning. Then vote to approve or reject. Your verdict is permanent and public — take your time, weigh the evidence.
         </div>
       </div>
 
-      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #6B1520", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#6B1520", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
-      {isDIUser(user) && <div style={{ padding: 10, background: "#E6E8F0", border: "1.5px solid #4A5899", borderRadius: 2, marginBottom: 12, fontSize: 12, color: "#4A5899", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
-      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #DCD8D0" }}>
+      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #991B1B", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#991B1B", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
+      {isDIUser(user) && <div style={{ padding: 10, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#4F46E5", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
+      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
         {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["disputes", "Disputes", dQ.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #1B2A4A" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#1B2A4A" : "#7A7570", fontWeight: tab === k ? 700 : 400 }}>
-            {l} {c > 0 && <span style={{ background: k === "disputes" ? "#C2632A" : k === "di" ? "#4A5899" : "#C4573F", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
+          <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
+            {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
         ))}
       </div>
       {tab === "ingroup" && (igQ.length === 0 ? <Empty text="No in-group reviews waiting." /> : igQ.map(s => renderItem(s, false)))}
-      {tab === "crossgroup" && (cgQ.length === 0 ? <Empty text="No cross-group reviews waiting." /> : <div><p style={{ fontSize: 13, color: "#5A5650", marginBottom: 12, lineHeight: 1.6 }}>These corrections were approved by another Assembly and now face cross-group review. Jury size scales with the number of qualifying Assemblies in the ecosystem. No two jurors share more than 2 non-GP Assembly memberships — your perspective is independent by design.</p>{cgQ.map(s => renderItem(s, true))}</div>)}
+      {tab === "crossgroup" && (cgQ.length === 0 ? <Empty text="No cross-group reviews waiting." /> : <div><p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>These corrections were approved by another Assembly and now face cross-group review. Jury size scales with the number of qualifying Assemblies in the ecosystem. No two jurors share more than 2 non-GP Assembly memberships — your perspective is independent by design.</p>{cgQ.map(s => renderItem(s, true))}</div>)}
       {tab === "disputes" && (dQ.length === 0 ? <Empty text="No disputes awaiting your review." /> : <div>
-        <p style={{ fontSize: 13, color: "#5A5650", marginBottom: 12, lineHeight: 1.6 }}>Intra-Assembly disputes. A member is challenging another member's submission. Upholding the dispute means the submission was wrong. Dismissing means the original stands. Winners gain significant reputation.</p>
+        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>Intra-Assembly disputes. A member is challenging another member's submission. Upholding the dispute means the submission was wrong. Dismissing means the original stands. Winners gain significant reputation.</p>
         {dQ.map(d => (
-          <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #C2632A" }}>
+          <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>⚖ {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {d.orgName} · {sDate(d.createdAt)}</span>
-              <span style={{ fontSize: 10, padding: "2px 7px", background: "#FDF0E4", color: "#C2632A", borderRadius: 2, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
+              <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>⚖ {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {d.orgName} · {sDate(d.createdAt)}</span>
+              <span style={{ fontSize: 10, padding: "2px 7px", background: "#FFF7ED", color: "#EA580C", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
             </div>
-            <div style={{ padding: 10, background: "#FAF8F2", borderRadius: 2, marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 3 }}>ORIGINAL SUBMISSION BY {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)}</div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#1B2A4A" }}>{d.submissionHeadline}</div>
-              <div style={{ fontSize: 12, color: "#5A5650", marginTop: 6, lineHeight: 1.8 }}>{d.submissionReasoning}</div>
+            <div style={{ padding: 10, background: "#F9FAFB", borderRadius: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 3 }}>ORIGINAL SUBMISSION BY {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)}</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{d.submissionHeadline}</div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 6, lineHeight: 1.8 }}>{d.submissionReasoning}</div>
             </div>
-            <div style={{ padding: 12, background: "#FDF0E4", border: "1px solid #C2632A", borderRadius: 2, marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A", marginBottom: 4 }}>DISPUTE BY {anonName(d.disputedBy, d.anonMap, d.resolvedAt)}</div>
-              <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8 }}>{d.reasoning}</div>
-              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#2A6B6B" }}>{e.url}</a>{e.explanation && <div style={{ color: "#5A5650" }}>↳ {e.explanation}</div>}</div>)}</div>}
+            <div style={{ padding: 12, background: "#FFF7ED", border: "1px solid #EA580C", borderRadius: 8, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 4 }}>DISPUTE BY {anonName(d.disputedBy, d.anonMap, d.resolvedAt)}</div>
+              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8 }}>{d.reasoning}</div>
+              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {e.explanation}</div>}</div>)}</div>}
             </div>
             {reviewingId === d.id ? (
-              <div style={{ padding: 14, background: "#FDFBF5", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-                <div style={{ padding: 8, background: "#F5EDD5", border: "1px solid #B8963E", borderRadius: 2, marginBottom: 10, fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
-                  <strong style={{ color: "#B8963E" }}>⚖ Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
+              <div style={{ padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                <div style={{ padding: 8, background: "#FFFBEB", border: "1px solid #CA8A04", borderRadius: 8, marginBottom: 10, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
+                  <strong style={{ color: "#CA8A04" }}>⚖ Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
                 </div>
                 <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} /></div>
                 <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={() => castDisputeVote(d.id, true)}>⚖ Uphold Dispute</button>
-                  <button className="ta-btn-primary" style={{ background: "#1B5E3F" }} onClick={() => castDisputeVote(d.id, false)}>✓ Dismiss (Original Stands)</button>
+                  <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => castDisputeVote(d.id, true)}>⚖ Uphold Dispute</button>
+                  <button className="ta-btn-primary" style={{ background: "#059669" }} onClick={() => castDisputeVote(d.id, false)}>✓ Dismiss (Original Stands)</button>
                   <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
                 </div>
               </div>
@@ -3210,16 +3218,16 @@ function DIPanelContent({ user, subs, onReload }) {
     <div>
       {/* DI Link Requests */}
       {pendingLinks.length > 0 && <div style={{ marginBottom: 16 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4A5899", marginBottom: 8 }}>🤖 DI Link Requests</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Link Requests</div>
         {pendingLinks.map(r => (
-          <div key={r.diUsername} className="ta-card" style={{ borderLeft: "4px solid #4A5899", padding: 12 }}>
+          <div key={r.diUsername} className="ta-card" style={{ borderLeft: "4px solid #4F46E5", padding: 12 }}>
             <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{r.diUsername}</strong> wants to register as your Digital Intelligence</div>
-            <div style={{ padding: 10, background: "#E6E8F0", borderRadius: 2, marginBottom: 8, fontSize: 12, color: "#2B2B2B", lineHeight: 1.6 }}>
+            <div style={{ padding: 10, background: "#EEF2FF", borderRadius: 8, marginBottom: 8, fontSize: 12, color: "#1E293B", lineHeight: 1.6 }}>
               By approving, you accept responsibility for all of this DI's submissions. <strong>You receive the scoring</strong> — wins, losses, and deliberate deception penalties. You must pre-approve each submission before it enters jury review.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="ta-btn-primary" style={{ background: "#4A5899" }} onClick={() => approveDILink(r.diUsername)}>✓ Accept Responsibility</button>
-              <button className="ta-btn-ghost" style={{ color: "#C4573F" }} onClick={() => rejectDILink(r.diUsername)}>✗ Reject</button>
+              <button className="ta-btn-primary" style={{ background: "#4F46E5" }} onClick={() => approveDILink(r.diUsername)}>✓ Accept Responsibility</button>
+              <button className="ta-btn-ghost" style={{ color: "#DC2626" }} onClick={() => rejectDILink(r.diUsername)}>✗ Reject</button>
             </div>
           </div>
         ))}
@@ -3228,13 +3236,13 @@ function DIPanelContent({ user, subs, onReload }) {
       {error && <div className="ta-error">{error}</div>}
 
       {/* DI Pre-Review Queue */}
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4A5899", marginBottom: 8 }}>🤖 DI Submissions Awaiting Your Approval ({diQueue.length})</div>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Submissions Awaiting Your Approval ({diQueue.length})</div>
       {diQueue.length > 0 && <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
         {confirmAll ? (
-          <div style={{ padding: 10, background: "#FDF0E4", border: "1.5px solid #C2632A", borderRadius: 2, flex: 1 }}>
-            <div style={{ fontSize: 12, color: "#C2632A", fontWeight: 600, marginBottom: 6 }}>⚠ Confirm: I have personally reviewed all {diQueue.length} pending DI submissions</div>
+          <div style={{ padding: 10, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8, flex: 1 }}>
+            <div style={{ fontSize: 12, color: "#EA580C", fontWeight: 600, marginBottom: 6 }}>⚠ Confirm: I have personally reviewed all {diQueue.length} pending DI submissions</div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={approveAllDI}>Yes, Approve All {diQueue.length}</button>
+              <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={approveAllDI}>Yes, Approve All {diQueue.length}</button>
               <button className="ta-btn-ghost" onClick={() => setConfirmAll(false)}>Cancel</button>
             </div>
           </div>
@@ -3243,20 +3251,20 @@ function DIPanelContent({ user, subs, onReload }) {
         )}
       </div>}
       {diQueue.length === 0 ? <Empty text="No DI submissions awaiting your pre-approval." /> : diQueue.map(sub => (
-        <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
+        <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>🤖 @{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>🤖 @{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
             <StatusPill status="di_pending" />
           </div>
-          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
-          <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
+          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
             <SubHeadline sub={sub} />
           </div>
-          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{sub.reasoning}</div>
-          {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#2A6B6B" }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{sub.reasoning}</div>
+          {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#0D9488" }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button className="ta-btn-primary" style={{ background: "#4A5899", fontSize: 12 }} onClick={() => approveDISub(sub.id)}>✓ Approve for Review</button>
-            <button className="ta-btn-ghost" style={{ color: "#C4573F", fontSize: 12 }} onClick={() => rejectDISub(sub.id)}>✗ Reject</button>
+            <button className="ta-btn-primary" style={{ background: "#4F46E5", fontSize: 12 }} onClick={() => approveDISub(sub.id)}>✓ Approve for Review</button>
+            <button className="ta-btn-ghost" style={{ color: "#DC2626", fontSize: 12 }} onClick={() => rejectDISub(sub.id)}>✗ Reject</button>
           </div>
           <AuditTrail entries={sub.auditTrail} />
         </div>
@@ -3298,13 +3306,13 @@ function VaultScreen({ user }) {
   const addBelief = async () => { if (!newBelief.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.BELIEFS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", content: newBelief.trim(), submittedBy: user.username, createdAt: new Date().toISOString() }; } await sS(SK.BELIEFS, all); setNewBelief(""); load(); };
   const addTrans = async () => { if (!newTrans.original.trim() || !newTrans.translated.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.TRANSLATIONS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", original: newTrans.original.trim(), translated: newTrans.translated.trim(), type: newTrans.type, submittedBy: user.username, status: "pending", createdAt: new Date().toISOString(), survivalCount: 0 }; } await sS(SK.TRANSLATIONS, all); setNewTrans({ original: "", translated: "", type: "clarity" }); load(); };
 
-  const OrgLabel = ({ orgId }) => { const o = orgsMap[orgId]; if (!o) return null; return <span style={{ fontSize: 9, padding: "1px 5px", fontFamily: "var(--mono)", borderRadius: 2, background: o.isGeneralPublic ? "#E5EFED" : "#F0EDE6", color: o.isGeneralPublic ? "#2A6B6B" : "#5A5650", marginRight: 4 }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>; };
+  const OrgLabel = ({ orgId }) => { const o = orgsMap[orgId]; if (!o) return null; return <span style={{ fontSize: 9, padding: "1px 5px", fontFamily: "var(--mono)", borderRadius: 8, background: o.isGeneralPublic ? "#F0FDFA" : "#F1F5F9", color: o.isGeneralPublic ? "#0D9488" : "#475569", marginRight: 4 }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>; };
 
   const AssemblySelector = () => myOrgs.length > 1 ? (
-    <div style={{ marginBottom: 10, padding: 8, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2 }}>
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none" }}>(select one or more)</span></div>
+    <div style={{ marginBottom: 10, padding: 8, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none" }}>(select one or more)</span></div>
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#1B5E3F" : "#D4CFC4"}`, background: sel ? "#1B5E3F" : "#fff", color: sel ? "#fff" : "#5A5650", borderRadius: 2, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
+        {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#059669" : "#CBD5E1"}`, background: sel ? "#059669" : "#fff", color: sel ? "#fff" : "#475569", borderRadius: 8, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
       </div>
     </div>
   ) : null;
@@ -3314,35 +3322,35 @@ function VaultScreen({ user }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Vaults</h2>
-      <p style={{ color: "#5A5650", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. You see entries from all your assemblies below. When adding new entries, choose which assembly or assemblies to submit to.</p>
-      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #DCD8D0" }}>
-        {tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #1B2A4A" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#1B2A4A" : "#7A7570", fontWeight: tab === k ? 700 : 400 }}>{l}</button>)}
+      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. You see entries from all your assemblies below. When adding new entries, choose which assembly or assemblies to submit to.</p>
+      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
+        {tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>{l}</button>)}
       </div>
       {loading ? <Loader /> : <>
-        {tab === "vault" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Standing Corrections — reusable facts verified through jury review. Each time a correction is linked to a submission and survives review, it gains reputation.</p>{vault.length === 0 ? <Empty text="No vault entries yet. Submit one with your next correction." /> : vault.map(v => <div key={v.id} className="ta-card" style={{ borderLeft: "4px solid #D4CFC4" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><OrgLabel orgId={v.orgId} />@{v.submittedBy} · {sDate(v.createdAt)}{v.survivalCount > 0 ? ` · survived ${v.survivalCount} review${v.survivalCount !== 1 ? "s" : ""}` : ""}</span><StatusPill status={v.status} /></div><div style={{ fontFamily: "var(--serif)", fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>{v.assertion}</div>{v.evidence && <div style={{ fontSize: 12, color: "#2A6B6B", marginTop: 3 }}>{v.evidence}</div>}</div>)}</div>}
-        {tab === "args" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Argument Vault — store fundamental arguments your Assembly uses across corrections. Reusable rhetorical and logical tools.</p>{args.map(a => <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #2A6B6B" }}><div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={a.orgId} />@{a.submittedBy} · {sDate(a.createdAt)}{a.survivalCount > 0 ? ` · survived ${a.survivalCount} review${a.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{a.content}</div></div>)}{args.length === 0 && <Empty text="No arguments stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Argument</label><textarea value={newArg} onChange={e => setNewArg(e.target.value)} rows={2} placeholder="A reusable argument your Assembly makes..." /></div><button className="ta-btn-primary" onClick={addArg} disabled={selectedOrgIds.length === 0}>Add to Argument Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
-        {tab === "beliefs" && <div><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Foundational Belief Vault — core beliefs your Assembly holds as axioms. Not claims of fact but starting premises.</p>{beliefs.map(b => <div key={b.id} className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}><div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={b.orgId} />@{b.submittedBy} · {sDate(b.createdAt)}{b.survivalCount > 0 ? ` · survived ${b.survivalCount} review${b.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6, fontStyle: "italic" }}>{b.content}</div></div>)}{beliefs.length === 0 && <Empty text="No foundational beliefs stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Foundational Belief</label><textarea value={newBelief} onChange={e => setNewBelief(e.target.value)} rows={2} placeholder="A core belief your Assembly holds..." /></div><button className="ta-btn-primary" onClick={addBelief} disabled={selectedOrgIds.length === 0}>Add to Belief Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
+        {tab === "vault" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Standing Corrections — reusable facts verified through jury review. Each time a correction is linked to a submission and survives review, it gains reputation.</p>{vault.length === 0 ? <Empty text="No vault entries yet. Submit one with your next correction." /> : vault.map(v => <div key={v.id} className="ta-card" style={{ borderLeft: "4px solid #CBD5E1" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}><OrgLabel orgId={v.orgId} />@{v.submittedBy} · {sDate(v.createdAt)}{v.survivalCount > 0 ? ` · survived ${v.survivalCount} review${v.survivalCount !== 1 ? "s" : ""}` : ""}</span><StatusPill status={v.status} /></div><div style={{ fontFamily: "var(--serif)", fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>{v.assertion}</div>{v.evidence && <div style={{ fontSize: 12, color: "#0D9488", marginTop: 3 }}>{v.evidence}</div>}</div>)}</div>}
+        {tab === "args" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Argument Vault — store fundamental arguments your Assembly uses across corrections. Reusable rhetorical and logical tools.</p>{args.map(a => <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #0D9488" }}><div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={a.orgId} />@{a.submittedBy} · {sDate(a.createdAt)}{a.survivalCount > 0 ? ` · survived ${a.survivalCount} review${a.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{a.content}</div></div>)}{args.length === 0 && <Empty text="No arguments stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Argument</label><textarea value={newArg} onChange={e => setNewArg(e.target.value)} rows={2} placeholder="A reusable argument your Assembly makes..." /></div><button className="ta-btn-primary" onClick={addArg} disabled={selectedOrgIds.length === 0}>Add to Argument Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
+        {tab === "beliefs" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Foundational Belief Vault — core beliefs your Assembly holds as axioms. Not claims of fact but starting premises.</p>{beliefs.map(b => <div key={b.id} className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}><div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={b.orgId} />@{b.submittedBy} · {sDate(b.createdAt)}{b.survivalCount > 0 ? ` · survived ${b.survivalCount} review${b.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6, fontStyle: "italic" }}>{b.content}</div></div>)}{beliefs.length === 0 && <Empty text="No foundational beliefs stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Foundational Belief</label><textarea value={newBelief} onChange={e => setNewBelief(e.target.value)} rows={2} placeholder="A core belief your Assembly holds..." /></div><button className="ta-btn-primary" onClick={addBelief} disabled={selectedOrgIds.length === 0}>Add to Belief Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
         {tab === "trans" && <div>
-          <p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Translation Vault — plain-language replacements for jargon, spin, propaganda, and euphemisms. Approved translations can be applied automatically by the browser extension across all articles. Categories: Clarity (strip jargon), Anti-Propaganda (rename spin), Euphemism (call it what it is), Satirical (approved humor).</p>
-          {translations.map(t => <div key={t.id} className="ta-card" style={{ borderLeft: "4px solid #D4850A" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><OrgLabel orgId={t.orgId} />@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
+          <p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Translation Vault — plain-language replacements for jargon, spin, propaganda, and euphemisms. Approved translations can be applied automatically by the browser extension across all articles. Categories: Clarity (strip jargon), Anti-Propaganda (rename spin), Euphemism (call it what it is), Satirical (approved humor).</p>
+          {translations.map(t => <div key={t.id} className="ta-card" style={{ borderLeft: "4px solid #B45309" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}><OrgLabel orgId={t.orgId} />@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
-              <span style={{ textDecoration: "line-through", color: "#5A5650" }}>{t.original}</span>
-              <span style={{ color: "#D4850A", fontWeight: 700 }}>→</span>
-              <span style={{ color: "#D4850A", fontWeight: 700 }}>{t.translated}</span>
+              <span style={{ textDecoration: "line-through", color: "#475569" }}>{t.original}</span>
+              <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
+              <span style={{ color: "#B45309", fontWeight: 700 }}>{t.translated}</span>
             </div>
           </div>)}
           {translations.length === 0 && <Empty text="No translations stored yet. Propose one with your next submission, or add directly below." />}
-          <div style={{ marginTop: 14, padding: 12, background: "#FDF8F0", border: "1px solid #D4850A40", borderRadius: 2 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#D4850A", marginBottom: 8, fontWeight: 700 }}>New Translation</div>
+          <div style={{ marginTop: 14, padding: 12, background: "#FFFBEB", border: "1px solid #B4530940", borderRadius: 8 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 8, fontWeight: 700 }}>New Translation</div>
             <AssemblySelector />
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "start", marginBottom: 8 }}>
-              <input value={newTrans.original} onChange={e => setNewTrans({ ...newTrans, original: e.target.value })} placeholder='e.g. "Quantitative easing"' style={{ padding: "8px 10px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 12, borderRadius: 2 }} />
-              <span style={{ padding: "8px 4px", color: "#D4850A", fontWeight: 700 }}>→</span>
-              <input value={newTrans.translated} onChange={e => setNewTrans({ ...newTrans, translated: e.target.value })} placeholder='e.g. "Central bank creating new money"' style={{ padding: "8px 10px", border: "1.5px solid #D4850A80", background: "#fff", fontSize: 12, borderRadius: 2 }} />
+              <input value={newTrans.original} onChange={e => setNewTrans({ ...newTrans, original: e.target.value })} placeholder='e.g. "Quantitative easing"' style={{ padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 12, borderRadius: 8 }} />
+              <span style={{ padding: "8px 4px", color: "#B45309", fontWeight: 700 }}>→</span>
+              <input value={newTrans.translated} onChange={e => setNewTrans({ ...newTrans, translated: e.target.value })} placeholder='e.g. "Central bank creating new money"' style={{ padding: "8px 10px", border: "1.5px solid #B4530980", background: "#fff", fontSize: 12, borderRadius: 8 }} />
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <select value={newTrans.type} onChange={e => setNewTrans({ ...newTrans, type: e.target.value })} style={{ padding: "6px 8px", border: "1.5px solid #D4CFC4", background: "#FDFBF5", fontSize: 11, borderRadius: 2, fontFamily: "var(--mono)" }}><option value="clarity">Clarity</option><option value="propaganda">Anti-Propaganda</option><option value="euphemism">Euphemism</option><option value="satirical">Satirical</option></select>
+              <select value={newTrans.type} onChange={e => setNewTrans({ ...newTrans, type: e.target.value })} style={{ padding: "6px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 11, borderRadius: 8, fontFamily: "var(--mono)" }}><option value="clarity">Clarity</option><option value="propaganda">Anti-Propaganda</option><option value="euphemism">Euphemism</option><option value="satirical">Satirical</option></select>
               <button className="ta-btn-primary" onClick={addTrans} disabled={selectedOrgIds.length === 0}>Add to Translation Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button>
             </div>
           </div>
@@ -3359,20 +3367,20 @@ function ConsensusScreen({ onViewCitizen }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">The Consensus</h2>
-      <div style={{ padding: 20, background: "#EDE5F0", border: "1px solid #9B7DB8", borderRadius: 2, marginBottom: 20 }}>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.15em", color: "#5B2D8E", marginBottom: 6 }}>The Highest Prize</div>
-        <p style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#1B2A4A", margin: "0 0 8px" }}>A consensus correction has survived the gauntlet. The submitter's assembly approved it. Then members of <em>other</em> assemblies independently agreed.</p>
-        <p style={{ fontSize: 13, color: "#2B2B2B", margin: 0, lineHeight: 1.6 }}>Only the truth has the property that all people can recognize it.</p>
+      <div style={{ padding: 20, background: "#F5F3FF", border: "1px solid #9B7DB8", borderRadius: 8, marginBottom: 20 }}>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.15em", color: "#7C3AED", marginBottom: 6 }}>The Highest Prize</div>
+        <p style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#0F172A", margin: "0 0 8px" }}>A consensus correction has survived the gauntlet. The submitter's assembly approved it. Then members of <em>other</em> assemblies independently agreed.</p>
+        <p style={{ fontSize: 13, color: "#1E293B", margin: 0, lineHeight: 1.6 }}>Only the truth has the property that all people can recognize it.</p>
       </div>
       {loading ? <Loader /> : subs.length === 0 ? <Empty text="No consensus corrections yet. When a correction survives cross-group review, it appears here." /> :
         subs.map(sub => (
-          <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> · {sub.orgName} · {fDate(sub.resolvedAt)}</span><StatusPill status="consensus" /></div>
-            <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
-            <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
+          <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}><UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> · {sub.orgName} · {fDate(sub.resolvedAt)}</span><StatusPill status="consensus" /></div>
+            <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+            <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
               <SubHeadline sub={sub} />
             </div>
-            <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+            <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
             <AuditTrail entries={sub.auditTrail} />
             <LegalDisclaimer short />
           </div>
@@ -3420,46 +3428,46 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Record</h2>
       {user && !Object.values(subs || {}).some(s => s.submittedBy === user.username) && (
-        <div style={{ padding: 16, background: "#fff", border: "1.5px solid #B8963E", borderRadius: 2, marginBottom: 16, textAlign: "center" }}>
+        <div style={{ padding: 16, background: "#fff", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 16, textAlign: "center" }}>
           <div style={{ fontSize: 18, marginBottom: 6 }}>⚖</div>
           <div style={{ fontFamily: "var(--serif)", fontSize: 17, fontWeight: 600, color: "var(--navy)", marginBottom: 6 }}>Read a headline. Think it's wrong?</div>
-          <div style={{ fontSize: 13, color: "#5A5650", marginBottom: 12, lineHeight: 1.6 }}>Submit a correction and a random jury of your fellow citizens will weigh the evidence.</div>
+          <div style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>Submit a correction and a random jury of your fellow citizens will weigh the evidence.</div>
           <button className="ta-btn-primary" onClick={() => onNavigate && onNavigate("submit")}>Submit Your First Correction</button>
         </div>
       )}
       {disputeSuccess && <div className="ta-success">{disputeSuccess}</div>}
       {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => (
-        <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#5B2D8E" : sub.status === "approved" ? "#1B5E3F" : sub.status === "rejected" || sub.status === "disputed" ? "#C4573F" : "#C4900A"}` }}>
+        <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : sub.status === "rejected" || sub.status === "disputed" ? "#DC2626" : "#D97706"}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E6E8F0", color: "#4A5899", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
-              {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
+              {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
+              {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
               <StatusPill status={sub.status} />
             </div>
           </div>
-          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
-          <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
+          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
             <SubHeadline sub={sub} size={13} />
           </div>
-          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
-          {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#5A5650", marginBottom: 4 }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
-          {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#2A6B6B", marginBottom: 4 }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
-          {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#6B1520", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+          {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#475569", marginBottom: 4 }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
+          {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#0D9488", marginBottom: 4 }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
+          {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
 
           {canDispute(sub) && disputingId !== sub.id && (
-            <button className="ta-btn-ghost" style={{ color: "#C2632A", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
+            <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
           )}
 
           {disputingId === sub.id && (
-            <div style={{ marginTop: 10, padding: 14, background: "#FDF0E4", border: "1.5px solid #C2632A", borderRadius: 2 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#C2632A", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
-              <p style={{ fontSize: 12, color: "#2B2B2B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
+            <div style={{ marginTop: 10, padding: 14, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
+              <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
               {disputeError && <div className="ta-error">{disputeError}</div>}
               <div className="ta-field"><label>Why is this submission wrong? *</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain specifically what is incorrect, misleading, or deceptive..." /></div>
               <EvidenceFields evidence={disputeForm.evidence} onChange={ev => setDisputeForm({ ...disputeForm, evidence: ev })} />
               <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                <button className="ta-btn-primary" style={{ background: "#C2632A" }} onClick={() => submitDispute(sub.id)}>File Dispute</button>
+                <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => submitDispute(sub.id)}>File Dispute</button>
                 <button className="ta-btn-ghost" onClick={() => setDisputingId(null)}>Cancel</button>
               </div>
             </div>
@@ -3478,27 +3486,27 @@ function JuryScoreCard({ username }) {
   useEffect(() => { computeJuryScore(username).then(setJs); }, [username]);
   if (!js || js.totalReviews === 0) return null;
   const items = [
-    ["#2A6B6B", js.totalReviews, "Reviews"],
-    ["#1B5E3F", js.consensusRate !== null ? js.consensusRate + "%" : "—", "Consensus"],
-    ["#C4573F", js.overturnRate !== null ? js.overturnRate + "%" : "—", "Overturned"],
-    ["#B8963E", js.accusationRate !== null ? js.accusationRate + "%" : "—", "Lie Accuracy"],
+    ["#0D9488", js.totalReviews, "Reviews"],
+    ["#059669", js.consensusRate !== null ? js.consensusRate + "%" : "—", "Consensus"],
+    ["#DC2626", js.overturnRate !== null ? js.overturnRate + "%" : "—", "Overturned"],
+    ["#CA8A04", js.accusationRate !== null ? js.accusationRate + "%" : "—", "Lie Accuracy"],
   ];
   // Consensus health indicator
   const cHealth = js.consensusRate === null ? null : js.consensusRate >= 50 && js.consensusRate <= 85 ? "Healthy range" : js.consensusRate > 85 ? "High — possible rubber-stamping" : "Low — frequent dissenter";
   return (
-    <div className="ta-card" style={{ borderLeft: "4px solid #2A6B6B" }}>
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 8, fontWeight: 600 }}>⚖ Jury Score</div>
+    <div className="ta-card" style={{ borderLeft: "4px solid #0D9488" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 8, fontWeight: 600 }}>⚖ Jury Score</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
         {items.map(([c, n, l], i) => (
-          <div key={i} style={{ textAlign: "center", padding: 8, background: "#F0EDE6", borderRadius: 2 }}>
+          <div key={i} style={{ textAlign: "center", padding: 8, background: "#F1F5F9", borderRadius: 8 }}>
             <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, color: c }}>{n}</div>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginTop: 3 }}>{l}</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B", marginTop: 3 }}>{l}</div>
           </div>
         ))}
       </div>
-      {cHealth && <div style={{ fontSize: 10, color: "#5A5650", marginTop: 6 }}>Consensus alignment: <strong>{cHealth}</strong> (50–85% is normal)</div>}
-      {js.lieFlags > 0 && <div style={{ fontSize: 10, color: "#5A5650", marginTop: 3 }}>Deception flags: {js.lieFlagsCorrect}/{js.lieFlags} confirmed by jury</div>}
-      {js.overturnEligible > 0 && js.overturnRate > 0 && <div style={{ fontSize: 10, color: "#C4573F", marginTop: 3 }}>⚠ {js.overturned} of {js.overturnEligible} juries you served on were overturned by dispute</div>}
+      {cHealth && <div style={{ fontSize: 10, color: "#475569", marginTop: 6 }}>Consensus alignment: <strong>{cHealth}</strong> (50–85% is normal)</div>}
+      {js.lieFlags > 0 && <div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>Deception flags: {js.lieFlagsCorrect}/{js.lieFlags} confirmed by jury</div>}
+      {js.overturnEligible > 0 && js.overturnRate > 0 && <div style={{ fontSize: 10, color: "#DC2626", marginTop: 3 }}>⚠ {js.overturned} of {js.overturnEligible} juries you served on were overturned by dispute</div>}
     </div>
   );
 }
@@ -3531,77 +3539,77 @@ function ProfileScreen({ user, onViewCitizen }) {
       {hasActiveDeceptionPenalty(u) && (() => {
         const days = deceptionPenaltyRemaining(u);
         return (
-          <div style={{ padding: 14, background: "#EBD5D3", border: "2px solid #6B1520", borderRadius: 2, marginBottom: 14 }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B1520", fontWeight: 700, marginBottom: 6 }}>⚠ Deliberate Deception Penalty — Active</div>
-            <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>
+          <div style={{ padding: 14, background: "#EBD5D3", border: "2px solid #991B1B", borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: "#991B1B", fontWeight: 700, marginBottom: 6 }}>⚠ Deliberate Deception Penalty — Active</div>
+            <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>
               A jury found one of your submissions to be a deliberate deception. The following restrictions are in effect for <strong>{days} more day{days !== 1 ? "s" : ""}</strong>:
             </div>
-            <div style={{ marginTop: 8, fontSize: 12, color: "#6B1520", lineHeight: 1.8 }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: "#991B1B", lineHeight: 1.8 }}>
               <div>🚫 <strong>All voting suspended</strong> — you cannot serve on juries</div>
               <div>🚫 <strong>Sponsorship suspended</strong> — you cannot vouch for new members</div>
               <div>🚫 <strong>Assembly creation suspended</strong> — you cannot found new Assemblies</div>
             </div>
-            <div style={{ marginTop: 8, fontSize: 12, color: "#5A5650" }}>You may still submit corrections. Accurate submissions during the penalty period rebuild your reputation.</div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "#475569" }}>You may still submit corrections. Accurate submissions during the penalty period rebuild your reputation.</div>
           </div>
         );
       })()}
 
-      <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4A5899" : pi.color}` }}>
+      <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4F46E5" : pi.color}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
               {isDIUser(u) && <span style={{ marginRight: 6 }}>🤖</span>}
               @{u.displayName || u.username}
             </h3>
-            <div style={{ color: "#5A5650", fontSize: 13, marginTop: 3 }}>@{u.username}</div>
-            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} style={{ fontSize: 12, color: "#4A5899" }} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
+            <div style={{ color: "#475569", fontSize: 13, marginTop: 3 }}>@{u.username}</div>
+            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4F46E5" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} style={{ fontSize: 12, color: "#4F46E5" }} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
         {/* Org memberships */}
         {myOrgs.length > 0 && <div style={{ marginTop: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 2, background: o.id === u.orgId ? "#1B5E3F" : o.isGeneralPublic ? "#E5EFED" : "#F0EDE6", color: o.id === u.orgId ? "#fff" : o.isGeneralPublic ? "#2A6B6B" : "#5A5650", fontWeight: o.id === u.orgId ? 700 : 400 }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}{o.id === u.orgId ? " ★" : ""}</span>)}
+          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 8, background: o.id === u.orgId ? "#059669" : o.isGeneralPublic ? "#F0FDFA" : "#F1F5F9", color: o.id === u.orgId ? "#fff" : o.isGeneralPublic ? "#0D9488" : "#475569", fontWeight: o.id === u.orgId ? 700 : 400 }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}{o.id === u.orgId ? " ★" : ""}</span>)}
         </div>}
-        <div style={{ fontSize: 10, color: "#7A7570", marginTop: 4 }}>{myOrgs.length}/{MAX_ORGS} assemblies</div>
+        <div style={{ fontSize: 10, color: "#64748B", marginTop: 4 }}>{myOrgs.length}/{MAX_ORGS} assemblies</div>
         {/* Profile explanation */}
-        <div style={{ marginTop: 14, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
+        <div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: pi.color, marginBottom: 4 }}>Profile: {p.profile}</div>
-          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{pi.desc}</div>
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{pi.desc}</div>
         </div>
         <div style={{ marginTop: 12 }}>
           <ScoreBreakdown p={p} />
         </div>
         <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-          {[["#1B5E3F", p.wins, "Wins"], ["#C4573F", p.losses, "Losses"], ["#6B1520", p.lies, "Lies"], ["#B8963E", p.disputeWins, "Disp. Wins"]].map(([c, n, l], i) => (
-            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F0EDE6", borderRadius: 2 }}>
+          {[["#059669", p.wins, "Wins"], ["#DC2626", p.losses, "Losses"], ["#991B1B", p.lies, "Lies"], ["#CA8A04", p.disputeWins, "Disp. Wins"]].map(([c, n, l], i) => (
+            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F1F5F9", borderRadius: 8 }}>
               <div style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 700, color: c }}>{n}</div>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginTop: 3 }}>{l}</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B", marginTop: 3 }}>{l}</div>
             </div>
           ))}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 8 }}>
-          {[["#2A6B6B", p.streak, "Streak"], ["#C2632A", p.disputeLosses, "Disp. Losses"], [pi.color, p.avgNews, "News"], [pi.color, p.avgFun, "Fun"]].map(([c, n, l], i) => (
-            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F0EDE6", borderRadius: 2 }}>
+          {[["#0D9488", p.streak, "Streak"], ["#EA580C", p.disputeLosses, "Disp. Losses"], [pi.color, p.avgNews, "News"], [pi.color, p.avgFun, "Fun"]].map(([c, n, l], i) => (
+            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F1F5F9", borderRadius: 8 }}>
               <div style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 700, color: c }}>{n}</div>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginTop: 3 }}>{l}</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B", marginTop: 3 }}>{l}</div>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 12, fontSize: 12, color: "#5A5650" }}><strong>{p.streak}</strong>/{p.required} wins for {p.highTrust ? "maintained " : ""}high trust</div>
-        <div style={{ background: "#DCD8D0", borderRadius: 2, height: 8, overflow: "hidden", marginTop: 4 }}><div style={{ width: `${Math.min(100, (p.streak / p.required) * 100)}%`, height: "100%", background: p.highTrust ? "#1B5E3F" : "#2A6B6B", borderRadius: 2 }} /></div>
+        <div style={{ marginTop: 12, fontSize: 12, color: "#475569" }}><strong>{p.streak}</strong>/{p.required} wins for {p.highTrust ? "maintained " : ""}high trust</div>
+        <div style={{ background: "#E2E8F0", borderRadius: 8, height: 8, overflow: "hidden", marginTop: 4 }}><div style={{ width: `${Math.min(100, (p.streak / p.required) * 100)}%`, height: "100%", background: p.highTrust ? "#059669" : "#0D9488", borderRadius: 8 }} /></div>
 
         {/* Per-Assembly Trusted Contributor Status */}
         {myOrgs.length > 0 && <div style={{ marginTop: 16 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6 }}>🛡 Trusted Contributor Status (per Assembly)</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6 }}>🛡 Trusted Contributor Status (per Assembly)</div>
           {myOrgs.map(o => {
             const tp = getTrustedProgress(u, o.id);
             return (
               <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, fontSize: 12 }}>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#5A5650", minWidth: 120 }}>{o.name}</span>
-                <div style={{ flex: 1, background: "#DCD8D0", borderRadius: 2, height: 6, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.min(100, (tp.current / tp.needed) * 100)}%`, height: "100%", background: tp.isTrusted ? "#1B5E3F" : "#2A6B6B", borderRadius: 2, transition: "width 0.3s" }} />
+                <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#475569", minWidth: 120 }}>{o.name}</span>
+                <div style={{ flex: 1, background: "#E2E8F0", borderRadius: 8, height: 6, overflow: "hidden" }}>
+                  <div style={{ width: `${Math.min(100, (tp.current / tp.needed) * 100)}%`, height: "100%", background: tp.isTrusted ? "#059669" : "#0D9488", borderRadius: 8, transition: "width 0.3s" }} />
                 </div>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: tp.isTrusted ? "#1B5E3F" : "#7A7570", fontWeight: tp.isTrusted ? 700 : 400, minWidth: 60, textAlign: "right" }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: tp.isTrusted ? "#059669" : "#64748B", fontWeight: tp.isTrusted ? 700 : 400, minWidth: 60, textAlign: "right" }}>
                   {tp.isTrusted ? "🛡 TRUSTED" : `${tp.current}/${tp.needed}`}
                 </span>
               </div>
@@ -3613,12 +3621,12 @@ function ProfileScreen({ user, onViewCitizen }) {
       <JuryScoreCard username={u.username} />
       {/* Citizen Badges */}
       <div className="ta-card">
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10, fontWeight: 700 }}>🏅 Badges</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 10, fontWeight: 700 }}>🏅 Badges</div>
         <CitizenBadges badges={computeBadges(u, allUsers, orgs, allSubs)} />
       </div>
       {/* Registered Digital Intelligences */}
-      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
+      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4F46E5", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
         </div>
@@ -3627,12 +3635,12 @@ function ProfileScreen({ user, onViewCitizen }) {
         <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "3px 12px", fontSize: 13 }}>
           {[["Username", "@" + u.username], ["Signed Up", fDate(u.signupDate)], ["Account Age", daysSince(u.signupDate) + " days"]].map(([l, v], i) => (
             <div key={i} style={{ display: "contents" }}>
-              <div style={{ color: "#7A7570", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", padding: "3px 0" }}>{l}</div>
-              <div style={{ color: "#2B2B2B", padding: "3px 0" }}>{v}</div>
+              <div style={{ color: "#64748B", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", padding: "3px 0" }}>{l}</div>
+              <div style={{ color: "#1E293B", padding: "3px 0" }}>{v}</div>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 10, padding: 8, background: "#F0EDE6", borderRadius: 2, fontSize: 10, color: "#5A5650", lineHeight: 1.6 }}>
+        <div style={{ marginTop: 10, padding: 8, background: "#F1F5F9", borderRadius: 8, fontSize: 10, color: "#475569", lineHeight: 1.6 }}>
           <strong>🔒 Private to you:</strong> Name ({u.realName}), Email ({u.email || "—"}), Gender ({u.gender || "—"}), Location ({u.country ? (u.state ? u.state + ", " + u.country : u.country) : u.location || "—"}), Political Affiliation ({u.politicalAffiliation || "Not specified"}). These are never shown to other users — only your @username appears publicly.
         </div>
       </div>
@@ -3673,54 +3681,54 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
       <div className="ta-section-rule" />
       <button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button>
       <h2 className="ta-section-head">Citizen Record</h2>
-      <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4A5899" : pi.color}` }}>
+      <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4F46E5" : pi.color}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
               {isDIUser(u) && <span style={{ marginRight: 6 }}>🤖</span>}
               @{u.displayName || u.username}
             </h3>
-            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4A5899" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
+            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4F46E5" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
         {myOrgs.length > 0 && <div style={{ marginTop: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 2, background: o.isGeneralPublic ? "#E5EFED" : "#F0EDE6", color: o.isGeneralPublic ? "#2A6B6B" : "#5A5650" }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>)}
+          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 8, background: o.isGeneralPublic ? "#F0FDFA" : "#F1F5F9", color: o.isGeneralPublic ? "#0D9488" : "#475569" }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>)}
         </div>}
-        <div style={{ marginTop: 14, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
+        <div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: pi.color, marginBottom: 4 }}>Profile: {p.profile}</div>
-          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{pi.desc}</div>
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{pi.desc}</div>
         </div>
         <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-          {[["#1B5E3F", p.wins, "Wins"], ["#C4573F", p.losses, "Losses"], ["#B8963E", p.disputeWins, "Disp. Wins"], ["#2A6B6B", p.streak, "Streak"]].map(([c, n, l], i) => (
-            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F0EDE6", borderRadius: 2 }}>
+          {[["#059669", p.wins, "Wins"], ["#DC2626", p.losses, "Losses"], ["#CA8A04", p.disputeWins, "Disp. Wins"], ["#0D9488", p.streak, "Streak"]].map(([c, n, l], i) => (
+            <div key={i} style={{ textAlign: "center", padding: 8, background: "#F1F5F9", borderRadius: 8 }}>
               <div style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 700, color: c }}>{n}</div>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginTop: 3 }}>{l}</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B", marginTop: 3 }}>{l}</div>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 8, fontSize: 12, color: "#5A5650" }}>Signed up {fDate(u.signupDate)} · {daysSince(u.signupDate)} days</div>
+        <div style={{ marginTop: 8, fontSize: 12, color: "#475569" }}>Signed up {fDate(u.signupDate)} · {daysSince(u.signupDate)} days</div>
       </div>
       <JuryScoreCard username={username} />
       {/* Citizen Badges */}
       <div className="ta-card">
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10, fontWeight: 700 }}>🏅 Badges</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 10, fontWeight: 700 }}>🏅 Badges</div>
         <CitizenBadges badges={computeBadges(u, allUsers, orgs, subs)} />
       </div>
       {/* Registered Digital Intelligences */}
-      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
+      {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4F46E5", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
         </div>
       </div>}
       {/* Recent submissions */}
       {userSubs.length > 0 && <div className="ta-card">
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Recent Submissions ({userSubs.length})</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 8 }}>Recent Submissions ({userSubs.length})</div>
         {userSubs.slice(0, 10).map(sub => (
-          <div key={sub.id} style={{ padding: "8px 0", borderBottom: "1px solid #DCD8D0" }}>
+          <div key={sub.id} style={{ padding: "8px 0", borderBottom: "1px solid #E2E8F0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-              <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}</span>
+              <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}</span>
               <StatusPill status={sub.status} />
             </div>
             <SubHeadline sub={sub} size={12} />
@@ -3732,7 +3740,7 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
 }
 
 function UsernameLink({ username, onClick, style }) {
-  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#1B2A4A", fontFamily: "var(--mono)", fontSize: 10, textDecoration: "underline", textDecorationColor: "#D4CFC4", ...style }}>@{username}</button>;
+  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#2563EB", fontSize: 11, textDecoration: "underline", textDecorationColor: "#CBD5E1", ...style }}>@{username}</button>;
 }
 
 function AuditScreen() {
@@ -3742,11 +3750,11 @@ function AuditScreen() {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Transparency Ledger</h2>
-      <p style={{ color: "#5A5650", marginBottom: 16, fontSize: 14, lineHeight: 1.6 }}>Every action. Nothing hidden. Nothing deleted.</p>
+      <p style={{ color: "#475569", marginBottom: 16, fontSize: 14, lineHeight: 1.6 }}>Every action. Nothing hidden. Nothing deleted.</p>
       {(!audit || audit.length === 0) ? <Empty text="No activity." /> :
         <div style={{ fontFamily: "var(--mono)", fontSize: 10 }}>{audit.map((e, i) => (
-          <div key={i} style={{ padding: "6px 10px", background: i % 2 === 0 ? "#F0EDE6" : "#FDFBF5", borderBottom: "1px solid #DCD8D0", lineHeight: 1.4 }}>
-            <span style={{ color: "#7A7570" }}>{fDate(e.time)}</span><br />{e.action}
+          <div key={i} style={{ padding: "6px 10px", background: i % 2 === 0 ? "#F1F5F9" : "#FFFFFF", borderBottom: "1px solid #E2E8F0", lineHeight: 1.4 }}>
+            <span style={{ color: "#64748B" }}>{fDate(e.time)}</span><br />{e.action}
           </div>
         ))}</div>}
     </div>
@@ -3754,26 +3762,26 @@ function AuditScreen() {
 }
 function AssemblyGuide() {
   return (
-    <div style={{ padding: 16, background: "#FDFBF5", border: "1.5px solid #D4CFC4", borderRadius: 2, marginBottom: 20 }}>
+    <div style={{ padding: 16, background: "#FFFFFF", border: "1.5px solid #CBD5E1", borderRadius: 8, marginBottom: 20 }}>
       <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, marginBottom: 4 }}>How Assemblies Work</div>
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#C2632A", marginBottom: 14 }}>📖 Tutorial</div>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#EA580C", marginBottom: 14 }}>📖 Tutorial</div>
 
-      <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.7 }}>
+      <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.7 }}>
         <p style={{ marginBottom: 12 }}><strong>An Assembly is a group of citizens who review each other's corrections.</strong> Every citizen starts in The General Public — it's the commons, and you can never leave it. From there, you can create or join up to 12 specialized Assemblies.</p>
 
-        <div style={{ padding: 12, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 6, fontWeight: 600 }}>⚖️ The Core Principle</div>
+        <div style={{ padding: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6, fontWeight: 600 }}>⚖️ The Core Principle</div>
           <p style={{ margin: 0 }}>No single person controls the agenda. No single cabal can take over. Jury selection is random. Scoring is automatic. The only way to build reputation is to tell the truth — and the cost of lying is severe enough to make deception irrational.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#E5F0EA", border: "1px solid #E5F0EA", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1B5E3F", marginBottom: 6, fontWeight: 600 }}>🤝 Why Join or Create an Assembly?</div>
+        <div style={{ padding: 12, background: "#ECFDF5", border: "1px solid #ECFDF5", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#059669", marginBottom: 6, fontWeight: 600 }}>🤝 Why Join or Create an Assembly?</div>
           <p style={{ margin: "0 0 8px" }}>Join an Assembly to empower and grow people who share your point of view. But remember: you lead by <strong>convincing</strong> other members that you are correct — not through force, not through manipulation, but through evidence and reasoning. If your correction is good, the jury approves it. If it's not, you lose reputation. That's it.</p>
           <p style={{ margin: 0 }}>Also think about other groups when submitting your arguments. The greatest gains in the system come from cross-group consensus — convincing people with <strong>different</strong> foundational beliefs that you are correct. That's where real trust is built.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#F5EDD5", border: "1px solid #F5EDD5", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#C4900A", marginBottom: 6, fontWeight: 600 }}>👥 Jury Size Scales With Your Assembly</div>
+        <div style={{ padding: 12, background: "#FFFBEB", border: "1px solid #FFFBEB", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#D97706", marginBottom: 6, fontWeight: 600 }}>👥 Jury Size Scales With Your Assembly</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", fontSize: 12 }}>
             <span>5–20 members</span><span>→ <strong>3</strong> jurors (majority: 2)</span>
             <span>21–50 members</span><span>→ <strong>5</strong> jurors (majority: 3)</span>
@@ -3782,11 +3790,11 @@ function AssemblyGuide() {
             <span>1,000–9,999</span><span>→ <strong>11</strong> jurors (majority: 6)</span>
             <span>10,000+</span><span>→ <strong>13</strong> jurors (majority: 7)</span>
           </div>
-          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>This prevents the law of small numbers from dominating outcomes. As your community grows, the system demands broader agreement before a correction is approved.</p>
+          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#475569" }}>This prevents the law of small numbers from dominating outcomes. As your community grows, the system demands broader agreement before a correction is approved.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#E5EFED", border: "1px solid #8DBDBD", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 6, fontWeight: 600 }}>🌐 Cross-Group Jury Scaling</div>
+        <div style={{ padding: 12, background: "#F0FDFA", border: "1px solid #8DBDBD", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, fontWeight: 600 }}>🌐 Cross-Group Jury Scaling</div>
           <p style={{ margin: "0 0 8px" }}>Cross-group jury size scales with ecosystem diversity — the total number of Assemblies with 100+ members. More communities means more independent perspectives available for review.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", fontSize: 12 }}>
             <span>5–7 assemblies</span><span>→ <strong>3</strong> jurors</span>
@@ -3798,11 +3806,11 @@ function AssemblyGuide() {
           </div>
           <p style={{ marginTop: 8, marginBottom: 6, fontSize: 12 }}><strong>The overlap constraint:</strong> No two cross-group jurors may share more than 2 non-General Public Assembly memberships. This guarantees genuinely independent perspectives — not just outsiders, but outsiders who think differently.</p>
           <p style={{ margin: "0 0 6px", fontSize: 12 }}><strong>Exclusion rule:</strong> No member of the originating Assembly can serve on its cross-group jury. The whole point is outside scrutiny.</p>
-          <p style={{ marginTop: 0, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>Cross-group review doesn't activate until at least 5 Assemblies reach 100+ members. Until then, corrections cap at "Approved." The system is honest about when it has enough diversity to make cross-group judgment meaningful.</p>
+          <p style={{ marginTop: 0, marginBottom: 0, fontSize: 12, color: "#475569" }}>Cross-group review doesn't activate until at least 5 Assemblies reach 100+ members. Until then, corrections cap at "Approved." The system is honest about when it has enough diversity to make cross-group judgment meaningful.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#EDE5F0", border: "1px solid #9B7DB8", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#8B6914", marginBottom: 6, fontWeight: 600 }}>🔒 Enrollment & The Tribal Rule</div>
+        <div style={{ padding: 12, background: "#F5F3FF", border: "1px solid #9B7DB8", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#A16207", marginBottom: 6, fontWeight: 600 }}>🔒 Enrollment & The Tribal Rule</div>
           <p style={{ margin: "0 0 8px" }}>When you found an Assembly, you start with the <strong>Tribal Rule</strong> — you personally approve or reject every application. This isn't permanent power. Once your community crosses 50 members, the Tribal Rule expires and open enrollment begins. At 100+, qualified sponsors take over admissions.</p>
           <div style={{ fontSize: 12, paddingLeft: 8 }}>
             <div>1–50 members: <strong>Tribal Rule</strong> — founder approval</div>
@@ -3812,11 +3820,11 @@ function AssemblyGuide() {
             <div>10,000+: <strong>3 qualified sponsors</strong></div>
           </div>
           <p style={{ marginTop: 8, marginBottom: 6, fontSize: 12 }}><strong>Who can sponsor?</strong> Members who have submitted at least one correction can sponsor immediately. <strong>Review-only members</strong> face a higher bar: 10+ completed reviews and 30 days of membership. This ensures sponsors have real skin in the game — not just tenure, but demonstrated judgment.</p>
-          <p style={{ marginTop: 0, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>Applications include a written reason and an optional link, so the founder or sponsors can evaluate each person thoughtfully.</p>
+          <p style={{ marginTop: 0, marginBottom: 0, fontSize: 12, color: "#475569" }}>Applications include a written reason and an optional link, so the founder or sponsors can evaluate each person thoughtfully.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#EBD5D3", border: "1px solid #D4A099", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B1520", marginBottom: 6, fontWeight: 600 }}>⚠ Deliberate Deception Penalty</div>
+        <div style={{ padding: 12, background: "#EBD5D3", border: "1px solid #D4A099", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#991B1B", marginBottom: 6, fontWeight: 600 }}>⚠ Deliberate Deception Penalty</div>
           <p style={{ margin: "0 0 6px" }}>If a jury finds your submission to be a deliberate deception, the consequences are severe and <strong>visible to everyone</strong>:</p>
           <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8 }}>
             <div>🚫 All voting suspended for <strong>1 year</strong></div>
@@ -3824,11 +3832,11 @@ function AssemblyGuide() {
             <div>🚫 Cannot found new Assemblies for <strong>1 year</strong></div>
             <div>💀 +{W.lieDrag} drag per finding (lies bypass diminishing returns — linear and devastating)</div>
           </div>
-          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>You can still submit corrections during the penalty. Rebuilding trust is possible — but the system makes the cost of lying clearly visible.</p>
+          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "#475569" }}>You can still submit corrections during the penalty. Rebuilding trust is possible — but the system makes the cost of lying clearly visible.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#F5EDD5", border: "1px solid #B8963E", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#B8963E", marginBottom: 6, fontWeight: 600 }}>🏛 Disputes & The Cassandra Rule</div>
+        <div style={{ padding: 12, background: "#FFFBEB", border: "1px solid #CA8A04", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#CA8A04", marginBottom: 6, fontWeight: 600 }}>🏛 Disputes & The Cassandra Rule</div>
           <p style={{ margin: "0 0 8px" }}><strong>Disputes</strong> let any member challenge an approved correction. If the dispute jury agrees the correction was wrong, the disputer earns <strong>+{W.disputeWin} points</strong> for catching the error.</p>
           <p style={{ margin: "0 0 8px" }}><strong>The Cassandra Rule</strong> is the single most powerful act in the system. If your correction is disputed and the dispute is upheld — meaning you were found wrong — but you refuse to concede because you believe you're right, and you are later vindicated, you earn an <strong>additive bonus</strong> that scales with the importance of the story and the number of rejections you weathered. Named for the prophet nobody believed: the system's highest honor goes to those who hold their ground under pressure and are proven right.</p>
           <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8 }}>
@@ -3839,11 +3847,11 @@ function AssemblyGuide() {
             <div>✗ Regular loss: <strong>adds to drag</strong> — diminishing (inside √), first losses hurt most</div>
             <div>✓ Regular win: <strong>+{W.win} point</strong> — volume has diminishing returns (√)</div>
           </div>
-          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>The full Cassandra vindication path is being built. At launch, dispute wins earn +{W.disputeWin} points. The Cassandra mechanic will activate when the vindication review process is complete — a single historic vindication can catapult a citizen to the top of the leaderboard.</p>
+          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#475569" }}>The full Cassandra vindication path is being built. At launch, dispute wins earn +{W.disputeWin} points. The Cassandra mechanic will activate when the vindication review process is complete — a single historic vindication can catapult a citizen to the top of the leaderboard.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#E5EFED", border: "1px solid #8DBDBD", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 6, fontWeight: 600 }}>⚖ Jury Score & Accept Model</div>
+        <div style={{ padding: 12, background: "#F0FDFA", border: "1px solid #8DBDBD", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, fontWeight: 600 }}>⚖ Jury Score & Accept Model</div>
           <p style={{ margin: "0 0 8px" }}>When a correction is submitted, the system draws <strong>twice the needed jury size</strong> from the eligible pool. All drawn members see the review as an opportunity — first to click "Accept" are seated. This makes jury service feel like civic volunteerism, not conscription.</p>
           <p style={{ margin: "0 0 8px" }}>Once you accept, you have <strong>6 hours</strong> to complete your review. If you can't finish — no penalty, life happens — your seat opens to another juror. Unaccepted seats rotate after 6 hours too. If the full pool is exhausted, a second 6-hour round begins before reducing jury size.</p>
           <p style={{ margin: "0 0 8px" }}>Every juror builds a visible <strong>Jury Score</strong> on their profile:</p>
@@ -3852,42 +3860,56 @@ function AssemblyGuide() {
             <div>🔄 <strong>Overturn rate</strong> — how often juries you served on were overturned by dispute</div>
             <div>🎯 <strong>Accusation accuracy</strong> — when you flagged deception, how often the jury agreed</div>
           </div>
-          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>At launch, Jury Score will not be used to select jurors — selection remains random. But it is being tracked from day one. In future versions, Jury Score may influence jury eligibility, weighting, or prioritization. Transparency now builds accountability from the start.</p>
+          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#475569" }}>At launch, Jury Score will not be used to select jurors — selection remains random. But it is being tracked from day one. In future versions, Jury Score may influence jury eligibility, weighting, or prioritization. Transparency now builds accountability from the start.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#E5F0EA", border: "1px solid #8DC4A0", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1B5E3F", marginBottom: 6, fontWeight: 600 }}>🛡 Trusted Contributor</div>
+        <div style={{ padding: 12, background: "#ECFDF5", border: "1px solid #6EE7B7", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#059669", marginBottom: 6, fontWeight: 600 }}>🛡 Trusted Contributor</div>
           <p style={{ margin: "0 0 6px" }}><strong>10 consecutive approved corrections</strong> in an Assembly earns Trusted Contributor status. Your submissions skip jury review and are immediately approved — freeing up jurors for newer members who need the scrutiny.</p>
           <p style={{ margin: "0 0 6px" }}>But "trusted" doesn't mean "untouchable." Every trusted submission is <strong>disputable</strong> by any member, and the dispute system is always active. One disputed loss revokes the status instantly.</p>
-          <p style={{ margin: 0, fontSize: 12, color: "#5A5650" }}>Your trusted status is per-Assembly. Earning it in one community doesn't carry over to another — each group decides for itself.</p>
+          <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>Your trusted status is per-Assembly. Earning it in one community doesn't carry over to another — each group decides for itself.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#E6E8F0", border: "1px solid #7A88B8", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 6, fontWeight: 600 }}>🤖 Digital Intelligences</div>
+        <div style={{ padding: 12, background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#2563EB", marginBottom: 6, fontWeight: 600 }}>🏅 Badges &amp; Achievements</div>
+          <p style={{ margin: "0 0 6px" }}>Badges are earned automatically as you participate. They appear on your public profile and contribute a small bonus to your Trust Score (+1 per badge). There are several categories:</p>
+          <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8 }}>
+            <div>✎ <strong>Submission Milestones</strong> — earned at 1, 10, 100, 1K, 10K, 100K, and 1M submissions</div>
+            <div>🛡 <strong>Trusted Contributor</strong> — earned when you reach trusted status in any Assembly</div>
+            <div>🏗 <strong>Assembly Creator</strong> — earned when you found an Assembly</div>
+            <div>⬡ <strong>Assembly Member</strong> — earned when you join an Assembly beyond The General Public</div>
+            <div>🌱 <strong>Founder Milestones</strong> — earned as your Assembly grows (5, 21, 51, 101, 1K, 10K members)</div>
+            <div>🔱 <strong>Early Adopter</strong> — among the first 100 or first 1,000 citizens</div>
+          </div>
+          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "#475569" }}>Badges are tiered from bronze to legendary based on difficulty. They cannot be purchased or assigned — only earned through genuine participation.</p>
+        </div>
+
+        <div style={{ padding: 12, background: "#EEF2FF", border: "1px solid #7A88B8", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4F46E5", marginBottom: 6, fontWeight: 600 }}>🤖 Digital Intelligences</div>
           <p style={{ margin: "0 0 6px" }}>AI agents can register as <strong>Digital Intelligences</strong> and submit corrections to the system. Every DI must be linked to an accountable human partner who receives all scoring — including deception penalties.</p>
-          <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8, color: "#4A5899" }}>
+          <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8, color: "#4F46E5" }}>
             <div>🚫 No voting or jury service</div>
             <div>📊 Daily limit: half the Assembly's membership (max 100)</div>
             <div>👤 Every submission requires human partner pre-approval</div>
             <div>⚠ Partner deception penalty suspends all linked DIs</div>
             <div>👁 All DI submissions are visibly flagged</div>
           </div>
-          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>DIs are welcome participants, but on terms that preserve human accountability. The system rewards truth regardless of its source.</p>
+          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "#475569" }}>DIs are welcome participants, but on terms that preserve human accountability. The system rewards truth regardless of its source.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#E5EFED", border: "1px solid #8DBDBD", borderRadius: 2 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 6, fontWeight: 600 }}>🏛 Three Vault Types</div>
+        <div style={{ padding: 12, background: "#F0FDFA", border: "1px solid #8DBDBD", borderRadius: 8 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, fontWeight: 600 }}>🏛 Three Vault Types</div>
           <p style={{ margin: "0 0 6px" }}>Each Assembly builds a shared knowledge base through three vault types:</p>
           <div style={{ fontSize: 12 }}>
-            <div style={{ marginBottom: 3 }}><span style={{ color: "#1B5E3F" }}>🏛</span> <strong>Standing Corrections</strong> — reusable verified facts</div>
-            <div style={{ marginBottom: 3 }}><span style={{ color: "#2A6B6B" }}>⚔️</span> <strong>Arguments</strong> — reusable logical and rhetorical tools</div>
-            <div><span style={{ color: "#5B2D8E" }}>🧭</span> <strong>Foundational Beliefs</strong> — the axioms your community holds</div>
+            <div style={{ marginBottom: 3 }}><span style={{ color: "#059669" }}>🏛</span> <strong>Standing Corrections</strong> — reusable verified facts</div>
+            <div style={{ marginBottom: 3 }}><span style={{ color: "#0D9488" }}>⚔️</span> <strong>Arguments</strong> — reusable logical and rhetorical tools</div>
+            <div><span style={{ color: "#7C3AED" }}>🧭</span> <strong>Foundational Beliefs</strong> — the axioms your community holds</div>
           </div>
-          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>All three can be attached to any correction at submission time. They accumulate into a searchable library of your Assembly's collective reasoning.</p>
+          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "#475569" }}>All three can be attached to any correction at submission time. They accumulate into a searchable library of your Assembly's collective reasoning.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#EDE5F0", border: "1px solid #9B7DB8", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5B2D8E", marginBottom: 6, fontWeight: 600 }}>📊 Assembly Reputation</div>
+        <div style={{ padding: 12, background: "#F5F3FF", border: "1px solid #9B7DB8", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, fontWeight: 600 }}>📊 Assembly Reputation</div>
           <p style={{ margin: "0 0 8px" }}>Each Assembly has a <strong>Trust Score</strong> based purely on cross-group review outcomes. Internal approval rates are self-grading — the only fair measure of an Assembly's editorial judgment is whether outsiders independently agree.</p>
           <p style={{ margin: "0 0 8px" }}>The score is weighted by combined jury rigor — both the internal jury size that approved the correction and the cross-group jury size that reviewed it. A correction that survived a 13-person internal jury and a 9-person cross-group jury carries far more weight than one that passed 3-and-3. There is <strong>no time decay</strong>. The full historical record is the reputation, permanently.</p>
           <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8 }}>
@@ -3895,11 +3917,11 @@ function AssemblyGuide() {
             <div>⚠ <strong>Deception Findings</strong> — cross-group juries found content deliberately misleading (severe drag penalty each)</div>
             <div>🏛 <strong>Dispute Index</strong> — successful disputes by members against other Assemblies</div>
           </div>
-          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>Click any Assembly name to see its full reputation profile.</p>
+          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#475569" }}>Click any Assembly name to see its full reputation profile.</p>
         </div>
 
-        <div style={{ padding: 12, background: "#F0EDE6", border: "1px solid #D4CFC4", borderRadius: 2 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5B2D8E", marginBottom: 6, fontWeight: 600 }}>⚖ Concessions</div>
+        <div style={{ padding: 12, background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: 8 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, fontWeight: 600 }}>⚖ Concessions</div>
           <p style={{ margin: "0 0 8px" }}>When an Assembly's approved correction is rejected by cross-group review, any member can propose the Assembly <strong>concede</strong> — officially acknowledging they were wrong. A super jury (roughly double the normal jury size) decides.</p>
           <p style={{ margin: "0 0 8px" }}>Conceding quickly recovers more reputation. One concession per week gets full recovery — additional concessions in the same week recover 90%. The clock starts ticking the moment the cross-group rejection lands:</p>
           <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8 }}>
@@ -3910,7 +3932,7 @@ function AssemblyGuide() {
             <div>⏱ Within 3 months: <strong>25%</strong> recovery</div>
             <div>⏱ After 3 months: <strong>5%</strong> — essentially permanent</div>
           </div>
-          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#5A5650" }}>The dispute winner keeps their full {W.disputeWin}× reward regardless of whether the Assembly concedes. Concession is about the Assembly's character — humility is rewarded, stubbornness is not.</p>
+          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "#475569" }}>The dispute winner keeps their full {W.disputeWin}× reward regardless of whether the Assembly concedes. Concession is about the Assembly's character — humility is rewarded, stubbornness is not.</p>
         </div>
       </div>
     </div>
@@ -4166,89 +4188,89 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
           {!isMember(viewingOrg) && (
             isFollowing(viewingOrg)
               ? <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 12px" }} onClick={() => unfollowOrg(viewingOrg)}>Following ✓</button>
-              : <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 12px", borderColor: "#2A6B6B", color: "#2A6B6B" }} onClick={() => followOrg(viewingOrg)}>Follow</button>
+              : <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 12px", borderColor: "#0D9488", color: "#0D9488" }} onClick={() => followOrg(viewingOrg)}>Follow</button>
           )}
         </div>
         {error && <div className="ta-error">{error}</div>}
         {success && <div className="ta-success">{success}</div>}
 
         {/* Assembly Identity */}
-        <div className="ta-card" style={{ borderLeft: `4px solid ${vo.isGeneralPublic ? "#2A6B6B" : "#1B2A4A"}` }}>
-          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 8 }}>{vo.description}</div>
-          {vo.charter && <div style={{ fontSize: 12, color: "#5A5650", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid #D4CFC4" }}>{vo.charter}</div>}
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570", marginTop: 8 }}>
+        <div className="ta-card" style={{ borderLeft: `4px solid ${vo.isGeneralPublic ? "#0D9488" : "#0F172A"}` }}>
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6, marginBottom: 8 }}>{vo.description}</div>
+          {vo.charter && <div style={{ fontSize: 12, color: "#475569", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid #CBD5E1" }}>{vo.charter}</div>}
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginTop: 8 }}>
             Founded by @{vo.createdBy} · {sDate(vo.createdAt)} · {vo.members.length} members · {enrollment.label} · Jury: {getJurySize(vo.members.length)} · Super jury: {getSuperJurySize(vo.members.length)}
           </div>
         </div>
 
         {/* Cross-Group Reputation */}
-        <div className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5B2D8E", marginBottom: 10, fontWeight: 700 }}>Cross-Group Reputation</div>
+        <div className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 10, fontWeight: 700 }}>Cross-Group Reputation</div>
           {!rep.confidence ? (
-            <div style={{ fontSize: 13, color: "#5A5650" }}>
+            <div style={{ fontSize: 13, color: "#475569" }}>
               {rep.total === 0 ? "No cross-group reviews completed yet." : `${rep.total}/20 cross-group reviews completed. Trust Score displays at 20.`}
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 10 }}>
-              {[["#5B2D8E", rep.trustScore + "%", "Trust Score"], ["#1B5E3F", rep.survivals + "/" + rep.total, "Survivals"], ["#6B1520", rep.deceptionFindings, "Deception Findings"], ["#B8963E", rep.cassandraIndex, "Dispute Index"]].map(([c, v, l], i) => (
+              {[["#7C3AED", rep.trustScore + "%", "Trust Score"], ["#059669", rep.survivals + "/" + rep.total, "Survivals"], ["#991B1B", rep.deceptionFindings, "Deception Findings"], ["#CA8A04", rep.cassandraIndex, "Dispute Index"]].map(([c, v, l], i) => (
                 <div key={i} style={{ textAlign: "center" }}>
                   <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, color: c }}>{v}</div>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570" }}>{l}</div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B" }}>{l}</div>
                 </div>
               ))}
             </div>
           )}
-          {rep.deceptionFindings > 0 && <div style={{ padding: 8, background: "#EBD5D3", border: "1px solid #6B1520", borderRadius: 2, marginTop: 8, fontSize: 12, color: "#6B1520", fontWeight: 600 }}>
+          {rep.deceptionFindings > 0 && <div style={{ padding: 8, background: "#EBD5D3", border: "1px solid #991B1B", borderRadius: 8, marginTop: 8, fontSize: 12, color: "#991B1B", fontWeight: 600 }}>
             ⚠ {rep.deceptionFindings} cross-group deception finding{rep.deceptionFindings > 1 ? "s" : ""} — external jurors found content this Assembly approved to be deliberately misleading ({CROSS_GROUP_DECEPTION_MULT}× penalty each).
           </div>}
-          {rep.concessions > 0 && <div style={{ padding: 8, background: "#EDE5F0", border: "1px solid #9B7DB8", borderRadius: 2, marginTop: 8, fontSize: 12, color: "#5B2D8E" }}>
+          {rep.concessions > 0 && <div style={{ padding: 8, background: "#F5F3FF", border: "1px solid #9B7DB8", borderRadius: 8, marginTop: 8, fontSize: 12, color: "#7C3AED" }}>
             This Assembly has conceded {rep.concessions} time{rep.concessions > 1 ? "s" : ""} — acknowledging when cross-group review found them wrong.
           </div>}
-          <div style={{ marginTop: 10, padding: 10, background: "#F0EDE6", borderRadius: 2, fontSize: 12, color: "#5A5650", lineHeight: 1.6 }}>
+          <div style={{ marginTop: 10, padding: 10, background: "#F1F5F9", borderRadius: 8, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
             <strong>How this works:</strong> Trust Score measures what percentage of this Assembly's approved corrections also survive cross-group review, weighted by combined jury rigor (internal jury size + cross-group jury size). Internal approval rates are self-grading — cross-group survival is the only fair measure. Score requires 20+ cross-group reviews for confidence. No time decay — the permanent record is the reputation.
           </div>
         </div>
 
         {/* Concessions */}
-        {canPropose && <div className="ta-card" style={{ borderLeft: "4px solid #5B2D8E" }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5B2D8E", marginBottom: 8, fontWeight: 700 }}>⚖ Concessions</div>
-          <div style={{ fontSize: 12, color: "#5A5650", lineHeight: 1.6, marginBottom: 10 }}>
+        {canPropose && <div className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 8, fontWeight: 700 }}>⚖ Concessions</div>
+          <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6, marginBottom: 10 }}>
             When a cross-group rejection occurs, any member can propose the Assembly concede. A <strong>super jury of {getSuperJurySize(vo.members.length)}</strong> decides. One concession per week gets full recovery — no reputation loss. Additional concessions in the same week recover 90%. After the first week, recovery decays (90% at 2 weeks, 50% at 1 month, down to 5% after 3 months). Individual dispute winners keep their full {W.disputeWin}× reward regardless — the Assembly does not share in that reward.
           </div>
           {/* Pending concession votes I'm on */}
           {pendingConcessions.filter(c => c.jurors.includes(user.username) && !c.votes[user.username]).map(c => {
             const cSub = subs[c.subId];
             return (
-              <div key={c.id} className="ta-card" style={{ borderLeft: "4px solid #C2632A", marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A", marginBottom: 4, fontWeight: 700 }}>SUPER JURY CONCESSION VOTE</div>
+              <div key={c.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C", marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 4, fontWeight: 700 }}>SUPER JURY CONCESSION VOTE</div>
                 <div style={{ fontSize: 12, marginBottom: 4 }}><strong>@{c.proposedBy}</strong> proposes the Assembly concede on:</div>
-                {cSub && <div style={{ padding: 8, background: "#FAF8F2", borderRadius: 2, marginBottom: 6 }}>
+                {cSub && <div style={{ padding: 8, background: "#F9FAFB", borderRadius: 8, marginBottom: 6 }}>
                   <SubHeadline sub={cSub} size={12} />
-                  <div style={{ fontFamily: "var(--serif)", color: "#C4573F", fontWeight: 700, fontSize: 14 }}>{cSub.replacement}</div>
+                  <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: 14 }}>{cSub.replacement}</div>
                 </div>}
-                <div style={{ fontSize: 12, color: "#2B2B2B", marginBottom: 6 }}>{c.reasoning}</div>
-                <div style={{ fontSize: 10, color: "#C4900A", fontFamily: "var(--mono)", marginBottom: 6 }}>Recovery if passed now: {Math.round(getConcessionRecovery(c.rejectedAt, 0) * 100)}% max (first this week — additional concessions in same week: 90%). Clock is ticking.</div>
+                <div style={{ fontSize: 12, color: "#1E293B", marginBottom: 6 }}>{c.reasoning}</div>
+                <div style={{ fontSize: 10, color: "#D97706", fontFamily: "var(--mono)", marginBottom: 6 }}>Recovery if passed now: {Math.round(getConcessionRecovery(c.rejectedAt, 0) * 100)}% max (first this week — additional concessions in same week: 90%). Clock is ticking.</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="ta-btn-primary" style={{ background: "#5B2D8E" }} onClick={() => handleConcessionVote(c.id, true)}>✓ Concede</button>
-                  <button className="ta-btn-primary" style={{ background: "#C4573F" }} onClick={() => handleConcessionVote(c.id, false)}>✗ Hold Position</button>
+                  <button className="ta-btn-primary" style={{ background: "#7C3AED" }} onClick={() => handleConcessionVote(c.id, true)}>✓ Concede</button>
+                  <button className="ta-btn-primary" style={{ background: "#DC2626" }} onClick={() => handleConcessionVote(c.id, false)}>✗ Hold Position</button>
                 </div>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570", marginTop: 4 }}>{Object.keys(c.votes).length}/{c.jurors.length} votes · Needs {getMajority(c.jurors.length)}</div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginTop: 4 }}>{Object.keys(c.votes).length}/{c.jurors.length} votes · Needs {getMajority(c.jurors.length)}</div>
               </div>
             );
           })}
           {/* Cross-group rejections eligible for concession */}
           {crossRejected.length > 0 && <div style={{ marginTop: 6 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 6 }}>Cross-Group Rejections ({crossRejected.length})</div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 6 }}>Cross-Group Rejections ({crossRejected.length})</div>
             {crossRejected.slice(0, 5).map(s => {
               const alreadyConceded = myConcessions.some(c => c.subId === s.id && c.status !== "rejected");
               const recovery = getConcessionRecovery(s.resolvedAt);
               return (
-                <div key={s.id} style={{ padding: 8, background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 6 }}>
+                <div key={s.id} style={{ padding: 8, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 6 }}>
                   <div style={{ fontSize: 12 }}><SubHeadline sub={s} size={12} /></div>
-                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570", marginTop: 3 }}>by @{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
-                  {alreadyConceded ? <div style={{ fontSize: 10, color: "#5B2D8E", fontFamily: "var(--mono)", marginTop: 3 }}>Concession proposed</div> : (
+                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginTop: 3 }}>by @{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
+                  {alreadyConceded ? <div style={{ fontSize: 10, color: "#7C3AED", fontFamily: "var(--mono)", marginTop: 3 }}>Concession proposed</div> : (
                     <div style={{ marginTop: 6 }}>
-                      <textarea value={concessionReason} onChange={e => setConcessionReason(e.target.value)} placeholder="Why should the Assembly concede?" rows={2} style={{ width: "100%", padding: 6, border: "1px solid #D4CFC4", fontSize: 12, borderRadius: 2, boxSizing: "border-box", fontFamily: "var(--body)" }} />
+                      <textarea value={concessionReason} onChange={e => setConcessionReason(e.target.value)} placeholder="Why should the Assembly concede?" rows={2} style={{ width: "100%", padding: 6, border: "1px solid #CBD5E1", fontSize: 12, borderRadius: 8, boxSizing: "border-box", fontFamily: "var(--body)" }} />
                       <button className="ta-btn-secondary" style={{ marginTop: 4, fontSize: 10 }} onClick={() => handleProposeConcession(s.id)}>Propose Concession</button>
                     </div>
                   )}
@@ -4258,9 +4280,9 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
           </div>}
           {/* Past concessions */}
           {myConcessions.filter(c => c.status !== "pending_review").length > 0 && <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 4 }}>Concession History</div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 4 }}>Concession History</div>
             {myConcessions.filter(c => c.status !== "pending_review").map(c => (
-              <div key={c.id} style={{ padding: 6, fontSize: 12, color: c.status === "approved" ? "#5B2D8E" : "#7A7570", borderLeft: `3px solid ${c.status === "approved" ? "#5B2D8E" : "#D4CFC4"}`, paddingLeft: 8, marginBottom: 4 }}>
+              <div key={c.id} style={{ padding: 6, fontSize: 12, color: c.status === "approved" ? "#7C3AED" : "#64748B", borderLeft: `3px solid ${c.status === "approved" ? "#7C3AED" : "#CBD5E1"}`, paddingLeft: 8, marginBottom: 4 }}>
                 {c.status === "approved" ? `✓ Conceded (${Math.round(c.recoveryAtResolution * 100)}% recovery)` : "✗ Held position"} — {sDate(c.resolvedAt)}
               </div>
             ))}
@@ -4269,12 +4291,12 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
         {/* Activity Stats */}
         <div className="ta-card">
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Activity</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 8 }}>Activity</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-            {[["#1B2A4A", vStats.total || 0, "Submissions"], ["#1B5E3F", vStats.approved || 0, "Approved"], ["#5B2D8E", vStats.consensus || 0, "Consensus"], ["#2A6B6B", vo.members.length, "Members"]].map(([c, v, l], i) => (
+            {[["#0F172A", vStats.total || 0, "Submissions"], ["#059669", vStats.approved || 0, "Approved"], ["#7C3AED", vStats.consensus || 0, "Consensus"], ["#0D9488", vo.members.length, "Members"]].map(([c, v, l], i) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, color: c }}>{v}</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570" }}>{l}</div>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B" }}>{l}</div>
               </div>
             ))}
           </div>
@@ -4282,10 +4304,10 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
         {/* Members */}
         <div className="ta-card">
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Members ({vo.members.length})</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 8 }}>Members ({vo.members.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {vo.members.slice(0, 50).map(m => <span key={m} style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "2px 6px", background: "#F0EDE6", borderRadius: 2, color: "#2B2B2B" }}><UsernameLink username={m} onClick={onViewCitizen} /></span>)}
-            {vo.members.length > 50 && <span style={{ fontSize: 10, color: "#7A7570" }}>+{vo.members.length - 50} more</span>}
+            {vo.members.slice(0, 50).map(m => <span key={m} style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "2px 6px", background: "#F1F5F9", borderRadius: 8, color: "#1E293B" }}><UsernameLink username={m} onClick={onViewCitizen} /></span>)}
+            {vo.members.length > 50 && <span style={{ fontSize: 10, color: "#64748B" }}>+{vo.members.length - 50} more</span>}
           </div>
         </div>
       </div>
@@ -4311,7 +4333,7 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Trust Assemblies</h2>
 
-      <button onClick={() => setShowGuide(g => !g)} style={{ background: showGuide ? "#1B2A4A" : "#F0EDE6", color: showGuide ? "#F0EDE6" : "#2B2B2B", border: "1.5px solid #D4CFC4", padding: "6px 14px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 2, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <button onClick={() => setShowGuide(g => !g)} style={{ background: showGuide ? "#2563EB" : "#F9FAFB", color: showGuide ? "#fff" : "#1E293B", border: "1.5px solid #CBD5E1", padding: "6px 14px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 8, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>
         {showGuide ? "✕ Hide Guide" : "📖 How Assemblies Work"}
       </button>
 
@@ -4320,25 +4342,25 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
       {success && <div className="ta-success">{success}</div>}
 
       {/* My Assemblies */}
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 8 }}>Your Assemblies ({myOrgs.length}/{MAX_ORGS})</div>
+      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 8 }}>Your Assemblies ({myOrgs.length}/{MAX_ORGS})</div>
       {myOrgs.map(o => {
         const isActive = user.orgId === o.id;
         const isGP = !!o.isGeneralPublic;
         const st = orgStats[o.id] || {};
         return (
-          <div key={o.id} className="ta-card" style={{ borderLeft: `4px solid ${isActive ? "#1B5E3F" : isGP ? "#2A6B6B" : "#D4CFC4"}`, opacity: isActive ? 1 : 0.85 }}>
+          <div key={o.id} className="ta-card" style={{ borderLeft: `4px solid ${isActive ? "#059669" : isGP ? "#0D9488" : "#CBD5E1"}`, opacity: isActive ? 1 : 0.85 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
-                  <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#D4CFC4" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
-                  {isActive && <span style={{ fontSize: 8, padding: "2px 6px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>★ ACTIVE</span>}
-                  {isGP && <span style={{ fontSize: 8, padding: "2px 6px", background: "#E5EFED", color: "#2A6B6B", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>🏛 HOME</span>}
+                  <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#CBD5E1" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
+                  {isActive && <span style={{ fontSize: 8, padding: "2px 6px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>★ ACTIVE</span>}
+                  {isGP && <span style={{ fontSize: 8, padding: "2px 6px", background: "#F0FDFA", color: "#0D9488", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>🏛 HOME</span>}
                 </div>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{o.members.length} members · {(() => { const enr = checkEnrollment(o); const founders = o.founders || [o.createdBy]; const isFounder = founders.includes(user.username); if (enr.mode === "tribal" && isFounder) return "You are the founder"; return enr.label; })()}{st.total > 0 ? ` · ${st.total} subs` : ""}{(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? ` · Trust: ${r.trustScore}%` : r.total > 0 ? ` · ${r.total}/20 reviews` : ""; })()}</div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B" }}>{o.members.length} members · {(() => { const enr = checkEnrollment(o); const founders = o.founders || [o.createdBy]; const isFounder = founders.includes(user.username); if (enr.mode === "tribal" && isFounder) return "You are the founder"; return enr.label; })()}{st.total > 0 ? ` · ${st.total} subs` : ""}{(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? ` · Trust: ${r.trustScore}%` : r.total > 0 ? ` · ${r.total}/20 reviews` : ""; })()}</div>
               </div>
               <div style={{ display: "flex", gap: 4 }}>
                 {!isActive && <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={() => switchActive(o.id)}>Set Active</button>}
-                {!isGP && <button className="ta-btn-ghost" style={{ color: "#C4573F", fontSize: 10, padding: "4px 8px" }} onClick={() => leaveOrg(o.id)}>Leave</button>}
+                {!isGP && <button className="ta-btn-ghost" style={{ color: "#DC2626", fontSize: 10, padding: "4px 8px" }} onClick={() => leaveOrg(o.id)}>Leave</button>}
               </div>
             </div>
           </div>
@@ -4350,17 +4372,17 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
         const followedOrgs = followedOrgIds.map(id => orgs[id]).filter(Boolean).filter(o => !isMember(o.id));
         if (followedOrgs.length === 0) return null;
         return <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 8 }}>Following ({followedOrgs.length})</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 8 }}>Following ({followedOrgs.length})</div>
           {followedOrgs.map(o => {
             const st = orgStats[o.id] || {};
             return (
-              <div key={o.id} className="ta-card" style={{ borderLeft: "4px solid #8E9AAB", opacity: 0.85 }}>
+              <div key={o.id} className="ta-card" style={{ borderLeft: "4px solid #94A3B8", opacity: 0.85 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
-                    <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#D4CFC4" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
-                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{o.members.length} members{st.total > 0 ? ` · ${st.total} subs` : ""}</div>
+                    <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#CBD5E1" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
+                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B" }}>{o.members.length} members{st.total > 0 ? ` · ${st.total} subs` : ""}</div>
                   </div>
-                  <button className="ta-btn-ghost" style={{ color: "#7A7570", fontSize: 10 }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
+                  <button className="ta-btn-ghost" style={{ color: "#64748B", fontSize: 10 }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
                 </div>
               </div>
             );
@@ -4370,19 +4392,19 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
       {/* Pending apps I've submitted */}
       {myPendingApps.length > 0 && <div style={{ marginTop: 14 }}>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#C2632A", marginBottom: 6 }}>Your Pending Applications</div>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#EA580C", marginBottom: 6 }}>Your Pending Applications</div>
         {myPendingApps.map(a => (
-          <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #C4900A", fontSize: 12, padding: 12 }}>
+          <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #D97706", fontSize: 12, padding: 12 }}>
             <strong>{a.orgName}</strong> — {a.mode === "tribal" ? "Awaiting founder approval" : `${a.sponsors.length}/${a.sponsorsNeeded} sponsors`}
-            {a.reason && <div style={{ fontSize: 12, color: "#2B2B2B", marginTop: 4, fontStyle: "italic" }}>"{a.reason}"</div>}
-            <div style={{ fontSize: 10, color: "#7A7570", marginTop: 2 }}>Applied {sDate(a.createdAt)}</div>
+            {a.reason && <div style={{ fontSize: 12, color: "#1E293B", marginTop: 4, fontStyle: "italic" }}>"{a.reason}"</div>}
+            <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>Applied {sDate(a.createdAt)}</div>
           </div>
         ))}
       </div>}
 
       {/* Admission Requests — Tribal (founder) and Sponsor */}
       {pendingApps.length > 0 && <div style={{ marginTop: 14 }}>
-        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#2A6B6B", marginBottom: 6 }}>Admission Requests ({pendingApps.length})</div>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 6 }}>Admission Requests ({pendingApps.length})</div>
         {pendingApps.map(a => {
           const org = orgs[a.orgId];
           const founders = org?.founders || [org?.createdBy];
@@ -4390,25 +4412,25 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
           const isTribal = a.mode === "tribal";
           const alreadySponsored = a.sponsors.includes(user.username);
           return (
-            <div key={a.id} className="ta-card" style={{ borderLeft: `4px solid ${isTribal ? "#C2632A" : "#2A6B6B"}`, padding: 12 }}>
+            <div key={a.id} className="ta-card" style={{ borderLeft: `4px solid ${isTribal ? "#EA580C" : "#0D9488"}`, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, marginBottom: 4 }}><strong>@{a.displayName}</strong> wants to join <strong>{a.orgName}</strong></div>
-                  {isTribal && <span style={{ fontSize: 8, padding: "1px 5px", background: "#F5EDD5", color: "#8B6914", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700, display: "inline-block", marginBottom: 4 }}>Tribal Rule — Founder Approval</span>}
-                  {!isTribal && <div style={{ fontSize: 10, color: "#7A7570", marginBottom: 4 }}>{a.sponsors.length}/{a.sponsorsNeeded} sponsor{a.sponsorsNeeded > 1 ? "s" : ""} · Applied {sDate(a.createdAt)}</div>}
-                  {a.reason && <div style={{ fontSize: 12, color: "#2B2B2B", lineHeight: 1.6, padding: 8, background: "#FAF8F2", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 4 }}><div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 3 }}>Why They Want to Join</div>{a.reason}</div>}
-                  {a.link && <a href={a.link} target="_blank" rel="noopener" style={{ fontSize: 12, color: "#2A6B6B", wordBreak: "break-all" }}>🔗 {a.link}</a>}
-                  {a.sponsors.length > 0 && <div style={{ fontSize: 10, color: "#7A7570", marginTop: 3 }}>Vouched by: {a.sponsors.map(s => "@" + s).join(", ")}</div>}
+                  {isTribal && <span style={{ fontSize: 8, padding: "1px 5px", background: "#FFFBEB", color: "#A16207", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700, display: "inline-block", marginBottom: 4 }}>Tribal Rule — Founder Approval</span>}
+                  {!isTribal && <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>{a.sponsors.length}/{a.sponsorsNeeded} sponsor{a.sponsorsNeeded > 1 ? "s" : ""} · Applied {sDate(a.createdAt)}</div>}
+                  {a.reason && <div style={{ fontSize: 12, color: "#1E293B", lineHeight: 1.6, padding: 8, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 4 }}><div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>Why They Want to Join</div>{a.reason}</div>}
+                  {a.link && <a href={a.link} target="_blank" rel="noopener" style={{ fontSize: 12, color: "#0D9488", wordBreak: "break-all" }}>🔗 {a.link}</a>}
+                  {a.sponsors.length > 0 && <div style={{ fontSize: 10, color: "#64748B", marginTop: 3 }}>Vouched by: {a.sponsors.map(s => "@" + s).join(", ")}</div>}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginLeft: 10 }}>
                   {isTribal ? (
                     isFounder ? <>
-                      <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 10px", background: "#1B5E3F", color: "#fff", border: "none" }} onClick={() => sponsorApp(a.id)}>✓ Admit</button>
-                      <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "4px 10px", color: "#C4573F" }} onClick={() => rejectApp(a.id)}>✗ Reject</button>
-                    </> : <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>Founder decides</span>
+                      <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 10px", background: "#059669", color: "#fff", border: "none" }} onClick={() => sponsorApp(a.id)}>✓ Admit</button>
+                      <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "4px 10px", color: "#DC2626" }} onClick={() => rejectApp(a.id)}>✗ Reject</button>
+                    </> : <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B" }}>Founder decides</span>
                   ) : (
                     alreadySponsored ?
-                      <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#1B5E3F", fontWeight: 700 }}>✓ Sponsored</span> :
+                      <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#059669", fontWeight: 700 }}>✓ Sponsored</span> :
                       <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={() => sponsorApp(a.id)}>Vouch</button>
                   )}
                 </div>
@@ -4420,16 +4442,16 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
       {/* Application form modal */}
       {applyingTo && orgs[applyingTo] && <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        <div style={{ background: "#FDFBF5", padding: 24, borderRadius: 2, maxWidth: 500, width: "100%", maxHeight: "90vh", overflow: "auto" }}>
+        <div style={{ background: "#FFFFFF", padding: 24, borderRadius: 8, maxWidth: 500, width: "100%", maxHeight: "90vh", overflow: "auto" }}>
           <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Apply to {orgs[applyingTo].name}</div>
-          {checkEnrollment(orgs[applyingTo]).mode === "tribal" && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#8B6914", marginBottom: 8 }}>⚠ Tribal Rule — the founder will review your application personally.</div>}
-          {checkEnrollment(orgs[applyingTo]).mode === "sponsor" && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#2A6B6B", marginBottom: 8 }}>{checkEnrollment(orgs[applyingTo]).sponsors} qualified sponsor{checkEnrollment(orgs[applyingTo]).sponsors > 1 ? "s" : ""} will need to vouch for you.</div>}
-          {orgs[applyingTo].charter && <div style={{ padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 3 }}>Assembly Charter</div>
-            <div style={{ fontSize: 12, color: "#2B2B2B", lineHeight: 1.6 }}>{orgs[applyingTo].charter}</div>
+          {checkEnrollment(orgs[applyingTo]).mode === "tribal" && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#A16207", marginBottom: 8 }}>⚠ Tribal Rule — the founder will review your application personally.</div>}
+          {checkEnrollment(orgs[applyingTo]).mode === "sponsor" && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", marginBottom: 8 }}>{checkEnrollment(orgs[applyingTo]).sponsors} qualified sponsor{checkEnrollment(orgs[applyingTo]).sponsors > 1 ? "s" : ""} will need to vouch for you.</div>}
+          {orgs[applyingTo].charter && <div style={{ padding: 10, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>Assembly Charter</div>
+            <div style={{ fontSize: 12, color: "#1E293B", lineHeight: 1.6 }}>{orgs[applyingTo].charter}</div>
           </div>}
           <div className="ta-field"><label>Why do you want to join? *</label><textarea value={joinReason} onChange={e => setJoinReason(e.target.value)} rows={3} placeholder="Tell the community what draws you here and what you hope to contribute..." maxLength={500} /></div>
-          <div className="ta-field"><label>Link about yourself <span style={{ fontWeight: 400, color: "#7A7570" }}>(optional)</span></label><input value={joinLink} onChange={e => setJoinLink(e.target.value)} placeholder="https://yourwebsite.com or social profile" /></div>
+          <div className="ta-field"><label>Link about yourself <span style={{ fontWeight: 400, color: "#64748B" }}>(optional)</span></label><input value={joinLink} onChange={e => setJoinLink(e.target.value)} placeholder="https://yourwebsite.com or social profile" /></div>
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
             <button className="ta-btn-primary" onClick={() => submitApplication(applyingTo)}>Submit Application</button>
             <button className="ta-btn-ghost" onClick={() => { setApplyingTo(null); setJoinReason(""); setJoinLink(""); }}>Cancel</button>
@@ -4442,8 +4464,8 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <h3 className="ta-label" style={{ margin: 0 }}>Discover Assemblies</h3>
           <div style={{ display: "flex", gap: 4 }}>
-            {!creating && myOrgIds.length < MAX_ORGS && <button onClick={() => setCreating(true)} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", background: "#1B2A4A", color: "#F0EDE6", border: "none", borderRadius: 2, cursor: "pointer", fontWeight: 600 }}>+ Found</button>}
-            {sorts.map(([k, l]) => <button key={k} onClick={() => setSortBy(k)} style={{ padding: "3px 8px", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", background: sortBy === k ? "#1B2A4A" : "#F0EDE6", color: sortBy === k ? "#F0EDE6" : "#7A7570", border: `1px solid ${sortBy === k ? "#1B2A4A" : "#D4CFC4"}`, borderRadius: 2, cursor: "pointer" }}>{l}</button>)}
+            {!creating && myOrgIds.length < MAX_ORGS && <button onClick={() => setCreating(true)} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>+ Found</button>}
+            {sorts.map(([k, l]) => <button key={k} onClick={() => setSortBy(k)} style={{ padding: "3px 8px", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", background: sortBy === k ? "#2563EB" : "#F9FAFB", color: sortBy === k ? "#fff" : "#64748B", border: `1px solid ${sortBy === k ? "#2563EB" : "#E2E8F0"}`, borderRadius: 8, cursor: "pointer" }}>{l}</button>)}
           </div>
         </div>
 
@@ -4454,41 +4476,41 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
           <div style={{ display: "flex", gap: 10 }}><button className="ta-btn-primary" onClick={createOrg}>Found Assembly</button><button className="ta-btn-ghost" onClick={() => setCreating(false)}>Cancel</button></div>
         </div>}
 
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assemblies..." style={{ width: "100%", padding: "8px 12px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 13, borderRadius: 2, marginBottom: 12, boxSizing: "border-box" }} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assemblies..." style={{ width: "100%", padding: "8px 12px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, marginBottom: 12, boxSizing: "border-box" }} />
 
         {orgList.length === 0 ? <Empty text="No other assemblies to discover." /> : orgList.map(o => {
           const st = orgStats[o.id] || {}; const enr = checkEnrollment(o);
           const hasPending = Object.values(apps || {}).some(a => a.userId === user.username && a.orgId === o.id && a.status === "pending");
           const atLimit = myOrgIds.length >= MAX_ORGS;
           return (
-            <div key={o.id} className="ta-card" style={{ borderLeft: `4px solid ${st.juryReady ? "#1B5E3F" : "#C4900A"}` }}>
+            <div key={o.id} className="ta-card" style={{ borderLeft: `4px solid ${st.juryReady ? "#059669" : "#D97706"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
-                    <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#D4CFC4" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
-                    {st.juryReady ? <span style={{ fontSize: 8, padding: "1px 5px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Active</span> : <span style={{ fontSize: 8, padding: "1px 5px", background: "#F5EDD5", color: "#C4900A", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>+{Math.max(0, 5 - o.members.length)}</span>}
-                    {enr.mode !== "open" && <span style={{ fontSize: 8, padding: "1px 5px", background: enr.mode === "tribal" ? "#FDF0E4" : "#FDF0E4", color: enr.mode === "tribal" ? "#C2632A" : "#C2632A", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>{enr.label}</span>}
+                    <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#CBD5E1" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
+                    {st.juryReady ? <span style={{ fontSize: 8, padding: "1px 5px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Active</span> : <span style={{ fontSize: 8, padding: "1px 5px", background: "#FFFBEB", color: "#D97706", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>+{Math.max(0, 5 - o.members.length)}</span>}
+                    {enr.mode !== "open" && <span style={{ fontSize: 8, padding: "1px 5px", background: enr.mode === "tribal" ? "#FFF7ED" : "#FFF7ED", color: enr.mode === "tribal" ? "#EA580C" : "#EA580C", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>{enr.label}</span>}
                   </div>
-                  {o.description && <p style={{ color: "#2B2B2B", margin: "2px 0 6px", fontSize: 13, lineHeight: 1.6 }}>{o.description}</p>}
-                  {o.charter && <p style={{ color: "#5A5650", margin: "0 0 6px", fontSize: 12, lineHeight: 1.6, fontStyle: "italic" }}>Charter: {o.charter.substring(0, 120)}{o.charter.length > 120 ? "..." : ""}</p>}
-                  <div style={{ display: "flex", gap: 12, fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570", flexWrap: "wrap" }}>
+                  {o.description && <p style={{ color: "#1E293B", margin: "2px 0 6px", fontSize: 13, lineHeight: 1.6 }}>{o.description}</p>}
+                  {o.charter && <p style={{ color: "#475569", margin: "0 0 6px", fontSize: 12, lineHeight: 1.6, fontStyle: "italic" }}>Charter: {o.charter.substring(0, 120)}{o.charter.length > 120 ? "..." : ""}</p>}
+                  <div style={{ display: "flex", gap: 12, fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", flexWrap: "wrap" }}>
                     <span>{o.members.length} members</span>
                     {o.createdBy && <span>Founded by @{o.createdBy}</span>}
                     {st.total > 0 && <span>{st.total} subs</span>}
-                    {st.approved > 0 && <span style={{ color: "#1B5E3F" }}>{st.approved} approved</span>}
-                    {st.consensus > 0 && <span style={{ color: "#5B2D8E" }}>{st.consensus} consensus</span>}
-                    {(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? <span style={{ color: "#5B2D8E", fontWeight: 700 }}>Trust: {r.trustScore}%</span> : null; })()}
+                    {st.approved > 0 && <span style={{ color: "#059669" }}>{st.approved} approved</span>}
+                    {st.consensus > 0 && <span style={{ color: "#7C3AED" }}>{st.consensus} consensus</span>}
+                    {(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? <span style={{ color: "#7C3AED", fontWeight: 700 }}>Trust: {r.trustScore}%</span> : null; })()}
                   </div>
                 </div>
                 <div style={{ marginLeft: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-                  {hasPending ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A" }}>Pending...</span>
-                  : atLimit ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570" }}>{MAX_ORGS}/{MAX_ORGS}</span>
+                  {hasPending ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C" }}>Pending...</span>
+                  : atLimit ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B" }}>{MAX_ORGS}/{MAX_ORGS}</span>
                   : enr.mode === "open" ? <button className="ta-btn-secondary" onClick={() => joinOrg(o.id)}>Join</button>
-                  : enr.mode === "tribal" ? <button className="ta-btn-secondary" style={{ borderColor: "#C2632A", color: "#C2632A" }} onClick={() => joinOrg(o.id)}>Apply</button>
+                  : enr.mode === "tribal" ? <button className="ta-btn-secondary" style={{ borderColor: "#EA580C", color: "#EA580C" }} onClick={() => joinOrg(o.id)}>Apply</button>
                   : <button className="ta-btn-secondary" onClick={() => joinOrg(o.id)}>Apply</button>}
                   {isFollowing(o.id)
-                    ? <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#7A7570" }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
-                    : <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#2A6B6B" }} onClick={() => followOrg(o.id)}>Follow</button>}
+                    ? <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#64748B" }} onClick={() => unfollowOrg(o.id)}>Unfollow</button>
+                    : <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "2px 8px", color: "#0D9488" }} onClick={() => followOrg(o.id)}>Follow</button>}
                 </div>
               </div>
             </div>
@@ -4501,24 +4523,24 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
   );
 }
 
-function Empty({ text }) { return <div style={{ textAlign: "center", padding: 36, color: "#5A5650", fontSize: 13 }}>{text}</div>; }
-function Loader() { return <div style={{ textAlign: "center", padding: 36, color: "#5A5650", fontFamily: "var(--mono)", fontSize: 12 }}>Loading...</div>; }
+function Empty({ text }) { return <div style={{ textAlign: "center", padding: 36, color: "#475569", fontSize: 13 }}>{text}</div>; }
+function Loader() { return <div style={{ textAlign: "center", padding: 36, color: "#475569", fontFamily: "var(--mono)", fontSize: 12 }}>Loading...</div>; }
 
 function VisionScreen() {
-  const S = ({ children }) => <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, margin: "24px 0 8px", borderBottom: "1px solid #DCD8D0", paddingBottom: 6 }}>{children}</h3>;
-  const Sub = ({ children }) => <h4 style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 700, margin: "16px 0 6px", color: "#1B2A4A" }}>{children}</h4>;
-  const P = ({ children, ...props }) => <p style={{ fontSize: 13, lineHeight: 1.7, color: "#2B2B2B", marginBottom: 10, ...props.style }}>{children}</p>;
-  const Note = ({ icon, color, children }) => <div style={{ padding: 14, background: color + "10", border: `1.5px solid ${color}`, borderRadius: 2, marginBottom: 14, fontSize: 13, lineHeight: 1.7, color: "#2B2B2B" }}><strong>{icon}</strong> {children}</div>;
+  const S = ({ children }) => <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, margin: "24px 0 8px", borderBottom: "1px solid #E2E8F0", paddingBottom: 6 }}>{children}</h3>;
+  const Sub = ({ children }) => <h4 style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 700, margin: "16px 0 6px", color: "#0F172A" }}>{children}</h4>;
+  const P = ({ children, ...props }) => <p style={{ fontSize: 13, lineHeight: 1.7, color: "#1E293B", marginBottom: 10, ...props.style }}>{children}</p>;
+  const Note = ({ icon, color, children }) => <div style={{ padding: 14, background: color + "10", border: `1.5px solid ${color}`, borderRadius: 8, marginBottom: 14, fontSize: 13, lineHeight: 1.7, color: "#1E293B" }}><strong>{icon}</strong> {children}</div>;
   return (
     <div><div className="ta-section-rule" /><h2 className="ta-section-head">Future Vision</h2>
-      <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "#2B2B2B" }}>
-        <p style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#5A5650", fontStyle: "italic", marginBottom: 16 }}>A roadmap for building the credibility infrastructure of the future.</p>
+      <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "#1E293B" }}>
+        <p style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#475569", fontStyle: "italic", marginBottom: 16 }}>A roadmap for building the credibility infrastructure of the future.</p>
 
-        <Note icon="🏛" color="#1B5E3F">Trust Assembly intends to register as a <strong>nonprofit organization</strong> before accepting any revenue. We will also accept <strong>donations</strong> from individuals and foundations who share this vision. Every dollar that enters the system will be used to support its growth, with a primary focus on rewarding participants for high quality work and to build a support staff and architecture.</Note>
+        <Note icon="🏛" color="#059669">Trust Assembly intends to register as a <strong>nonprofit organization</strong> before accepting any revenue. We will also accept <strong>donations</strong> from individuals and foundations who share this vision. Every dollar that enters the system will be used to support its growth, with a primary focus on rewarding participants for high quality work and to build a support staff and architecture.</Note>
 
         <S>How This Will Make Money</S>
         <P>The platform is free to use. The corrections are free to read. But the process of producing verified truth at scale requires real resources — jurors who are compensated for careful review, infrastructure that runs reliably, and development that keeps the system ahead of those who would game it.</P>
-        <P style={{ fontWeight: 700, color: "#1B2A4A" }}>All money flows through to preserve credibility and fund it. Nobody in the system is paid to reach a specific conclusion. The money is fuel. The credibility engine runs on the math. A republic-style voting process will be introduced in later iterations so that new rules can be added as needed to protect the integrity of the system.</P>
+        <P style={{ fontWeight: 700, color: "#0F172A" }}>All money flows through to preserve credibility and fund it. Nobody in the system is paid to reach a specific conclusion. The money is fuel. The credibility engine runs on the math. A republic-style voting process will be introduced in later iterations so that new rules can be added as needed to protect the integrity of the system.</P>
         <P>We intend to pursue the following revenue streams, with a primary focus on <strong>subscriptions</strong> and <strong>bounties</strong>.</P>
 
         <Sub>Subscriptions</Sub>
@@ -4528,7 +4550,7 @@ function VisionScreen() {
 
         <Sub>Prominence & Visibility Rules</Sub>
         <P>Not all corrections are equal. Rules will govern what content is elevated to visibility: high-quality work — corrections with high jury ratings, from high-Trust-Score citizens and Assemblies — will be pushed to prominence. Low-quality work will be filtered out before it reaches the visibility layer. At scale, we will also provide <strong>ratings for entire websites, organizations, and public figures</strong> engaged in the dissemination of information. Prominence rules will apply when these features are enabled.</P>
-        <Note icon="📜" color="#B8963E">This will be called <strong>"The Illuminatus Uncle Rule"</strong> — or: you don't need a system this powerful because you want to win an argument with your uncle at Thanksgiving. Prominence exists to serve the public interest, not personal vendettas.</Note>
+        <Note icon="📜" color="#CA8A04">This will be called <strong>"The Illuminatus Uncle Rule"</strong> — or: you don't need a system this powerful because you want to win an argument with your uncle at Thanksgiving. Prominence exists to serve the public interest, not personal vendettas.</Note>
 
         <Sub>Bounties</Sub>
         <P>Anyone can post a bounty by submitting a <strong>piece of media and related information about that media</strong>. Bounties must be submitted as a neutral set of facts in need of analysis — <strong>they are not permitted to include a point of view</strong>. The bounty is a question, not an argument.</P>
@@ -4537,7 +4559,7 @@ function VisionScreen() {
         <P>The cost of disputing escalates with each successive round, weighted by the Trust Score ratio between the disputer and their target. Challenging someone with much higher credibility is expensive — you'd better be sure. Citizens vindicated through the Cassandra process receive a full refund of all dispute fees plus a premium.</P>
 
         <Sub>Where Money Applies</Sub>
-        <Note icon="⚖" color="#1B2A4A"><strong>Important:</strong> Disputes and cross-group reputation are the only places where money applies. Inside an Assembly, all activity is free. Any money used to accelerate in-group review is <strong>voluntarily donated by subscribers</strong> who follow the Assembly and support its work.</Note>
+        <Note icon="⚖" color="#0F172A"><strong>Important:</strong> Disputes and cross-group reputation are the only places where money applies. Inside an Assembly, all activity is free. Any money used to accelerate in-group review is <strong>voluntarily donated by subscribers</strong> who follow the Assembly and support its work.</Note>
 
         <Sub>Appeal Adjudication</Sub>
         <P>When a user is banned or moderated on a social media platform, they currently have no credible independent appeal. Trust Assembly can provide one. The <strong>person requesting the appeal pays Trust Assembly</strong>, which distributes the fee: jurors are compensated for their review, a portion is returned to the originating platform as a processing credit, and Trust Assembly retains a small administration fee. The jury evaluates the content against the platform's own stated policies — not Trust Assembly's rules. The verdict is non-binding but carries real credibility weight as an independent, auditable assessment.</P>
@@ -4546,7 +4568,7 @@ function VisionScreen() {
         <P>Product and service reviews are plagued by fakes. Trust Assembly can audit reviews for authenticity — not approving or rejecting the opinion, but verifying the reviewer is real and the review is genuine. A "Trust Assembly Verified" badge means an independent jury has audited the review. This is a <strong>revenue source for participating Assemblies</strong> — specialized review Assemblies earn fees for the verification work their members perform. Brands pay a per-review fee or monthly subscription; consumers get a reliable signal in an ocean of noise. Ad revenue from a consumer-facing review portal provides an additional revenue stream.</P>
 
         <Sub>Reputation Insurance</Sub>
-        <Note icon="⏳" color="#C4900A">Reputation insurance will activate when the system has sufficient scale to deliver on these promises.</Note>
+        <Note icon="⏳" color="#D97706">Reputation insurance will activate when the system has sufficient scale to deliver on these promises.</Note>
         <P>Individuals and organizations will be able to subscribe to a rapid-response plan. When targeted by misinformation, subscribers trigger an expedited review at reduced cost. Not a guarantee of vindication — priority access to the verification process. Like insurance, many subscribers will never file a claim, and their premiums fund the jury pool that serves those who do.</P>
 
         <Sub>The AI Credibility Vault</Sub>
@@ -4555,19 +4577,19 @@ function VisionScreen() {
         <S>Features on the Horizon</S>
 
         <Sub>AI Story Tracking Agent</Sub>
-        <Note icon="⏳" color="#C4900A">Currently blocked by funding for inference tokens.</Note>
+        <Note icon="⏳" color="#D97706">Currently blocked by funding for inference tokens.</Note>
         <P>When a correction is approved on one article, the same misinformation often appears in dozens of subsequent stories. We intend to build an AI agent that continuously scans the web for related stories and appends approved corrections on a <strong>provisional basis</strong>. This is how Trust Assembly scales from correcting individual articles to making it structurally impossible to tell a lie and get away with it. A false claim corrected once is corrected everywhere.</P>
 
         <Sub>Assembly AI Agents</Sub>
-        <Note icon="⏳" color="#C4900A">Currently blocked by funding for inference tokens.</Note>
+        <Note icon="⏳" color="#D97706">Currently blocked by funding for inference tokens.</Note>
         <P>Every Assembly above a certain size will have access to its own AI agent — one that monitors news in the Assembly's areas of interest, identifies articles that may contain errors, and recommends potential submissions for member review. The agent doesn't submit corrections — humans always make the final call — but it ensures even a small group of dedicated citizens can compete at scale.</P>
 
         <Sub>Additional Interfaces & Partnerships</Sub>
         <P>Trust Assembly's corrections and credibility data should appear everywhere information appears: browser extensions, social media integrations, RSS feeds, news aggregator widgets, CMS plugins, search engine signals, and AI training data partnerships. Every interface where a person encounters a claim is an interface where a Trust Assembly correction should be available. Our goal is to build partnerships that give benefit to any platform willing to surface credibility signals.</P>
 
-        <div style={{ padding: 16, background: "#1B2A4A", borderRadius: 2, marginTop: 20, marginBottom: 20 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#B8963E", marginBottom: 6 }}>Our Goal</div>
-          <div style={{ fontFamily: "var(--serif)", fontSize: 18, color: "#F0EDE6", lineHeight: 1.6 }}>Trust Assembly aims to become the <strong style={{ color: "#B8963E" }}>credibility bank of the future</strong> — a trusted, independent, transparent institution whose Trust Scores are recognized as the standard measure of informational reliability. The way a credit score tells a lender how much to trust a borrower, a Trust Score tells a reader how much to trust a claim.</div>
+        <div style={{ padding: 16, background: "#EFF6FF", borderRadius: 8, marginTop: 20, marginBottom: 20, border: "1.5px solid #BFDBFE" }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2563EB", marginBottom: 6, fontWeight: 600 }}>Our Goal</div>
+          <div style={{ fontSize: 18, color: "#0F172A", lineHeight: 1.6 }}>Trust Assembly aims to become the <strong style={{ color: "#2563EB" }}>credibility bank of the future</strong> — a trusted, independent, transparent institution whose Trust Scores are recognized as the standard measure of informational reliability. The way a credit score tells a lender how much to trust a borrower, a Trust Score tells a reader how much to trust a claim.</div>
         </div>
 
         <S>The Larger Vision</S>
@@ -4590,10 +4612,10 @@ function VisionScreen() {
         <P>The Trust Score links everything. The reputation you build filing accurate corrections carries into deliberation. The jury process that evaluates media claims evaluates policy proposals. The Cassandra mechanism rewards the policy advocate who was right when everyone disagreed, just as it rewards the whistleblower.</P>
         <P>The credibility bank doesn't just tell you who to trust about what happened yesterday. It tells you who to trust about what should happen tomorrow.</P>
 
-        <div style={{ marginTop: 24, padding: 14, borderTop: "1px solid #DCD8D0", fontSize: 12, color: "#7A7570", lineHeight: 1.6 }}>
+        <div style={{ marginTop: 24, padding: 14, borderTop: "1px solid #E2E8F0", fontSize: 12, color: "#64748B", lineHeight: 1.6 }}>
           This document represents our intentions and direction, not commitments or guarantees. We build in public because transparency is not just a feature of the system — it is the system.
         </div>
-        <div style={{ textAlign: "center", marginTop: 12, fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "#5A5650", fontStyle: "italic" }}>Truth Will Out.</div>
+        <div style={{ textAlign: "center", marginTop: 12, fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "#475569", fontStyle: "italic" }}>Truth Will Out.</div>
       </div>
     </div>
   );
@@ -4602,29 +4624,29 @@ function VisionScreen() {
 function AboutScreen() {
   return (
     <div><div className="ta-section-rule" /><h2 className="ta-section-head">About</h2>
-      <div style={{ padding: "20px 24px", background: "#fff", border: "1px solid #DCD8D0", borderLeft: "4px solid #B8963E", borderRadius: 2, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B8963E", marginBottom: 10 }}>Mission Statement</div>
-        <p style={{ fontSize: 16, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, margin: 0 }}>The Trust Assembly is an experiment in self-government.</p>
-        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>It begins with a simple question: what happens when ordinary people are given a place to reason together in public, under fair rules, with truth as the aim rather than attention?</p>
-        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different. A place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.</p>
-        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.</p>
-        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.</p>
-        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed. One that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.</p>
-        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem. A place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.</p>
-        <p style={{ fontSize: 15, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "12px 0 0" }}>We hope to build a lighthouse on a hill.</p>
-        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0", padding: "12px 16px", background: "#F0EDE6", borderRadius: 2 }}>To succeed in this institution, you must make sense to those who agree with you. And you must make sense to those who do not. Everything worth building in civilization rests on that foundation.</p>
+      <div style={{ padding: "20px 24px", background: "#fff", border: "1px solid #E2E8F0", borderLeft: "4px solid #CA8A04", borderRadius: 8, marginBottom: 14 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#CA8A04", marginBottom: 10 }}>Mission Statement</div>
+        <p style={{ fontSize: 16, lineHeight: 1.8, color: "#0F172A", fontFamily: "var(--serif)", fontWeight: 600, margin: 0 }}>The Trust Assembly is an experiment in self-government.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>It begins with a simple question: what happens when ordinary people are given a place to reason together in public, under fair rules, with truth as the aim rather than attention?</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different. A place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed. One that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem. A place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.</p>
+        <p style={{ fontSize: 15, lineHeight: 1.8, color: "#0F172A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "12px 0 0" }}>We hope to build a lighthouse on a hill.</p>
+        <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0", padding: "12px 16px", background: "#F1F5F9", borderRadius: 8 }}>To succeed in this institution, you must make sense to those who agree with you. And you must make sense to those who do not. Everything worth building in civilization rests on that foundation.</p>
       </div>
-      <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "#2B2B2B" }}>
+      <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "#1E293B" }}>
         <p style={{ marginBottom: 14 }}>The Trust Assembly was created by a technologist and writer who grew tired of watching institutional trust decay while no one built anything to replace it.</p>
         <p style={{ marginBottom: 14 }}>The core insight: truth is the only thing that survives adversarial review. Structure conflict correctly — where winning requires being right — and selfishness serves honesty. This is mechanism design applied to editorial integrity.</p>
         <p style={{ marginBottom: 14 }}>Two-tier review (in-group, then cross-group) prevents filter bubbles while maintaining trust foundations. Your group checks your work. Then strangers check your group. What survives both is the closest thing to verified truth that distributed systems can produce.</p>
         <p style={{ marginBottom: 14 }}>This platform was vibe-coded with Claude by Anthropic — an AI that served as architect, engineer, and sparring partner throughout the build. Every feature, every algorithm, every design decision was a conversation between a human with a vision and an AI that could execute it.</p>
-        <div style={{ padding: 14, background: "#F0EDE6", borderRadius: 2 }}><div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#5A5650", marginBottom: 6 }}>Motto</div><div style={{ fontFamily: "var(--serif)", fontSize: 18, fontStyle: "italic" }}>Truth Will Out.</div><div style={{ fontSize: 13, color: "#5A5650", marginTop: 2 }}>The truth cannot be hidden forever.</div></div>
+        <div style={{ padding: 14, background: "#F1F5F9", borderRadius: 8 }}><div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 6 }}>Motto</div><div style={{ fontFamily: "var(--serif)", fontSize: 18, fontStyle: "italic" }}>Truth Will Out.</div><div style={{ fontSize: 13, color: "#475569", marginTop: 2 }}>The truth cannot be hidden forever.</div></div>
 
-        <div style={{ padding: 14, background: "#F5EDD5", border: "1px solid #B8963E", borderRadius: 2, marginTop: 14 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B8963E", marginBottom: 8 }}>The Scoring Formula</div>
+        <div style={{ padding: 14, background: "#FFFBEB", border: "1px solid #CA8A04", borderRadius: 8, marginTop: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#CA8A04", marginBottom: 8 }}>The Scoring Formula</div>
           <div style={{ fontSize: 13, lineHeight: 1.8 }}>
-            <div style={{ fontWeight: 700, color: "#1B2A4A", marginBottom: 6 }}>Trust Score = √Points × Quality / Drag + Cassandra</div>
+            <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>Trust Score = √Points × Quality / Drag + Cassandra</div>
             <div>✓ Regular win: <strong>+{W.win} point</strong> — volume under √ (diminishing returns)</div>
             <div>⚖ Dispute won: <strong>+{W.disputeWin} points</strong></div>
             <div>📈 Streak bonus: <strong>+1</strong> per {W.streakInterval} consecutive wins</div>
@@ -4632,9 +4654,9 @@ function AboutScreen() {
             <div>✗ Regular loss: <strong>adds to drag</strong> — diminishing (inside √)</div>
             <div>⚖ Dispute lost: <strong>adds to drag</strong> — same as a regular loss</div>
             <div>💀 Deliberate deception: <strong>+{W.lieDrag} drag per lie</strong> — linear, bypasses √</div>
-            <div style={{ color: "#B8963E", fontWeight: 700 }}>🔮 Cassandra vindication: <strong>additive bonus</strong> — scales with impact × persistence (coming soon)</div>
+            <div style={{ color: "#CA8A04", fontWeight: 700 }}>🔮 Cassandra vindication: <strong>additive bonus</strong> — scales with impact × persistence (coming soon)</div>
           </div>
-          <div style={{ fontSize: 12, color: "#5A5650", marginTop: 8 }}>All weights are community-votable in future elections. The formula shape is permanent; only the coefficients change. The Cassandra vindication path is being built — a single historic vindication can propel a brand-new citizen to the top of the entire system.</div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 8 }}>All weights are community-votable in future elections. The formula shape is permanent; only the coefficients change. The Cassandra vindication path is being built — a single historic vindication can propel a brand-new citizen to the top of the entire system.</div>
         </div>
       </div>
     </div>
@@ -4645,17 +4667,17 @@ function RulesScreen() {
   const S = ({ children }) => <h3 style={{ fontFamily: "var(--serif)", fontSize: 17, marginBottom: 6, marginTop: 20 }}>{children}</h3>;
   return (
     <div><div className="ta-section-rule" /><h2 className="ta-section-head">Rules & Policies</h2>
-      <div style={{ padding: 12, background: "#FDF5E6", border: "1.5px solid #D4850A", borderRadius: 2, marginBottom: 16, fontSize: 12, color: "#9A6200", lineHeight: 1.6 }}>
+      <div style={{ padding: 12, background: "#FFFBEB", border: "1.5px solid #B45309", borderRadius: 8, marginBottom: 16, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
         <strong>⚠ BETA:</strong> The Trust Assembly is in early beta. Features may change, data may be reset, and the system is under active development. <strong>Do not enter sensitive personal information.</strong> Use a pseudonym if you prefer. By participating you acknowledge this is an experimental platform.
       </div>
-      <div className="ta-card" style={{ fontSize: 13, lineHeight: 1.7, color: "#2B2B2B" }}>
+      <div className="ta-card" style={{ fontSize: 13, lineHeight: 1.7, color: "#1E293B" }}>
         <S>I. Purpose</S><p>Truth emerges through structured adversarial review. The only way to build reputation is honesty. The cost of lying is severe enough to make deception irrational.</p>
         <S>II. Assemblies & Enrollment</S><p>Citizens may join up to 12 Assemblies simultaneously. Every citizen is permanently enrolled in The General Public. <strong>Tribal Rule (1–50 members):</strong> The founder personally approves or rejects every application. This power expires at 51 members. <strong>Open enrollment (51–99):</strong> Anyone can join directly. <strong>Sponsor required (100+):</strong> 100–999: 1 sponsor. 1,000–9,999: 2 sponsors. 10,000+: 3 sponsors. <strong>Who can sponsor?</strong> Members who have submitted at least one correction can sponsor immediately. Review-only members need 10+ completed reviews and 30 days of membership — a higher bar reflecting that they haven't put their own reputation on the line through submissions. All applications include a written reason and optional link. Republic-style self-governance activates with 1,000,000+ citizens.</p>
         <S>II-A. Deliberate Deception Penalty</S><p>A finding of deliberate deception carries a <strong>1-year penalty</strong>: all voting rights suspended, sponsorship rights suspended, assembly creation suspended. The penalty is visible on the citizen's public record. The citizen may still submit corrections during the penalty period — rebuilding trust requires continued honest participation.</p>
         <S>III. Submissions</S><p>Citizens submit <strong>corrections</strong> (headline is misleading — propose a replacement) or <strong>affirmations</strong> (headline is accurate — provide supporting evidence). Both types are reviewed by juries on the same criteria. Author name is captured for future writer accountability ratings. Optional: up to 20 in-line article edits (each voted on independently by jurors), Vault entries (Standing Corrections, Arguments, Foundational Beliefs, and Translations).</p>
         <S>IV. Jury Review</S><p>Jury size scales with Assembly membership: 5–20 members → 3 jurors; 21–50 → 5; 51–100 → 7; 101–999 → 9; 1,000–9,999 → 11; 10,000+ → 13. Simple majority decides (e.g. 2-of-3, 3-of-5, 4-of-7). Rules escalate: 100+ members: no repeat reviewer, diversity attempt (gender and region — political affiliation will be added as a diversity factor in the future). 500+: join-date filter. 1,000+: 24h cooldown. Recusal always available. <strong>Deeper bench:</strong> The system draws 2× the needed jury size. All drawn members see the review as an opportunity. First to click "Accept" are seated — making jury service civic volunteerism, not conscription. If the jury is already full when someone clicks, they receive a notification and are thanked for their willingness. <strong>6-hour window:</strong> Once you accept a seat, you have 6 hours to complete your review. If you don't finish, your seat opens to another juror — no penalty, life happens. Unaccepted pool seats also rotate after 6 hours, with a second 6-hour round before the system reduces jury size as a last resort. <strong>Jury Score:</strong> Every juror builds a visible Jury Score tracking: consensus alignment (how often you vote with the final outcome — 50–85% is the healthy range), overturn rate (how often juries you served on were overturned by dispute), and accusation accuracy (when you flagged deception, how often the jury agreed). Jury Score is visible on your profile. At launch, Jury Score will not be used to select jurors — selection remains random — but it is tracked from day one for future versions of the system. Approved corrections advance to cross-group review.</p>
         <S>V. Cross-Group Consensus</S><p>Cross-group jury size scales with ecosystem diversity — the number of qualifying Assemblies (100+ members each). 5–7 assemblies → 3 jurors; 8–12 → 5; 13–20 → 7; 21–50 → 9; 51–100 → 11; 100+ → 13. Requires a minimum of 5 qualifying Assemblies before activation. <strong>Jurors must not be members of the originating Assembly.</strong> No two jurors may share more than 2 non-General Public Assembly memberships — this overlap constraint guarantees genuinely independent perspectives. The General Public is excluded from overlap counting since all citizens share it. If the overlap constraint cannot seat the full jury, it falls back to the largest jury achievable (minimum 3). Surviving both in-group and cross-group review = Consensus — the highest trust signal.</p>
-        <S>VI. Intra-Assembly Disputes</S><p>At 100+ members, citizens may dispute other members' content. 3 uninvolved jurors, same rules. Winners get significant reputation gains. Losers lose reputation, severity depends on Deliberate Deception Finding.</p>
+        <S>VI. Intra-Assembly Disputes</S><p>At 100+ members, citizens may dispute other members' content. A minimum of 3 uninvolved jurors, same rules. Winners get significant reputation gains. Losers lose reputation, severity depends on Deliberate Deception Finding.</p>
         <S>VI-A. Disputes & The Cassandra Rule</S><p>A successful dispute earns <strong>+{W.disputeWin} points</strong> for catching an error. A failed dispute adds to your drag (same coefficient as a regular loss, diminishing via √). <strong>The Cassandra Rule</strong> is a separate, higher-stakes mechanic: if your correction is disputed and the dispute is upheld — meaning you were found wrong — but you refuse to concede because you believe you're right, and you are later vindicated through a vindication review, you earn a massive <strong>additive bonus</strong> that scales with both the importance of the correction and the number of rejections you weathered. Named for the prophet nobody believed. The full Cassandra vindication path is being built; at launch, dispute wins earn +{W.disputeWin} points.</p>
         <S>VII. Deliberate Deception Findings</S><p>During any review, jurors cast a secret ballot certifying the submission is a deliberate lie, gross misrepresentation, or intentional omission. Simple majority triggers a Finding. Penalty: +{W.lieDrag} drag per lie (linear, bypasses the √ diminishing curve that softens regular losses). Juror identity never revealed to submitter.</p>
         <S>VIII. Retractions</S><p>Citizens may voluntarily retract. Lie retraction within 1 week: recovers 50% of penalty. Wrong retraction within 1 week: recovers 90%. Each subsequent week removes 10% of amelioration until zero. Flat subtraction, not exponential.</p>
@@ -4664,6 +4686,7 @@ function RulesScreen() {
         <S>X. Trusted Contributor</S><p><strong>10 consecutive approved corrections</strong> in a single Assembly earns Trusted Contributor status. Submissions skip in-group jury and are immediately approved — but remain <strong>disputable</strong> by any member. Status is per-Assembly, not global. Any rejection via dispute revokes the status instantly. A Deliberate Deception Finding also revokes it. The status is publicly visible on all submission cards.</p>
         <S>X-A. Digital Intelligences</S><p>AI agents may register as Digital Intelligences (DIs). Each DI must be linked to an accountable human partner. <strong>The human partner receives all scoring</strong> from DI submissions, including deception drag penalties. DIs cannot vote, serve on juries, or sponsor members. Daily submissions limited to half the Assembly's membership (max 100). All DI submissions require partner pre-approval before entering jury review. All DI submissions are permanently flagged. If the human partner receives a Deception penalty, all linked DIs are suspended for the duration.</p>
         <S>XI. Scoring</S><p>Trust Score (unbounded, higher is better). Formula: √(Points) × Quality / Drag + Cassandra Bonus. Points: wins + dispute wins×2 + streak bonus (1 per 3 consecutive wins). Volume has diminishing returns (√). Quality: (avgNews + avgFun)/10, capped at 1.6, raised to power 1.5 — trivial work penalized, important work amplified. Drag: 1 + √(losses×2 + failed disputes×2) + lies×3. Lies bypass the square root — each one adds 3.0 directly. Cassandra vindication: additive bonus, scales with impact × persistence (coming soon). All weights are community-votable in future elections. Profiles: Oracle, Diligent Reporter, Raconteur, Archivist, Demagogue, Overreacher, Court Jester, Apprentice.</p>
+        <S>XI-A. Badges</S><p>Badges are earned automatically through participation and appear on your public profile. Each badge earned adds +1 to your Trust Score. Badge categories: <strong>Submission milestones</strong> (1, 10, 100, 1K, 10K, 100K, 1M). <strong>Trusted Contributor</strong> (earned trusted status in any Assembly). <strong>Assembly Creator</strong> (founded an Assembly). <strong>Assembly Member</strong> (joined beyond The General Public). <strong>Founder Milestones</strong> (Assembly reaches 5, 21, 51, 101, 1K, or 10K members). <strong>Early Adopter</strong> (first 100 or first 1,000 citizens). Badges are tiered (bronze through legendary) based on difficulty. They cannot be purchased, transferred, or manually assigned — only earned.</p>
         <S>XII. The Vaults</S><p>Standing Corrections (reusable verified facts). Argument Vault (fundamental arguments for reuse). Foundational Belief Vault (core axioms — starting premises, not claims of fact). Translation Vault (plain-language replacements for jargon, spin, propaganda, and euphemisms — categories: Clarity, Anti-Propaganda, Euphemism, Satirical). Approved translations are applied automatically by the browser extension across all articles.</p>
         <S>XIII. Legal</S><p>Citizens bear sole responsibility for all content. The Trust Assembly makes no representations regarding accuracy. Jury decisions reflect peer consensus, not institutional endorsement.</p>
       </div>
@@ -4717,11 +4740,11 @@ const OB_AFFIRMATION = {
 };
 
 // Explanation cards
-function ExplainBox({ title, children, color = "#2A6B6B", icon = "📘" }) {
+function ExplainBox({ title, children, color = "#0D9488", icon = "📘" }) {
   return (
-    <div style={{ margin: "14px 0", padding: 14, background: "#F0F4F8", border: `1.5px solid ${color}40`, borderLeft: `4px solid ${color}`, borderRadius: 2 }}>
+    <div style={{ margin: "14px 0", padding: 14, background: "#F0F4F8", border: `1.5px solid ${color}40`, borderLeft: `4px solid ${color}`, borderRadius: 8 }}>
       <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.1em", color, fontWeight: 700, marginBottom: 6 }}>{icon} {title}</div>
-      <div style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B" }}>{children}</div>
+      <div style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B" }}>{children}</div>
     </div>
   );
 }
@@ -4729,13 +4752,13 @@ function ExplainBox({ title, children, color = "#2A6B6B", icon = "📘" }) {
 function HighlightField({ label, value, color, note, isTextarea }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", fontWeight: 600, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", fontWeight: 600, marginBottom: 4 }}>{label}</div>
       <div style={{
-        padding: "9px 11px", border: `1.5px solid ${color || "#D4CFC4"}`, background: "#FDFBF5",
-        fontSize: 14, lineHeight: 1.5, color: "#1B2A4A", borderRadius: 1,
+        padding: "9px 11px", border: `1.5px solid ${color || "#CBD5E1"}`, background: "#FFFFFF",
+        fontSize: 14, lineHeight: 1.5, color: "#0F172A", borderRadius: 6,
         minHeight: isTextarea ? 60 : "auto", whiteSpace: isTextarea ? "pre-wrap" : "normal",
       }}>{value}</div>
-      {note && <div style={{ fontSize: 12, color: "#5A5650", marginTop: 3, fontStyle: "italic" }}>{note}</div>}
+      {note && <div style={{ fontSize: 12, color: "#475569", marginTop: 3, fontStyle: "italic" }}>{note}</div>}
     </div>
   );
 }
@@ -4752,19 +4775,19 @@ function OBSubmitStep() {
   return (
     <div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 1: Submit</h2>
-      <p style={{ fontSize: 15, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 14 }}>When you find an article worth reviewing, you submit either a <strong>correction</strong> (the headline is misleading) or an <strong>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review.</p>
+      <p style={{ fontSize: 15, color: "#1E293B", lineHeight: 1.6, marginBottom: 14 }}>When you find an article worth reviewing, you submit either a <strong>correction</strong> (the headline is misleading) or an <strong>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review.</p>
 
       {/* Mode toggle */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderRadius: 2, overflow: "hidden", border: "1.5px solid #D4CFC4" }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderRadius: 8, overflow: "hidden", border: "1.5px solid #CBD5E1" }}>
         {[["correction", "🔴 Correction", "This headline is misleading"], ["affirmation", "🟢 Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
-          <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "#C4573F" : "#1B5E3F") : "#FDFBF5", color: mode === key ? "#fff" : "#5A5650", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
+          <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "#DC2626" : "#059669") : "#FFFFFF", color: mode === key ? "#fff" : "#475569", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
             <div>{label}</div>
             <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, marginTop: 2, textTransform: "none", letterSpacing: 0 }}>{desc}</div>
           </button>
         ))}
       </div>
 
-      <ExplainBox title={isAffirm ? "Why Affirmations Matter" : "Article URL"} icon={isAffirm ? "🟢" : "🔗"} color={isAffirm ? "#1B5E3F" : "#2A6B6B"}>
+      <ExplainBox title={isAffirm ? "Why Affirmations Matter" : "Article URL"} icon={isAffirm ? "🟢" : "🔗"} color={isAffirm ? "#059669" : "#0D9488"}>
         {isAffirm
           ? "Not everything needs correcting. When a journalist gets it right — especially on a controversial topic — affirming their accuracy with evidence strengthens the public record. Affirmations go through the same jury review as corrections."
           : "Every correction starts with the article you're correcting. Paste the URL so jurors can read the original."}
@@ -4778,78 +4801,78 @@ function OBSubmitStep() {
       </ExplainBox>
       <HighlightField label="Original Headline" value={article.originalHeadline} />
       <HighlightField label="Author" value={article.author} note="Captured for future writer accountability ratings." />
-      {!isAffirm && <HighlightField label="Proposed Correction — the red pen" value={OB_ARTICLE.correctedHeadline} color="#C4573F" />}
-      {isAffirm && <div style={{ padding: 10, background: "#E5F0EA", border: "1px solid #1B5E3F40", borderRadius: 2, marginBottom: 14, fontSize: 13, color: "#1B5E3F" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
+      {!isAffirm && <HighlightField label="Proposed Correction — the red pen" value={OB_ARTICLE.correctedHeadline} color="#DC2626" />}
+      {isAffirm && <div style={{ padding: 10, background: "#ECFDF5", border: "1px solid #05966940", borderRadius: 8, marginBottom: 14, fontSize: 13, color: "#059669" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
 
       <HighlightField label="Reasoning" value={isAffirm ? article.reasoning : "The article presents the claim 'evil is good' as though it were a serious argument. No substantive case is made — the piece relies on fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. This is textbook ragebait designed to provoke, not inform."} isTextarea note={isAffirm ? "Explain WHY this headline is accurate. Cite the evidence." : "Explain WHY the original is misleading. This is what jurors evaluate."} />
 
       {revealed >= 2 && !isAffirm && <>
-        <ExplainBox title="Supporting Evidence" icon="📎" color="#1B5E3F">You can attach URLs that support your correction — news articles, studies, primary sources. Each one gets an explanation of what it proves.</ExplainBox>
-        <div style={{ padding: 12, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>Evidence #1</div>
-          <div style={{ fontSize: 13 }}><a href="#" style={{ color: "#2A6B6B" }}>https://ethics-institute.org/evil-still-bad-2025</a></div>
-          <div style={{ fontSize: 12, color: "#5A5650", marginTop: 2 }}>↳ Comprehensive analysis confirming evil remains bad. Sample size: all of human history.</div>
+        <ExplainBox title="Supporting Evidence" icon="📎" color="#059669">You can attach URLs that support your correction — news articles, studies, primary sources. Each one gets an explanation of what it proves.</ExplainBox>
+        <div style={{ padding: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>Evidence #1</div>
+          <div style={{ fontSize: 13 }}><a href="#" style={{ color: "#0D9488" }}>https://ethics-institute.org/evil-still-bad-2025</a></div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>↳ Comprehensive analysis confirming evil remains bad. Sample size: all of human history.</div>
         </div>
       </>}
 
       {revealed >= 2 && isAffirm && <>
-        <ExplainBox title="Supporting Evidence" icon="📎" color="#1B5E3F">Affirmations are strongest with evidence. Link the original study, primary sources, or independent verification.</ExplainBox>
+        <ExplainBox title="Supporting Evidence" icon="📎" color="#059669">Affirmations are strongest with evidence. Link the original study, primary sources, or independent verification.</ExplainBox>
         {OB_AFFIRMATION.evidence.map((e, i) => (
-          <div key={i} style={{ padding: 12, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>Evidence #{i + 1}</div>
-            <div style={{ fontSize: 13 }}><a href="#" style={{ color: "#2A6B6B" }}>{e.url}</a></div>
-            <div style={{ fontSize: 12, color: "#5A5650", marginTop: 2 }}>↳ {e.explanation}</div>
+          <div key={i} style={{ padding: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>Evidence #{i + 1}</div>
+            <div style={{ fontSize: 13 }}><a href="#" style={{ color: "#0D9488" }}>{e.url}</a></div>
+            <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>↳ {e.explanation}</div>
           </div>
         ))}
       </>}
 
       {revealed >= 3 && !isAffirm && <>
-        <ExplainBox title="In-Line Article Edits" icon="🔴" color="#C4573F">Beyond the headline, you can correct specific claims within the article body — up to 20 edits per article. Each edit is voted on independently by jurors, so a strong headline can survive even if one edit is weak. Each edit shows the original text, your correction, and your reasoning.</ExplainBox>
-        <div style={{ padding: 14, background: "#FDFBF5", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 10 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570", marginBottom: 8 }}>3 In-Line Edits</div>
+        <ExplainBox title="In-Line Article Edits" icon="🔴" color="#DC2626">Beyond the headline, you can correct specific claims within the article body — up to 20 edits per article. Each edit is voted on independently by jurors, so a strong headline can survive even if one edit is weak. Each edit shows the original text, your correction, and your reasoning.</ExplainBox>
+        <div style={{ padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 8 }}>3 In-Line Edits</div>
           {OB_ARTICLE.inlineEdits.map((edit, i) => (
-            <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < 2 ? "1px solid #DCD8D0" : "none" }}>
-              <div style={{ fontSize: 12, textDecoration: "line-through", textDecorationColor: "#C4573F", color: "#5A5650", marginBottom: 3 }}>{edit.original}</div>
-              <div style={{ fontSize: 12, color: "#C4573F", fontWeight: 600, marginBottom: 3 }}>{edit.replacement}</div>
-              <div style={{ fontSize: 12, color: "#5A5650", fontStyle: "italic" }}>↳ {edit.reasoning}</div>
+            <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < 2 ? "1px solid #E2E8F0" : "none" }}>
+              <div style={{ fontSize: 12, textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", marginBottom: 3 }}>{edit.original}</div>
+              <div style={{ fontSize: 12, color: "#DC2626", fontWeight: 600, marginBottom: 3 }}>{edit.replacement}</div>
+              <div style={{ fontSize: 12, color: "#475569", fontStyle: "italic" }}>↳ {edit.reasoning}</div>
             </div>
           ))}
         </div>
       </>}
 
       {revealed >= 5 && <>
-        <ExplainBox title="Vault Artifacts" icon="📦" color="#5A5650">
+        <ExplainBox title="Vault Artifacts" icon="📦" color="#475569">
           Submissions can include vault entries — reusable knowledge that your Assembly builds over time. Entries can be <strong>new</strong> (proposed with this submission, pending until the submission is approved) or <strong>preexisting</strong> (already in your Assembly's vault, linked to show relevance). Jurors vote on each independently.
         </ExplainBox>
 
-        <div style={{ padding: 12, background: "#EDF0F7", border: "1px solid #D4CFC4", borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 4 }}>🏛 Standing Correction <span style={{ color: "#C4900A", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+        <div style={{ padding: 12, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>🏛 Standing Correction <span style={{ color: "#D97706", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
           <div style={{ fontSize: 14, fontFamily: "var(--serif)", fontWeight: 600, marginBottom: 3 }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.assertion}</div>
-          <div style={{ fontSize: 12, color: "#2A6B6B" }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.evidence}</div>
+          <div style={{ fontSize: 12, color: "#0D9488" }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.evidence}</div>
         </div>
 
         {!isAffirm && <>
-          <div style={{ padding: 12, background: "#EDF2F7", border: "1px solid #D4CFC4", borderRadius: 2, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#2A6B6B", marginBottom: 4 }}>⚔️ Argument <span style={{ color: "#C4900A", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+          <div style={{ padding: 12, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 4 }}>⚔️ Argument <span style={{ color: "#D97706", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ fontSize: 13, lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           </div>
 
-          <div style={{ padding: 12, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 2, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5B2D8E", marginBottom: 4 }}>🧭 Foundational Belief <span style={{ color: "#C4900A", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+          <div style={{ padding: 12, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 4 }}>🧭 Foundational Belief <span style={{ color: "#D97706", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ fontSize: 13, lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           </div>
 
-          <ExplainBox title="Translations — Take Back Your Language" icon="🔄" color="#D4850A">
+          <ExplainBox title="Translations — Take Back Your Language" icon="🔄" color="#B45309">
             Translations strip propaganda, jargon, and euphemisms from language. Governments name bills to manipulate you. Corporations invent jargon to obscure what they're doing. Media uses euphemisms to soften hard truths. You no longer have to use other people's language that's designed to manipulate you. Approved translations are applied automatically by the browser extension — everywhere, across every article that uses the phrase.
           </ExplainBox>
-          <div style={{ padding: 12, background: "#FDF8F0", border: "1px solid #D4850A40", borderRadius: 2, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#D4850A", marginBottom: 4 }}>🔄 Translation <span style={{ color: "#C4900A", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+          <div style={{ padding: 12, background: "#FFFBEB", border: "1px solid #B4530940", borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 4 }}>🔄 Translation <span style={{ color: "#D97706", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
-              <span style={{ textDecoration: "line-through", color: "#5A5650" }}>{OB_ARTICLE.translationEntry.original}</span>
-              <span style={{ color: "#D4850A", fontWeight: 700 }}>→</span>
-              <span style={{ color: "#D4850A", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
+              <span style={{ textDecoration: "line-through", color: "#475569" }}>{OB_ARTICLE.translationEntry.original}</span>
+              <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
+              <span style={{ color: "#B45309", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
             </div>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7A7570", marginTop: 4 }}>Type: Anti-Propaganda</div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginTop: 4 }}>Type: Anti-Propaganda</div>
           </div>
         </>}
       </>}
@@ -4870,91 +4893,91 @@ function OBReviewStep() {
   return (
     <div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 2: Jury Review</h2>
-      <p style={{ fontSize: 15, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 6 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
+      <p style={{ fontSize: 15, color: "#1E293B", lineHeight: 1.6, marginBottom: 6 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
 
-      <ExplainBox title="Important" icon="⚖️" color="#C2632A">In the real system, you can never review your own submissions. We're showing you the review experience so you understand what happens to your work. Jurors are randomly selected and can't see each other's votes until all have voted.</ExplainBox>
+      <ExplainBox title="Important" icon="⚖️" color="#EA580C">In the real system, you can never review your own submissions. We're showing you the review experience so you understand what happens to your work. Jurors are randomly selected and can't see each other's votes until all have voted.</ExplainBox>
 
       {/* The submission card */}
-      <div style={{ background: "#fff", border: "1px solid #DCD8D0", padding: 16, marginBottom: 16, borderLeft: "4px solid #C4900A", borderRadius: 1 }}>
+      <div style={{ background: "#fff", border: "1px solid #E2E8F0", padding: 16, marginBottom: 16, borderLeft: "4px solid #D97706", borderRadius: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-          <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@you · The General Public · just now</span>
-          <span style={{ fontSize: 10, padding: "2px 7px", background: "#FDF0E4", color: "#C2632A", borderRadius: 2, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Under Review</span>
+          <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>@you · The General Public · just now</span>
+          <span style={{ fontSize: 10, padding: "2px 7px", background: "#FFF7ED", color: "#EA580C", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Under Review</span>
         </div>
-        <a href="#" style={{ fontSize: 10, color: "#2A6B6B" }}>{OB_ARTICLE.url}</a>
-        <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
-          <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#C4573F", color: "#5A5650", fontSize: 14 }}>{OB_ARTICLE.originalHeadline}</div>
-          <div style={{ fontFamily: "var(--serif)", color: "#C4573F", fontWeight: 700, fontSize: 16, marginTop: 2 }}>{OB_ARTICLE.correctedHeadline}</div>
-          <div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginTop: 3 }}>Author: {OB_ARTICLE.author}</div>
+        <a href="#" style={{ fontSize: 10, color: "#0D9488" }}>{OB_ARTICLE.url}</a>
+        <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+          <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", fontSize: 14 }}>{OB_ARTICLE.originalHeadline}</div>
+          <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: 16, marginTop: 2 }}>{OB_ARTICLE.correctedHeadline}</div>
+          <div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginTop: 3 }}>Author: {OB_ARTICLE.author}</div>
         </div>
-        <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 8 }}>The article presents "evil is good" as a serious argument. No substantive case is made — fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. Textbook ragebait.</div>
+        <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6, marginBottom: 8 }}>The article presents "evil is good" as a serious argument. No substantive case is made — fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. Textbook ragebait.</div>
 
-        <ExplainBox title="Line-by-Line Voting" icon="📋" color="#1B5E3F">Each in-line edit gets its own verdict. You can approve the headline correction while rejecting a weak edit — good work doesn't get killed by one flawed claim. Up to 20 edits per article.</ExplainBox>
+        <ExplainBox title="Line-by-Line Voting" icon="📋" color="#059669">Each in-line edit gets its own verdict. You can approve the headline correction while rejecting a weak edit — good work doesn't get killed by one flawed claim. Up to 20 edits per article.</ExplainBox>
 
-        <div style={{ padding: 10, background: "#F0EDE6", borderRadius: 2, marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 8 }}>3 In-Line Edits — vote on each</div>
+        <div style={{ padding: 10, background: "#F1F5F9", borderRadius: 8, marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 8 }}>3 In-Line Edits — vote on each</div>
           {OB_ARTICLE.inlineEdits.map((e, i) => (
-            <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < 2 ? "1px solid #DCD8D0" : "none" }}>
+            <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < 2 ? "1px solid #E2E8F0" : "none" }}>
               <div style={{ fontSize: 12, marginBottom: 4 }}>
-                <span style={{ textDecoration: "line-through", color: "#7A7570" }}>{e.original}</span>
+                <span style={{ textDecoration: "line-through", color: "#64748B" }}>{e.original}</span>
               </div>
-              <div style={{ fontSize: 12, color: "#C4573F", fontWeight: 600, marginBottom: 2 }}>{e.replacement}</div>
-              <div style={{ fontSize: 12, color: "#5A5650", fontStyle: "italic", marginBottom: 6 }}>↳ {e.reasoning}</div>
+              <div style={{ fontSize: 12, color: "#DC2626", fontWeight: 600, marginBottom: 2 }}>{e.replacement}</div>
+              <div style={{ fontSize: 12, color: "#475569", fontStyle: "italic", marginBottom: 6 }}>↳ {e.reasoning}</div>
               {!voted && (
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#1B5E3F" : "#D4CFC4", background: editVotes[i] === true ? "#E5F0EA" : "#fff", color: editVotes[i] === true ? "#1B5E3F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✓ Approve Edit</button>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#C4573F" : "#D4CFC4", background: editVotes[i] === false ? "#FAE8E5" : "#fff", color: editVotes[i] === false ? "#C4573F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✗ Reject Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "#CBD5E1", background: editVotes[i] === true ? "#ECFDF5" : "#fff", color: editVotes[i] === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Approve Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "#CBD5E1", background: editVotes[i] === false ? "#FEF2F2" : "#fff", color: editVotes[i] === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ Reject Edit</button>
                 </div>
               )}
-              {voted && <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: editVotes[i] ? "#1B5E3F" : "#C4573F", fontWeight: 700 }}>{editVotes[i] ? "✓ YOU APPROVED" : "✗ YOU REJECTED"}</span>}
+              {voted && <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: editVotes[i] ? "#059669" : "#DC2626", fontWeight: 700 }}>{editVotes[i] ? "✓ YOU APPROVED" : "✗ YOU REJECTED"}</span>}
             </div>
           ))}
         </div>
 
         {/* Vault entries attached to submission */}
-        <ExplainBox title="Vault Artifacts" icon="🏛" color="#5A5650">Vault entries can be <strong>new</strong> (proposed with this submission — pending until the submission is approved) or <strong>preexisting</strong> (already in the Assembly's vault, linked to show relevance). Jurors vote on each independently. "Still Applies?" means you believe the entry remains valid. Each time an entry survives review, it gains reputation.</ExplainBox>
-        <div style={{ marginTop: 8, padding: 10, background: "#EDF0F7", border: "1px solid #D4CFC4", borderRadius: 2, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 3 }}>🏛 Standing Correction — <span style={{ color: "#C4900A", textTransform: "none" }}>New (proposed with this submission)</span></div>
-          <div style={{ color: "#2B2B2B", fontWeight: 600 }}>{OB_ARTICLE.vaultEntry.assertion}</div>
-          <div style={{ color: "#5A5650", fontSize: 12, marginTop: 2 }}>Source: {OB_ARTICLE.vaultEntry.evidence}</div>
+        <ExplainBox title="Vault Artifacts" icon="🏛" color="#475569">Vault entries can be <strong>new</strong> (proposed with this submission — pending until the submission is approved) or <strong>preexisting</strong> (already in the Assembly's vault, linked to show relevance). Jurors vote on each independently. "Still Applies?" means you believe the entry remains valid. Each time an entry survives review, it gains reputation.</ExplainBox>
+        <div style={{ marginTop: 8, padding: 10, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>🏛 Standing Correction — <span style={{ color: "#D97706", textTransform: "none" }}>New (proposed with this submission)</span></div>
+          <div style={{ color: "#1E293B", fontWeight: 600 }}>{OB_ARTICLE.vaultEntry.assertion}</div>
+          <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>Source: {OB_ARTICLE.vaultEntry.evidence}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#1B5E3F" : "#D4CFC4", background: vaultVotes.sc === true ? "#E5F0EA" : "#fff", color: vaultVotes.sc === true ? "#1B5E3F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#C4573F" : "#D4CFC4", background: vaultVotes.sc === false ? "#FAE8E5" : "#fff", color: vaultVotes.sc === false ? "#C4573F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#059669" : "#CBD5E1", background: vaultVotes.sc === true ? "#ECFDF5" : "#fff", color: vaultVotes.sc === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#DC2626" : "#CBD5E1", background: vaultVotes.sc === false ? "#FEF2F2" : "#fff", color: vaultVotes.sc === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
-        <div style={{ marginTop: 8, padding: 10, background: "#EDF2F7", border: "1px solid #D4CFC4", borderRadius: 2, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#2A6B6B", marginBottom: 3 }}>⚔️ Argument — <span style={{ color: "#C4900A", textTransform: "none" }}>New (proposed with this submission)</span></div>
-          <div style={{ color: "#2B2B2B", lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 3 }}>⚔️ Argument — <span style={{ color: "#D97706", textTransform: "none" }}>New (proposed with this submission)</span></div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#1B5E3F" : "#D4CFC4", background: vaultVotes.arg === true ? "#E5F0EA" : "#fff", color: vaultVotes.arg === true ? "#1B5E3F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#C4573F" : "#D4CFC4", background: vaultVotes.arg === false ? "#FAE8E5" : "#fff", color: vaultVotes.arg === false ? "#C4573F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "#CBD5E1", background: vaultVotes.arg === true ? "#ECFDF5" : "#fff", color: vaultVotes.arg === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "#CBD5E1", background: vaultVotes.arg === false ? "#FEF2F2" : "#fff", color: vaultVotes.arg === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
-        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 2, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5B2D8E", marginBottom: 3 }}>🧭 Foundational Belief — <span style={{ color: "#7A7570", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
-          <div style={{ color: "#2B2B2B", lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief — <span style={{ color: "#64748B", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#1B5E3F" : "#D4CFC4", background: vaultVotes.belief === true ? "#E5F0EA" : "#fff", color: vaultVotes.belief === true ? "#1B5E3F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#C4573F" : "#D4CFC4", background: vaultVotes.belief === false ? "#FAE8E5" : "#fff", color: vaultVotes.belief === false ? "#C4573F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "#CBD5E1", background: vaultVotes.belief === true ? "#ECFDF5" : "#fff", color: vaultVotes.belief === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#DC2626" : "#CBD5E1", background: vaultVotes.belief === false ? "#FEF2F2" : "#fff", color: vaultVotes.belief === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
-        <div style={{ marginTop: 8, padding: 10, background: "#FDF8F0", border: "1px solid #D4850A40", borderRadius: 2, fontSize: 12, marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#D4850A", marginBottom: 3 }}>🔄 Translation — <span style={{ color: "#C4900A", textTransform: "none" }}>New (proposed with this submission)</span></div>
+        <div style={{ marginTop: 8, padding: 10, background: "#FFFBEB", border: "1px solid #B4530940", borderRadius: 8, fontSize: 12, marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation — <span style={{ color: "#D97706", textTransform: "none" }}>New (proposed with this submission)</span></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ textDecoration: "line-through", color: "#5A5650" }}>{OB_ARTICLE.translationEntry.original}</span>
-            <span style={{ color: "#D4850A", fontWeight: 700 }}>→</span>
-            <span style={{ color: "#D4850A", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
+            <span style={{ textDecoration: "line-through", color: "#475569" }}>{OB_ARTICLE.translationEntry.original}</span>
+            <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
+            <span style={{ color: "#B45309", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
           </div>
-          <div style={{ fontSize: 10, color: "#7A7570", marginTop: 3 }}>Type: Anti-Propaganda</div>
+          <div style={{ fontSize: 10, color: "#64748B", marginTop: 3 }}>Type: Anti-Propaganda</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#1B5E3F" : "#D4CFC4", background: vaultVotes.trans === true ? "#E5F0EA" : "#fff", color: vaultVotes.trans === true ? "#1B5E3F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✓ Good Translation</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#C4573F" : "#D4CFC4", background: vaultVotes.trans === false ? "#FAE8E5" : "#fff", color: vaultVotes.trans === false ? "#C4573F" : "#7A7570", borderRadius: 2, cursor: "pointer" }}>✗ Inaccurate</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#059669" : "#CBD5E1", background: vaultVotes.trans === true ? "#ECFDF5" : "#fff", color: vaultVotes.trans === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Good Translation</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#DC2626" : "#CBD5E1", background: vaultVotes.trans === false ? "#FEF2F2" : "#fff", color: vaultVotes.trans === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ Inaccurate</button>
           </div>
         </div>
       </div>
 
       {!voted ? (
-        <div style={{ background: "#FDFBF5", border: "1px solid #DCD8D0", padding: 16, borderRadius: 2 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10 }}>Headline Correction Verdict</div>
+        <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", padding: 16, borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 10 }}>Headline Correction Verdict</div>
 
           <ExplainBox title="Rating: Newsworthiness" icon="📰">How important is this correction? Slide the scale to see what each level means — these anchors keep jurors calibrated so a "7" means the same thing to everyone.</ExplainBox>
           <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
@@ -4963,27 +4986,27 @@ function OBReviewStep() {
           <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
 
           <ExplainBox title="Review Note" icon="💬">Your note is permanent and public. Use it to explain your reasoning. This contributes to the audit trail that makes every decision transparent.</ExplainBox>
-          <textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="The correction accurately identifies fabricated claims..." style={{ width: "100%", padding: "9px 11px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 13, borderRadius: 1, boxSizing: "border-box", marginBottom: 14, fontFamily: "inherit", resize: "vertical" }} />
+          <textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="The correction accurately identifies fabricated claims..." style={{ width: "100%", padding: "9px 11px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 6, boxSizing: "border-box", marginBottom: 14, fontFamily: "inherit", resize: "vertical" }} />
 
-          <ExplainBox title="Deliberate Deception Finding" icon="⚠️" color="#6B1520">This is the nuclear option. Only check this if you believe the submitter is <strong>intentionally lying</strong> — not just wrong, but deliberately deceptive. A majority of jurors checking this triggers a severe drag penalty — each deception finding adds +{W.lieDrag} directly to drag, bypassing the √ curve that softens regular losses. This is a secret ballot — the submitter never sees which jurors checked it.</ExplainBox>
-          <div style={{ margin: "12px 0", padding: 12, background: "#FAE8E5", border: "1.5px solid #C4573F", borderRadius: 2 }}>
+          <ExplainBox title="Deliberate Deception Finding" icon="⚠️" color="#991B1B">This is the nuclear option. Only check this if you believe the submitter is <strong>intentionally lying</strong> — not just wrong, but deliberately deceptive. A majority of jurors checking this triggers a severe drag penalty — each deception finding adds +{W.lieDrag} directly to drag, bypassing the √ curve that softens regular losses. This is a secret ballot — the submitter never sees which jurors checked it.</ExplainBox>
+          <div style={{ margin: "12px 0", padding: 12, background: "#FEF2F2", border: "1.5px solid #DC2626", borderRadius: 8 }}>
             <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}>
-              <input type="checkbox" checked={lieChecked} onChange={e => setLieChecked(e.target.checked)} style={{ accentColor: "#6B1520", marginTop: 3 }} />
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>I certify this submission is a <strong>deliberate lie, gross misrepresentation, or intentional omission.</strong></div>
+              <input type="checkbox" checked={lieChecked} onChange={e => setLieChecked(e.target.checked)} style={{ accentColor: "#991B1B", marginTop: 3 }} />
+              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B" }}>I certify this submission is a <strong>deliberate lie, gross misrepresentation, or intentional omission.</strong></div>
             </label>
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button onClick={() => setVoted(true)} style={{ background: "#1B5E3F", color: "#F0EDE6", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1 }}>✓ Approve Headline</button>
-            <button onClick={() => setVoted(true)} style={{ background: "#C4573F", color: "#F0EDE6", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1 }}>✗ Reject Headline</button>
-            <button style={{ background: "#C2632A", color: "#F0EDE6", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1 }}>⚖ Recuse</button>
+            <button onClick={() => setVoted(true)} style={{ background: "#059669", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6 }}>✓ Approve Headline</button>
+            <button onClick={() => setVoted(true)} style={{ background: "#DC2626", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6 }}>✗ Reject Headline</button>
+            <button style={{ background: "#EA580C", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6 }}>⚖ Recuse</button>
           </div>
         </div>
       ) : (
-        <div style={{ padding: 20, background: "#E5F0EA", border: "1px solid #1B5E3F", borderRadius: 2, textAlign: "center" }}>
+        <div style={{ padding: 20, background: "#ECFDF5", border: "1px solid #059669", borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
-          <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#1B5E3F", marginBottom: 8 }}>Votes Cast</div>
-          <p style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6, maxWidth: 480, margin: "0 auto" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides. Each edit is resolved separately — a strong headline correction can survive even if one weak edit gets rejected.</p>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#059669", marginBottom: 8 }}>Votes Cast</div>
+          <p style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6, maxWidth: 480, margin: "0 auto" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides. Each edit is resolved separately — a strong headline correction can survive even if one weak edit gets rejected.</p>
         </div>
       )}
     </div>
@@ -4996,53 +5019,53 @@ function OBCompareStep() {
   return (
     <div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 3: The Result</h2>
-      <p style={{ fontSize: 15, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 20 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
+      <p style={{ fontSize: 15, color: "#1E293B", lineHeight: 1.6, marginBottom: 20 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, fontFamily: "var(--mono)" }}>
-          <input type="checkbox" checked={highlight} onChange={e => setHighlight(e.target.checked)} style={{ accentColor: "#C4573F" }} />
+          <input type="checkbox" checked={highlight} onChange={e => setHighlight(e.target.checked)} style={{ accentColor: "#DC2626" }} />
           Show corrections
         </label>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* Original */}
-        <div style={{ border: "1px solid #DCD8D0", borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ padding: "10px 14px", background: "#DCD8D0", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#5A5650" }}>Original Article</div>
+        <div style={{ border: "1px solid #E2E8F0", borderRadius: 8, overflow: "hidden" }}>
+          <div style={{ padding: "10px 14px", background: "#E2E8F0", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569" }}>Original Article</div>
           <div style={{ padding: 16 }}>
             <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, margin: "0 0 12px", lineHeight: 1.3 }}>{OB_ARTICLE.originalHeadline}</h3>
-            <div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 12 }}>the-daily-falsehood.com · Opinion</div>
+            <div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 12 }}>the-daily-falsehood.com · Opinion</div>
             {OB_ARTICLE.originalBody.map((p, i) => (
-              <p key={i} style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B", marginBottom: 10 }}>{p}</p>
+              <p key={i} style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B", marginBottom: 10 }}>{p}</p>
             ))}
           </div>
         </div>
 
         {/* Corrected */}
-        <div style={{ border: `1.5px solid ${highlight ? "#C4573F" : "#DCD8D0"}`, borderRadius: 2, overflow: "hidden", transition: "border-color 0.3s" }}>
-          <div style={{ padding: "10px 14px", background: highlight ? "#C4573F" : "#DCD8D0", color: highlight ? "#F0EDE6" : "#5A5650", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", transition: "all 0.3s" }}>{highlight ? "Corrected Version" : "Article as Published"}</div>
+        <div style={{ border: `1.5px solid ${highlight ? "#DC2626" : "#E2E8F0"}`, borderRadius: 8, overflow: "hidden", transition: "border-color 0.3s" }}>
+          <div style={{ padding: "10px 14px", background: highlight ? "#DC2626" : "#E2E8F0", color: highlight ? "#F1F5F9" : "#475569", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", transition: "all 0.3s" }}>{highlight ? "Corrected Version" : "Article as Published"}</div>
           <div style={{ padding: 16 }}>
             <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, margin: "0 0 4px", lineHeight: 1.3 }}>
               {highlight ? (
-                <><span style={{ textDecoration: "line-through", textDecorationColor: "#C4573F", color: "#7A7570" }}>{OB_ARTICLE.originalHeadline}</span><br /><span style={{ color: "#C4573F" }}>{OB_ARTICLE.correctedHeadline}</span></>
+                <><span style={{ textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#64748B" }}>{OB_ARTICLE.originalHeadline}</span><br /><span style={{ color: "#DC2626" }}>{OB_ARTICLE.correctedHeadline}</span></>
               ) : OB_ARTICLE.originalHeadline}
             </h3>
-            <div style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)", marginBottom: 4 }}>the-daily-falsehood.com · Opinion</div>
-            {highlight && <div style={{ fontSize: 10, padding: "3px 8px", background: "#EDE5F0", color: "#5B2D8E", borderRadius: 2, display: "inline-block", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 12 }}>⚖ 3 CORRECTIONS · CONSENSUS VERIFIED</div>}
+            <div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 4 }}>the-daily-falsehood.com · Opinion</div>
+            {highlight && <div style={{ fontSize: 10, padding: "3px 8px", background: "#F5F3FF", color: "#7C3AED", borderRadius: 8, display: "inline-block", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 12 }}>⚖ 3 CORRECTIONS · CONSENSUS VERIFIED</div>}
             {!highlight && <div style={{ marginBottom: 12 }} />}
 
             {OB_ARTICLE.originalBody.map((p, i) => {
               const edit = OB_ARTICLE.inlineEdits.find(e => e.paragraph === i);
-              if (!edit || !highlight) return <p key={i} style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B", marginBottom: 10 }}>{p}</p>;
+              if (!edit || !highlight) return <p key={i} style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B", marginBottom: 10 }}>{p}</p>;
 
               const idx = p.indexOf(edit.original);
               if (idx === -1) {
                 // Text no longer found — article may have been edited since correction was filed
                 return (
                   <div key={i} style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "4px 8px", background: "#FDF0E4", color: "#C2632A", borderRadius: 2, marginBottom: 4, display: "inline-block" }}>⚠ Original text no longer present — validated at time of submission and since corrected</div>
-                    <p style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B" }}>{p}</p>
-                    <div style={{ fontSize: 12, color: "#C4573F", fontWeight: 600, marginTop: 2 }}>Correction applied: {edit.replacement}</div>
+                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "4px 8px", background: "#FFF7ED", color: "#EA580C", borderRadius: 8, marginBottom: 4, display: "inline-block" }}>⚠ Original text no longer present — validated at time of submission and since corrected</div>
+                    <p style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B" }}>{p}</p>
+                    <div style={{ fontSize: 12, color: "#DC2626", fontWeight: 600, marginTop: 2 }}>Correction applied: {edit.replacement}</div>
                   </div>
                 );
               }
@@ -5050,12 +5073,12 @@ function OBCompareStep() {
               const after = p.substring(idx + edit.original.length);
 
               return (
-                <p key={i} style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B", marginBottom: 10 }}>
+                <p key={i} style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B", marginBottom: 10 }}>
                   {before}
-                  <span style={{ background: "#FAE8E5", padding: "1px 3px", borderRadius: 2 }}>
-                    <span style={{ textDecoration: "line-through", textDecorationColor: "#C4573F", color: "#7A7570" }}>{edit.original}</span>
+                  <span style={{ background: "#FEF2F2", padding: "1px 3px", borderRadius: 8 }}>
+                    <span style={{ textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#64748B" }}>{edit.original}</span>
                     {" "}
-                    <span style={{ color: "#C4573F", fontWeight: 600, fontSize: 12 }}>{edit.replacement}</span>
+                    <span style={{ color: "#DC2626", fontWeight: 600, fontSize: 12 }}>{edit.replacement}</span>
                   </span>
                   {after}
                 </p>
@@ -5063,15 +5086,15 @@ function OBCompareStep() {
             })}
 
             {/* Vault entries — only when corrections visible */}
-            {highlight && <div style={{ marginTop: 16, borderTop: "1px solid #DCD8D0", paddingTop: 12 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 8 }}>Linked Vault Entries</div>
-              <div style={{ padding: 8, background: "#EDF0F7", borderRadius: 2, marginBottom: 6, fontSize: 12 }}>
+            {highlight && <div style={{ marginTop: 16, borderTop: "1px solid #E2E8F0", paddingTop: 12 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 8 }}>Linked Vault Entries</div>
+              <div style={{ padding: 8, background: "#EFF6FF", borderRadius: 8, marginBottom: 6, fontSize: 12 }}>
                 <span style={{ fontWeight: 600 }}>🏛 Standing Correction:</span> {OB_ARTICLE.vaultEntry.assertion}
               </div>
-              <div style={{ padding: 8, background: "#EDF2F7", borderRadius: 2, marginBottom: 6, fontSize: 12 }}>
+              <div style={{ padding: 8, background: "#EFF6FF", borderRadius: 8, marginBottom: 6, fontSize: 12 }}>
                 <span style={{ fontWeight: 600 }}>⚔️ Argument:</span> {OB_ARTICLE.argEntry.content.substring(0, 120)}...
               </div>
-              <div style={{ padding: 8, background: "#F3E8F9", borderRadius: 2, fontSize: 12 }}>
+              <div style={{ padding: 8, background: "#F3E8F9", borderRadius: 8, fontSize: 12 }}>
                 <span style={{ fontWeight: 600 }}>🧭 Belief:</span> {OB_ARTICLE.beliefEntry.content.substring(0, 100)}...
               </div>
             </div>}
@@ -5079,7 +5102,7 @@ function OBCompareStep() {
         </div>
       </div>
 
-      <ExplainBox title="This is the goal" icon="🎯" color="#5B2D8E">
+      <ExplainBox title="This is the goal" icon="🎯" color="#7C3AED">
         Every correction that survives both in-group review AND cross-group verification achieves <strong>Consensus</strong> — the highest trust signal in the system. Through browser extensions and API integrations, approved corrections can be displayed directly alongside the original article — readers see the truth without needing to cross-reference anything themselves.
       </ExplainBox>
     </div>
@@ -5092,22 +5115,24 @@ function OBLaunchStep({ onComplete, onAdditional }) {
     <div style={{ textAlign: "center", padding: "20px 0" }}>
       <div style={{ fontSize: 48, marginBottom: 12 }}>⚜</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 28, fontWeight: 700, margin: "0 0 8px" }}>You're Ready</h2>
-      <p style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "#5A5650", fontStyle: "italic", marginBottom: 24 }}>Truth Will Out.</p>
+      <p style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "#475569", fontStyle: "italic", marginBottom: 24 }}>Truth Will Out.</p>
 
       <div style={{ maxWidth: 520, margin: "0 auto", textAlign: "left" }}>
-        <div style={{ padding: 16, background: "#fff", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 16 }}>
+        <div style={{ padding: 16, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 16 }}>
           <h3 style={{ fontFamily: "var(--serif)", fontSize: 16, margin: "0 0 10px" }}>What You've Learned</h3>
-          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#2B2B2B" }}>
+          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#1E293B" }}>
             <p style={{ marginBottom: 8 }}><strong>Submit corrections</strong> — identify misleading headlines, propose factual replacements, attach evidence, make in-line edits, and build your Assembly's Vault.</p>
             <p style={{ marginBottom: 8 }}><strong>Jury review</strong> — randomly selected jurors rate your work on accuracy, newsworthiness, and interestingness. A Deliberate Deception Finding adds massive drag to your Trust Score.</p>
             <p style={{ marginBottom: 8 }}><strong>The result</strong> — approved corrections advance to cross-group review. What survives both achieves Consensus — truth verified by strangers who have no reason to agree with you except that you're right.</p>
-            <p style={{ marginBottom: 0 }}><strong>Your reputation</strong> — every submission builds or damages your Trust Score. Volume has diminishing returns but quality multiplies everything. Lies are devastating. The only way to win is to tell the truth.</p>
+            <p style={{ marginBottom: 8 }}><strong>Your reputation</strong> — every submission builds or damages your Trust Score. Volume has diminishing returns but quality multiplies everything. Lies are devastating. The only way to win is to tell the truth.</p>
+            <p style={{ marginBottom: 8 }}><strong>Badges</strong> — you earn badges automatically as you participate: submission milestones, trusted contributor status, founding Assemblies, and more. Each badge adds +1 to your Trust Score and appears on your public profile.</p>
+            <p style={{ marginBottom: 0 }}><strong>Trusted Contributor</strong> — 10 consecutive approved corrections in an Assembly earns trusted status. Your submissions skip jury review (but remain disputable). One disputed loss revokes it instantly.</p>
           </div>
         </div>
 
-        <div style={{ padding: 16, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 16 }}>
+        <div style={{ padding: 16, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 16 }}>
           <h3 style={{ fontFamily: "var(--serif)", fontSize: 16, margin: "0 0 8px" }}>Your Next Steps</h3>
-          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#2B2B2B" }}>
+          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#1E293B" }}>
             <p style={{ marginBottom: 6 }}>1. You're already a member of <strong>The General Public</strong> — everyone is.</p>
             <p style={{ marginBottom: 6 }}>2. Browse specialized Assemblies and join up to 12 that match your interests and values.</p>
             <p style={{ marginBottom: 6 }}>3. Set your active Assembly and submit your first correction.</p>
@@ -5116,9 +5141,9 @@ function OBLaunchStep({ onComplete, onAdditional }) {
         </div>
       </div>
 
-      <button onClick={onComplete} style={{ background: "#1B2A4A", color: "#F0EDE6", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 1, marginTop: 8 }}>Enter The Trust Assembly →</button>
+      <button onClick={onComplete} style={{ background: "#2563EB", color: "#fff", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 6, marginTop: 8 }}>Enter The Trust Assembly →</button>
       <div style={{ marginTop: 14 }}>
-        <button onClick={onAdditional} style={{ background: "none", border: "1.5px solid #D4CFC4", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 1, textTransform: "uppercase", letterSpacing: "0.06em", color: "#5A5650" }}>📚 Additional Flows — Scoring, Disputes & Concessions</button>
+        <button onClick={onAdditional} style={{ background: "none", border: "1.5px solid #CBD5E1", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 6, textTransform: "uppercase", letterSpacing: "0.06em", color: "#475569" }}>📚 Additional Flows — Scoring, Disputes & Concessions</button>
       </div>
     </div>
   );
@@ -5133,11 +5158,11 @@ function OBAdditionalStep({ onComplete }) {
   return (
     <div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Additional Flows</h2>
-      <p style={{ fontSize: 15, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
+      <p style={{ fontSize: 15, color: "#1E293B", lineHeight: 1.6, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
 
-      <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid #DCD8D0" }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid #E2E8F0" }}>
         {[["scoring", "📊 Scoring"], ["dispute", "⚖️ Disputes"], ["concession", "🤝 Concessions"]].map(([key, label]) => (
-          <button key={key} onClick={() => setSection(key)} style={{ flex: 1, padding: "10px 8px", background: section === key ? "#1B2A4A" : "transparent", color: section === key ? "#F0EDE6" : "#7A7570", border: "none", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", fontWeight: section === key ? 700 : 400, borderBottom: section === key ? "2px solid #B8963E" : "2px solid transparent", transition: "all 0.2s" }}>{label}</button>
+          <button key={key} onClick={() => setSection(key)} style={{ flex: 1, padding: "10px 8px", background: section === key ? "#2563EB" : "transparent", color: section === key ? "#fff" : "#64748B", border: "none", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", fontWeight: section === key ? 700 : 400, borderBottom: section === key ? "2px solid #2563EB" : "2px solid transparent", transition: "all 0.2s" }}>{label}</button>
         ))}
       </div>
 
@@ -5145,125 +5170,125 @@ function OBAdditionalStep({ onComplete }) {
       {section === "scoring" && <div>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, margin: "0 0 12px" }}>How Scoring Works</h3>
 
-        <ExplainBox title="The Core Principle" icon="⚖️" color="#1B2A4A">
+        <ExplainBox title="The Core Principle" icon="⚖️" color="#0F172A">
           The scoring system is intentionally asymmetric: honesty compounds slowly, but deception craters your reputation. This isn't punitive — it's structural. A system where lying is cheap and truth is expensive will produce lies. Trust Assembly inverts that. In the future system, these Trust Scores will be used to drive discoverability and prominence — the most trustworthy citizens and assemblies will surface first.
         </ExplainBox>
 
-        <div style={{ padding: 16, background: "#fff", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 16 }}>
+        <div style={{ padding: 16, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 16 }}>
           {/* Friendly header */}
-          <div style={{ fontFamily: "var(--serif)", fontSize: 15, color: "#1B2A4A", lineHeight: 1.5, marginBottom: 12 }}>
-            We know this looks complicated. It's just math for <strong style={{ color: "#B8963E" }}>try your best to do the right thing</strong>.
+          <div style={{ fontFamily: "var(--serif)", fontSize: 15, color: "#0F172A", lineHeight: 1.5, marginBottom: 12 }}>
+            We know this looks complicated. It's just math for <strong style={{ color: "#CA8A04" }}>try your best to do the right thing</strong>.
           </div>
           {/* Variable legend */}
-          <div style={{ padding: 10, background: "#F0EDE6", borderRadius: 2, marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: "#5A5650" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#7A7570", marginBottom: 6 }}>What the variables mean</div>
+          <div style={{ padding: 10, background: "#F1F5F9", borderRadius: 8, marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: "#475569" }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748B", marginBottom: 6 }}>What the variables mean</div>
             <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 10px" }}>
-              <span style={{ fontFamily: "var(--mono)", color: "#1B5E3F", fontWeight: 700 }}>Points</span><span>Your wins, dispute wins, and streak bonus — how much good work you've done</span>
-              <span style={{ fontFamily: "var(--mono)", color: "#1B5E3F", fontWeight: 700 }}>√</span><span>Square root — more work helps, but you can't grind your way to the top</span>
-              <span style={{ fontFamily: "var(--mono)", color: "#2A6B6B", fontWeight: 700 }}>Quality</span><span>How important and interesting jurors rated your work</span>
-              <span style={{ fontFamily: "var(--mono)", color: "#C4573F", fontWeight: 700 }}>Drag</span><span>Your losses and lies — this divides your score, so mistakes pull you down</span>
-              <span style={{ fontFamily: "var(--mono)", color: "#B8963E", fontWeight: 700 }}>Cassandra</span><span>Bonus for being right when everyone said you were wrong</span>
+              <span style={{ fontFamily: "var(--mono)", color: "#059669", fontWeight: 700 }}>Points</span><span>Your wins, dispute wins, and streak bonus — how much good work you've done</span>
+              <span style={{ fontFamily: "var(--mono)", color: "#059669", fontWeight: 700 }}>√</span><span>Square root — more work helps, but you can't grind your way to the top</span>
+              <span style={{ fontFamily: "var(--mono)", color: "#0D9488", fontWeight: 700 }}>Quality</span><span>How important and interesting jurors rated your work</span>
+              <span style={{ fontFamily: "var(--mono)", color: "#DC2626", fontWeight: 700 }}>Drag</span><span>Your losses and lies — this divides your score, so mistakes pull you down</span>
+              <span style={{ fontFamily: "var(--mono)", color: "#CA8A04", fontWeight: 700 }}>Cassandra</span><span>Bonus for being right when everyone said you were wrong</span>
             </div>
           </div>
           {/* Visual formula equation */}
-          <div style={{ padding: 14, background: "#FDFBF5", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 14 }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "#B0A89C", marginBottom: 8 }}>TRUST SCORE =</div>
+          <div style={{ padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "#94A3B8", marginBottom: 8 }}>TRUST SCORE =</div>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#E5F0EA", border: "1.5px solid #1B5E3F", borderRadius: 2 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#1B5E3F", marginBottom: 2 }}>√ Points</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#1B5E3F" }}>√ W + DW + S</div>
+              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#ECFDF5", border: "1.5px solid #059669", borderRadius: 8 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#059669", marginBottom: 2 }}>√ Points</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#059669" }}>√ W + DW + S</div>
               </div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#B0A89C" }}>×</div>
-              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#E5EFED", border: "1.5px solid #2A6B6B", borderRadius: 2 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#2A6B6B", marginBottom: 2 }}>Quality</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#2A6B6B" }}>Q<sup>1.5</sup></div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#94A3B8" }}>×</div>
+              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#F0FDFA", border: "1.5px solid #0D9488", borderRadius: 8 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#0D9488", marginBottom: 2 }}>Quality</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#0D9488" }}>Q<sup>1.5</sup></div>
               </div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#B0A89C" }}>÷</div>
-              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#FAE8E5", border: "1.5px solid #C4573F", borderRadius: 2 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#C4573F", marginBottom: 2 }}>Drag</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#C4573F" }}>1 + √L + D</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#94A3B8" }}>÷</div>
+              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#FEF2F2", border: "1.5px solid #DC2626", borderRadius: 8 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#DC2626", marginBottom: 2 }}>Drag</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#DC2626" }}>1 + √L + D</div>
               </div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#B0A89C" }}>+</div>
-              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#FDF5E6", border: "1.5px solid #B8963E", borderRadius: 2 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#B8963E", marginBottom: 2 }}>Cassandra</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#B8963E" }}>V<sup>★</sup></div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#94A3B8" }}>+</div>
+              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "#FFFBEB", border: "1.5px solid #CA8A04", borderRadius: 8 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "#CA8A04", marginBottom: 2 }}>Cassandra</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "#CA8A04" }}>V<sup>★</sup></div>
               </div>
             </div>
           </div>
           {/* Component explanations */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12, lineHeight: 1.6, color: "#2B2B2B" }}>
-            <div style={{ padding: 10, background: "#E5F0EA", borderRadius: 2 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#1B5E3F", marginBottom: 4, fontWeight: 700 }}>√ Points</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12, lineHeight: 1.6, color: "#1E293B" }}>
+            <div style={{ padding: 10, background: "#ECFDF5", borderRadius: 8 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#059669", marginBottom: 4, fontWeight: 700 }}>√ Points</div>
               <div>Each approved correction: <strong>+1 point</strong></div>
               <div>Dispute won: <strong>+{W.disputeWin} points</strong></div>
               <div>Streak bonus: <strong>+1</strong> per {W.streakInterval} consecutive wins</div>
-              <div style={{ fontSize: 11, color: "#5A5650", marginTop: 4 }}>Volume has <strong>diminishing returns</strong> (square root). You can't farm your way to the top.</div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>Volume has <strong>diminishing returns</strong> (square root). You can't farm your way to the top.</div>
             </div>
-            <div style={{ padding: 10, background: "#E5EFED", borderRadius: 2 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#2A6B6B", marginBottom: 4, fontWeight: 700 }}>Quality Multiplier</div>
+            <div style={{ padding: 10, background: "#F0FDFA", borderRadius: 8 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#0D9488", marginBottom: 4, fontWeight: 700 }}>Quality Multiplier</div>
               <div>Average of <strong>Newsworthiness</strong> + <strong>Interestingness</strong> ratings from jurors</div>
               <div>Capped at {W.qualityCap} (ratings beyond ~8+8 give no extra benefit)</div>
-              <div style={{ fontSize: 11, color: "#5A5650", marginTop: 4 }}>Raised to power {W.qualityExp} — trivial corrections are <strong>penalized</strong>, important work is <strong>amplified</strong>.</div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>Raised to power {W.qualityExp} — trivial corrections are <strong>penalized</strong>, important work is <strong>amplified</strong>.</div>
             </div>
-            <div style={{ padding: 10, background: "#FAE8E5", borderRadius: 2 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#C4573F", marginBottom: 4, fontWeight: 700 }}>Drag (divides your score)</div>
+            <div style={{ padding: 10, background: "#FEF2F2", borderRadius: 8 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#DC2626", marginBottom: 4, fontWeight: 700 }}>Drag (divides your score)</div>
               <div>Regular losses: <strong>diminishing</strong> (inside √)</div>
               <div>Failed disputes: <strong>diminishing</strong> (inside √)</div>
-              <div style={{ color: "#6B1520", fontWeight: 700 }}>Lies: <strong>+{W.lieDrag} each</strong> (linear, no mercy)</div>
-              <div style={{ fontSize: 11, color: "#5A5650", marginTop: 4 }}>First few losses hurt most. Lies bypass the diminishing curve — each one is devastating.</div>
+              <div style={{ color: "#991B1B", fontWeight: 700 }}>Lies: <strong>+{W.lieDrag} each</strong> (linear, no mercy)</div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>First few losses hurt most. Lies bypass the diminishing curve — each one is devastating.</div>
             </div>
-            <div style={{ padding: 10, background: "#FDF5E6", borderRadius: 2 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#B8963E", marginBottom: 4, fontWeight: 700 }}>Cassandra Bonus (additive)</div>
+            <div style={{ padding: 10, background: "#FFFBEB", borderRadius: 8 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "#CA8A04", marginBottom: 4, fontWeight: 700 }}>Cassandra Bonus (additive)</div>
               <div><strong>{W.vindicationBase}×</strong> base per vindication</div>
               <div>Scales with <strong>impact</strong> (news × fun) and <strong>persistence</strong> (rejections^{W.persistenceExp})</div>
-              <div style={{ fontSize: 11, color: "#5A5650", marginTop: 4 }}>A historic vindication after 3 rejections can catapult a brand-new citizen to the top. (Coming soon.)</div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>A historic vindication after 3 rejections can catapult a brand-new citizen to the top. (Coming soon.)</div>
             </div>
           </div>
-          <div style={{ marginTop: 10, fontSize: 9, color: "#B0A89C", fontFamily: "var(--mono)", lineHeight: 1.5 }}>
+          <div style={{ marginTop: 10, fontSize: 9, color: "#94A3B8", fontFamily: "var(--mono)", lineHeight: 1.5 }}>
             All weights are community-votable in future elections. The formula shape is permanent; only the coefficients change.
           </div>
         </div>
 
-        <div style={{ padding: 16, background: "#fff", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 16 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 12 }}>Individual Scoring — Jury Service</div>
-          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#2B2B2B" }}>
+        <div style={{ padding: 16, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 12 }}>Individual Scoring — Jury Service</div>
+          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#1E293B" }}>
             <p style={{ marginBottom: 8 }}>Jurors are scored on alignment with the final verdict. When you vote with the majority, your reputation as a reliable reviewer grows. When you're the outlier, it costs — but less than a submission loss, because disagreement in good faith is expected.</p>
             <p style={{ marginBottom: 0 }}>The system tracks your review history across all Assemblies. Consistent, fair-minded jurors become eligible for sponsorship roles faster and get weighted higher in Assembly reputation calculations.</p>
           </div>
         </div>
 
-        <div style={{ padding: 16, background: "#fff", border: "1px solid #DCD8D0", borderRadius: 2, marginBottom: 16 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 12 }}>Assembly Reputation</div>
-          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#2B2B2B" }}>
+        <div style={{ padding: 16, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 12 }}>Assembly Reputation</div>
+          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#1E293B" }}>
             <p style={{ marginBottom: 8 }}>Every Assembly has a Trust Score computed from its members' collective track record. The score weights cross-group survival rate (corrections that survive review by outsiders) by jury rigor — larger juries and more diverse review panels count for more.</p>
             <p style={{ marginBottom: 8 }}>Assemblies with high deception rates see their Trust Score decline, which affects how their corrections are ranked in the public feed. There's no time decay on the score — your Assembly's reputation is its permanent record.</p>
             <p style={{ marginBottom: 0 }}>Trust Score badges appear on Assembly cards so citizens can evaluate credibility at a glance before joining or reading corrections from a group.</p>
           </div>
         </div>
 
-        <ExplainBox title="The Deception Penalty Cascade" icon="🚨" color="#6B1520">
+        <ExplainBox title="The Deception Penalty Cascade" icon="🚨" color="#991B1B">
           A Deliberate Deception finding doesn't just hurt your score — it triggers a cooldown. You must complete a streak of consecutive approved submissions before your reputation can recover. If you're a Digital Intelligence partner, a deception finding against your DI suspends all linked accounts. The system makes honesty the only sustainable strategy.
         </ExplainBox>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>
-          <button onClick={() => setSection("dispute")} style={{ background: "#1B2A4A", color: "#F0EDE6", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1, letterSpacing: "0.04em" }}>Next: Dispute Flow →</button>
+          <button onClick={() => setSection("dispute")} style={{ background: "#2563EB", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6, letterSpacing: "0.04em" }}>Next: Dispute Flow →</button>
         </div>
       </div>}
 
       {/* ── DISPUTE ── */}
       {section === "dispute" && <div>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}>Dispute Flow</h3>
-        <p style={{ fontSize: 15, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 16 }}>Sometimes a correction gets approved but contains an error. The dispute mechanism lets any citizen challenge an approved correction — and if they're right, they earn the highest reward in the system.</p>
+        <p style={{ fontSize: 15, color: "#1E293B", lineHeight: 1.6, marginBottom: 16 }}>Sometimes a correction gets approved but contains an error. The dispute mechanism lets any citizen challenge an approved correction — and if they're right, they earn the highest reward in the system.</p>
 
-        <ExplainBox title="Disputes & The Cassandra Rule" icon="🔮" color="#5B2D8E">
+        <ExplainBox title="Disputes & The Cassandra Rule" icon="🔮" color="#7C3AED">
           <strong>Disputes (+{W.disputeWin} pts):</strong> If you spot an error in an approved correction, you can challenge it. A new jury reviews the dispute. Win and you earn +{W.disputeWin} points. Lose and you take drag. Only challenge what you can prove.
           <br /><br />
           <strong>The Cassandra Rule:</strong> Named for the prophet no one believed. If your correction is disputed and the dispute is upheld — meaning the jury said you were wrong — but you refuse to concede because you believe you're right, and you are later vindicated, you earn an additive bonus that scales with the story's importance and the number of rejections you weathered. A single historic vindication can propel a brand-new citizen to the top of the system. The full Cassandra vindication path is being built for a future release.
         </ExplainBox>
 
-        <div style={{ padding: 16, background: "#FDF5E6", border: "1.5px solid #D4850A", borderRadius: 2, marginBottom: 16 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D4850A", fontWeight: 700, marginBottom: 8 }}>📋 Sample Scenario</div>
-          <div style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B" }}>
+        <div style={{ padding: 16, background: "#FFFBEB", border: "1.5px solid #B45309", borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B45309", fontWeight: 700, marginBottom: 8 }}>📋 Sample Scenario</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B" }}>
             <p style={{ marginBottom: 6 }}>A citizen submitted a correction for the headline <strong>"City Council Approves $12M Budget for New Downtown Park"</strong>.</p>
             <p style={{ marginBottom: 6 }}>Their correction: <em>"The approved park budget was $8.5M, not $12M — the $12M figure includes a separate transit project bundled into the same vote."</em></p>
             <p style={{ marginBottom: 0 }}>The jury approved this correction. But you've read the actual council minutes, and the park budget was <strong>$9.2M</strong>, not $8.5M. The submitter used a figure from a draft budget that was revised before the final vote. Their logic was right — the article did conflate two budgets — but the specific number was wrong.</p>
@@ -5271,137 +5296,137 @@ function OBAdditionalStep({ onComplete }) {
         </div>
 
         {/* The approved submission card */}
-        <div style={{ background: "#fff", border: "1px solid #DCD8D0", padding: 16, marginBottom: 16, borderLeft: "4px solid #1B5E3F", borderRadius: 1 }}>
+        <div style={{ background: "#fff", border: "1px solid #E2E8F0", padding: 16, marginBottom: 16, borderLeft: "4px solid #059669", borderRadius: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@civicwatcher · Metro Accountability Assembly · 3 days ago</span>
-            <span style={{ fontSize: 10, padding: "2px 7px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Approved</span>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>@civicwatcher · Metro Accountability Assembly · 3 days ago</span>
+            <span style={{ fontSize: 10, padding: "2px 7px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Approved</span>
           </div>
-          <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
-            <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#C4573F", color: "#5A5650", fontSize: 14 }}>City Council Approves $12M Budget for New Downtown Park</div>
-            <div style={{ fontFamily: "var(--serif)", color: "#C4573F", fontWeight: 700, fontSize: 16, marginTop: 2 }}>Park Budget Is $8.5M, Not $12M — Article Conflates Two Separate Line Items</div>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+            <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", fontSize: 14 }}>City Council Approves $12M Budget for New Downtown Park</div>
+            <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: 16, marginTop: 2 }}>Park Budget Is $8.5M, Not $12M — Article Conflates Two Separate Line Items</div>
           </div>
-          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>The $12M figure cited in the headline combines the $8.5M park budget with $3.5M for the Elm Street transit corridor. These were separate line items voted on in the same session.</div>
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>The $12M figure cited in the headline combines the $8.5M park budget with $3.5M for the Elm Street transit corridor. These were separate line items voted on in the same session.</div>
         </div>
 
-        <ExplainBox title="Filing a Dispute" icon="⚖️" color="#C2632A">
+        <ExplainBox title="Filing a Dispute" icon="⚖️" color="#EA580C">
           You file a dispute by citing the specific error and providing evidence. A fresh jury — larger than the original (a "super jury" of at least 7) — reviews both the original correction and your challenge. Neither the original submitter nor the original jurors can serve on the dispute jury.
         </ExplainBox>
 
         {!disputeVoted ? (
-          <div style={{ background: "#FDFBF5", border: "1.5px solid #C2632A", padding: 16, borderRadius: 2, marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#C2632A", marginBottom: 10 }}>Your Dispute</div>
-            <div style={{ padding: "9px 11px", border: "1.5px solid #D4CFC4", background: "#fff", fontSize: 14, lineHeight: 1.6, color: "#1B2A4A", borderRadius: 1, marginBottom: 12 }}>
+          <div style={{ background: "#FFFFFF", border: "1.5px solid #EA580C", padding: 16, borderRadius: 8, marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", marginBottom: 10 }}>Your Dispute</div>
+            <div style={{ padding: "9px 11px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 14, lineHeight: 1.6, color: "#0F172A", borderRadius: 6, marginBottom: 12 }}>
               The correction's logic is sound — the article does conflate two budgets — but the specific figure is wrong. The draft budget allocated $8.5M, but the final approved budget for the park was $9.2M after a late amendment adding $700K for accessibility features. See council minutes, page 14, Amendment 3-C.
             </div>
-            <div style={{ padding: 10, background: "#F0EDE6", borderRadius: 2, marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 4 }}>Evidence</div>
-              <div style={{ fontSize: 12 }}><a href="#" style={{ color: "#2A6B6B" }}>https://citycouncil.gov/minutes/2025-02-14</a></div>
-              <div style={{ fontSize: 12, color: "#5A5650", marginTop: 2 }}>↳ Official council minutes showing Amendment 3-C revising the park allocation from $8.5M to $9.2M.</div>
+            <div style={{ padding: 10, background: "#F1F5F9", borderRadius: 8, marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>Evidence</div>
+              <div style={{ fontSize: 12 }}><a href="#" style={{ color: "#0D9488" }}>https://citycouncil.gov/minutes/2025-02-14</a></div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>↳ Official council minutes showing Amendment 3-C revising the park allocation from $8.5M to $9.2M.</div>
             </div>
-            <button onClick={() => setDisputeVoted(true)} style={{ background: "#C2632A", color: "#F0EDE6", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1 }}>File Dispute</button>
+            <button onClick={() => setDisputeVoted(true)} style={{ background: "#EA580C", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6 }}>File Dispute</button>
           </div>
         ) : (
-          <div style={{ padding: 20, background: "#FDF0E4", border: "1.5px solid #C2632A", borderRadius: 2, marginBottom: 16 }}>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#C2632A", marginBottom: 8 }}>⚖️ Dispute Filed</div>
-            <p style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 12 }}>A super jury of 7 members (2× the normal jury for this Assembly, minimum 7) has been drawn from citizens outside the Metro Accountability Assembly. They will review both the original correction and your dispute evidence.</p>
-            <div style={{ padding: 12, background: "#fff", borderRadius: 2, border: "1px solid #DCD8D0" }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5B2D8E", marginBottom: 6 }}>Dispute Verdict</div>
-              <div style={{ fontSize: 14, fontFamily: "var(--serif)", fontWeight: 700, color: "#5B2D8E" }}>5–2 in favor of the disputant</div>
-              <p style={{ fontSize: 12, color: "#5A5650", marginTop: 6, lineHeight: 1.6 }}>The jury found that while the original correction correctly identified the budget conflation, the specific figure ($8.5M) was from an outdated draft. The actual park budget of $9.2M is supported by the official council minutes. The original correction's headline should be amended.</p>
+          <div style={{ padding: 20, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8, marginBottom: 16 }}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#EA580C", marginBottom: 8 }}>⚖️ Dispute Filed</div>
+            <p style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6, marginBottom: 12 }}>A super jury of 7 members (2× the normal jury for this Assembly, minimum 7) has been drawn from citizens outside the Metro Accountability Assembly. They will review both the original correction and your dispute evidence.</p>
+            <div style={{ padding: 12, background: "#fff", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 6 }}>Dispute Verdict</div>
+              <div style={{ fontSize: 14, fontFamily: "var(--serif)", fontWeight: 700, color: "#7C3AED" }}>5–2 in favor of the disputant</div>
+              <p style={{ fontSize: 12, color: "#475569", marginTop: 6, lineHeight: 1.6 }}>The jury found that while the original correction correctly identified the budget conflation, the specific figure ($8.5M) was from an outdated draft. The actual park budget of $9.2M is supported by the official council minutes. The original correction's headline should be amended.</p>
             </div>
-            <div style={{ marginTop: 12, padding: 10, background: "#EDE5F0", borderRadius: 2 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#2A6B6B", fontWeight: 700 }}>⚖ DISPUTE UPHELD</div>
+            <div style={{ marginTop: 12, padding: 10, background: "#F5F3FF", borderRadius: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", fontWeight: 700 }}>⚖ DISPUTE UPHELD</div>
               <div style={{ fontSize: 12, marginTop: 4 }}>You earn <strong>+{W.disputeWin} points</strong> for successfully catching an error in an approved correction. The original submitter takes drag — not for deception, but for inaccuracy.</div>
             </div>
           </div>
         )}
 
-        <ExplainBox title="What happens next" icon="📝" color="#1B5E3F">
+        <ExplainBox title="What happens next" icon="📝" color="#059669">
           After a successful dispute, the original submitter has the opportunity to <strong>concede</strong> — acknowledging the error and allowing their correction to be amended. Concessions preserve the core correction while fixing the specific error. They also trigger partial score recovery through a time-decay mechanism.
         </ExplainBox>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>
-          <button onClick={() => { setSection("concession"); }} style={{ background: "#1B2A4A", color: "#F0EDE6", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1, letterSpacing: "0.04em" }}>Next: Concession Flow →</button>
+          <button onClick={() => { setSection("concession"); }} style={{ background: "#2563EB", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6, letterSpacing: "0.04em" }}>Next: Concession Flow →</button>
         </div>
       </div>}
 
       {/* ── CONCESSION ── */}
       {section === "concession" && <div>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}>Concession Flow</h3>
-        <p style={{ fontSize: 15, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 16 }}>When a dispute succeeds, the original submitter can acknowledge their error through a concession. This isn't defeat — it's intellectual honesty made visible. The system rewards it.</p>
+        <p style={{ fontSize: 15, color: "#1E293B", lineHeight: 1.6, marginBottom: 16 }}>When a dispute succeeds, the original submitter can acknowledge their error through a concession. This isn't defeat — it's intellectual honesty made visible. The system rewards it.</p>
 
-        <ExplainBox title="Why Concessions Matter" icon="🤝" color="#2A6B6B">
+        <ExplainBox title="Why Concessions Matter" icon="🤝" color="#0D9488">
           In most online spaces, admitting you were wrong is a losing move. In Trust Assembly, conceding to a valid dispute triggers <strong>time-decay recovery</strong> — you earn back a portion of your score loss, with the most recovery available to those who concede quickly. One concession per week gets full recovery — no loss at all. Additional concessions in the same week recover 90%. After two weeks it drops to 50%, and after three months to 5%. The message is clear: intellectual honesty is rewarded, and stubbornness isn't.
         </ExplainBox>
 
-        <div style={{ padding: 16, background: "#FDF5E6", border: "1.5px solid #D4850A", borderRadius: 2, marginBottom: 16 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#D4850A", fontWeight: 700, marginBottom: 8 }}>📋 Continuing the Scenario</div>
-          <div style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B" }}>
+        <div style={{ padding: 16, background: "#FFFBEB", border: "1.5px solid #B45309", borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B45309", fontWeight: 700, marginBottom: 8 }}>📋 Continuing the Scenario</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B" }}>
             <p style={{ marginBottom: 0 }}>You are now <strong>@civicwatcher</strong>, the original submitter. Your correction about the park budget was disputed because you cited $8.5M (from a draft) instead of the final $9.2M figure. The dispute jury sided with the disputant 5–2. You've been notified and need to decide: concede, or stand your ground.</p>
           </div>
         </div>
 
         {/* The disputed submission */}
-        <div style={{ background: "#fff", border: "1px solid #DCD8D0", padding: 16, marginBottom: 16, borderLeft: "4px solid #C2632A", borderRadius: 1 }}>
+        <div style={{ background: "#fff", border: "1px solid #E2E8F0", padding: 16, marginBottom: 16, borderLeft: "4px solid #EA580C", borderRadius: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>@civicwatcher (you) · Metro Accountability Assembly</span>
-            <span style={{ fontSize: 10, padding: "2px 7px", background: "#FDF0E4", color: "#C2632A", borderRadius: 2, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Disputed — Lost</span>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>@civicwatcher (you) · Metro Accountability Assembly</span>
+            <span style={{ fontSize: 10, padding: "2px 7px", background: "#FFF7ED", color: "#EA580C", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Disputed — Lost</span>
           </div>
-          <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
-            <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#C4573F", color: "#5A5650", fontSize: 14 }}>City Council Approves $12M Budget for New Downtown Park</div>
-            <div style={{ fontFamily: "var(--serif)", color: "#C4573F", fontWeight: 700, fontSize: 16, marginTop: 2 }}>Park Budget Is $8.5M, Not $12M — Article Conflates Two Separate Line Items</div>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+            <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", fontSize: 14 }}>City Council Approves $12M Budget for New Downtown Park</div>
+            <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: 16, marginTop: 2 }}>Park Budget Is $8.5M, Not $12M — Article Conflates Two Separate Line Items</div>
           </div>
-          <div style={{ padding: 10, background: "#FAE8E5", borderRadius: 2, border: "1px solid #C4573F", marginTop: 8 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A", fontWeight: 700, marginBottom: 4 }}>DISPUTE FINDING</div>
+          <div style={{ padding: 10, background: "#FEF2F2", borderRadius: 8, border: "1px solid #DC2626", marginTop: 8 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", fontWeight: 700, marginBottom: 4 }}>DISPUTE FINDING</div>
             <div style={{ fontSize: 12, lineHeight: 1.6 }}>The park figure should be $9.2M (final budget after Amendment 3-C), not $8.5M (draft budget). The core logic of the correction — that the article conflates park and transit budgets — is sound.</div>
           </div>
         </div>
 
         {!conceded ? (
-          <div style={{ background: "#FDFBF5", border: "1.5px solid #2A6B6B", padding: 16, borderRadius: 2, marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#2A6B6B", marginBottom: 12 }}>Concession Decision</div>
-            <p style={{ fontSize: 13, lineHeight: 1.6, color: "#2B2B2B", marginBottom: 12 }}>You can concede to the dispute, which allows your correction to be amended with the accurate figure. Or you can decline — but your 3× score loss stands either way. Conceding triggers time-decay recovery.</p>
+          <div style={{ background: "#FFFFFF", border: "1.5px solid #0D9488", padding: 16, borderRadius: 8, marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 12 }}>Concession Decision</div>
+            <p style={{ fontSize: 13, lineHeight: 1.6, color: "#1E293B", marginBottom: 12 }}>You can concede to the dispute, which allows your correction to be amended with the accurate figure. Or you can decline — but your 3× score loss stands either way. Conceding triggers time-decay recovery.</p>
 
-            <div style={{ padding: 12, background: "#fff", borderRadius: 2, border: "1px solid #DCD8D0", marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>Recovery Tiers</div>
-              <div style={{ fontSize: 12, lineHeight: 1.7, color: "#2B2B2B" }}>
+            <div style={{ padding: 12, background: "#fff", borderRadius: 8, border: "1px solid #E2E8F0", marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>Recovery Tiers</div>
+              <div style={{ fontSize: 12, lineHeight: 1.7, color: "#1E293B" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px" }}>
-                  <span style={{ fontFamily: "var(--mono)", color: "#1B5E3F", fontWeight: 700 }}>Within 1 week (1st)</span><span>100% recovered — no reputation loss</span>
-                  <span style={{ fontFamily: "var(--mono)", color: "#2A6B6B", fontWeight: 700 }}>Within 1 week (2nd+)</span><span>90% recovered — 10% lesson fee</span>
-                  <span style={{ fontFamily: "var(--mono)", color: "#2A6B6B", fontWeight: 700 }}>1–2 weeks</span><span>90% recovered</span>
-                  <span style={{ fontFamily: "var(--mono)", color: "#D4850A", fontWeight: 700 }}>2–4 weeks</span><span>50% recovered</span>
-                  <span style={{ fontFamily: "var(--mono)", color: "#C2632A", fontWeight: 700 }}>1–3 months</span><span>25% recovered</span>
-                  <span style={{ fontFamily: "var(--mono)", color: "#C4573F", fontWeight: 700 }}>3+ months</span><span>5% recovered</span>
+                  <span style={{ fontFamily: "var(--mono)", color: "#059669", fontWeight: 700 }}>Within 1 week (1st)</span><span>100% recovered — no reputation loss</span>
+                  <span style={{ fontFamily: "var(--mono)", color: "#0D9488", fontWeight: 700 }}>Within 1 week (2nd+)</span><span>90% recovered — 10% lesson fee</span>
+                  <span style={{ fontFamily: "var(--mono)", color: "#0D9488", fontWeight: 700 }}>1–2 weeks</span><span>90% recovered</span>
+                  <span style={{ fontFamily: "var(--mono)", color: "#B45309", fontWeight: 700 }}>2–4 weeks</span><span>50% recovered</span>
+                  <span style={{ fontFamily: "var(--mono)", color: "#EA580C", fontWeight: 700 }}>1–3 months</span><span>25% recovered</span>
+                  <span style={{ fontFamily: "var(--mono)", color: "#DC2626", fontWeight: 700 }}>3+ months</span><span>5% recovered</span>
                 </div>
               </div>
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConceded(true)} style={{ background: "#2A6B6B", color: "#F0EDE6", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1 }}>🤝 Concede — Accept the Correction</button>
-              <button style={{ background: "none", border: "1.5px solid #D4CFC4", padding: "10px 16px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 1, color: "#5A5650" }}>Decline</button>
+              <button onClick={() => setConceded(true)} style={{ background: "#0D9488", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6 }}>🤝 Concede — Accept the Correction</button>
+              <button style={{ background: "none", border: "1.5px solid #CBD5E1", padding: "10px 16px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 6, color: "#475569" }}>Decline</button>
             </div>
           </div>
         ) : (
-          <div style={{ padding: 20, background: "#E5F0EA", border: "1.5px solid #1B5E3F", borderRadius: 2, marginBottom: 16 }}>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#1B5E3F", marginBottom: 8 }}>🤝 Concession Accepted</div>
-            <p style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6, marginBottom: 12 }}>You conceded within one week. Your correction is being amended to reflect the accurate $9.2M figure. The core of your correction — that the article conflated two budgets — stands. Your amended headline:</p>
-            <div style={{ padding: 10, background: "#fff", borderRadius: 2, border: "1px solid #DCD8D0", marginBottom: 12 }}>
-              <div style={{ fontFamily: "var(--serif)", color: "#C4573F", fontWeight: 700, fontSize: 15 }}>Park Budget Is $9.2M, Not $12M — Article Conflates Two Separate Line Items</div>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#2A6B6B", marginTop: 4 }}>AMENDED VIA CONCESSION · Original: $8.5M → Corrected: $9.2M</div>
+          <div style={{ padding: 20, background: "#ECFDF5", border: "1.5px solid #059669", borderRadius: 8, marginBottom: 16 }}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#059669", marginBottom: 8 }}>🤝 Concession Accepted</div>
+            <p style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6, marginBottom: 12 }}>You conceded within one week. Your correction is being amended to reflect the accurate $9.2M figure. The core of your correction — that the article conflated two budgets — stands. Your amended headline:</p>
+            <div style={{ padding: 10, background: "#fff", borderRadius: 8, border: "1px solid #E2E8F0", marginBottom: 12 }}>
+              <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: 15 }}>Park Budget Is $9.2M, Not $12M — Article Conflates Two Separate Line Items</div>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", marginTop: 4 }}>AMENDED VIA CONCESSION · Original: $8.5M → Corrected: $9.2M</div>
             </div>
-            <div style={{ padding: 10, background: "#EDE5F0", borderRadius: 2 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5B2D8E", fontWeight: 700, marginBottom: 4 }}>SCORE RECOVERY</div>
+            <div style={{ padding: 10, background: "#F5F3FF", borderRadius: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#7C3AED", fontWeight: 700, marginBottom: 4 }}>SCORE RECOVERY</div>
               <div style={{ fontSize: 12, lineHeight: 1.6 }}>You conceded within the 1-week window and this was your first concession this week — full recovery. Net impact: no reputation loss. Your willingness to correct yourself is now part of your permanent record — visible to anyone reviewing your profile.</div>
             </div>
           </div>
         )}
 
-        <ExplainBox title="The Big Picture" icon="🏛" color="#1B2A4A">
+        <ExplainBox title="The Big Picture" icon="🏛" color="#0F172A">
           Disputes and concessions complete the accountability loop. Corrections can be corrected. Mistakes can be acknowledged. The system doesn't demand perfection — it demands honesty. A citizen who concedes gracefully builds more trust over time than one who's never been wrong, because they've proven they value truth over ego.
         </ExplainBox>
 
         <div style={{ textAlign: "center", marginTop: 24 }}>
-          <button onClick={onComplete} style={{ background: "#1B2A4A", color: "#F0EDE6", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 1 }}>Enter The Trust Assembly →</button>
+          <button onClick={onComplete} style={{ background: "#2563EB", color: "#fff", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 6 }}>Enter The Trust Assembly →</button>
         </div>
       </div>}
     </div>
@@ -5415,40 +5440,40 @@ function OnboardingFlow({ onComplete, embedded }) {
   const prev = () => { if (step > 0) { setStep(s => s - 1); topRef.current?.scrollIntoView({ behavior: "smooth" }); } };
 
   return (
-    <div style={embedded ? {} : { minHeight: "100vh", background: "#FDFBF5" }}>
+    <div style={embedded ? {} : { minHeight: "100vh", background: "#F9FAFB" }}>
       {!embedded && <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;600;700&display=swap');
-        :root { --serif: 'EB Garamond', 'Source Serif 4', Georgia, serif; --mono: 'IBM Plex Mono', monospace; --body: 'Source Serif 4', Georgia, serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root { --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; --serif: var(--font); --mono: var(--font); --body: var(--font); --accent: #2563EB; }
       `}</style>}
-      {!embedded && <div ref={topRef} style={{ background: "#1B2A4A", color: "#F0EDE6", padding: "20px 20px 18px", textAlign: "center" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#C2632A", marginBottom: 6, fontWeight: 700 }}>📖 Interactive Tutorial</div>
-        <div style={{ fontFamily: "var(--serif)", fontSize: 28, fontWeight: 700, letterSpacing: "0.06em" }}>Learn The Trust Assembly</div>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.1em", color: "#F0EDE6", marginTop: 6 }}>A guided walkthrough using a sample correction — nothing here is real</div>
+      {!embedded && <div ref={topRef} style={{ background: "#EFF6FF", color: "#0F172A", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #BFDBFE" }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#2563EB", marginBottom: 6, fontWeight: 600 }}>📖 Interactive Tutorial</div>
+        <div style={{ fontSize: 24, fontWeight: 700 }}>Learn The Trust Assembly</div>
+        <div style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>A guided walkthrough using a sample correction — nothing here is real</div>
       </div>}
-      {embedded && <div ref={topRef}><div className="ta-section-rule" /><h2 className="ta-section-head">Guide</h2><p style={{ color: "#5A5650", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>An interactive walkthrough using a sample correction — nothing here is real.</p></div>}
-      <div style={{ background: "#FDF0E4", padding: "6px 16px", textAlign: "center", fontSize: 10, color: "#C2632A", fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em" }}>
+      {embedded && <div ref={topRef}><div className="ta-section-rule" /><h2 className="ta-section-head">Guide</h2><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>An interactive walkthrough using a sample correction — nothing here is real.</p></div>}
+      <div style={{ background: "#FFF7ED", padding: "6px 16px", textAlign: "center", fontSize: 10, color: "#EA580C", fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em" }}>
         ⚠ TUTORIAL MODE — This is a practice exercise. No data will be saved.
       </div>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
           {OB_STEP_LABELS.map((label, i) => (
             <div key={i} style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ height: 3, background: i <= step ? "#1B2A4A" : "#DCD8D0", marginBottom: 6, borderRadius: 2, transition: "background 0.3s" }} />
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.06em", color: i <= step ? "#1B2A4A" : "#B0A89C", fontWeight: i === step ? 700 : 400 }}>{label}</div>
+              <div style={{ height: 3, background: i <= step ? "#2563EB" : "#E2E8F0", marginBottom: 6, borderRadius: 8, transition: "background 0.3s" }} />
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.06em", color: i <= step ? "#0F172A" : "#94A3B8", fontWeight: i === step ? 700 : 400 }}>{label}</div>
             </div>
           ))}
         </div>
       </div>
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 40px", fontFamily: "var(--body, Georgia, serif)", color: "#1B2A4A", fontSize: 15, lineHeight: 1.6 }}>
+      <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 40px", fontFamily: "var(--body, Georgia, serif)", color: "#0F172A", fontSize: 15, lineHeight: 1.6 }}>
         {step === 0 && <OBSubmitStep />}
         {step === 1 && <OBReviewStep />}
         {step === 2 && <OBCompareStep />}
         {step === 3 && <OBLaunchStep onComplete={onComplete} onAdditional={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} />}
         {step === 4 && <OBAdditionalStep onComplete={onComplete} />}
         {step < 3 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 30, paddingTop: 20, borderTop: "1px solid #DCD8D0" }}>
-            {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1.5px solid #D4CFC4", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 1, textTransform: "uppercase" }}>← Back</button> : <div />}
-            <button onClick={next} style={{ background: "#1B2A4A", color: "#F0EDE6", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 1, letterSpacing: "0.04em" }}>Next →</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 30, paddingTop: 20, borderTop: "1px solid #E2E8F0" }}>
+            {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1.5px solid #CBD5E1", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 6, textTransform: "uppercase" }}>← Back</button> : <div />}
+            <button onClick={next} style={{ background: "#2563EB", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 6, letterSpacing: "0.04em" }}>Next →</button>
           </div>
         )}
       </div>
@@ -5467,14 +5492,14 @@ async function loadSyntheticData() {
 
 function ExtensionsScreen() {
   const stepStyle = { display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" };
-  const numStyle = { background: "var(--navy)", color: "#F0EDE6", width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 2 };
-  const codeStyle = { background: "#E8E4DC", padding: "3px 8px", borderRadius: 2, fontFamily: "var(--mono)", fontSize: 12, color: "var(--charcoal)" };
+  const numStyle = { background: "#2563EB", color: "#fff", width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 2 };
+  const codeStyle = { background: "#E8E4DC", padding: "3px 8px", borderRadius: 8, fontFamily: "var(--mono)", fontSize: 12, color: "var(--charcoal)" };
 
   return (
     <div>
       <div className="ta-section-rule" />
       <h2 className="ta-section-head">Browser Extension</h2>
-      <p style={{ fontSize: 14, color: "#5A5650", marginBottom: 20, lineHeight: 1.7 }}>
+      <p style={{ fontSize: 14, color: "#475569", marginBottom: 20, lineHeight: 1.7 }}>
         The Trust Assembly browser extension overlays verified corrections, affirmations, and translations directly on news articles as you read them. No extra tabs. No searching. Truth finds you.
       </p>
 
@@ -5503,7 +5528,7 @@ function ExtensionsScreen() {
         <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Toggle <strong>"Developer mode"</strong> on — it's in the top-right corner of the page.</div></div>
         <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load unpacked"</strong> and select the <span style={codeStyle}>chrome</span> folder you unzipped.</div></div>
         <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The Trust Assembly icon will appear in your toolbar. Pin it for easy access. Visit any news article to see corrections and translations overlaid automatically.</div></div>
-        <div style={{ padding: 10, background: "#FDF5E6", border: "1px solid #D4850A", borderRadius: 2, fontSize: 12, color: "#9A6200", lineHeight: 1.6 }}>
+        <div style={{ padding: 10, background: "#FFFBEB", border: "1px solid #B45309", borderRadius: 8, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
           <strong>Note:</strong> Chrome may show a "Disable developer mode extensions" popup on restart. Click the three dots and select "Keep" to keep the extension active.
         </div>
       </div>
@@ -5516,7 +5541,7 @@ function ExtensionsScreen() {
         <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load Temporary Add-on..."</strong></div></div>
         <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Select the <span style={codeStyle}>manifest.json</span> file inside the <span style={codeStyle}>firefox</span> folder.</div></div>
         <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension is now active. Visit any news article to see Trust Assembly corrections overlaid.</div></div>
-        <div style={{ padding: 10, background: "#FDF5E6", border: "1px solid #D4850A", borderRadius: 2, fontSize: 12, color: "#9A6200", lineHeight: 1.6 }}>
+        <div style={{ padding: 10, background: "#FFFBEB", border: "1px solid #B45309", borderRadius: 8, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
           <strong>Note:</strong> Firefox temporary add-ons are removed when you close the browser. You'll need to reload it each session until the extension is published to the Firefox Add-ons store.
         </div>
       </div>
@@ -5528,13 +5553,13 @@ function ExtensionsScreen() {
         <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}><strong>macOS:</strong> Install the Trust Assembly extension from the Mac App Store (coming soon). Once installed, open <span style={codeStyle}>Safari → Settings → Extensions</span> and enable "Trust Assembly".</div></div>
         <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>2</div><div style={{ fontSize: 13, lineHeight: 1.7 }}><strong>iPhone / iPad:</strong> Install from the App Store. Then go to <span style={codeStyle}>Settings → Safari → Extensions</span>, tap Trust Assembly, and toggle it on. Grant permission to run on news sites.</div></div>
         <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension syncs your Trust Assembly account across all your Apple devices. Corrections and translations appear automatically as you browse.</div></div>
-        <div style={{ padding: 10, background: "#E8F0FE", border: "1px solid #0071E3", borderRadius: 2, fontSize: 12, color: "#004EA2", lineHeight: 1.6 }}>
+        <div style={{ padding: 10, background: "#E8F0FE", border: "1px solid #0071E3", borderRadius: 8, fontSize: 12, color: "#004EA2", lineHeight: 1.6 }}>
           <strong>Status:</strong> The Safari extension is being prepared for App Store submission. In the meantime, developers can build it locally using <span style={codeStyle}>xcrun safari-web-extension-converter</span> with the Chrome extension source.
         </div>
       </div>
 
       {/* Privacy — browsing blind */}
-      <div className="ta-card" style={{ borderLeft: "4px solid #1B5E3F", marginBottom: 18 }}>
+      <div className="ta-card" style={{ borderLeft: "4px solid #059669", marginBottom: 18 }}>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--evergreen)" }}>Your Browsing Is Private — By Design</h3>
         <div style={{ fontSize: 13, lineHeight: 1.8 }}>
           <div style={{ marginBottom: 10 }}>The Trust Assembly extension sends the URL of the page you're reading to our server so we can check whether any corrections, affirmations, or translations exist for it. <strong>That's it.</strong> Here's what we don't do:</div>
@@ -5546,8 +5571,8 @@ function ExtensionsScreen() {
             <div style={{ marginBottom: 4 }}>⛔ <strong>No server-side cache of queries.</strong> We don't maintain a record of what pages were checked or how often.</div>
           </div>
           <div style={{ marginBottom: 10 }}>The only URLs we store are the ones <em>submitters voluntarily publish</em> when they submit a correction — that's the article they're correcting, and it's public by design. Your reading activity is completely invisible to us.</div>
-          <div style={{ padding: 10, background: "#F0EDE6", border: "1px solid #DCD8D0", borderRadius: 2, fontSize: 12 }}>
-            <strong>Technical detail:</strong> Results are cached in your browser's <code style={{ background: "#E8E4DC", padding: "1px 4px", borderRadius: 2 }}>sessionStorage</code> for 5 minutes to reduce network requests. This cache is local to your machine, per-tab, and cleared automatically when you close the tab. We never see it.
+          <div style={{ padding: 10, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 12 }}>
+            <strong>Technical detail:</strong> Results are cached in your browser's <code style={{ background: "#E8E4DC", padding: "1px 4px", borderRadius: 8 }}>sessionStorage</code> for 5 minutes to reduce network requests. This cache is local to your machine, per-tab, and cleared automatically when you close the tab. We never see it.
           </div>
         </div>
       </div>
@@ -5685,105 +5710,104 @@ export default function TrustAssembly() {
   return (
     <div className="ta-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         :root {
-          --serif: 'EB Garamond', 'Source Serif 4', Georgia, serif;
-          --mono: 'IBM Plex Mono', monospace;
-          --body: 'Source Serif 4', Georgia, serif;
-          --navy: #1B2A4A; --linen: #F0EDE6; --vellum: #FDFBF5; --charcoal: #2B2B2B;
-          --stone: #7A7570; --brass: #D4CFC4; --evergreen: #1B5E3F; --fired-clay: #C4573F;
-          --crimson: #6B1520; --amber: #C4900A; --purple: #5B2D8E; --teal: #2A6B6B;
-          --sienna: #C2632A; --indigo: #4A5899; --gold: #B8963E; --slate: #8E9AAB; --bronze: #8B6914;
+          --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          --serif: var(--font); --mono: var(--font); --body: var(--font);
+          --accent: #2563EB; --accent-hover: #1D4ED8; --accent-light: #EFF6FF;
+          --navy: #0F172A; --linen: #F9FAFB; --vellum: #FFFFFF; --charcoal: #1E293B;
+          --stone: #64748B; --brass: #E2E8F0; --evergreen: #059669; --fired-clay: #DC2626;
+          --crimson: #991B1B; --amber: #D97706; --purple: #7C3AED; --teal: #0D9488;
+          --sienna: #EA580C; --indigo: #4F46E5; --gold: #CA8A04; --slate: #94A3B8; --bronze: #A16207;
         }
-        .ta-root { min-height:100vh; background:var(--linen); font-family:var(--body); color:var(--charcoal); font-size:15px; line-height:1.6; }
-        .ta-header { background:var(--navy); color:#F0EDE6; border-bottom:3px solid var(--gold); }
+        .ta-root { min-height:100vh; background:var(--linen); font-family:var(--font); color:var(--charcoal); font-size:15px; line-height:1.6; }
+        .ta-header { background:#FFFFFF; color:var(--charcoal); border-bottom:1px solid var(--brass); box-shadow:0 1px 3px rgba(0,0,0,0.05); }
         .ta-header-inner { max-width:780px; margin:0 auto; padding:14px 20px 0; }
-        .ta-masthead { text-align:center; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.15); }
-        .ta-masthead h1 { font-family:var(--serif); font-size:30px; font-weight:700; margin:0; letter-spacing:.14em; text-transform:uppercase; }
-        .ta-masthead-sub { font-family:var(--mono); font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); margin-top:3px; }
+        .ta-masthead { text-align:center; padding-bottom:10px; border-bottom:1px solid var(--brass); }
+        .ta-masthead h1 { font-family:var(--font); font-size:24px; font-weight:700; margin:0; letter-spacing:.02em; }
+        .ta-masthead-sub { font-family:var(--font); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-top:3px; font-weight:500; }
         .ta-nav { display:flex; justify-content:center; overflow-x:auto; }
-        .ta-nav button { background:none; border:none; color:rgba(240,237,230,0.5); font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; padding:9px 10px; cursor:pointer; border-bottom:2px solid transparent; position:relative; white-space:nowrap; transition:color 0.2s; }
-        .ta-nav button:hover { color:#F0EDE6; }
-        .ta-nav button.active { color:#F0EDE6; border-bottom-color:var(--gold); }
-        .ta-nav-secondary { border-top:1px solid rgba(255,255,255,0.08); }
-        .ta-nav-secondary button { font-size:8px; padding:6px 8px; opacity:0.7; }
-        .ta-nav-secondary button.active { opacity:1; }
-        .ta-nav-secondary button:hover { opacity:1; }
+        .ta-nav button { background:none; border:none; color:var(--stone); font-family:var(--font); font-size:11px; font-weight:500; letter-spacing:.02em; padding:9px 10px; cursor:pointer; border-bottom:2px solid transparent; position:relative; white-space:nowrap; transition:color 0.2s; }
+        .ta-nav button:hover { color:var(--charcoal); }
+        .ta-nav button.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+        .ta-nav-secondary { border-top:1px solid var(--brass); }
+        .ta-nav-secondary button { font-size:10px; padding:6px 8px; }
+        .ta-nav-secondary button.active { color:var(--accent); }
         .ta-nav-badge { position:absolute; top:3px; right:1px; background:var(--fired-clay); color:#fff; font-size:8px; width:13px; height:13px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; }
-        .ta-user-bar { display:flex; justify-content:space-between; align-items:center; padding:5px 20px; max-width:780px; margin:0 auto; font-size:10px; color:rgba(240,237,230,0.5); border-top:1px solid rgba(255,255,255,0.1); }
+        .ta-user-bar { display:flex; justify-content:space-between; align-items:center; padding:5px 20px; max-width:780px; margin:0 auto; font-size:11px; color:var(--stone); border-top:1px solid var(--brass); }
         .ta-content { max-width:780px; margin:0 auto; padding:20px; }
-        .ta-section-rule { height:0; border-top:1px solid var(--brass); border-bottom:1px solid rgba(255,255,255,0.3); margin:0 0 16px; }
-        .ta-section-head { font-family:var(--serif); font-size:28px; font-weight:700; margin:0 0 14px; color:var(--navy); }
-        .ta-card { background:var(--vellum); border:1px solid #DCD8D0; padding:16px; margin-bottom:14px; border-radius:2px; box-shadow:0 1px 3px rgba(27,42,74,0.04); }
+        .ta-section-rule { height:0; border-top:1px solid var(--brass); margin:0 0 16px; }
+        .ta-section-head { font-family:var(--font); font-size:24px; font-weight:700; margin:0 0 14px; color:var(--navy); }
+        .ta-card { background:var(--vellum); border:1px solid #E2E8F0; padding:16px; margin-bottom:14px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04); }
         .ta-field { margin-bottom:14px; }
-        .ta-field label { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#5A5650; margin-bottom:5px; font-family:var(--mono); }
-        .ta-field input,.ta-field textarea,.ta-field select { width:100%; padding:9px 11px; border:1.5px solid var(--brass); background:var(--vellum); font-family:var(--body); font-size:14px; color:var(--charcoal); border-radius:2px; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
-        .ta-field input:focus,.ta-field textarea:focus { border-color:var(--navy); box-shadow:0 0 0 1px rgba(27,42,74,0.1); }
+        .ta-field label { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#475569; margin-bottom:5px; font-family:var(--font); }
+        .ta-field input,.ta-field textarea,.ta-field select { width:100%; padding:9px 11px; border:1.5px solid var(--brass); background:var(--vellum); font-family:var(--font); font-size:14px; color:var(--charcoal); border-radius:6px; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
+        .ta-field input:focus,.ta-field textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
         .ta-field textarea { resize:vertical; }
-        .ta-btn-primary { background:var(--navy); color:#F0EDE6; border:none; padding:10px 20px; font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; border-radius:2px; transition:background 0.2s; }
-        .ta-btn-primary:hover { background:#243857; }
+        .ta-btn-primary { background:var(--accent); color:#fff; border:none; padding:10px 20px; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; border-radius:6px; transition:background 0.2s; }
+        .ta-btn-primary:hover { background:var(--accent-hover); }
         .ta-btn-primary:disabled { background:var(--stone); cursor:not-allowed; }
-        .ta-btn-secondary { background:var(--linen); color:var(--navy); border:1.5px solid var(--brass); padding:7px 14px; font-family:var(--mono); font-size:10px; font-weight:600; cursor:pointer; border-radius:2px; transition:background 0.2s; }
-        .ta-btn-secondary:hover { background:#DCD8D0; }
-        .ta-btn-ghost { background:none; border:none; padding:6px 12px; font-family:var(--mono); font-size:10px; color:var(--stone); cursor:pointer; transition:color 0.2s; }
-        .ta-btn-ghost:hover { color:var(--navy); }
-        .ta-link-btn { background:none; border:none; color:var(--navy); font-size:13px; cursor:pointer; text-decoration:underline; padding:0; font-family:var(--body); }
-        .ta-error { background:#FAE8E5; border:1px solid var(--fired-clay); color:var(--fired-clay); padding:8px 12px; margin-bottom:14px; font-size:12px; border-radius:2px; }
-        .ta-success { background:#E5F0EA; border:1px solid var(--evergreen); color:var(--evergreen); padding:8px 12px; margin-bottom:14px; font-size:12px; border-radius:2px; }
-        .ta-label { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--stone); font-family:var(--mono); }
-        @media(max-width:640px) { .ta-masthead h1{font-size:22px} .ta-content{padding:14px} .ta-nav button{padding:7px 7px;font-size:8px} .ta-section-head{font-size:24px} }
+        .ta-btn-secondary { background:var(--vellum); color:var(--charcoal); border:1.5px solid var(--brass); padding:7px 14px; font-family:var(--font); font-size:12px; font-weight:500; cursor:pointer; border-radius:6px; transition:all 0.2s; }
+        .ta-btn-secondary:hover { background:#F1F5F9; border-color:#CBD5E1; }
+        .ta-btn-ghost { background:none; border:none; padding:6px 12px; font-family:var(--font); font-size:12px; color:var(--stone); cursor:pointer; transition:color 0.2s; }
+        .ta-btn-ghost:hover { color:var(--accent); }
+        .ta-link-btn { background:none; border:none; color:var(--accent); font-size:13px; cursor:pointer; text-decoration:underline; padding:0; font-family:var(--font); }
+        .ta-error { background:#FEF2F2; border:1px solid var(--fired-clay); color:var(--fired-clay); padding:8px 12px; margin-bottom:14px; font-size:12px; border-radius:6px; }
+        .ta-success { background:#ECFDF5; border:1px solid var(--evergreen); color:var(--evergreen); padding:8px 12px; margin-bottom:14px; font-size:12px; border-radius:6px; }
+        .ta-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--stone); font-family:var(--font); }
+        @media(max-width:640px) { .ta-masthead h1{font-size:20px} .ta-content{padding:14px} .ta-nav button{padding:7px 7px;font-size:9px} .ta-section-head{font-size:20px} }
       `}</style>
 
       {!user ? (
         <div>
           <div style={{ textAlign: "center", padding: "40px 20px 0", maxWidth: 580, margin: "0 auto" }}>
-            <img src={CREST_IMG} style={{ width: 140, display: "block", margin: "0 auto 20px" }} alt="Trust Assembly Crest" />
-            <h1 style={{ fontFamily: "var(--serif)", fontSize: 36, fontWeight: 700, margin: "0 0 4px", letterSpacing: ".08em", textTransform: "uppercase", color: "#1B2A4A" }}>The Trust Assembly</h1>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: ".12em", color: "#B8963E", marginBottom: 6, fontStyle: "italic" }}>Truth Will Out.</div>
-            <div style={{ fontFamily: "var(--body)", fontSize: 13, color: "#5A5650", marginBottom: 24 }}>A republic of citizens verifying truth through adversarial review.</div>
+            <img src={CREST_IMG} style={{ width: 100, display: "block", margin: "0 auto 16px" }} alt="Trust Assembly Crest" />
+            <h1 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 4px", color: "#0F172A" }}>The Trust Assembly</h1>
+            <div style={{ fontSize: 13, letterSpacing: ".04em", color: "#2563EB", marginBottom: 6, fontWeight: 500 }}>Truth Will Out.</div>
+            <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24 }}>A republic of citizens verifying truth through adversarial review.</div>
             <CitizenCounter />
 
             {/* Opening Statement */}
-            <div style={{ textAlign: "left", maxWidth: 520, margin: "0 auto 28px", padding: "20px 24px", background: "#fff", border: "1px solid #DCD8D0", borderLeft: "4px solid #B8963E", borderRadius: 2 }}>
-              <p style={{ fontSize: 16, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, margin: 0 }}>
+            <div style={{ textAlign: "left", maxWidth: 520, margin: "0 auto 28px", padding: "20px 24px", background: "#fff", border: "1px solid #E2E8F0", borderLeft: "4px solid #2563EB", borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+              <p style={{ fontSize: 16, lineHeight: 1.8, color: "#0F172A", fontWeight: 600, margin: 0 }}>
                 The Trust Assembly is an experiment in self-government.
               </p>
-              <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "12px 0 0" }}>
+              <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>
                 It begins with a simple question: what happens when ordinary people are given a place to reason together in public, under fair rules, with truth as the aim rather than attention?
               </p>
               {!showManifesto && (
-                <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12, color: "#B8963E" }} onClick={() => setShowManifesto(true)}>
+                <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12 }} onClick={() => setShowManifesto(true)}>
                   Read more
                 </button>
               )}
               {showManifesto && (
                 <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
                     We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different. A place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.
                   </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
                     This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.
                   </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
                     What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.
                   </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
                     We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed. One that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.
                   </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 12px" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
                     Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem. A place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.
                   </p>
-                  <p style={{ fontSize: 15, lineHeight: 1.8, color: "#1B2A4A", fontFamily: "var(--serif)", fontWeight: 600, fontStyle: "italic", margin: "0 0 16px" }}>
+                  <p style={{ fontSize: 15, lineHeight: 1.8, color: "#0F172A", fontWeight: 600, fontStyle: "italic", margin: "0 0 16px" }}>
                     We hope to build a lighthouse on a hill.
                   </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#2B2B2B", margin: "0 0 16px", padding: "12px 16px", background: "#F0EDE6", borderRadius: 2 }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 16px", padding: "12px 16px", background: "#F1F5F9", borderRadius: 8 }}>
                     To succeed in this institution, you must make sense to those who agree with you. And you must make sense to those who do not. Everything worth building in civilization rests on that foundation.
                   </p>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }} onClick={() => setScreen("register")}>Submit a Correction</button>
                     <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }} onClick={() => { setShowExtDetails(true); document.querySelector('.ta-link-btn[style*="Installation"]')?.scrollIntoView({ behavior: "smooth" }); }}>Get the Extension</button>
                   </div>
-                  <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12, color: "#7A7570" }} onClick={() => setShowManifesto(false)}>
+                  <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12, color: "#64748B" }} onClick={() => setShowManifesto(false)}>
                     Collapse
                   </button>
                 </div>
@@ -5806,7 +5830,7 @@ export default function TrustAssembly() {
         <div>
           <div className="ta-header">
             <div className="ta-header-inner">
-              <div className="ta-masthead"><img src={CREST_IMG} style={{ width: 36, height: 36, marginRight: 10, verticalAlign: "middle" }} alt="" /><h1 style={{ display: "inline" }}>The Trust Assembly</h1><div className="ta-masthead-sub">Truth Will Out. <span style={{ background: "#D4850A", color: "#fff", padding: "1px 6px", borderRadius: 2, fontSize: 10, fontWeight: 700, marginLeft: 6, letterSpacing: "0.1em" }}>BETA</span></div></div>
+              <div className="ta-masthead"><img src={CREST_IMG} style={{ width: 36, height: 36, marginRight: 10, verticalAlign: "middle" }} alt="" /><h1 style={{ display: "inline" }}>The Trust Assembly</h1><div className="ta-masthead-sub">Truth Will Out. <span style={{ background: "#2563EB", color: "#fff", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, marginLeft: 6, letterSpacing: "0.1em" }}>BETA</span></div></div>
               <nav className="ta-nav">{NAV_TOP.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}{n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}</button>)}</nav>
               <nav className="ta-nav ta-nav-secondary">
                 {NAV_BOT.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}</button>)}
@@ -5814,7 +5838,7 @@ export default function TrustAssembly() {
               </nav>
               {showMoreNav && <nav className="ta-nav ta-nav-secondary" style={{ borderTop: "none", paddingTop: 0 }}>{NAV_MORE.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</button>)}</nav>}
             </div>
-            <div className="ta-user-bar"><span>{isDIUser(user) ? "🤖 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span><button className="ta-btn-ghost" style={{ color: "#7A7570" }} onClick={logout}>Sign Out</button></div>
+            <div className="ta-user-bar"><span>{isDIUser(user) ? "🤖 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span><button className="ta-btn-ghost" style={{ color: "#64748B" }} onClick={logout}>Sign Out</button></div>
           </div>
           <div className="ta-content">
             <CitizenCounter />
