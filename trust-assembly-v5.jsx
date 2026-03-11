@@ -1059,6 +1059,111 @@ function computeProfile(user) {
   return { trustScore, profile, rawAccuracy: total > 0 ? Math.round((wins / total) * 100) : 50, avgNews: avgNews.toFixed(1), avgFun: avgFun.toFixed(1), wins, losses, lies, total, streak, streakBonus, qualityRaw: qualityRaw.toFixed(2), quality: quality.toFixed(2), drag: drag.toFixed(1), cassandraBonus: cassandraBonus.toFixed(1), vindications: vindications.length, disputeWins, disputeLosses, required, highTrust };
 }
 
+// ── Citizen Badges ──
+// Achievement badges displayed on citizen profiles. Computed from user data, orgs, and submissions.
+
+const CITIZEN_BADGES = {
+  // Assembly badges
+  assemblyCreator:   { id: "assemblyCreator",   icon: "🏗",  label: "Assembly Creator",    desc: "Created an assembly",                          color: "#5B2D8E", tier: "special" },
+  assemblyMember:    { id: "assemblyMember",     icon: "⬡",   label: "Assembly Member",     desc: "Joined an assembly beyond The General Public",  color: "#2A6B6B", tier: "special" },
+  // Submission milestones
+  firstSubmission:   { id: "firstSubmission",    icon: "✎",   label: "First Submission",    desc: "Made your first submission",                    color: "#1B5E3F", tier: "bronze" },
+  tenSubmissions:    { id: "tenSubmissions",      icon: "✎✎",  label: "Ten Submissions",     desc: "10 submissions",                                color: "#2A6B6B", tier: "bronze" },
+  centuryClub:      { id: "centuryClub",         icon: "💯",  label: "Century Club",        desc: "100 submissions",                               color: "#B8963E", tier: "silver" },
+  thousand:         { id: "thousand",            icon: "🏛",  label: "Thousand",            desc: "1,000 submissions",                             color: "#C2632A", tier: "gold" },
+  tenThousand:      { id: "tenThousand",         icon: "⚡",  label: "Ten Thousand",        desc: "10,000 submissions",                            color: "#5B2D8E", tier: "platinum" },
+  hundredThousand:  { id: "hundredThousand",     icon: "🌟",  label: "Hundred Thousand",    desc: "100,000 submissions",                           color: "#6B1520", tier: "diamond" },
+  million:          { id: "million",             icon: "👑",  label: "Millionaire",         desc: "1,000,000 submissions — legendary",              color: "#1B2A4A", tier: "legendary" },
+  // Trust badges (per assembly)
+  trustedContributor: { id: "trustedContributor", icon: "🛡",  label: "Trusted Contributor", desc: "Earned trusted status in an assembly",          color: "#1B5E3F", tier: "gold" },
+  // Early adopter badges
+  firstHundred:     { id: "firstHundred",        icon: "🔱",  label: "First Hundred",       desc: "Among the first 100 citizens to join",          color: "#5B2D8E", tier: "legendary" },
+  firstThousand:    { id: "firstThousand",       icon: "🌿",  label: "First Thousand",      desc: "Among the first 1,000 citizens to join",        color: "#1B5E3F", tier: "gold" },
+};
+
+const BADGE_TIER_ORDER = { legendary: 0, diamond: 1, platinum: 2, gold: 3, silver: 4, bronze: 5, special: 6 };
+
+const BADGE_TIER_STYLES = {
+  legendary: { bg: "#1B2A4A", border: "#B8963E", text: "#B8963E" },
+  diamond:   { bg: "#2D1520", border: "#E5C6D0", text: "#E5C6D0" },
+  platinum:  { bg: "#EDE5F0", border: "#5B2D8E", text: "#5B2D8E" },
+  gold:      { bg: "#FDF5E0", border: "#B8963E", text: "#B8963E" },
+  silver:    { bg: "#F0EDE6", border: "#7A7570", text: "#5A5650" },
+  bronze:    { bg: "#F5EDD5", border: "#C2632A", text: "#C2632A" },
+  special:   { bg: "#E5EFED", border: "#2A6B6B", text: "#2A6B6B" },
+};
+
+function computeBadges(userObj, allUsers, allOrgs, allSubs) {
+  const badges = [];
+  const username = userObj.username;
+
+  // Assembly Creator — user is listed as createdBy on any org
+  const createdOrgs = Object.values(allOrgs).filter(o => o.createdBy === username && !o.isGeneralPublic);
+  if (createdOrgs.length > 0) badges.push({ ...CITIZEN_BADGES.assemblyCreator, count: createdOrgs.length });
+
+  // Assembly Member — member of any non-GP org
+  const memberOrgs = Object.values(allOrgs).filter(o => !o.isGeneralPublic && o.members && o.members.includes(username));
+  if (memberOrgs.length > 0) badges.push({ ...CITIZEN_BADGES.assemblyMember, count: memberOrgs.length });
+
+  // Submission milestones
+  const userSubCount = Object.values(allSubs).filter(s => s.submittedBy === username).length;
+  if (userSubCount >= 1)       badges.push({ ...CITIZEN_BADGES.firstSubmission, count: userSubCount });
+  if (userSubCount >= 10)      badges.push({ ...CITIZEN_BADGES.tenSubmissions, count: userSubCount });
+  if (userSubCount >= 100)     badges.push({ ...CITIZEN_BADGES.centuryClub, count: userSubCount });
+  if (userSubCount >= 1000)    badges.push({ ...CITIZEN_BADGES.thousand, count: userSubCount });
+  if (userSubCount >= 10000)   badges.push({ ...CITIZEN_BADGES.tenThousand, count: userSubCount });
+  if (userSubCount >= 100000)  badges.push({ ...CITIZEN_BADGES.hundredThousand, count: userSubCount });
+  if (userSubCount >= 1000000) badges.push({ ...CITIZEN_BADGES.million, count: userSubCount });
+
+  // Trusted Contributor — per assembly
+  const streaks = userObj.assemblyStreaks || {};
+  const trustedOrgs = Object.entries(streaks)
+    .filter(([orgId, s]) => s >= TRUSTED_STREAK && allOrgs[orgId])
+    .map(([orgId]) => allOrgs[orgId]);
+  trustedOrgs.forEach(o => {
+    badges.push({ ...CITIZEN_BADGES.trustedContributor, detail: o.name, count: 1 });
+  });
+
+  // Early adopter — based on signup order
+  const allUsersList = Object.values(allUsers).sort((a, b) => (a.signupTimestamp || new Date(a.signupDate).getTime()) - (b.signupTimestamp || new Date(b.signupDate).getTime()));
+  const signupIndex = allUsersList.findIndex(u => u.username === username);
+  if (signupIndex >= 0 && signupIndex < 100)  badges.push({ ...CITIZEN_BADGES.firstHundred, detail: `#${signupIndex + 1}` });
+  if (signupIndex >= 0 && signupIndex < 1000) badges.push({ ...CITIZEN_BADGES.firstThousand, detail: `#${signupIndex + 1}` });
+
+  // Sort by tier
+  badges.sort((a, b) => (BADGE_TIER_ORDER[a.tier] || 99) - (BADGE_TIER_ORDER[b.tier] || 99));
+
+  return badges;
+}
+
+function CitizenBadges({ badges }) {
+  if (!badges || badges.length === 0) return (
+    <div style={{ padding: 12, background: "#F0EDE6", borderRadius: 2, fontSize: 12, color: "#7A7570", fontStyle: "italic", textAlign: "center" }}>
+      No badges earned yet. Submit, join assemblies, and build trust to earn badges.
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {badges.map((b, i) => {
+        const ts = BADGE_TIER_STYLES[b.tier] || BADGE_TIER_STYLES.special;
+        return (
+          <div key={b.id + (b.detail || "") + i} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "4px 8px", borderRadius: 2,
+            background: ts.bg, border: `1.5px solid ${ts.border}`,
+            fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600,
+            color: ts.text, letterSpacing: "0.03em", cursor: "default",
+            transition: "transform 0.15s", whiteSpace: "nowrap",
+          }}>
+            <span style={{ fontSize: 13, lineHeight: 1 }}>{b.icon}</span>
+            <span>{b.label}{b.detail ? ` — ${b.detail}` : ""}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Jury Score: measures juror calibration ──
 // Three components: consensus alignment, overturn rate, accusation (lie flag) accuracy
 async function computeJuryScore(username) {
@@ -3280,11 +3385,15 @@ function JuryScoreCard({ username }) {
 function ProfileScreen({ user, onViewCitizen }) {
   const [u, setU] = useState(user);
   const [orgs, setOrgs] = useState({});
+  const [allUsers, setAllUsers] = useState({});
+  const [allSubs, setAllSubs] = useState({});
   const [juryScore, setJuryScore] = useState(null);
   const [diAgents, setDiAgents] = useState([]);
   useEffect(() => { (async () => {
     const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setU(all[user.username]);
-    setOrgs((await sG(SK.ORGS)) || {});
+    setAllUsers(all);
+    const o = (await sG(SK.ORGS)) || {}; setOrgs(o);
+    setAllSubs((await sG(SK.SUBS)) || {});
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
     setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
@@ -3381,6 +3490,11 @@ function ProfileScreen({ user, onViewCitizen }) {
       </div>
       {/* Jury Score */}
       <JuryScoreCard username={u.username} />
+      {/* Citizen Badges */}
+      <div className="ta-card">
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10, fontWeight: 700 }}>🏅 Badges</div>
+        <CitizenBadges badges={computeBadges(u, allUsers, orgs, allSubs)} />
+      </div>
       {/* Registered Digital Intelligences */}
       {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
@@ -3409,6 +3523,7 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
   const [u, setU] = useState(null);
   const [orgs, setOrgs] = useState({});
   const [subs, setSubs] = useState({});
+  const [allUsers, setAllUsers] = useState({});
   const [diAgents, setDiAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -3417,6 +3532,7 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
     const target = all[username];
     if (!target) { setNotFound(true); setLoading(false); return; }
     setU(target);
+    setAllUsers(all);
     setOrgs((await sG(SK.ORGS)) || {});
     setSubs((await sG(SK.SUBS)) || {});
     // Find DI agents registered to this user
@@ -3465,6 +3581,11 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
         <div style={{ marginTop: 8, fontSize: 12, color: "#5A5650" }}>Signed up {fDate(u.signupDate)} · {daysSince(u.signupDate)} days</div>
       </div>
       <JuryScoreCard username={username} />
+      {/* Citizen Badges */}
+      <div className="ta-card">
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5A5650", marginBottom: 10, fontWeight: 700 }}>🏅 Badges</div>
+        <CitizenBadges badges={computeBadges(u, allUsers, orgs, subs)} />
+      </div>
       {/* Registered Digital Intelligences */}
       {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4A5899" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4A5899", marginBottom: 8, fontWeight: 700 }}>🤖 Registered Digital Intelligences</div>
