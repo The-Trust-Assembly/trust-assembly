@@ -15,6 +15,14 @@ const CREST_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARgAAAEYCAIAAAA
 
 // --- Utilities ---
 function gid() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 9); }
+// Anonymous jury IDs — random 4-digit numbers for blind review
+function genAnonId(prefix) { return `${prefix}-${(1000 + Math.floor(Math.random() * 9000))}`; }
+function buildAnonMap(submitterUsername, jurorUsernames) {
+  const map = {}; map[submitterUsername] = genAnonId("Citizen");
+  jurorUsernames.forEach(j => { map[j] = genAnonId("Juror"); });
+  return map;
+}
+function anonName(username, anonMap, isResolved) { return isResolved || !anonMap ? `@${username}` : (anonMap[username] || `@${username}`); }
 function fDate(iso) { if (!iso) return "N/A"; return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
 function sDate(iso) { if (!iso) return ""; const d = (Date.now() - new Date(iso).getTime()) / 1000; if (d < 60) return "just now"; if (d < 3600) return Math.floor(d / 60) + "m"; if (d < 86400) return Math.floor(d / 3600) + "h"; if (d < 604800) return Math.floor(d / 86400) + "d"; return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
 function daysBetween(a, b) { return Math.abs(Math.floor((new Date(a).getTime() - new Date(b).getTime()) / 86400000)); }
@@ -559,11 +567,16 @@ async function selectCrossGroupJury(orgId, submitterUsername) {
   rulesApplied.push(`${qualifyingCount} qualifying assemblies → ${jurySize}-person jury`);
 
   // Build pool: all members of qualifying assemblies who are NOT in the originating assembly
+  // Also exclude submitter's DI partner and any DIs registered to submitter
+  const submitter = users[submitterUsername];
+  const diPartner = submitter && submitter.isDI ? submitter.diPartner : null;
+  const diAgents = !submitter?.isDI ? Object.values(users).filter(u => u.isDI && u.diPartner === submitterUsername).map(u => u.username) : [];
+  const crossExcluded = new Set([submitterUsername, ...(diPartner ? [diPartner] : []), ...diAgents]);
   const originMembers = new Set(orgs[orgId]?.members || []);
   const poolSet = new Set();
   for (const [, o] of qualifyingOrgs) {
     for (const m of o.members) {
-      if (m !== submitterUsername && !originMembers.has(m)) poolSet.add(m);
+      if (!crossExcluded.has(m) && !originMembers.has(m)) poolSet.add(m);
     }
   }
   let pool = [...poolSet];
@@ -669,7 +682,13 @@ async function selectJury(orgId, submitterUsername) {
   const memberCount = org ? org.members.length : 0;
   const jurySize = getJurySize(memberCount);
 
-  let pool = org ? org.members.filter(m => m !== submitterUsername) : [];
+  // Exclude submitter and their DI partner (or human partner if submitter is a DI)
+  const submitter = users[submitterUsername];
+  const diPartner = submitter && submitter.isDI ? submitter.diPartner : null;
+  // Also exclude any DIs registered to the submitter (if submitter is human)
+  const diAgents = !submitter?.isDI ? Object.values(users).filter(u => u.isDI && u.diPartner === submitterUsername).map(u => u.username) : [];
+  const excluded = new Set([submitterUsername, ...(diPartner ? [diPartner] : []), ...diAgents]);
+  let pool = org ? org.members.filter(m => !excluded.has(m)) : [];
 
   if (pool.length < jurySize) return { jurors: [], seed: 0, rulesApplied: [], jurySize, error: "Not enough eligible jurors." };
 
@@ -781,7 +800,9 @@ async function recuseJuror(subId, jurorUsername, isCross = false) {
   // Remove from jury
   sub[jurorKey] = sub[jurorKey].filter(j => j !== jurorUsername);
   const now = new Date().toISOString();
-  sub.auditTrail.push({ time: now, action: `@${jurorUsername} RECUSED (${isCross ? "cross-group" : "in-group"}). Reason: conflict of interest.` });
+  sub.anonMap = sub.anonMap || {};
+  if (!sub.anonMap[jurorUsername]) sub.anonMap[jurorUsername] = genAnonId("Juror");
+  sub.auditTrail.push({ time: now, action: `${sub.anonMap[jurorUsername]} RECUSED (${isCross ? "cross-group" : "in-group"}). Reason: conflict of interest.` });
 
   // Draw replacement
   const orgs = (await sG(SK.ORGS)) || {};
@@ -803,7 +824,9 @@ async function recuseJuror(subId, jurorUsername, isCross = false) {
     const rng = seededRandom(Date.now());
     const replacement = replacementPool.sort(() => rng() - 0.5)[0];
     sub[jurorKey].push(replacement);
-    sub.auditTrail.push({ time: now, action: `Replacement juror drawn: @${replacement}` });
+    sub.anonMap = sub.anonMap || {};
+    if (!sub.anonMap[replacement]) sub.anonMap[replacement] = genAnonId("Juror");
+    sub.auditTrail.push({ time: now, action: `Replacement juror drawn: ${sub.anonMap[replacement]}` });
   } else {
     sub.auditTrail.push({ time: now, action: `No replacement available. Jury reduced to ${sub[jurorKey].length}.` });
   }
@@ -846,8 +869,15 @@ async function fileDispute(subId, disputerUsername, reasoning, evidence) {
   if (existing) return { error: "This submission already has an active dispute." };
 
   const now = new Date().toISOString();
-  // Select jury: exclude disputer, original submitter, and any prior jurors on the submission
-  const excluded = new Set([disputerUsername, sub.submittedBy, ...(sub.jurors || []), ...(sub.crossGroupJurors || [])]);
+  // Select jury: exclude disputer, original submitter, DI partners, and any prior jurors on the submission
+  const users = (await sG(SK.USERS)) || {};
+  const disputerUser = users[disputerUsername]; const submitterUser = users[sub.submittedBy];
+  const diExclude = [
+    ...(disputerUser?.isDI && disputerUser.diPartner ? [disputerUser.diPartner] : []),
+    ...(submitterUser?.isDI && submitterUser.diPartner ? [submitterUser.diPartner] : []),
+    ...Object.values(users).filter(u => u.isDI && (u.diPartner === disputerUsername || u.diPartner === sub.submittedBy)).map(u => u.username),
+  ];
+  const excluded = new Set([disputerUsername, sub.submittedBy, ...diExclude, ...(sub.jurors || []), ...(sub.crossGroupJurors || [])]);
   const pool = org.members.filter(m => !excluded.has(m));
   const disputeJurySize = getJurySize(org.members.length);
   if (pool.length < disputeJurySize) return { error: "Not enough uninvolved members for a jury." };
@@ -863,6 +893,8 @@ async function fileDispute(subId, disputerUsername, reasoning, evidence) {
   if (jurors.length < disputeJurySize) return { error: "Insufficient jurors." };
   jurors = jurors.slice(0, disputeJurySize);
 
+  const disputeAnonMap = buildAnonMap(disputerUsername, jurors);
+  disputeAnonMap[sub.submittedBy] = genAnonId("Citizen");
   const dispute = {
     id: gid(), subId, submissionHeadline: sub.replacement, submissionReasoning: sub.reasoning,
     originalSubmitter: sub.submittedBy, orgId: sub.orgId, orgName: sub.orgName,
@@ -870,8 +902,9 @@ async function fileDispute(subId, disputerUsername, reasoning, evidence) {
     evidence: evidence || [],
     status: "pending_review", jurors, votes: {},
     deliberateLieFinding: false,
+    anonMap: disputeAnonMap,
     createdAt: now, resolvedAt: null,
-    auditTrail: [{ time: now, action: `Dispute filed by @${disputerUsername} against @${sub.submittedBy}'s submission. Jury: ${jurors.map(j => "@" + j).join(", ")}` }],
+    auditTrail: [{ time: now, action: `Dispute filed. Jury pool: ${jurors.length} jurors assigned.` }],
   };
 
   disputes[dispute.id] = dispute;
@@ -879,11 +912,11 @@ async function fileDispute(subId, disputerUsername, reasoning, evidence) {
 
   // Mark submission as disputed
   subs[subId].status = "disputed";
-  subs[subId].auditTrail.push({ time: now, action: `⚖ DISPUTED by @${disputerUsername}. Dispute ID: ${dispute.id}` });
+  subs[subId].auditTrail.push({ time: now, action: `⚖ DISPUTED. Dispute ID: ${dispute.id}` });
   await sS(SK.SUBS, subs);
 
   const audit = (await sG(SK.AUDIT)) || [];
-  audit.push({ time: now, action: `Dispute: @${disputerUsername} vs @${sub.submittedBy} on "${sub.replacement}"` });
+  audit.push({ time: now, action: `Dispute filed on "${sub.replacement}"` });
   await sS(SK.AUDIT, audit);
 
   return { success: true, disputeId: dispute.id };
@@ -900,7 +933,9 @@ async function resolveDispute(disputeId, voterUsername, approve, note, lieChecke
   // approve = true means the disputer is RIGHT (submission was wrong)
   // approve = false means the original submitter is vindicated
   d.votes[voterUsername] = { approve, note: note.trim(), time: now, deliberateLie: lieChecked };
-  d.auditTrail.push({ time: now, action: `@${voterUsername} voted ${approve ? "UPHOLD DISPUTE" : "REJECT DISPUTE"}${lieChecked ? " ⚠LIE-BALLOT" : ""}` });
+  d.anonMap = d.anonMap || {};
+  if (!d.anonMap[voterUsername]) d.anonMap[voterUsername] = genAnonId("Juror");
+  d.auditTrail.push({ time: now, action: `${d.anonMap[voterUsername]} voted ${approve ? "UPHOLD DISPUTE" : "REJECT DISPUTE"}${lieChecked ? " ⚠LIE-BALLOT" : ""}` });
 
   const vc = Object.keys(d.votes).length;
   const upheld = Object.values(d.votes).filter(v => v.approve).length;
@@ -918,6 +953,11 @@ async function resolveDispute(disputeId, voterUsername, approve, note, lieChecke
     d.resolvedAt = now;
     d.deliberateLieFinding = wasLie;
     d.auditTrail.push({ time: now, action: `RESOLVED: ${d.status.toUpperCase()} (${upheld}/${vc} upheld)${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
+    // Reveal anonymous identities now that dispute voting is complete
+    if (d.anonMap) {
+      const reveals = Object.entries(d.anonMap).map(([real, anon]) => `${anon} → @${real}`).join(", ");
+      d.auditTrail.push({ time: now, action: `🔓 Blind review complete — identities revealed: ${reveals}` });
+    }
 
     // Score impacts
     const users = (await sG(SK.USERS)) || {};
@@ -1289,7 +1329,11 @@ async function processJuryRotation() {
       if (isCross) sub.crossGroupJuryPool = newPool;
       else sub.juryPool = newPool;
       sub.auditTrail = sub.auditTrail || [];
-      expired.forEach(j => { sub.auditTrail.push({ time: new Date().toISOString(), action: `⏱ @${j} rotated out (6h window expired)` }); });
+      expired.forEach(j => {
+        sub.anonMap = sub.anonMap || {};
+        if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror");
+        sub.auditTrail.push({ time: new Date().toISOString(), action: `⏱ ${sub.anonMap[j]} rotated out (6h window expired)` });
+      });
       changed = true;
     }
   });
@@ -1466,7 +1510,8 @@ async function proposeConcession(orgId, proposerUsername, subId, reasoning) {
     jurors, votes: {}, createdAt: now,
     rejectedAt: sub.resolvedAt, // When cross-group rejected it
     recovery: getConcessionRecovery(sub.resolvedAt, weeklyCount),
-    auditTrail: [{ time: now, action: `Concession proposed by @${proposerUsername}. Super jury (${jurors.length}): ${jurors.map(j => "@" + j).join(", ")}. Recovery rate: ${Math.round(getConcessionRecovery(sub.resolvedAt, weeklyCount) * 100)}%. (${weeklyCount > 0 ? weeklyCount + " prior this week — 90% rate" : "First this week — full recovery"})` }]
+    anonMap: buildAnonMap(proposerUsername, jurors),
+    auditTrail: [{ time: now, action: `Concession proposed. Super jury: ${jurors.length} jurors assigned. Recovery rate: ${Math.round(getConcessionRecovery(sub.resolvedAt, weeklyCount) * 100)}%. (${weeklyCount > 0 ? weeklyCount + " prior this week — 90% rate" : "First this week — full recovery"})` }]
   };
   concessions[concession.id] = concession; await sS("ta-concessions", concessions);
   return concession;
@@ -1480,7 +1525,9 @@ async function voteConcession(concessionId, voterUsername, approve) {
 
   const now = new Date().toISOString();
   c.votes[voterUsername] = { approve, time: now };
-  c.auditTrail.push({ time: now, action: `@${voterUsername} voted ${approve ? "CONCEDE" : "HOLD POSITION"}` });
+  c.anonMap = c.anonMap || {};
+  if (!c.anonMap[voterUsername]) c.anonMap[voterUsername] = genAnonId("Juror");
+  c.auditTrail.push({ time: now, action: `${c.anonMap[voterUsername]} voted ${approve ? "CONCEDE" : "HOLD POSITION"}` });
 
   const vc = Object.keys(c.votes).length;
   const approvals = Object.values(c.votes).filter(v => v.approve).length;
@@ -1495,6 +1542,10 @@ async function voteConcession(concessionId, voterUsername, approve) {
     const resolveWeekly = await getWeeklyConcessionCount(c.orgId);
     c.recoveryAtResolution = getConcessionRecovery(c.rejectedAt, resolveWeekly);
     c.auditTrail.push({ time: now, action: `RESOLVED: ${passes ? "CONCESSION ACCEPTED" : "CONCESSION REJECTED"} (${approvals}/${vc}). ${passes ? `Recovery: ${Math.round(c.recoveryAtResolution * 100)}%` : "Assembly holds position."}` });
+    if (c.anonMap) {
+      const reveals = Object.entries(c.anonMap).map(([real, anon]) => `${anon} → @${real}`).join(", ");
+      c.auditTrail.push({ time: now, action: `🔓 Blind review complete — identities revealed: ${reveals}` });
+    }
 
     if (passes) {
       // Apply recovery to Assembly reputation
@@ -2298,12 +2349,13 @@ function SubmitScreen({ user, onUpdate }) {
         isDI: submitterIsDI, diPartner: submitterIsDI ? submitter.diPartner : null,
         crossGroupJurors: [], crossGroupVotes: {}, crossGroupSeed: 0,
         crossGroupAcceptedJurors: [], crossGroupAcceptedAt: {},
+        anonMap: buildAnonMap(user.username, jurors),
         createdAt: now, resolvedAt: trustedSkip ? now : null,
         auditTrail: [{ time: now, action: submitterIsDI
-          ? `🤖 Submitted by @${user.username} (Digital Intelligence, partner: @${submitter.diPartner}) — awaiting partner pre-approval`
+          ? `🤖 Submitted by a Digital Intelligence — awaiting partner pre-approval`
           : trustedSkip
-          ? `🛡 Submitted by @${user.username} (Trusted Contributor — jury skipped, disputable)`
-          : `Submitted by @${user.username}. ${status === "pending_review" ? `Jury pool (${jurors.length}): ${jurors.map(j => "@" + j).join(", ")} — ${jurySeats} seats. (seed:${jurySeed}). Rules: ${rulesApplied.join(", ") || "none"}` : `Queued — ${org.members.length} members, 5 needed.`}` }],
+          ? `🛡 Submitted (Trusted Contributor — jury skipped, disputable)`
+          : `Submission received. ${status === "pending_review" ? `Jury pool: ${jurors.length} jurors — ${jurySeats} seats. (seed:${jurySeed}). Rules: ${rulesApplied.join(", ") || "none"}` : `Queued — ${org.members.length} members, 5 needed.`}` }],
       };
       subs[sub.id] = sub;
 
@@ -2320,7 +2372,9 @@ function SubmitScreen({ user, onUpdate }) {
         if (!crossResult.error && crossResult.jurors.length >= 3) {
           sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
           sub.status = "cross_review"; sub.resolvedAt = null;
-          sub.auditTrail.push({ time: now, action: `Auto-promoted to cross-group review (Trusted Contributor). ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}. Jury: ${crossResult.jurors.map(j => "@" + j).join(", ")}` });
+          // Add cross-group jurors to anon map
+          crossResult.jurors.forEach(j => { if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror"); });
+          sub.auditTrail.push({ time: now, action: `Auto-promoted to cross-group review (Trusted Contributor). ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}.` });
         }
       }
 
@@ -2648,6 +2702,19 @@ function ReviewScreen({ user }) {
     sub[acceptedAtKey] = sub[acceptedAtKey] || {};
     // Check if already accepted
     if (sub[acceptedKey].includes(user.username)) { setReviewingId(subId); return; }
+    // Block DI partner from serving on jury
+    if (sub.diPartner === user.username || sub.submittedBy === user.username) {
+      alert("You cannot serve on this jury — you have a relationship with the submitter."); load(); return;
+    }
+    const allUsers = (await sG(SK.USERS)) || {};
+    const submitterUser = allUsers[sub.submittedBy];
+    if (submitterUser && !submitterUser.isDI && submitterUser.username !== user.username) {
+      // Check if current user is a DI registered to the submitter
+      const me = allUsers[user.username];
+      if (me && me.isDI && me.diPartner === sub.submittedBy) {
+        alert("You cannot serve on this jury — you are registered to the submitter."); load(); return;
+      }
+    }
     // Check if jury is full
     if (sub[acceptedKey].length >= seats) {
       alert("This jury has been filled — thank you for your willingness to serve.");
@@ -2657,7 +2724,10 @@ function ReviewScreen({ user }) {
     sub[acceptedKey].push(user.username);
     sub[acceptedAtKey][user.username] = now;
     sub.auditTrail = sub.auditTrail || [];
-    sub.auditTrail.push({ time: now, action: `@${user.username} accepted jury seat (${sub[acceptedKey].length}/${seats} filled)` });
+    // Add juror to anonMap if not already present
+    sub.anonMap = sub.anonMap || {};
+    if (!sub.anonMap[user.username]) sub.anonMap[user.username] = genAnonId("Juror");
+    sub.auditTrail.push({ time: now, action: `${sub.anonMap[user.username]} accepted jury seat (${sub[acceptedKey].length}/${seats} filled)` });
     allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
     setReviewingId(subId); load();
   };
@@ -2669,10 +2739,15 @@ function ReviewScreen({ user }) {
     if (!vc2.allowed) return alert(vc2.reason);
     const allSubs = (await sG(SK.SUBS)) || {};
     const sub = allSubs[subId]; if (!sub) return;
+    // Block DI partner from voting
+    if (sub.diPartner === user.username) return alert("You cannot vote on this submission — it was submitted by your registered Digital Intelligence.");
+    if (me && me.isDI && me.diPartner === sub.submittedBy) return alert("You cannot vote on submissions from your partner.");
     const now = new Date().toISOString();
     const vk = isCross ? "crossGroupVotes" : "votes";
     sub[vk][user.username] = { approve, note: voteNote.trim(), time: now, newsworthy: newsRating, interesting: funRating, deliberateLie: lieChecked, editVotes: { ...editVotes }, vaultVotes: { ...vaultVotes } };
-    sub.auditTrail.push({ time: now, action: `@${user.username} voted ${approve ? "APPROVE" : "REJECT"} (${isCross ? "cross" : "in-group"}) News:${newsRating} Fun:${funRating}${lieChecked ? " ⚠LIE-BALLOT" : ""}${Object.keys(editVotes).length > 0 ? ` Edits: ${Object.values(editVotes).filter(v => v).length}/${Object.keys(editVotes).length} approved` : ""}` });
+    sub.anonMap = sub.anonMap || {};
+    if (!sub.anonMap[user.username]) sub.anonMap[user.username] = genAnonId("Juror");
+    sub.auditTrail.push({ time: now, action: `${sub.anonMap[user.username]} voted ${approve ? "APPROVE" : "REJECT"} (${isCross ? "cross" : "in-group"})${lieChecked ? " ⚠LIE-BALLOT" : ""}${Object.keys(editVotes).length > 0 ? ` Edits: ${Object.values(editVotes).filter(v => v).length}/${Object.keys(editVotes).length} approved` : ""}` });
 
     const vc = Object.keys(sub[vk]).length;
     const app = Object.values(sub[vk]).filter(v => v.approve).length;
@@ -2694,6 +2769,11 @@ function ReviewScreen({ user }) {
       const wasLie = lieCount > allVotes.length / 2;
       sub.deliberateLieFinding = wasLie;
       sub.auditTrail.push({ time: now, action: `RESOLVED: ${outcome.toUpperCase()} (${app}/${vc} approved)${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
+      // Reveal anonymous identities now that voting is complete
+      if (sub.anonMap) {
+        const reveals = Object.entries(sub.anonMap).map(([real, anon]) => `${anon} → @${real}`).join(", ");
+        sub.auditTrail.push({ time: now, action: `🔓 Blind review complete — identities revealed: ${reveals}` });
+      }
       // Resolve each inline edit independently
       if (sub.inlineEdits && sub.inlineEdits.length > 0) {
         const voters = Object.values(sub[vk]);
@@ -2785,7 +2865,10 @@ function ReviewScreen({ user }) {
         if (!crossResult.error && crossResult.jurors.length >= 3) {
           sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
           sub.status = "cross_review"; sub.resolvedAt = null;
-          sub.auditTrail.push({ time: now, action: `Promoted to cross-group. ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}. Jury: ${crossResult.jurors.map(j => "@" + j).join(", ")}` });
+          // Add cross-group jurors to anon map
+          sub.anonMap = sub.anonMap || {};
+          crossResult.jurors.forEach(j => { if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror"); });
+          sub.auditTrail.push({ time: now, action: `Promoted to cross-group. ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}.` });
         }
       }
       // Track cross-group outcomes on the originating Assembly
@@ -2848,17 +2931,17 @@ function ReviewScreen({ user }) {
       <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
         <SubHeadline sub={sub} />
       </div>
-      <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{sub.reasoning}</div>
+      <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
 
       {sub.evidence && sub.evidence.length > 0 && (
-        <div style={{ marginTop: 8, padding: 10, background: "#F0EDE6", borderRadius: 2 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 4 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
-          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 4, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#2A6B6B" }}>{e.url}</a>{e.explanation && <div style={{ color: "#5A5650", marginTop: 1 }}>↳ {e.explanation}</div>}</div>)}
+        <div style={{ marginTop: 12, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
+          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#2A6B6B" }}>{e.url}</a>{e.explanation && <div style={{ color: "#5A5650", marginTop: 2 }}>↳ {e.explanation}</div>}</div>)}
         </div>
       )}
 
       {sub.inlineEdits && sub.inlineEdits.length > 0 && (
-        <div style={{ marginTop: 10, padding: 10, background: "#F0EDE6", borderRadius: 2 }}>
+        <div style={{ marginTop: 14, padding: 12, background: "#F0EDE6", borderRadius: 2 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 6 }}>{sub.inlineEdits.length} In-Line Edit{sub.inlineEdits.length > 1 ? "s" : ""} — {reviewingId === sub.id ? "vote on each" : "line-by-line review"}</div>
           {sub.inlineEdits.map((e, i) => (
             <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid #DCD8D0" : "none" }}>
@@ -2881,7 +2964,7 @@ function ReviewScreen({ user }) {
       )}
 
       {sub.standingCorrection && (
-        <div style={{ marginTop: 8, padding: 10, background: "#EDF0F7", border: "1px solid #D4CFC4", borderRadius: 2, fontSize: 12 }}>
+        <div style={{ marginTop: 14, padding: 12, background: "#EDF0F7", border: "1px solid #D4CFC4", borderRadius: 2, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#5A5650", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
           <div style={{ color: "#2B2B2B", fontWeight: 600 }}>{sub.standingCorrection.assertion}</div>
           {sub.standingCorrection.evidence && <div style={{ color: "#5A5650", fontSize: 12, marginTop: 2 }}>Source: {sub.standingCorrection.evidence}</div>}
@@ -3012,17 +3095,17 @@ function ReviewScreen({ user }) {
         {dQ.map(d => (
           <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #C2632A" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>⚖ @{d.disputedBy} vs @{d.originalSubmitter} · {d.orgName} · {sDate(d.createdAt)}</span>
+              <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>⚖ {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {d.orgName} · {sDate(d.createdAt)}</span>
               <span style={{ fontSize: 10, padding: "2px 7px", background: "#FDF0E4", color: "#C2632A", borderRadius: 2, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
             </div>
             <div style={{ padding: 10, background: "#FAF8F2", borderRadius: 2, marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 3 }}>ORIGINAL SUBMISSION BY @{d.originalSubmitter}</div>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#5A5650", marginBottom: 3 }}>ORIGINAL SUBMISSION BY {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)}</div>
               <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#1B2A4A" }}>{d.submissionHeadline}</div>
-              <div style={{ fontSize: 12, color: "#5A5650", marginTop: 4 }}>{d.submissionReasoning}</div>
+              <div style={{ fontSize: 12, color: "#5A5650", marginTop: 6, lineHeight: 1.8 }}>{d.submissionReasoning}</div>
             </div>
-            <div style={{ padding: 10, background: "#FDF0E4", border: "1px solid #C2632A", borderRadius: 2, marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A", marginBottom: 3 }}>DISPUTE BY @{d.disputedBy}</div>
-              <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{d.reasoning}</div>
+            <div style={{ padding: 12, background: "#FDF0E4", border: "1px solid #C2632A", borderRadius: 2, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#C2632A", marginBottom: 4 }}>DISPUTE BY {anonName(d.disputedBy, d.anonMap, d.resolvedAt)}</div>
+              <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8 }}>{d.reasoning}</div>
               {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#2A6B6B" }}>{e.url}</a>{e.explanation && <div style={{ color: "#5A5650" }}>↳ {e.explanation}</div>}</div>)}</div>}
             </div>
             {reviewingId === d.id ? (
@@ -3093,7 +3176,10 @@ function DIPanelContent({ user, subs, onReload }) {
       const result = await selectJury(sub.orgId, sub.submittedBy);
       if (!result.error) {
         sub.jurors = result.jurors; sub.jurySeed = result.seed; sub.status = "pending_review";
-        sub.auditTrail.push({ time: now, action: `👤 Partner @${user.username} approved. Jury: ${result.jurors.map(j => "@" + j).join(", ")}` });
+        // Add jurors to anon map
+        sub.anonMap = sub.anonMap || {};
+        result.jurors.forEach(j => { if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror"); });
+        sub.auditTrail.push({ time: now, action: `👤 Partner approved. Jury pool: ${result.jurors.length} jurors assigned.` });
       } else {
         sub.status = "pending_jury";
         sub.auditTrail.push({ time: now, action: `👤 Partner @${user.username} approved. Queued for jury assignment.` });
@@ -3287,7 +3373,7 @@ function ConsensusScreen({ onViewCitizen }) {
             <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
               <SubHeadline sub={sub} />
             </div>
-            <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{sub.reasoning}</div>
+            <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
             <AuditTrail entries={sub.auditTrail} />
             <LegalDisclaimer short />
           </div>
@@ -3346,7 +3432,7 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
       {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#5B2D8E" : sub.status === "approved" ? "#1B5E3F" : sub.status === "rejected" || sub.status === "disputed" ? "#C4573F" : "#C4900A"}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}><UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
+            <span style={{ fontSize: 10, color: "#7A7570", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E6E8F0", color: "#4A5899", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#E5F0EA", color: "#1B5E3F", borderRadius: 2, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
@@ -3354,13 +3440,13 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
             </div>
           </div>
           <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#2A6B6B", wordBreak: "break-all" }}>{sub.url}</a>
-          <div style={{ margin: "6px 0", padding: 8, background: "#FAF8F2", borderRadius: 2 }}>
+          <div style={{ margin: "8px 0", padding: 10, background: "#FAF8F2", borderRadius: 2 }}>
             <SubHeadline sub={sub} size={13} />
           </div>
-          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.6 }}>{sub.reasoning}</div>
-          {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#5A5650" }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
-          {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#2A6B6B" }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
-          {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#6B1520", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 2 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
+          <div style={{ fontSize: 13, color: "#2B2B2B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+          {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#5A5650", marginBottom: 4 }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
+          {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#2A6B6B", marginBottom: 4 }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
+          {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#6B1520", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
 
           {canDispute(sub) && disputingId !== sub.id && (
             <button className="ta-btn-ghost" style={{ color: "#C2632A", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
@@ -3369,7 +3455,7 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
           {disputingId === sub.id && (
             <div style={{ marginTop: 10, padding: 14, background: "#FDF0E4", border: "1.5px solid #C2632A", borderRadius: 2 }}>
               <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#C2632A", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
-              <p style={{ fontSize: 12, color: "#2B2B2B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing @{sub.submittedBy}'s submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
+              <p style={{ fontSize: 12, color: "#2B2B2B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
               {disputeError && <div className="ta-error">{disputeError}</div>}
               <div className="ta-field"><label>Why is this submission wrong? *</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain specifically what is incorrect, misleading, or deceptive..." /></div>
               <EvidenceFields evidence={disputeForm.evidence} onChange={ev => setDisputeForm({ ...disputeForm, evidence: ev })} />
