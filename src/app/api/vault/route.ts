@@ -7,6 +7,7 @@ import { ok, err, unauthorized } from "@/lib/api-utils";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const orgId = searchParams.get("orgId");
+  const orgIds = searchParams.get("orgIds"); // comma-separated list of org IDs
   const status = searchParams.get("status");
   const type = searchParams.get("type") || "vault";
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
@@ -21,9 +22,11 @@ export async function GET(request: NextRequest) {
       query = `
         SELECT a.id, a.org_id, a.submission_id, a.content, a.status,
                a.survival_count, a.approved_at, a.created_at,
-               u.username AS submitted_by_username
+               u.username AS submitted_by_username,
+               o.name AS org_name
         FROM arguments a
         JOIN users u ON u.id = a.submitted_by
+        JOIN organizations o ON o.id = a.org_id
         WHERE 1=1
       `;
       break;
@@ -31,9 +34,11 @@ export async function GET(request: NextRequest) {
       query = `
         SELECT b.id, b.org_id, b.submission_id, b.content, b.status,
                b.survival_count, b.approved_at, b.created_at,
-               u.username AS submitted_by_username
+               u.username AS submitted_by_username,
+               o.name AS org_name
         FROM beliefs b
         JOIN users u ON u.id = b.submitted_by
+        JOIN organizations o ON o.id = b.org_id
         WHERE 1=1
       `;
       break;
@@ -41,9 +46,11 @@ export async function GET(request: NextRequest) {
       query = `
         SELECT t.id, t.org_id, t.submission_id, t.original_text, t.translated_text,
                t.translation_type, t.status, t.survival_count, t.approved_at, t.created_at,
-               u.username AS submitted_by_username
+               u.username AS submitted_by_username,
+               o.name AS org_name
         FROM translations t
         JOIN users u ON u.id = t.submitted_by
+        JOIN organizations o ON o.id = t.org_id
         WHERE 1=1
       `;
       break;
@@ -51,9 +58,11 @@ export async function GET(request: NextRequest) {
       query = `
         SELECT v.id, v.org_id, v.submission_id, v.assertion, v.evidence, v.status,
                v.survival_count, v.approved_at, v.created_at,
-               u.username AS submitted_by_username
+               u.username AS submitted_by_username,
+               o.name AS org_name
         FROM vault_entries v
         JOIN users u ON u.id = v.submitted_by
+        JOIN organizations o ON o.id = v.org_id
         WHERE 1=1
       `;
       break;
@@ -62,6 +71,14 @@ export async function GET(request: NextRequest) {
   if (orgId) {
     query += ` AND org_id = $${paramIndex++}`;
     params.push(orgId);
+  } else if (orgIds) {
+    const ids = orgIds.split(",").map(s => s.trim()).filter(Boolean);
+    if (ids.length > 0) {
+      const placeholders = ids.map((_, i) => `$${paramIndex + i}`).join(", ");
+      paramIndex += ids.length;
+      query += ` AND org_id IN (${placeholders})`;
+      params.push(...ids);
+    }
   }
   if (status) {
     query += ` AND status = $${paramIndex++}`;
@@ -81,65 +98,79 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// POST /api/vault — create a vault entry
+// POST /api/vault — create a vault entry (supports single orgId or multiple orgIds)
 export async function POST(request: NextRequest) {
   const session = await getCurrentUser();
   if (!session) return unauthorized();
 
   const body = await request.json();
-  const { orgId, type } = body;
+  const { orgId, orgIds, type } = body;
 
-  if (!orgId) {
-    return err("orgId is required");
+  // Support single orgId or array of orgIds
+  const targetOrgIds: string[] = orgIds && Array.isArray(orgIds) && orgIds.length > 0
+    ? orgIds
+    : orgId ? [orgId] : [];
+
+  if (targetOrgIds.length === 0) {
+    return err("orgId or orgIds is required");
   }
 
   const entryType = type || "vault";
+  const results: unknown[] = [];
 
-  switch (entryType) {
-    case "argument": {
-      const { content } = body;
-      if (!content) return err("content is required for arguments");
-      const result = await sql`
-        INSERT INTO arguments (org_id, submitted_by, content)
-        VALUES (${orgId}, ${session.sub}, ${content})
-        RETURNING id, org_id, content, status, created_at
-      `;
-      return ok(result.rows[0], 201);
-    }
-    case "belief": {
-      const { content } = body;
-      if (!content) return err("content is required for beliefs");
-      const result = await sql`
-        INSERT INTO beliefs (org_id, submitted_by, content)
-        VALUES (${orgId}, ${session.sub}, ${content})
-        RETURNING id, org_id, content, status, created_at
-      `;
-      return ok(result.rows[0], 201);
-    }
-    case "translation": {
-      const { original, translated, translationType } = body;
-      if (!original || !translated || !translationType) {
-        return err("original, translated, and translationType are required for translations");
+  for (const targetOrgId of targetOrgIds) {
+    switch (entryType) {
+      case "argument": {
+        const { content } = body;
+        if (!content) return err("content is required for arguments");
+        const result = await sql`
+          INSERT INTO arguments (org_id, submitted_by, content)
+          VALUES (${targetOrgId}, ${session.sub}, ${content})
+          RETURNING id, org_id, content, status, created_at
+        `;
+        results.push(result.rows[0]);
+        break;
       }
-      const result = await sql`
-        INSERT INTO translations (org_id, submitted_by, original_text, translated_text, translation_type)
-        VALUES (${orgId}, ${session.sub}, ${original}, ${translated}, ${translationType})
-        RETURNING id, org_id, original_text, translated_text, translation_type, status, created_at
-      `;
-      return ok(result.rows[0], 201);
-    }
-    default: {
-      // vault
-      const { assertion, evidence } = body;
-      if (!assertion || !evidence) {
-        return err("assertion and evidence are required for vault entries");
+      case "belief": {
+        const { content } = body;
+        if (!content) return err("content is required for beliefs");
+        const result = await sql`
+          INSERT INTO beliefs (org_id, submitted_by, content)
+          VALUES (${targetOrgId}, ${session.sub}, ${content})
+          RETURNING id, org_id, content, status, created_at
+        `;
+        results.push(result.rows[0]);
+        break;
       }
-      const result = await sql`
-        INSERT INTO vault_entries (org_id, submitted_by, assertion, evidence)
-        VALUES (${orgId}, ${session.sub}, ${assertion}, ${evidence})
-        RETURNING id, org_id, assertion, evidence, status, created_at
-      `;
-      return ok(result.rows[0], 201);
+      case "translation": {
+        const { original, translated, translationType } = body;
+        if (!original || !translated || !translationType) {
+          return err("original, translated, and translationType are required for translations");
+        }
+        const result = await sql`
+          INSERT INTO translations (org_id, submitted_by, original_text, translated_text, translation_type)
+          VALUES (${targetOrgId}, ${session.sub}, ${original}, ${translated}, ${translationType})
+          RETURNING id, org_id, original_text, translated_text, translation_type, status, created_at
+        `;
+        results.push(result.rows[0]);
+        break;
+      }
+      default: {
+        const { assertion, evidence } = body;
+        if (!assertion || !evidence) {
+          return err("assertion and evidence are required for vault entries");
+        }
+        const result = await sql`
+          INSERT INTO vault_entries (org_id, submitted_by, assertion, evidence)
+          VALUES (${targetOrgId}, ${session.sub}, ${assertion}, ${evidence})
+          RETURNING id, org_id, assertion, evidence, status, created_at
+        `;
+        results.push(result.rows[0]);
+        break;
+      }
     }
   }
+
+  // Return single entry for backward compatibility, or array for multi-org
+  return ok(results.length === 1 ? results[0] : { entries: results, count: results.length }, 201);
 }
