@@ -9,7 +9,7 @@ if (!jwtSecret) {
 const JWT_SECRET = new TextEncoder().encode(jwtSecret);
 
 const COOKIE_NAME = "ta-session";
-const TOKEN_EXPIRY = "7d";
+const TOKEN_EXPIRY = "365d";
 
 export interface JWTPayload {
   sub: string; // user id
@@ -50,7 +50,7 @@ export async function setSessionCookie(token: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 365, // 1 year
   });
 }
 

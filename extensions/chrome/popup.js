@@ -221,7 +221,7 @@ function relBadge(orgId) {
 }
 
 // ── Submit tab ──
-function renderSubmitTab() {
+async function renderSubmitTab() {
   const gate = document.getElementById("submit-gate");
   if (!currentUser) {
     gate.innerHTML = `
@@ -265,7 +265,7 @@ function renderSubmitTab() {
       <label>Article URL</label>
       <input type="text" id="sub-url" value="${escapeHtml(currentUrl || "")}" readonly>
       <label>Original Headline</label>
-      <input type="text" id="sub-headline" placeholder="The original headline as published">
+      <input type="text" id="sub-headline" placeholder="Detecting headline…">
       <label>Corrected Headline</label>
       <input type="text" id="sub-replacement" placeholder="Your proposed correction">
       <label>Reasoning</label>
@@ -275,6 +275,31 @@ function renderSubmitTab() {
     </div>
   `;
   document.getElementById("btn-submit").addEventListener("click", doSubmit);
+
+  // Auto-detect headline from current page
+  try {
+    const tabs = typeof chrome !== "undefined" && chrome.tabs
+      ? await chrome.tabs.query({ active: true, currentWindow: true })
+      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (tab && tab.id) {
+      const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
+        ? chrome.tabs.sendMessage.bind(chrome.tabs)
+        : browser.tabs.sendMessage.bind(browser.tabs);
+      sendMsg(tab.id, { type: "TA_GET_HEADLINE" }, (response) => {
+        const headlineInput = document.getElementById("sub-headline");
+        if (response && response.headline && headlineInput && !headlineInput.value) {
+          headlineInput.value = response.headline;
+          headlineInput.placeholder = "The original headline as published";
+        } else if (headlineInput) {
+          headlineInput.placeholder = "The original headline as published";
+        }
+      });
+    }
+  } catch (e) {
+    const headlineInput = document.getElementById("sub-headline");
+    if (headlineInput) headlineInput.placeholder = "The original headline as published";
+  }
 }
 
 async function doLogin() {

@@ -466,7 +466,62 @@
     return labels[status] || status || "Approved";
   }
 
+  // ── Listen for headline request from popup ──
+  function listenForHeadlineRequest() {
+    const runtime = (typeof chrome !== "undefined" && chrome.runtime) ? chrome.runtime
+      : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
+    if (!runtime) return;
+
+    runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === "TA_GET_HEADLINE") {
+        const headline = detectHeadline();
+        sendResponse({ headline: headline || "" });
+        return true; // keep channel open for async response
+      }
+    });
+  }
+
+  // ── Detect headline from page ──
+  function detectHeadline() {
+    // Try structured selectors first (most reliable)
+    const selectors = [
+      'h1[class*="headline"]',
+      'h1[class*="title"]',
+      'h1.article-title',
+      'h1.main-headline',
+      'h1.headline',
+      'h1.detailHeadline',
+      'article h1',
+      '.article-header h1',
+      '.post-header h1',
+      '.entry-title',
+    ];
+
+    for (const selector of selectors) {
+      const el = document.querySelector(selector);
+      if (el && el.textContent.trim()) {
+        return el.textContent.trim();
+      }
+    }
+
+    // Try og:title meta tag (very common on news sites)
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle && ogTitle.getAttribute("content")) {
+      return ogTitle.getAttribute("content").trim();
+    }
+
+    // Fall back to first h1 on the page
+    const h1 = document.querySelector("h1");
+    if (h1 && h1.textContent.trim()) {
+      return h1.textContent.trim();
+    }
+
+    // Last resort: page title
+    return document.title || "";
+  }
+
   // ── Start ──
+  listenForHeadlineRequest();
   listenForSettingsChanges();
   listenForStorageChanges();
 
