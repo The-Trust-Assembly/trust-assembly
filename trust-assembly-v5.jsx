@@ -5578,13 +5578,85 @@ function ExtensionsScreen() {
       </div>
 
       {/* What it does */}
-      <div className="ta-card">
+      <div className="ta-card" style={{ marginBottom: 18 }}>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>What the Extension Does</h3>
         <div style={{ fontSize: 13, lineHeight: 1.8 }}>
           <div style={{ marginBottom: 8 }}><strong style={{ color: "var(--fired-clay)" }}>Corrections</strong> — When a news article's headline has been corrected through Trust Assembly review, the extension shows a badge count and displays the verified correction alongside the original.</div>
           <div style={{ marginBottom: 8 }}><strong style={{ color: "var(--evergreen)" }}>Affirmations</strong> — Headlines that survived adversarial review and were confirmed accurate are marked as verified.</div>
           <div style={{ marginBottom: 8 }}><strong style={{ color: "var(--indigo)" }}>Translations</strong> — Jargon, spin, propaganda, and euphemisms are replaced with plain-language alternatives approved through jury review. Toggle categories (Clarity, Anti-Propaganda, Euphemism, Satirical) in the popup.</div>
           <div><strong style={{ color: "var(--stone)" }}>Settings</strong> — Click the extension icon to toggle badge visibility and translation overlays on or off.</div>
+        </div>
+      </div>
+
+      {/* How to use the extension */}
+      <div className="ta-card" style={{ marginBottom: 18 }}>
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>How It Works — Step by Step</h3>
+        <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+          <div style={{ marginBottom: 12 }}>
+            <strong>1. Browse normally.</strong> The extension runs silently in the background. Every page you visit is checked against the Trust Assembly record — if corrections, affirmations, or translations exist, a small <strong>floating badge</strong> appears in the corner of the page with a count.
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <strong>2. Click the badge or the extension icon.</strong> A side panel opens showing every correction, affirmation, and translation for the current article. Corrections are color-coded: <span style={{ color: "var(--fired-clay)", fontWeight: 700 }}>red</span> for corrections, <span style={{ color: "var(--evergreen)", fontWeight: 700 }}>green</span> for affirmations, and <span style={{ color: "#D4850A", fontWeight: 700 }}>amber</span> for translations. If your assemblies reviewed the article, you'll see <em>Joined</em> or <em>Followed</em> badges next to the assembly name.
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <strong>3. Translations appear inline.</strong> When a translation is active, the original text on the page is annotated with a dotted underline and a small <sup style={{ color: "#2A6B6B", fontWeight: 700 }}>TA</sup> superscript. Hover to see the plain-language alternative. Toggle inline translations on or off in the popup settings.
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <strong>4. Submit corrections from any page.</strong> Click the extension icon, go to the <strong>Submit</strong> tab, and the article's URL and headline are automatically filled in. Choose your assembly, write your corrected headline and reasoning, and submit. Your correction enters the Trust Assembly review process — jury deliberation, cross-group review, and consensus.
+          </div>
+          <div>
+            <strong>5. When multiple assemblies disagree,</strong> the extension uses <em>conflict resolution</em>: corrections are grouped by headline, and the assembly with the highest trust score wins top display. Other perspectives are collapsed beneath — always visible, never hidden.
+          </div>
+        </div>
+      </div>
+
+      {/* Trust scores and what they mean */}
+      <div className="ta-card" style={{ marginBottom: 18 }}>
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>Understanding What You See</h3>
+        <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+          <div style={{ marginBottom: 12 }}>
+            <strong>Trust Scores</strong> — Each correction and affirmation displays the submitter's profile and trust score. Scores are earned through consistent, accurate contributions that survive community review. A higher score means more of that person's work has been validated by juries.
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <strong>Statuses</strong> — Corrections move through a lifecycle:
+            <div style={{ paddingLeft: 16, marginTop: 6 }}>
+              <div style={{ marginBottom: 3 }}>&#8226; <strong>Under Review</strong> — Submitted and awaiting jury deliberation.</div>
+              <div style={{ marginBottom: 3 }}>&#8226; <strong>Approved</strong> — Passed jury review within the originating assembly.</div>
+              <div style={{ marginBottom: 3 }}>&#8226; <strong>Cross-Group Review</strong> — Being reviewed by a second, independent assembly for additional validation.</div>
+              <div style={{ marginBottom: 3 }}>&#8226; <strong>Consensus</strong> — Approved by multiple assemblies. The strongest level of verification.</div>
+              <div style={{ marginBottom: 3 }}>&#8226; <strong>Dispute Upheld</strong> — A challenge was raised and the jury ruled in favor of the correction.</div>
+            </div>
+          </div>
+          <div>
+            <strong>Assembly Badges</strong> — If you're a member of or following an assembly that reviewed the article, you'll see a <span style={{ display: "inline-block", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "1px 6px", borderRadius: 2, background: "#1B5E3F", color: "#fff" }}>Joined</span> or <span style={{ display: "inline-block", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "1px 6px", borderRadius: 2, background: "#2A6B6B", color: "#fff" }}>Followed</span> badge. This helps you quickly identify corrections from communities you trust.
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ */}
+      <div className="ta-card">
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>Frequently Asked Questions</h3>
+        <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+          <div style={{ marginBottom: 12 }}>
+            <strong>Do I need a Trust Assembly account?</strong><br />
+            No — you can view corrections and translations without logging in. You only need an account to submit corrections or manage assembly memberships.
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <strong>Why don't I see anything on most pages?</strong><br />
+            The extension only shows results for pages that have been reviewed. If no one has submitted a correction, affirmation, or translation for a given article, the extension stays silent. That doesn't mean the article is accurate — it means it hasn't been reviewed yet.
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <strong>Can I submit corrections from the extension?</strong><br />
+            Yes. Click the extension icon, go to the Submit tab, and the page URL and headline are pre-filled automatically. Select your assembly, write your correction and reasoning, and submit.
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <strong>Does it work on any website?</strong><br />
+            The extension runs on all HTTP/HTTPS pages. It works best on news sites, but you can submit corrections for any public webpage with a headline.
+          </div>
+          <div>
+            <strong>Will it slow down my browsing?</strong><br />
+            No. The extension makes one lightweight API call per page and caches results for 5 minutes. There's no impact on page load or rendering speed.
+          </div>
         </div>
       </div>
     </div>
