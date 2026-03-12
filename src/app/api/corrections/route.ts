@@ -34,6 +34,26 @@ async function kvGet(key: string): Promise<unknown> {
   return JSON.parse(result.rows[0].value);
 }
 
+function normalizeUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw);
+    // Strip fragment and trailing slash from pathname
+    parsed.hash = "";
+    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
+      parsed.pathname = parsed.pathname.slice(0, -1);
+    }
+    // Remove common tracking query params but keep meaningful ones
+    const trackingParams = [
+      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+      "fbclid", "gclid", "ref", "source",
+    ];
+    trackingParams.forEach((p) => parsed.searchParams.delete(p));
+    return parsed.toString();
+  } catch {
+    return raw;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
@@ -41,6 +61,8 @@ export async function GET(request: NextRequest) {
   if (!url) {
     return err("url query parameter is required");
   }
+
+  const normalizedUrl = normalizeUrl(url);
 
   try {
     const [subsRaw, usersRaw, orgsRaw, transRaw] = await Promise.all([
@@ -56,9 +78,11 @@ export async function GET(request: NextRequest) {
     const trans = (transRaw as Record<string, Record<string, unknown>>) || {};
 
     // Find submissions matching this URL with approved/consensus status
+    // Normalize both sides so trailing slashes, fragments, and tracking
+    // params don't cause mismatches.
     const matching = Object.values(subs).filter(
       (s: Record<string, unknown>) =>
-        s.url === url &&
+        normalizeUrl(s.url as string) === normalizedUrl &&
         (s.status === "approved" || s.status === "consensus")
     );
 

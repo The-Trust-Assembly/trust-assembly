@@ -81,11 +81,11 @@ async function loadCorrections() {
     return;
   }
 
-  // Load user assemblies for badges (non-blocking)
+  // Load user assemblies for relationship badges
   if (currentUser && !userAssemblies) {
     userAssemblies = await TA.getCachedAssemblies();
     if (!userAssemblies) {
-      TA.getMyAssemblies().then(a => { userAssemblies = a; });
+      userAssemblies = await TA.getMyAssemblies();
     }
   }
 
