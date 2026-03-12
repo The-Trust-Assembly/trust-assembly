@@ -116,6 +116,10 @@
 
     // Store data on window for later use by settings changes
     window.__trustAssemblyData = data;
+
+    // Start watching for dynamically loaded content (Twitter feeds,
+    // Facebook posts, SPA navigations, infinite scroll, etc.)
+    startObserver(data);
   }
 
   // ── Listen for settings change messages from popup/background ──
@@ -471,6 +475,79 @@
         // Also visually mark the headline itself
         el.classList.add("ta-inline-headline-corrected");
       });
+
+      // Replace the headline text everywhere else in the DOM (meta tags,
+      // data-attributes, <title>, etc.) so the correction is truly universal.
+      replaceHeadlineAcrossDOM(sub.originalHeadline, sub.replacement);
+    });
+  }
+
+  // ── DOM-wide headline text replacement ──
+  // Replaces a headline string everywhere it appears beyond just visible
+  // heading elements: <title>, <meta> tags (og:title, twitter:title),
+  // data-headline attributes, aria-labels, JSON-LD, etc.
+  function replaceHeadlineAcrossDOM(original, replacement) {
+    if (!original || !replacement) return;
+
+    const normalizedOriginal = original.replace(/\s+/g, " ").trim().toLowerCase();
+
+    function containsHeadline(text) {
+      return text.replace(/\s+/g, " ").trim().toLowerCase().includes(normalizedOriginal);
+    }
+
+    // Build a whitespace-flexible regex for replacement
+    function makeFlexRegex() {
+      const escaped = original
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        .replace(/\s+/g, "\\s+");
+      return new RegExp(escaped, "gi");
+    }
+
+    function replaceIn(text) {
+      if (text.includes(original)) {
+        return text.split(original).join(replacement);
+      }
+      return text.replace(makeFlexRegex(), replacement);
+    }
+
+    // 1. <title> tag
+    const titleEl = document.querySelector("title");
+    if (titleEl && titleEl.textContent && containsHeadline(titleEl.textContent)) {
+      titleEl.textContent = replaceIn(titleEl.textContent);
+    }
+
+    // 2. Meta tags (og:title, twitter:title, etc.)
+    const metaSelectors = [
+      'meta[property="og:title"]',
+      'meta[name="twitter:title"]',
+      'meta[name="title"]',
+      'meta[property="title"]',
+    ];
+    metaSelectors.forEach(sel => {
+      const el = document.querySelector(sel);
+      if (el && el.content && containsHeadline(el.content)) {
+        el.content = replaceIn(el.content);
+      }
+    });
+
+    // 3. data-headline, data-title, aria-label attributes on any element
+    const attrNames = ["data-headline", "data-title", "aria-label", "title"];
+    attrNames.forEach(attr => {
+      document.querySelectorAll("[" + attr + "]").forEach(el => {
+        // Skip our own injected elements
+        if (el.closest("[class^='ta-inline'], [class^='ta-ext']")) return;
+        const val = el.getAttribute(attr);
+        if (val && containsHeadline(val)) {
+          el.setAttribute(attr, replaceIn(val));
+        }
+      });
+    });
+
+    // 4. JSON-LD / Schema.org script blocks
+    document.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
+      if (script.textContent && containsHeadline(script.textContent)) {
+        script.textContent = replaceIn(script.textContent);
+      }
     });
   }
 
@@ -770,6 +847,69 @@
         return true; // keep channel open for async response
       }
     });
+  }
+
+  // ── MutationObserver for dynamic content (SPAs, feeds) ──
+  // Watches for new DOM nodes and re-applies corrections, affirmations,
+  // and translations to dynamically loaded content. This is critical for
+  // sites like Twitter and Facebook where feed items load as you scroll.
+  let taObserver = null;
+
+  function startObserver(data) {
+    if (taObserver) return; // already running
+
+    // Debounce: batch mutations together so we don't re-scan on every
+    // single node insertion (Twitter can add hundreds per scroll).
+    let pending = false;
+
+    taObserver = new MutationObserver((mutations) => {
+      // Quick check: do any mutations contain meaningful added nodes?
+      let hasNewContent = false;
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
+            // Ignore our own injected elements
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const el = /** @type {Element} */ (node);
+              const cls = el.className || "";
+              if (typeof cls === "string" && (cls.startsWith("ta-inline") || cls.startsWith("ta-ext"))) continue;
+            }
+            hasNewContent = true;
+            break;
+          }
+        }
+        if (hasNewContent) break;
+      }
+
+      if (!hasNewContent || pending) return;
+      pending = true;
+
+      // Use requestIdleCallback (or setTimeout fallback) to batch work
+      const schedule = window.requestIdleCallback || ((cb) => setTimeout(cb, 100));
+      schedule(() => {
+        pending = false;
+        reapplyToNewContent(data);
+      });
+    });
+
+    taObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  function reapplyToNewContent(data) {
+    // Re-run corrections on any un-annotated headline elements
+    if (data.corrections.length > 0) {
+      applyInlineCorrections(data.corrections);
+      applyInlineEdits(data.corrections);
+    }
+    if (data.affirmations.length > 0) {
+      applyInlineAffirmations(data.affirmations);
+    }
+    if (settings.showTranslations && data.translations.length > 0) {
+      applyTranslations(data.translations);
+    }
   }
 
   // ── Detect headline from page ──
