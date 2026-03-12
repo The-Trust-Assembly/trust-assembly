@@ -540,10 +540,13 @@
     const excludeSelector = EXCLUDE_SELECTORS.join(", ");
 
     // Structured headline selectors — check these first (highest confidence)
+    // Covers: CNN (h1.headline__text), NYT (h1[data-testid="headline"]),
+    // Fox/MSNBC (article h1), and most standard news sites.
     const prioritySelectors = [
       'h1[class*="headline"]', 'h1[class*="title"]',
       'h1.article-title', 'h1.main-headline', 'h1.headline', 'h1.detailHeadline',
       'article h1', '.article-header h1', '.post-header h1', '.entry-title',
+      'h1[data-testid*="headline"]', 'h1[data-testid*="title"]',
       'h2[class*="headline"]', 'h2[class*="title"]', 'article h2',
     ];
 
@@ -560,11 +563,17 @@
       if (h1 && h1.textContent.trim() && !h1.closest(excludeSelector)) found.add(h1);
     }
 
-    // Global text search: walk all visible text-containing elements and
-    // check if they contain a correction headline. This catches headlines
-    // in non-standard markup (spans, divs, h2-h6, etc.).
-    // We collect candidates here; the caller's matching logic filters further.
-    const globalSelectors = "h1, h2, h3, h4, h5, h6, [class*='headline'], [class*='title'], [class*='heading'], [data-testid*='headline'], [data-testid*='title']";
+    // Broader search: all heading elements plus elements explicitly marked
+    // as headlines via class or data-testid. We use [class*='headline']
+    // (not [class*='title'] which is too broad — hits .subtitle, .card-title,
+    // .btn-title, etc.) to avoid false positives on non-headline elements.
+    const globalSelectors = [
+      "h1", "h2", "h3", "h4", "h5", "h6",
+      "[class*='headline']", "[class*='heading']",
+      "[data-testid*='headline']", "[data-testid*='title']",
+      "[itemprop='headline']",  // Schema.org microdata
+      "[class*='article-title']", "[class*='post-title']", "[class*='story-title']",
+    ].join(", ");
     document.querySelectorAll(globalSelectors).forEach(el => {
       if (el.textContent.trim() && !el.closest(excludeSelector) && !found.has(el)) {
         found.add(el);
