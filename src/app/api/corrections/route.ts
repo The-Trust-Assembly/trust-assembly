@@ -22,7 +22,7 @@ import { ok, err } from "@/lib/api-utils";
 // voluntarily publish when creating corrections. A reader's browsing
 // activity must never be observable by Trust Assembly.
 
-const VER = "v6";
+const VER = "v5";
 const SK_SUBS = `ta-s-${VER}`;
 const SK_USERS = `ta-u-${VER}`;
 const SK_ORGS = `ta-o-${VER}`;
