@@ -4153,11 +4153,26 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
     const newIds = [...myOrgIds, oid];
     await updateUser({ orgId: oid, orgIds: newIds });
     setOrgs(up);
-    if (up[oid].members.length >= 5) {
+    const ww = await isWildWestMode();
+    const juryThreshold = ww ? 2 : 5;
+    if (up[oid].members.length >= juryThreshold) {
       const allSubs = (await sG(SK.SUBS)) || {}; let ch = false;
       for (const sub of Object.values(allSubs)) {
         if (sub.orgId === oid && sub.status === "pending_jury") {
-          const r = await selectJury(oid, sub.submittedBy); if (!r.error) { sub.jurors = r.jurors; sub.jurySeed = r.seed; sub.status = "pending_review"; sub.auditTrail.push({ time: new Date().toISOString(), action: `Jury assigned: ${r.jurors.map(j => "@" + j).join(", ")}` }); ch = true; }
+          if (ww) {
+            // Wild West: pick 1 random reviewer (not submitter, not DI partner)
+            const submitterUser = ((await sG(SK.USERS)) || {})[sub.submittedBy];
+            const excluded = new Set([sub.submittedBy, ...(submitterUser?.diPartner ? [submitterUser.diPartner] : [])]);
+            const eligible = up[oid].members.filter(m => !excluded.has(m));
+            if (eligible.length > 0) {
+              const pick = eligible[Math.floor(Math.random() * eligible.length)];
+              sub.jurors = [pick]; sub.jurySeed = Math.floor(Math.random() * 10000); sub.jurySeats = 1;
+              sub.status = "pending_review"; sub.anonMap = buildAnonMap(sub.submittedBy, [pick]);
+              sub.auditTrail.push({ time: new Date().toISOString(), action: `Wild West jury assigned: @${pick}` }); ch = true;
+            }
+          } else {
+            const r = await selectJury(oid, sub.submittedBy); if (!r.error) { sub.jurors = r.jurors; sub.jurySeed = r.seed; sub.status = "pending_review"; sub.auditTrail.push({ time: new Date().toISOString(), action: `Jury assigned: ${r.jurors.map(j => "@" + j).join(", ")}` }); ch = true; }
+          }
         }
       }
       if (ch) await sS(SK.SUBS, allSubs);
