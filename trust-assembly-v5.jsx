@@ -2757,10 +2757,13 @@ function ReviewScreen({ user }) {
   const [tab, setTab] = useState("ingroup");
   const [juryScore, setJuryScore] = useState(null);
   const [diLinkReqs, setDiLinkReqs] = useState({});
+  const [wildWest, setWildWest] = useState(false);
 
   const load = useCallback(async () => {
     // Process rotation on every load — event-driven 6h check
     await processJuryRotation();
+    const ww = await isWildWestMode();
+    setWildWest(ww);
     setSubs((await sG(SK.SUBS)) || {}); setDisputes((await sG(SK.DISPUTES)) || {}); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
     // Compute jury score for display
     const js = await computeJuryScore(user.username);
@@ -2828,10 +2831,20 @@ function ReviewScreen({ user }) {
         alert("You cannot serve on this jury — you are registered to the submitter."); load(); return;
       }
     }
-    // Check if jury is full
-    if (sub[acceptedKey].length >= seats) {
-      alert("This jury has been filled — thank you for your willingness to serve.");
-      load(); return;
+    // Wild West: anyone in the org can review — auto-add to jurors and expand seats
+    const ww = await isWildWestMode();
+    if (ww && !isCross) {
+      if (!sub.jurors.includes(user.username)) {
+        sub.jurors.push(user.username);
+      }
+      // Expand seats to accommodate open review
+      sub.jurySeats = Math.max(sub.jurySeats || 1, sub[acceptedKey].length + 1);
+    } else {
+      // Normal mode: check if jury is full
+      if (sub[acceptedKey].length >= seats) {
+        alert("This jury has been filled — thank you for your willingness to serve.");
+        load(); return;
+      }
     }
     // Seat the juror
     sub[acceptedKey].push(user.username);
@@ -2840,7 +2853,7 @@ function ReviewScreen({ user }) {
     // Add juror to anonMap if not already present
     sub.anonMap = sub.anonMap || {};
     if (!sub.anonMap[user.username]) sub.anonMap[user.username] = genAnonId("Juror");
-    sub.auditTrail.push({ time: now, action: `${sub.anonMap[user.username]} accepted jury seat (${sub[acceptedKey].length}/${seats} filled)` });
+    sub.auditTrail.push({ time: now, action: `${sub.anonMap[user.username]} accepted jury seat${ww ? " (Wild West open review)" : ""} (${sub[acceptedKey].length}/${ww ? "open" : seats} filled)` });
     allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
     setReviewingId(subId); load();
   };
@@ -3007,7 +3020,18 @@ function ReviewScreen({ user }) {
 
   if (loading) return <Loader />;
   const all = Object.values(subs || {});
-  const igQ = all.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]);
+  const myOrgs = new Set(user.orgIds || (user.orgId ? [user.orgId] : []));
+  // Wild West: everyone in the same assembly can review (except own/DI-connected)
+  // Normal: only assigned jurors see the submission
+  const isEligibleReviewer = (s) => {
+    if (s.submittedBy === user.username) return false;
+    if (s.diPartner === user.username) return false;
+    if (s.isDI && s.submittedBy && user.isDI && user.diPartner === s.submittedBy) return false;
+    return true;
+  };
+  const igQ = wildWest
+    ? all.filter(s => s.status === "pending_review" && myOrgs.has(s.orgId) && isEligibleReviewer(s) && !s.votes[user.username])
+    : all.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]);
   const cgQ = all.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]);
   const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && d.jurors.includes(user.username) && !d.votes[user.username]);
   const diQ = all.filter(s => s.isDI && s.diPartner === user.username && s.status === "di_pending");

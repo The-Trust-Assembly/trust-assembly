@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { tryResolveSubmission } from "@/lib/vote-resolution";
+import { isWildWestMode } from "@/lib/jury-rules";
 
 // POST /api/submissions/[id]/vote — cast a jury vote
 export async function POST(
@@ -24,7 +25,7 @@ export async function POST(
 
   // Verify submission exists and is reviewable
   const sub = await sql`
-    SELECT id, status, submitted_by FROM submissions WHERE id = ${id}
+    SELECT id, status, submitted_by, org_id, is_di, di_partner_id FROM submissions WHERE id = ${id}
   `;
   if (sub.rows.length === 0) return notFound("Submission not found");
 
@@ -38,14 +39,33 @@ export async function POST(
     return forbidden("Cannot vote on your own submission");
   }
 
-  // Verify user is an accepted juror for this submission
-  const assignment = await sql`
-    SELECT id FROM jury_assignments
-    WHERE submission_id = ${id} AND user_id = ${session.sub}
-    AND role = ${juryRole} AND accepted = TRUE
-  `;
-  if (assignment.rows.length === 0) {
-    return forbidden("You are not an assigned juror for this submission");
+  // Can't vote if you're the DI partner of the submitter
+  if (sub.rows[0].di_partner_id === session.sub) {
+    return forbidden("Cannot vote on a submission from your DI partner");
+  }
+
+  const wildWest = await isWildWestMode();
+
+  if (wildWest) {
+    // Wild West: any member of the submission's org can vote
+    // (except submitter/DI-connected, checked above)
+    const membership = await sql`
+      SELECT id FROM organization_members
+      WHERE org_id = ${sub.rows[0].org_id} AND user_id = ${session.sub} AND is_active = TRUE
+    `;
+    if (membership.rows.length === 0) {
+      return forbidden("You must be a member of this assembly to vote");
+    }
+  } else {
+    // Normal mode: verify user is an accepted juror for this submission
+    const assignment = await sql`
+      SELECT id FROM jury_assignments
+      WHERE submission_id = ${id} AND user_id = ${session.sub}
+      AND role = ${juryRole} AND accepted = TRUE
+    `;
+    if (assignment.rows.length === 0) {
+      return forbidden("You are not an assigned juror for this submission");
+    }
   }
 
   // Check if already voted
