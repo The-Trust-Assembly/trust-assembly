@@ -20,16 +20,18 @@ async function kvSet(key: string, value: unknown): Promise<void> {
   `;
 }
 
+// All non-terminal statuses that should be flushed to approved
+const PENDING_STATUSES = [
+  'pending_jury',     // Waiting for assembly to reach member threshold
+  'pending_review',   // Jury drawn but hasn't voted
+  'di_pending',       // DI submission awaiting human partner pre-approval
+  'cross_review',     // Promoted to cross-group jury but never resolved
+];
+
 // POST /api/admin/approve-pending
-// Approves ALL currently pending submissions (pending_review AND pending_jury)
-// in BOTH the SQL submissions table AND the KV store.
-//
-// Bug fixes addressed:
-// 1. pending_jury submissions were never resolved because the backfill
-//    only handled pending_review with existing votes.
-// 2. The KV store (read by the browser extension) was never updated
-//    by the SQL-side backfill, so approved corrections were invisible
-//    to extension users.
+// Approves ALL currently non-resolved submissions in BOTH the SQL
+// submissions table AND the KV store. Catches legacy bugs where
+// submissions got stuck in intermediate states.
 export async function POST() {
   const now = new Date().toISOString();
   let sqlResolved = 0;
@@ -38,15 +40,18 @@ export async function POST() {
   // ── 1. Approve pending submissions in SQL database ──
 
   const pending = await sql`
-    SELECT s.id, s.submitted_by, s.org_id, s.is_di, s.di_partner_id
+    SELECT s.id, s.submitted_by, s.org_id, s.is_di, s.di_partner_id, s.status AS prev_status
     FROM submissions s
-    WHERE s.status IN ('pending_review', 'pending_jury')
+    WHERE s.status IN ('pending_review', 'pending_jury', 'di_pending', 'cross_review')
   `;
 
   for (const sub of pending.rows) {
+    // cross_review submissions were already in-group approved — give them consensus
+    const resolvedStatus = sub.prev_status === 'cross_review' ? 'consensus' : 'approved';
+
     await sql`
       UPDATE submissions
-      SET status = 'approved', resolved_at = ${now}, deliberate_lie_finding = FALSE, jury_seats = 1
+      SET status = ${resolvedStatus}, resolved_at = ${now}, deliberate_lie_finding = FALSE, jury_seats = 1
       WHERE id = ${sub.id}
     `;
 
@@ -80,7 +85,7 @@ export async function POST() {
       VALUES (
         'Admin: approved pending submission',
         ${sub.submitted_by}, ${sub.org_id}, 'submission', ${sub.id},
-        ${JSON.stringify({ previousStatus: 'pending', approvedAt: now })}
+        ${JSON.stringify({ previousStatus: sub.prev_status, resolvedAs: sub.prev_status === 'cross_review' ? 'consensus' : 'approved', approvedAt: now })}
       )
     `;
 
@@ -93,15 +98,18 @@ export async function POST() {
   const subs = (await kvGet(SK_SUBS)) as Record<string, Record<string, unknown>> | null;
 
   if (subs) {
-    for (const [id, sub] of Object.entries(subs)) {
-      if (sub.status === "pending_review" || sub.status === "pending_jury") {
-        sub.status = "approved";
+    const kvPendingStatuses = new Set(["pending_jury", "pending_review", "di_pending", "cross_review"]);
+
+    for (const [, sub] of Object.entries(subs)) {
+      if (kvPendingStatuses.has(sub.status as string)) {
+        const prevStatus = sub.status;
+        // cross_review was already in-group approved — give it consensus
+        sub.status = prevStatus === "cross_review" ? "consensus" : "approved";
         sub.resolvedAt = now;
         sub.deliberateLie = false;
 
-        // Add audit trail entry
         const trail = (sub.auditTrail as Array<Record<string, string>>) || [];
-        trail.push({ time: now, action: "Admin: approved pending submission" });
+        trail.push({ time: now, action: `Admin: approved pending submission (was ${prevStatus})` });
         sub.auditTrail = trail;
 
         kvResolved++;
