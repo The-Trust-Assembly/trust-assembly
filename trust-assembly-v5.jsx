@@ -1311,7 +1311,78 @@ async function computeJuryScore(username) {
 }
 
 // ── Jury Rotation: expire unaccepted/incomplete assignments after 6h ──
+// ── Wild West Backfill ──
+// Resolve any pending_review submissions that already have at least 1 approval
+// when Wild West mode is active. This handles submissions created before the
+// Wild West rules were deployed.
+async function wildWestBackfill() {
+  const wildWest = await isWildWestMode();
+  if (!wildWest) return false;
+
+  const subs = (await sG(SK.SUBS)) || {};
+  const now = new Date().toISOString();
+  let changed = false;
+
+  for (const sub of Object.values(subs)) {
+    if (sub.status !== "pending_review") continue;
+    const votes = sub.votes || {};
+    const approvals = Object.values(votes).filter(v => v.approve);
+    if (approvals.length === 0) continue;
+
+    // Resolve as approved under Wild West rules
+    sub.status = "approved";
+    sub.resolvedAt = now;
+    sub.deliberateLieFinding = false; // Deception disabled in Wild West
+    sub.jurySeats = 1; // Retroactively set for consistency
+    const vc = Object.keys(votes).length;
+    const app = approvals.length;
+    sub.auditTrail = sub.auditTrail || [];
+    sub.auditTrail.push({ time: now, action: `RESOLVED: APPROVED (${app}/${vc} approved) — Wild West backfill: submission had approval before rules change` });
+    if (sub.anonMap && sub.anonMap[sub.submittedBy]) {
+      sub.auditTrail.push({ time: now, action: `🔓 Blind review complete — submitter revealed: ${sub.anonMap[sub.submittedBy]} was @${sub.submittedBy}. Juror identities remain sealed.` });
+    }
+
+    // Credit the win to submitter
+    const users = (await sG(SK.USERS)) || {};
+    const sm = users[sub.submittedBy];
+    const scoreTarget = (sm && sm.isDI && sm.diPartner && users[sm.diPartner]) ? users[sm.diPartner] : sm;
+    const scoreUsername = (sm && sm.isDI && sm.diPartner) ? sm.diPartner : sub.submittedBy;
+    if (scoreTarget) {
+      scoreTarget.totalWins = (scoreTarget.totalWins || 0) + 1;
+      scoreTarget.currentStreak = (scoreTarget.currentStreak || 0) + 1;
+      scoreTarget.assemblyStreaks = scoreTarget.assemblyStreaks || {};
+      scoreTarget.assemblyStreaks[sub.orgId] = (scoreTarget.assemblyStreaks[sub.orgId] || 0) + 1;
+      scoreTarget.ratingsReceived = scoreTarget.ratingsReceived || [];
+      Object.values(votes).forEach(v => { if (v.newsworthy) scoreTarget.ratingsReceived.push({ newsworthy: v.newsworthy, interesting: v.interesting }); });
+      scoreTarget.reviewHistory = scoreTarget.reviewHistory || [];
+      scoreTarget.reviewHistory.push({ subId: sub.id, outcome: "approved", time: now });
+      users[scoreUsername] = scoreTarget;
+      await sS(SK.USERS, users);
+    }
+
+    // Graduate linked vault entries
+    if (sub.standingCorrection) {
+      const standing = (await sG(SK.VAULT)) || {};
+      const match = Object.values(standing).find(v => v.linkedSubId === sub.id && v.status === "pending");
+      if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.VAULT, standing); }
+    }
+    if (sub.translationEntry) {
+      const allTrans = (await sG(SK.TRANSLATIONS)) || {};
+      const match = Object.values(allTrans).find(t => t.linkedSubId === sub.id);
+      if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.TRANSLATIONS, allTrans); }
+    }
+
+    changed = true;
+  }
+
+  if (changed) await sS(SK.SUBS, subs);
+  return changed;
+}
+
 async function processJuryRotation() {
+  // Run Wild West backfill first
+  await wildWestBackfill();
+
   const subs = (await sG(SK.SUBS)) || {};
   const now = Date.now();
   let changed = false;
