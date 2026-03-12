@@ -69,6 +69,11 @@
   }
 
   // ── Detect page URL and check for corrections ──
+  // ── Real-time polling state ──
+  const POLL_INTERVAL = 30 * 1000; // 30 seconds
+  let pollTimer = null;
+  let lastDataHash = null;
+
   async function init() {
     const url = window.location.href;
     if (!url.startsWith("http")) return;
@@ -83,17 +88,24 @@
       setCachedData(url, data);
     }
 
+    lastDataHash = hashData(data);
+    applyData(data, url);
+
+    // Start polling for real-time updates
+    startPolling(url);
+  }
+
+  function applyData(data, url) {
     const total = data.corrections.length + data.affirmations.length + data.translations.length;
 
-    if (total === 0) return;
-
-    // Notify background script for badge count
+    // Notify background script for badge count (even if zero, to clear old counts)
     try {
       chrome.runtime.sendMessage({ type: "TA_COUNT", count: total, url });
     } catch (e) {
-      // Firefox or Safari — try browser.runtime
       try { browser.runtime.sendMessage({ type: "TA_COUNT", count: total, url }); } catch (_) {}
     }
+
+    if (total === 0 && (!data.vault || data.vault.length === 0)) return;
 
     // Apply corrections and affirmations inline on headlines
     if (data.corrections.length > 0) {
@@ -109,6 +121,9 @@
       applyTranslations(data.translations);
     }
 
+    // Render the Trust Context Card below the headline
+    renderTrustContextCard(data);
+
     // Render the floating badge (if enabled)
     if (settings.showBadge) {
       renderBadge(data);
@@ -120,6 +135,57 @@
     // Start watching for dynamically loaded content (Twitter feeds,
     // Facebook posts, SPA navigations, infinite scroll, etc.)
     startObserver(data);
+  }
+
+  // ── Real-time polling ──
+  // Periodically re-fetch corrections from the API so new approvals
+  // appear without requiring a page refresh.
+  function startPolling(url) {
+    if (pollTimer) return;
+
+    pollTimer = setInterval(async () => {
+      try {
+        const freshData = await TA.getForURL(url);
+        const freshHash = hashData(freshData);
+
+        if (freshHash !== lastDataHash) {
+          lastDataHash = freshHash;
+          // Update cache
+          setCachedData(url, freshData);
+
+          // Remove old Trust Context Card so it re-renders with new data
+          const oldCard = document.getElementById("ta-context-card");
+          if (oldCard) oldCard.remove();
+
+          // Remove old unapplied box
+          const oldUnapplied = document.getElementById("ta-unapplied-box");
+          if (oldUnapplied) oldUnapplied.remove();
+
+          // Re-apply everything
+          applyData(freshData, url);
+
+          console.log("[TrustAssembly] Real-time update: new corrections detected and applied.");
+        }
+      } catch (e) {
+        // Silently ignore polling errors — network hiccups shouldn't break anything
+      }
+    }, POLL_INTERVAL);
+  }
+
+  // Simple hash to detect data changes without deep comparison
+  function hashData(data) {
+    const sig = [
+      data.corrections.map(c => c.id || c.originalHeadline).join(","),
+      data.affirmations.map(a => a.id || a.originalHeadline).join(","),
+      data.translations.map(t => t.id || t.original).join(","),
+    ].join("|");
+    // Simple string hash
+    let hash = 0;
+    for (let i = 0; i < sig.length; i++) {
+      hash = ((hash << 5) - hash) + sig.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
   }
 
   // ── Listen for settings change messages from popup/background ──
@@ -554,6 +620,204 @@
       insertTarget.appendChild(box);
     }
   }
+
+  // ── Trust Context Card ──
+  // A compact summary card rendered below the headline giving the reader
+  // an at-a-glance overview of all Trust Assembly activity on this article:
+  // correction/affirmation counts, assembly involvement, consensus status,
+  // and standing corrections, arguments, and beliefs from the vault.
+  function renderTrustContextCard(data) {
+    // Don't render duplicates
+    if (document.getElementById("ta-context-card")) return;
+
+    const corrections = data.corrections || [];
+    const affirmations = data.affirmations || [];
+    const translations = data.translations || [];
+    const meta = data.meta || {};
+    const total = corrections.length + affirmations.length;
+
+    // Don't render if there's nothing to show
+    if (total === 0 && translations.length === 0) return;
+
+    // Find the headline element to insert after
+    const headlineEl = document.querySelector('h1[class*="headline"]')
+      || document.querySelector('h1[class*="title"]')
+      || document.querySelector('article h1')
+      || document.querySelector('[role="main"] h1')
+      || document.querySelector('h1');
+
+    if (!headlineEl) return;
+
+    const card = document.createElement("div");
+    card.id = "ta-context-card";
+    card.className = "ta-context-card";
+
+    // Gather unique assemblies involved
+    const assemblies = new Map();
+    [...corrections, ...affirmations].forEach(sub => {
+      if (sub.orgName && sub.orgId) {
+        if (!assemblies.has(sub.orgId)) {
+          assemblies.set(sub.orgId, sub.orgName);
+        }
+      }
+    });
+    const assemblyNames = Array.from(assemblies.values());
+
+    // Determine overall trust signal
+    let signalClass, signalIcon, signalText;
+    if (corrections.length > 0 && affirmations.length === 0) {
+      signalClass = "ta-signal-corrected";
+      signalIcon = "⚠";
+      signalText = "Corrections Filed";
+    } else if (affirmations.length > 0 && corrections.length === 0) {
+      signalClass = "ta-signal-affirmed";
+      signalIcon = "✓";
+      signalText = "Headline Verified";
+    } else if (corrections.length > 0 && affirmations.length > 0) {
+      signalClass = "ta-signal-mixed";
+      signalIcon = "⚖";
+      signalText = "Mixed Reviews";
+    } else {
+      signalClass = "ta-signal-neutral";
+      signalIcon = "⚖";
+      signalText = "Community Reviewed";
+    }
+
+    if (meta.highestConsensus) {
+      signalText += " · Consensus Reached";
+    }
+
+    let html = `
+      <div class="ta-context-header">
+        <span class="ta-context-signal ${signalClass}">${signalIcon} ${signalText}</span>
+        <span class="ta-context-brand">Trust Assembly</span>
+      </div>
+      <div class="ta-context-body">
+        <div class="ta-context-stats">
+    `;
+
+    if (corrections.length > 0) {
+      html += `<span class="ta-context-stat ta-stat-correction">${corrections.length} correction${corrections.length !== 1 ? "s" : ""}</span>`;
+    }
+    if (affirmations.length > 0) {
+      html += `<span class="ta-context-stat ta-stat-affirmation">${affirmations.length} affirmation${affirmations.length !== 1 ? "s" : ""}</span>`;
+    }
+    if (translations.length > 0) {
+      html += `<span class="ta-context-stat ta-stat-translation">${translations.length} translation${translations.length !== 1 ? "s" : ""}</span>`;
+    }
+
+    html += `</div>`;
+
+    // Assemblies involved
+    if (assemblyNames.length > 0) {
+      html += `<div class="ta-context-assemblies">Reviewed by: ${assemblyNames.map(n => `<strong>${escapeHtml(n)}</strong>`).join(", ")}</div>`;
+    }
+
+    html += `</div>`;
+
+    // Vault sections container (populated async)
+    html += `<div id="ta-context-vault"></div>`;
+
+    card.innerHTML = html;
+
+    // Insert after the headline
+    headlineEl.parentNode.insertBefore(card, headlineEl.nextSibling);
+
+    // Fetch vault entries asynchronously (standing corrections, arguments, beliefs)
+    fetchAndRenderVaultEntries(assemblyNames.length > 0 ? assemblies : null);
+  }
+
+  // ── Fetch and render vault entries ──
+  // Standing corrections, arguments, and foundational beliefs from
+  // assemblies that have reviewed this article. These are not URL-specific
+  // but provide broader context about the assemblies' positions.
+  async function fetchAndRenderVaultEntries(assemblies) {
+    const vaultContainer = document.getElementById("ta-context-vault");
+    if (!vaultContainer) return;
+
+    // If no assemblies involved, skip vault fetch
+    if (!assemblies || assemblies.size === 0) return;
+
+    const orgIds = Array.from(assemblies.keys()).join(",");
+
+    try {
+      // Fetch all three vault types in parallel
+      const [vaultRes, argsRes, beliefsRes] = await Promise.all([
+        fetch(`${TA_API_BASE}/api/vault?type=vault&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5`),
+        fetch(`${TA_API_BASE}/api/vault?type=argument&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5`),
+        fetch(`${TA_API_BASE}/api/vault?type=belief&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5`),
+      ]);
+
+      const [vaultData, argsData, beliefsData] = await Promise.all([
+        vaultRes.ok ? vaultRes.json() : { entries: [] },
+        argsRes.ok ? argsRes.json() : { entries: [] },
+        beliefsRes.ok ? beliefsRes.json() : { entries: [] },
+      ]);
+
+      const vault = vaultData.entries || [];
+      const args = argsData.entries || [];
+      const beliefs = beliefsData.entries || [];
+
+      if (vault.length === 0 && args.length === 0 && beliefs.length === 0) return;
+
+      let html = `<div class="ta-context-vault-inner">`;
+
+      // Standing Corrections
+      if (vault.length > 0) {
+        html += `<div class="ta-vault-section">`;
+        html += `<div class="ta-vault-section-title">Standing Corrections</div>`;
+        vault.forEach(entry => {
+          html += `
+            <div class="ta-vault-entry ta-vault-correction">
+              <div class="ta-vault-assertion">${escapeHtml(entry.assertion)}</div>
+              <div class="ta-vault-meta">${escapeHtml(entry.org_name)} · Survived ${entry.survival_count || 0} challenge${(entry.survival_count || 0) !== 1 ? "s" : ""}</div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      // Active Arguments
+      if (args.length > 0) {
+        html += `<div class="ta-vault-section">`;
+        html += `<div class="ta-vault-section-title">Active Arguments</div>`;
+        args.forEach(entry => {
+          html += `
+            <div class="ta-vault-entry ta-vault-argument">
+              <div class="ta-vault-content">${escapeHtml(entry.content)}</div>
+              <div class="ta-vault-meta">${escapeHtml(entry.org_name)} · Survived ${entry.survival_count || 0} challenge${(entry.survival_count || 0) !== 1 ? "s" : ""}</div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      // Foundational Beliefs
+      if (beliefs.length > 0) {
+        html += `<div class="ta-vault-section">`;
+        html += `<div class="ta-vault-section-title">Foundational Beliefs</div>`;
+        beliefs.forEach(entry => {
+          html += `
+            <div class="ta-vault-entry ta-vault-belief">
+              <div class="ta-vault-content">${escapeHtml(entry.content)}</div>
+              <div class="ta-vault-meta">${escapeHtml(entry.org_name)}</div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+      vaultContainer.innerHTML = html;
+
+    } catch (e) {
+      // Vault fetch failed — not critical, just skip
+      console.warn("[TrustAssembly] Could not fetch vault entries:", e.message);
+    }
+  }
+
+  // API base URL for vault fetches (reuse from api-client.js)
+  const TA_API_BASE = "https://trustassembly.org";
 
   // ── DOM-wide headline text replacement ──
   // Replaces a headline string everywhere it appears beyond just visible
