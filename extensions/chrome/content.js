@@ -68,6 +68,269 @@
     }
   }
 
+  // ── Site Architecture Detection ──
+  // Branching logic to identify the site's CMS/framework and choose
+  // the optimal headline selectors. Each site type returns a ranked
+  // list of selectors plus a flag indicating whether the site renders
+  // headlines dynamically (requiring a wait-for-element strategy).
+  function detectSiteType() {
+    const host = window.location.hostname.replace(/^www\./, "");
+    const html = document.documentElement;
+
+    // --- CNN (Clay CMS) ---
+    if (host.includes("cnn.com") || html.getAttribute("data-layout-uri")?.includes("cnn.com")) {
+      return {
+        name: "cnn",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.headline__text', 'h1[data-editable="headlineText"]',
+          '.headline__text', '.pg-headline', '[data-editable="headlineText"]',
+          'h1[class*="headline"]', '.article__title', '.video__headline',
+          '.headline', 'h1',
+        ],
+        articleRoot: '.article__content, .zn-body__paragraph, article, [data-zone-label="body"]',
+        waitSelector: 'h1.headline__text, h1[data-editable="headlineText"], .headline__text, h1[class*="headline"], h1',
+      };
+    }
+
+    // --- New York Times (React SPA) ---
+    if (host.includes("nytimes.com")) {
+      return {
+        name: "nyt",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-testid="headline"]', 'h1[class*="headline"]',
+          '[data-testid="headline"]', 'article h1',
+          'h1[class*="StoryPage"]', 'h1',
+        ],
+        articleRoot: 'article, [data-testid="article-body"], section[name="articleBody"]',
+        waitSelector: 'h1[data-testid="headline"], article h1, h1',
+      };
+    }
+
+    // --- Washington Post ---
+    if (host.includes("washingtonpost.com")) {
+      return {
+        name: "wapo",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-qa="headline"]', 'h1#main-content', '[data-qa="headline"]',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .article-body, [data-qa="article-body"]',
+        waitSelector: 'h1[data-qa="headline"], h1#main-content, h1',
+      };
+    }
+
+    // --- Fox News ---
+    if (host.includes("foxnews.com")) {
+      return {
+        name: "fox",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.headline', 'h1[class*="headline"]', '.headline',
+          'article h1', 'h1',
+        ],
+        articleRoot: 'article, .article-body, .content-body',
+        waitSelector: 'h1.headline, article h1, h1',
+      };
+    }
+
+    // --- BBC ---
+    if (host.includes("bbc.com") || host.includes("bbc.co.uk")) {
+      return {
+        name: "bbc",
+        dynamic: true,
+        headlineSelectors: [
+          'h1#main-heading', 'h1[class*="Headline"]', '[data-testid="headline"]',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, [data-component="text-block"], main',
+        waitSelector: 'h1#main-heading, h1[class*="Headline"], article h1, h1',
+      };
+    }
+
+    // --- Reuters ---
+    if (host.includes("reuters.com")) {
+      return {
+        name: "reuters",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-testid="Heading"]', 'h1[class*="article-header"]',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, [data-testid="article-body"], .article-body__content',
+        waitSelector: 'h1[data-testid="Heading"], article h1, h1',
+      };
+    }
+
+    // --- Associated Press ---
+    if (host.includes("apnews.com")) {
+      return {
+        name: "ap",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[class*="Page-headline"]', 'h1.headline',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .RichTextStoryBody, .Article',
+        waitSelector: 'h1[class*="headline"], article h1, h1',
+      };
+    }
+
+    // --- NPR ---
+    if (host.includes("npr.org")) {
+      return {
+        name: "npr",
+        dynamic: false,
+        headlineSelectors: [
+          'h1.storytitle', 'h1[class*="title"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .storytext, #storytext',
+        waitSelector: null,
+      };
+    }
+
+    // --- MSNBC / NBC News ---
+    if (host.includes("msnbc.com") || host.includes("nbcnews.com")) {
+      return {
+        name: "nbc",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[class*="headline"]', 'h1[class*="article-hero"]',
+          'h1.article-hero__headline', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .article-body, [class*="article-body"]',
+        waitSelector: 'h1[class*="headline"], article h1, h1',
+      };
+    }
+
+    // --- The Guardian ---
+    if (host.includes("theguardian.com")) {
+      return {
+        name: "guardian",
+        dynamic: false,
+        headlineSelectors: [
+          'h1[data-gu-name="headline"]', 'h1[class*="headline"]',
+          '.content__headline', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .article-body-commercial-selector, .content__article-body',
+        waitSelector: null,
+      };
+    }
+
+    // --- WordPress (detected by meta generator or body class) ---
+    const wpMeta = document.querySelector('meta[name="generator"][content*="WordPress"]');
+    const wpBody = document.body?.classList.contains("wp-") || document.body?.className?.includes("wordpress");
+    if (wpMeta || wpBody) {
+      return {
+        name: "wordpress",
+        dynamic: false,
+        headlineSelectors: [
+          '.entry-title', '.post-title', 'h1.entry-title', 'h1.post-title',
+          'article h1', '.article-title', 'h1[class*="title"]', 'h1',
+        ],
+        articleRoot: 'article, .entry-content, .post-content, .article-content',
+        waitSelector: null,
+      };
+    }
+
+    // --- Substack ---
+    if (host.includes("substack.com") || document.querySelector('meta[property="article:publisher"][content*="substack"]')) {
+      return {
+        name: "substack",
+        dynamic: false,
+        headlineSelectors: [
+          'h1.post-title', 'h1[class*="post-title"]',
+          '.post-header h1', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .body.markup, .post-content',
+        waitSelector: null,
+      };
+    }
+
+    // --- Medium ---
+    if (host.includes("medium.com") || document.querySelector('meta[property="al:android:package"][content="com.medium.reader"]')) {
+      return {
+        name: "medium",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-testid="storyTitle"]', 'article h1',
+          'h1[class*="title"]', 'h1',
+        ],
+        articleRoot: 'article, [data-testid="storyContent"]',
+        waitSelector: 'article h1, h1',
+      };
+    }
+
+    // --- Generic / unknown (broadest set of selectors) ---
+    // Detect if the site appears to be an SPA by checking for common
+    // framework markers (#app, #root, #__next, [data-reactroot], etc.)
+    const spaRoot = document.querySelector('#app, #root, #__next, [data-reactroot], [ng-app], [data-v-app]');
+    return {
+      name: "generic",
+      dynamic: !!spaRoot,
+      headlineSelectors: [
+        'h1[class*="headline"]', 'h1[class*="title"]',
+        'h1[data-editable="headlineText"]', 'h1[data-testid*="headline"]',
+        'h1[data-testid*="title"]', '[itemprop="headline"]',
+        'article h1', '[role="main"] h1',
+        '.article-header h1', '.post-header h1', '.entry-title',
+        'h1.article-title', 'h1.main-headline', 'h1.headline',
+        'h1', // last resort
+      ],
+      articleRoot: 'article, [role="main"], .article-body, .post-content, .entry-content, .story-body',
+      waitSelector: spaRoot ? 'h1' : null,
+    };
+  }
+
+  // Cache the detected site type (computed once per page)
+  let _siteType = null;
+  function getSiteType() {
+    if (!_siteType) _siteType = detectSiteType();
+    return _siteType;
+  }
+
+  // ── Wait for an element to appear in the DOM ──
+  // Returns a Promise that resolves when a matching element is found,
+  // or rejects after the timeout. Essential for SPA/dynamic sites.
+  function waitForElement(selector, timeout) {
+    timeout = timeout || 8000;
+    return new Promise((resolve, reject) => {
+      // Check if already present
+      const existing = document.querySelector(selector);
+      if (existing && existing.textContent.trim()) {
+        resolve(existing);
+        return;
+      }
+
+      let timer;
+      const observer = new MutationObserver(() => {
+        const el = document.querySelector(selector);
+        if (el && el.textContent.trim()) {
+          observer.disconnect();
+          clearTimeout(timer);
+          resolve(el);
+        }
+      });
+
+      observer.observe(document.documentElement, {
+        childList: true, subtree: true, characterData: true
+      });
+
+      timer = setTimeout(() => {
+        observer.disconnect();
+        // Final check
+        const el = document.querySelector(selector);
+        if (el && el.textContent.trim()) {
+          resolve(el);
+        } else {
+          reject(new Error("Timeout waiting for: " + selector));
+        }
+      }, timeout);
+    });
+  }
+
   // ── Detect page URL and check for corrections ──
   // ── Real-time polling state ──
   const POLL_INTERVAL = 30 * 1000; // 30 seconds
@@ -80,6 +343,21 @@
 
     // Load user settings before doing anything
     await loadSettings();
+
+    // Detect the site architecture
+    const site = getSiteType();
+    console.log("[TrustAssembly] Detected site type:", site.name, site.dynamic ? "(dynamic)" : "(static)");
+
+    // For dynamic/SPA sites, wait for the headline element to appear
+    // before fetching corrections — this ensures the DOM is ready
+    if (site.dynamic && site.waitSelector) {
+      try {
+        await waitForElement(site.waitSelector, 10000);
+        console.log("[TrustAssembly] Headline element detected in DOM, proceeding.");
+      } catch (e) {
+        console.log("[TrustAssembly] Headline not found after waiting — proceeding anyway (may retry via observer).");
+      }
+    }
 
     // Check cache first, then API
     let data = getCachedData(url);
@@ -569,13 +847,23 @@
     // Don't render duplicates
     if (document.getElementById("ta-unapplied-box")) return;
 
-    // Find the article body to insert at the top of
-    const articleRoot = document.querySelector("article")
-      || document.querySelector('[role="main"]')
-      || document.querySelector(".article-body")
-      || document.querySelector(".post-content")
-      || document.querySelector(".entry-content")
-      || document.querySelector(".story-body");
+    // Find the article body to insert at the top of (site-aware)
+    const site = getSiteType();
+    let articleRoot = null;
+    if (site.articleRoot) {
+      for (const sel of site.articleRoot.split(", ")) {
+        articleRoot = document.querySelector(sel.trim());
+        if (articleRoot) break;
+      }
+    }
+    if (!articleRoot) {
+      articleRoot = document.querySelector("article")
+        || document.querySelector('[role="main"]')
+        || document.querySelector(".article-body")
+        || document.querySelector(".post-content")
+        || document.querySelector(".entry-content")
+        || document.querySelector(".story-body");
+    }
 
     // Fall back to first h1's parent if no article container found
     const h1 = document.querySelector("h1");
@@ -639,12 +927,20 @@
     // Don't render if there's nothing to show
     if (total === 0 && translations.length === 0) return;
 
-    // Find the headline element to insert after
-    const headlineEl = document.querySelector('h1[class*="headline"]')
-      || document.querySelector('h1[class*="title"]')
-      || document.querySelector('article h1')
-      || document.querySelector('[role="main"] h1')
-      || document.querySelector('h1');
+    // Find the headline element to insert after (site-aware)
+    const site = getSiteType();
+    let headlineEl = null;
+    for (const selector of site.headlineSelectors) {
+      try {
+        headlineEl = document.querySelector(selector);
+        if (headlineEl && headlineEl.textContent.trim()) break;
+        headlineEl = null;
+      } catch (e) {}
+    }
+    // Fallback: CMS attributes then bare h1
+    if (!headlineEl) headlineEl = document.querySelector('[itemprop="headline"]');
+    if (!headlineEl) headlineEl = document.querySelector('[data-editable="headlineText"]');
+    if (!headlineEl) headlineEl = document.querySelector('h1');
 
     if (!headlineEl) return;
 
@@ -937,9 +1233,10 @@
   }
 
   // ── Find elements on the page whose text matches a correction headline ──
-  // Uses a global text search across all visible elements, excluding areas
-  // that should never be modified (navigation, footers, sidebars, our own
-  // injections, scripts, styles, etc.).
+  // Uses branching site-type detection to pick the best selectors first,
+  // then falls back to a broad global sweep. This tree structure ensures
+  // CNN, NYT, WaPo, Fox, BBC, WordPress, etc. all get targeted treatment
+  // while unknown sites still get comprehensive coverage.
   function findAllHeadlineElements() {
     // Areas to never search inside
     const EXCLUDE_SELECTORS = [
@@ -948,51 +1245,91 @@
       ".sidebar", ".nav", ".footer", ".menu", ".breadcrumb", ".pagination",
       ".social-share", ".related-articles", ".comments", ".ad", ".advertisement",
       "script", "style", "noscript", "iframe", "svg",
-      "[class^='ta-inline']", "[class^='ta-ext']", // our own injections
+      "[class^='ta-inline']", "[class^='ta-ext']", "[id^='ta-']", // our own injections
     ];
 
     const excludeSelector = EXCLUDE_SELECTORS.join(", ");
 
-    // Structured headline selectors — check these first (highest confidence)
-    // Covers: CNN (h1.headline__text), NYT (h1[data-testid="headline"]),
-    // Fox/MSNBC (article h1), and most standard news sites.
-    const prioritySelectors = [
-      'h1[class*="headline"]', 'h1[class*="title"]',
-      'h1.article-title', 'h1.main-headline', 'h1.headline', 'h1.detailHeadline',
-      'article h1', '.article-header h1', '.post-header h1', '.entry-title',
-      'h1[data-testid*="headline"]', 'h1[data-testid*="title"]',
-      'h2[class*="headline"]', 'h2[class*="title"]', 'article h2',
-    ];
+    function isValid(el) {
+      if (!el || !el.textContent.trim()) return false;
+      try { return !el.closest(excludeSelector); } catch (e) { return true; }
+    }
 
     const found = new Set();
-    for (const selector of prioritySelectors) {
-      document.querySelectorAll(selector).forEach(el => {
-        if (el.textContent.trim() && !el.closest(excludeSelector)) found.add(el);
-      });
+    const site = getSiteType();
+
+    // ── Phase 1: Site-specific selectors (highest confidence) ──
+    // The site-type detection tree gives us selectors ranked for this CMS.
+    for (const selector of site.headlineSelectors) {
+      try {
+        document.querySelectorAll(selector).forEach(el => {
+          if (isValid(el)) found.add(el);
+        });
+      } catch (e) { /* invalid selector, skip */ }
     }
 
-    // Fall back to any h1 on the page
+    // ── Phase 2: CMS / framework attribute selectors ──
+    // These catch headlines via semantic markup that many CMSes emit,
+    // regardless of class naming conventions.
+    const cmsSelectors = [
+      '[data-editable="headlineText"]', '[data-editable="headline"]',
+      '[data-testid="headline"]', '[data-testid="Heading"]',
+      '[data-qa="headline"]', '[itemprop="headline"]',
+      '[data-type="headline"]', '[data-component="headline"]',
+      '[data-analytics-headline]', '[data-headline]',
+      '[property="headline"]',
+      'h1[data-editable]', 'h1[data-testid]', 'h1[data-qa]',
+    ];
+    for (const selector of cmsSelectors) {
+      try {
+        document.querySelectorAll(selector).forEach(el => {
+          if (isValid(el) && !found.has(el)) found.add(el);
+        });
+      } catch (e) {}
+    }
+
+    // ── Phase 3: Class-name heuristics (medium confidence) ──
+    // Walk elements that have "headline" in their class but aren't h-tags.
+    // This catches <span class="headline__text">, <div class="pg-headline">, etc.
     if (found.size === 0) {
-      const h1 = document.querySelector("h1");
-      if (h1 && h1.textContent.trim() && !h1.closest(excludeSelector)) found.add(h1);
+      const classSelectors = [
+        '[class*="headline" i]', '[class*="article-title" i]',
+        '[class*="story-title" i]', '[class*="post-title" i]',
+        '[class*="entry-title" i]',
+      ];
+      for (const selector of classSelectors) {
+        try {
+          document.querySelectorAll(selector).forEach(el => {
+            if (isValid(el) && !found.has(el)) found.add(el);
+          });
+        } catch (e) {}
+      }
     }
 
-    // Broader search: all heading elements plus elements explicitly marked
-    // as headlines via class or data-testid. We use [class*='headline']
-    // (not [class*='title'] which is too broad — hits .subtitle, .card-title,
-    // .btn-title, etc.) to avoid false positives on non-headline elements.
+    // ── Phase 4: Global heading sweep (lower confidence) ──
+    // Catch everything that could be a headline via standard heading tags
+    // and ARIA roles.
     const globalSelectors = [
-      "h1", "h2", "h3", "h4", "h5", "h6",
-      "[class*='headline']", "[class*='heading']",
-      "[data-testid*='headline']", "[data-testid*='title']",
-      "[itemprop='headline']",  // Schema.org microdata
-      "[class*='article-title']", "[class*='post-title']", "[class*='story-title']",
+      "h1", "h2", "h3",
+      "[role='heading'][aria-level='1']",
+      "[class*='heading']",
     ].join(", ");
-    document.querySelectorAll(globalSelectors).forEach(el => {
-      if (el.textContent.trim() && !el.closest(excludeSelector) && !found.has(el)) {
-        found.add(el);
-      }
-    });
+    try {
+      document.querySelectorAll(globalSelectors).forEach(el => {
+        if (isValid(el) && !found.has(el)) found.add(el);
+      });
+    } catch (e) {}
+
+    // ── Phase 5: Deep text-content fallback ──
+    // If we still found nothing, try broad selectors including h4-h6
+    // and any element marked as a title.
+    if (found.size === 0) {
+      try {
+        document.querySelectorAll("h4, h5, h6, [class*='title']").forEach(el => {
+          if (isValid(el) && !found.has(el)) found.add(el);
+        });
+      } catch (e) {}
+    }
 
     return Array.from(found);
   }
@@ -1021,13 +1358,24 @@
     if (edits.length === 0) return;
 
     // Limit search to article body to avoid modifying nav, headers, footers
-    const articleRoot = document.querySelector("article")
-      || document.querySelector('[role="main"]')
-      || document.querySelector(".article-body")
-      || document.querySelector(".post-content")
-      || document.querySelector(".entry-content")
-      || document.querySelector(".story-body")
-      || document.body;
+    // Use site-aware selectors first, then generic fallbacks
+    const site = getSiteType();
+    let articleRoot = null;
+    if (site.articleRoot) {
+      for (const sel of site.articleRoot.split(", ")) {
+        articleRoot = document.querySelector(sel.trim());
+        if (articleRoot) break;
+      }
+    }
+    if (!articleRoot) {
+      articleRoot = document.querySelector("article")
+        || document.querySelector('[role="main"]')
+        || document.querySelector(".article-body")
+        || document.querySelector(".post-content")
+        || document.querySelector(".entry-content")
+        || document.querySelector(".story-body")
+        || document.body;
+    }
 
     const walker = document.createTreeWalker(
       articleRoot, NodeFilter.SHOW_TEXT, null, false
@@ -1250,37 +1598,65 @@
   }
 
   // ── Detect headline from page ──
+  // Uses the site-type branching tree to pick the best selectors,
+  // then falls back through CMS attributes, og:title, and page title.
   function detectHeadline() {
-    // Try structured selectors first (most reliable)
-    const selectors = [
-      'h1[class*="headline"]',
-      'h1[class*="title"]',
-      'h1.article-title',
-      'h1.main-headline',
-      'h1.headline',
-      'h1.detailHeadline',
-      'article h1',
-      '.article-header h1',
-      '.post-header h1',
-      '.entry-title',
-    ];
+    const site = getSiteType();
 
-    for (const selector of selectors) {
-      const el = document.querySelector(selector);
-      if (el && el.textContent.trim()) {
-        return el.textContent.trim();
-      }
+    // Phase 1: Site-specific selectors (most reliable for this CMS)
+    for (const selector of site.headlineSelectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.textContent.trim().length > 5) {
+          return el.textContent.trim();
+        }
+      } catch (e) {}
     }
 
-    // Try og:title meta tag (very common on news sites)
+    // Phase 2: CMS / framework attribute selectors
+    const cmsSelectors = [
+      '[data-editable="headlineText"]', '[data-editable="headline"]',
+      '[data-testid="headline"]', '[data-testid="Heading"]',
+      '[data-qa="headline"]', '[itemprop="headline"]',
+    ];
+    for (const selector of cmsSelectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.textContent.trim().length > 5) {
+          return el.textContent.trim();
+        }
+      } catch (e) {}
+    }
+
+    // Phase 3: og:title meta tag (very common on news sites)
     const ogTitle = document.querySelector('meta[property="og:title"]');
     if (ogTitle && ogTitle.getAttribute("content")) {
-      return ogTitle.getAttribute("content").trim();
+      // Strip common suffixes like " | CNN", " - The New York Times"
+      const raw = ogTitle.getAttribute("content").trim();
+      const cleaned = raw.replace(/\s*[|\-–—]\s*[^|\-–—]+$/, "").trim();
+      if (cleaned.length > 5) return cleaned;
+      if (raw.length > 5) return raw;
     }
 
-    // Fall back to first h1 on the page
+    // Phase 4: twitter:title
+    const twTitle = document.querySelector('meta[name="twitter:title"]');
+    if (twTitle && twTitle.getAttribute("content")?.trim().length > 5) {
+      return twTitle.getAttribute("content").trim();
+    }
+
+    // Phase 5: Schema.org / JSON-LD headline
+    try {
+      const ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+      for (const script of ldScripts) {
+        const data = JSON.parse(script.textContent);
+        const headline = data.headline || (Array.isArray(data) ? data[0]?.headline : null);
+        if (headline && headline.trim().length > 5) return headline.trim();
+      }
+    } catch (e) {}
+
+    // Phase 6: Fall back to first h1 on the page
     const h1 = document.querySelector("h1");
-    if (h1 && h1.textContent.trim()) {
+    if (h1 && h1.textContent.trim().length > 5) {
       return h1.textContent.trim();
     }
 

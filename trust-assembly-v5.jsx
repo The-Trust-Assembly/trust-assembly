@@ -5660,9 +5660,11 @@ function ExtensionsScreen() {
             <span style={{ fontSize: 18 }}>&#9672;</span> Download for Firefox
           </button>
         </a>
-        <button className="ta-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", fontSize: 12, background: "#0071E3", cursor: "default", opacity: 0.7 }} title="Coming soon to the App Store">
-          <span style={{ fontSize: 18 }}>&#9672;</span> Safari — Coming Soon
-        </button>
+        <a href="/trust-assembly-safari.zip" download style={{ textDecoration: "none" }}>
+          <button className="ta-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", fontSize: 12, background: "#0071E3" }}>
+            <span style={{ fontSize: 18 }}>&#9672;</span> Download for Safari
+          </button>
+        </a>
       </div>
 
       {/* Chrome instructions */}
@@ -6033,7 +6035,7 @@ export default function TrustAssembly() {
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
               <a href="/trust-assembly-chrome.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }}>Download Chrome Extension</button></a>
               <a href="/trust-assembly-firefox.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }}>Download Firefox Extension</button></a>
-              <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "#0071E3", cursor: "default", opacity: 0.7 }} title="Coming soon to the App Store">Safari — Coming Soon</button>
+              <a href="/trust-assembly-safari.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "#0071E3" }}>Download Safari Extension</button></a>
             </div>
             <div style={{ marginBottom: 20, fontSize: 12, color: "var(--stone)" }}>
               <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => setShowExtDetails(!showExtDetails)}>{showExtDetails ? "Hide installation details" : "Installation instructions & details"}</button>
