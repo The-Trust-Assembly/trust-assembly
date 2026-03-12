@@ -37,6 +37,8 @@ async function kvGet(key: string): Promise<unknown> {
 function normalizeUrl(raw: string): string {
   try {
     const parsed = new URL(raw);
+    // Strip www. prefix so www.bbc.com and bbc.com match
+    parsed.hostname = parsed.hostname.replace(/^www\./, "");
     // Strip fragment and trailing slash from pathname
     parsed.hash = "";
     if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
