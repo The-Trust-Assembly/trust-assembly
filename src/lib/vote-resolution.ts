@@ -11,7 +11,7 @@
 // ============================================================
 
 import { sql } from "@/lib/db";
-import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT } from "@/lib/jury-rules";
+import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT, isWildWestMode } from "@/lib/jury-rules";
 
 interface VoteRow {
   approve: boolean;
@@ -93,8 +93,10 @@ export async function tryResolveSubmission(
   const now = new Date().toISOString();
 
   // Deliberate lie finding: secret majority of jurors flagged it
+  // Disabled in Wild West mode (< 100 users)
+  const wildWest = await isWildWestMode();
   const lieCount = votes.filter(v => v.deliberate_lie).length;
-  const wasLie = lieCount > votes.length / 2;
+  const wasLie = !wildWest && lieCount > votes.length / 2;
 
   // Update submission status
   await sql`

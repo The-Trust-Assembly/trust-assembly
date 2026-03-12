@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
+import { isWildWestMode } from "@/lib/jury-rules";
 
 // GET /api/submissions — list submissions (filterable)
 export async function GET(request: NextRequest) {
@@ -81,26 +82,31 @@ export async function POST(request: NextRequest) {
   }
 
   // Check member count for initial status
+  const wildWest = await isWildWestMode();
   const memberCount = await sql`
     SELECT COUNT(*) as count FROM organization_members
     WHERE org_id = ${orgId} AND is_active = TRUE
   `;
   const count = parseInt(memberCount.rows[0].count);
-  const initialStatus = count < 5 ? "pending_jury" : "pending_review";
+  // Wild West: only need 2 members (submitter + 1 reviewer); normal: need 5
+  const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
-  // Check if user is trusted contributor (10+ streak)
+  // Check if user is trusted contributor (10+ streak) — disabled in Wild West mode
   const user = await sql`SELECT current_streak, is_di FROM users WHERE id = ${session.sub}`;
-  const trustedSkip = user.rows[0].current_streak >= 10;
+  const trustedSkip = !wildWest && user.rows[0].current_streak >= 10;
+
+  // In Wild West mode, only 1 jury seat is needed
+  const jurySeats = wildWest ? 1 : null;
 
   // Create submission
   const result = await sql`
     INSERT INTO submissions (
       submission_type, status, url, original_headline, replacement,
-      reasoning, author, submitted_by, org_id, trusted_skip, is_di
+      reasoning, author, submitted_by, org_id, trusted_skip, is_di, jury_seats
     ) VALUES (
       ${submissionType}, ${initialStatus}, ${url}, ${originalHeadline},
       ${replacement || null}, ${reasoning}, ${author || null},
-      ${session.sub}, ${orgId}, ${trustedSkip}, ${user.rows[0].is_di}
+      ${session.sub}, ${orgId}, ${trustedSkip}, ${user.rows[0].is_di}, ${jurySeats}
     ) RETURNING id, submission_type, status, created_at
   `;
 

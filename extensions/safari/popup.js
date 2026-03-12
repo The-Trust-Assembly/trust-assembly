@@ -28,8 +28,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Set up tabs
   setupTabs();
 
-  // Load corrections
-  loadCorrections();
+  // Show login gate if not authenticated
+  if (!currentUser) {
+    renderLoginGate();
+  } else {
+    // Load corrections
+    loadCorrections();
+  }
 
   // Settings toggles
   setupSettings();
@@ -53,6 +58,46 @@ function renderAuthHeader() {
   } else {
     el.style.display = "none";
   }
+}
+
+// ── Login gate (shown when not signed in) ──
+function renderLoginGate() {
+  const content = document.getElementById("content");
+  content.innerHTML = `
+    <div class="login-panel">
+      <h3>Sign in to Trust Assembly</h3>
+      <p style="font-size:11px; color:#5A5650; line-height:1.5; margin-bottom:10px;">Sign in to see corrections from your assemblies, submit new corrections, and manage your memberships.</p>
+      <input type="text" id="login-user-gate" placeholder="Username or email" autocomplete="username">
+      <input type="password" id="login-pass-gate" placeholder="Password" autocomplete="current-password">
+      <button class="login-btn" id="btn-login-gate">Sign In</button>
+      <div id="login-error-gate" class="login-error" style="display:none"></div>
+      <div class="login-hint">Don't have an account? <a href="https://trustassembly.org/#register" target="_blank" style="color:#B8963E">Register on trustassembly.org</a></div>
+    </div>
+  `;
+  document.getElementById("btn-login-gate").addEventListener("click", doLoginGate);
+  document.getElementById("login-pass-gate").addEventListener("keydown", (e) => { if (e.key === "Enter") doLoginGate(); });
+}
+
+async function doLoginGate() {
+  const username = document.getElementById("login-user-gate").value.trim();
+  const password = document.getElementById("login-pass-gate").value;
+  const errorEl = document.getElementById("login-error-gate");
+  if (!username || !password) {
+    errorEl.textContent = "Username and password are required.";
+    errorEl.style.display = "block";
+    return;
+  }
+  errorEl.style.display = "none";
+  const result = await TA.login(username, password);
+  if (!result) {
+    errorEl.textContent = "Invalid credentials. Please try again.";
+    errorEl.style.display = "block";
+    return;
+  }
+  currentUser = { username: result.username, displayName: result.displayName, id: result.id };
+  userAssemblies = await TA.getMyAssemblies();
+  renderAuthHeader();
+  loadCorrections();
 }
 
 // ── Tab switching ──
@@ -81,11 +126,11 @@ async function loadCorrections() {
     return;
   }
 
-  // Load user assemblies for badges (non-blocking)
+  // Load user assemblies for relationship badges
   if (currentUser && !userAssemblies) {
     userAssemblies = await TA.getCachedAssemblies();
     if (!userAssemblies) {
-      TA.getMyAssemblies().then(a => { userAssemblies = a; });
+      userAssemblies = await TA.getMyAssemblies();
     }
   }
 
