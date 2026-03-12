@@ -4,9 +4,23 @@
 // can resolve votes independently of the client.
 // ============================================================
 
+import { sql } from "@/lib/db";
+
 export const TRUSTED_STREAK = 10;
 export const CROSS_GROUP_DECEPTION_MULT = 9;
 export const JURY_POOL_MULTIPLIER = 3;
+
+// ── Wild West Mode ──
+// When the system has fewer than 100 total users, simplified rules apply:
+// - Only 1 reviewer per submission (instead of full jury)
+// - Deliberate deception findings are disabled
+// - Self-review and DI-partner review restrictions remain in effect
+export const WILD_WEST_THRESHOLD = 100;
+
+export async function isWildWestMode(): Promise<boolean> {
+  const result = await sql`SELECT COUNT(*) AS count FROM users`;
+  return parseInt(result.rows[0].count) < WILD_WEST_THRESHOLD;
+}
 
 /** Jury size scales with assembly membership */
 export function getJurySize(memberCount: number): number {
