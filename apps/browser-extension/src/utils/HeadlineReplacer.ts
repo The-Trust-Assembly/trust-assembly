@@ -154,14 +154,19 @@ export default class HeadlineReplacer {
     if (!this.modifiedHeadline || !node.textContent) return;
     if (!this.containsHeadline(node.textContent)) return;
 
+    // Only replace text nodes inside headline-like elements (headings,
+    // elements with "headline"/"title" in their class, etc.). Body text
+    // that happens to quote the headline should NOT be replaced.
+    const parent = node.parentElement;
+    if (!parent || !this.isHeadlineContext(parent)) return;
+
     this.processedNodes.add(node);
     const original = node.textContent;
     node.textContent = this.replaceHeadlineIn(original);
     this.replacements.push({ type: 'textNode', node, original });
 
     // Apply visual styling to the parent element if it's a visible heading/container
-    const parent = node.parentElement;
-    if (parent && this.isVisibleHeadlineElement(parent)) {
+    if (this.isVisibleHeadlineElement(parent)) {
       this.processedNodes.add(parent);
       this.replacements.push({
         type: 'style',
@@ -192,12 +197,32 @@ export default class HeadlineReplacer {
     }
   }
 
+  /** Determines if a text node's parent is in a "headline context" — i.e.
+   *  the text is part of a headline element, not article body prose that
+   *  happens to quote the headline. We walk up the DOM tree to check. */
+  private isHeadlineContext(el: HTMLElement): boolean {
+    // Walk up to 5 ancestors looking for a headline-like container
+    let current: HTMLElement | null = el;
+    for (let i = 0; i < 5 && current; i++) {
+      if (this.isVisibleHeadlineElement(current)) return true;
+
+      // Also allow elements explicitly marked as headline containers
+      const editable = current.getAttribute('data-editable');
+      if (editable === 'headline' || editable === 'headlineText') return true;
+
+      current = current.parentElement;
+    }
+    return false;
+  }
+
   /** Determines if an element is a visible headline container worth styling */
   private isVisibleHeadlineElement(el: HTMLElement): boolean {
     const tag = el.tagName.toLowerCase();
     if (['h1', 'h2', 'h3'].includes(tag)) return true;
     const cls = el.className?.toLowerCase?.() || '';
     if (cls.includes('headline') || cls.includes('title')) return true;
+    // Schema.org microdata
+    if (el.getAttribute('itemprop') === 'headline') return true;
     return false;
   }
 
