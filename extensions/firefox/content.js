@@ -408,16 +408,19 @@
 
     // Find all headline elements on the page
     const headlineEls = findAllHeadlineElements();
-    if (headlineEls.length === 0) return;
 
     // Resolve conflicts so we show the winning correction
     const resolved = resolveConflicts(corrections);
+
+    // Track which corrections could not be matched to any element
+    const unapplied = [];
 
     resolved.forEach(group => {
       const sub = group.winner;
       if (!sub.originalHeadline || !sub.replacement) return;
 
       const originalLower = sub.originalHeadline.toLowerCase().trim();
+      let matched = false;
 
       headlineEls.forEach(el => {
         // Skip if already annotated
@@ -427,6 +430,7 @@
         // Match if headline text matches the correction's original (fuzzy: contained or equal)
         if (elText !== originalLower && !elText.includes(originalLower) && !originalLower.includes(elText)) return;
 
+        matched = true;
         el.dataset.taAnnotated = "true";
 
         // Create inline annotation wrapper
@@ -476,10 +480,79 @@
         el.classList.add("ta-inline-headline-corrected");
       });
 
-      // Replace the headline text everywhere else in the DOM (meta tags,
-      // data-attributes, <title>, etc.) so the correction is truly universal.
-      replaceHeadlineAcrossDOM(sub.originalHeadline, sub.replacement);
+      if (matched) {
+        // Replace the headline text everywhere else in the DOM (meta tags,
+        // data-attributes, <title>, etc.) so the correction is truly universal.
+        replaceHeadlineAcrossDOM(sub.originalHeadline, sub.replacement);
+      } else {
+        unapplied.push(sub);
+      }
     });
+
+    // If any corrections couldn't be matched, show an education box
+    if (unapplied.length > 0) {
+      renderUnappliedCorrectionsBox(unapplied);
+    }
+  }
+
+  // ── Unapplied Corrections Education Box ──
+  // When corrections exist for a page but the original headline text can
+  // no longer be found (headline was updated, site redesigned, etc.),
+  // render an informational box at the top of the article body.
+  function renderUnappliedCorrectionsBox(unapplied) {
+    // Don't render duplicates
+    if (document.getElementById("ta-unapplied-box")) return;
+
+    // Find the article body to insert at the top of
+    const articleRoot = document.querySelector("article")
+      || document.querySelector('[role="main"]')
+      || document.querySelector(".article-body")
+      || document.querySelector(".post-content")
+      || document.querySelector(".entry-content")
+      || document.querySelector(".story-body");
+
+    // Fall back to first h1's parent if no article container found
+    const h1 = document.querySelector("h1");
+    const insertTarget = articleRoot || (h1 && h1.parentElement) || document.body;
+
+    const box = document.createElement("div");
+    box.id = "ta-unapplied-box";
+    box.className = "ta-unapplied-box";
+
+    let html = `
+      <div class="ta-unapplied-header">
+        <span class="ta-unapplied-icon">⚖</span>
+        <span class="ta-unapplied-title">Trust Assembly — Corrections No Longer Matched</span>
+      </div>
+      <div class="ta-unapplied-body">
+        <p class="ta-unapplied-explanation">The following corrections were submitted for this article but the original headline text could no longer be found on the page. The headline may have been updated by the publisher.</p>
+    `;
+
+    unapplied.forEach(sub => {
+      const org = sub.orgName || "Assembly";
+      const profile = sub.profile?.displayName || "Citizen";
+      const score = sub.trustScore != null ? sub.trustScore : "—";
+
+      html += `
+        <div class="ta-unapplied-item">
+          <div class="ta-unapplied-original">${escapeHtml(sub.originalHeadline)}</div>
+          <div class="ta-unapplied-arrow">↓ corrected to</div>
+          <div class="ta-unapplied-replacement">${escapeHtml(sub.replacement)}</div>
+          <div class="ta-unapplied-meta">⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>
+          ${sub.reasoning ? `<div class="ta-unapplied-reasoning">${escapeHtml(sub.reasoning)}</div>` : ""}
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    box.innerHTML = html;
+
+    // Insert at the top of the article body
+    if (insertTarget.firstChild) {
+      insertTarget.insertBefore(box, insertTarget.firstChild);
+    } else {
+      insertTarget.appendChild(box);
+    }
   }
 
   // ── DOM-wide headline text replacement ──
