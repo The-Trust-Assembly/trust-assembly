@@ -181,6 +181,18 @@ function getSuperJurySize(memberCount) {
   return 7;
 }
 
+// ── Wild West Mode ──
+// When the system has fewer than 100 total users, simplified rules apply:
+// - Only 1 reviewer per submission (instead of full jury)
+// - Deliberate deception findings are disabled
+// - Self-review and DI-partner review restrictions remain in effect
+const WILD_WEST_THRESHOLD = 100;
+
+async function isWildWestMode() {
+  const users = (await sG(SK.USERS)) || {};
+  return Object.keys(users).length < WILD_WEST_THRESHOLD;
+}
+
 // ── Jury Pool & Accept Window ──
 const JURY_POOL_MULTIPLIER = 2;       // Draw 2× needed jury size — first to accept get seated
 const JURY_ACCEPT_WINDOW = 6 * 60 * 60 * 1000; // 6 hours to accept or complete review
@@ -947,7 +959,8 @@ async function resolveDispute(disputeId, voterUsername, approve, note, lieChecke
     const disputerWins = upheld >= disputeMajority;
     const allVotes = Object.values(d.votes);
     const lieCount = allVotes.filter(v => v.deliberateLie).length;
-    const wasLie = lieCount > allVotes.length / 2;
+    const wildWestDispute = await isWildWestMode();
+    const wasLie = !wildWestDispute && lieCount > allVotes.length / 2;
 
     d.status = disputerWins ? "upheld" : "dismissed";
     d.resolvedAt = now;
@@ -1765,6 +1778,15 @@ function CitizenCounter() {
     <div style={{ textAlign: "center", padding: "16px 0 8px", borderBottom: "1px solid #E2E8F0", marginBottom: 16 }}>
       <div style={{ fontFamily: "var(--serif)", fontSize: 32, fontWeight: 700, color: "#0F172A" }}>{count}</div>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.15em", color: "#64748B", marginBottom: 8 }}>Digital Citizens Registered</div>
+      {count < 100 && (
+        <div style={{ margin: "0 auto 12px", maxWidth: 520, padding: "12px 16px", background: "#FEF3C7", border: "2px solid #D97706", borderRadius: 10, textAlign: "left", lineHeight: 1.7 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: "#92400E", fontWeight: 700, marginBottom: 6, textAlign: "center" }}>Wild West Rules in Effect Until the System Has 100 Users</div>
+          <div style={{ fontSize: 12, color: "#78350F" }}>
+            <div style={{ marginBottom: 3 }}>1. Your submissions only require one random reviewer</div>
+            <div>2. Findings of deliberate deception are disabled</div>
+          </div>
+        </div>
+      )}
       <div style={{ fontSize: 10, color: "#475569", lineHeight: 1.6, maxWidth: 520, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 2 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: juryRulesActive ? "#059669" : "#CBD5E1", display: "inline-block" }} />
@@ -2329,8 +2351,9 @@ function SubmitScreen({ user, onUpdate }) {
         if (todayCount >= limit) continue;
       }
 
-      const hasEnough = org.members.length >= 5;
-      const trusted = !submitterIsDI && isTrustedContributor(submitter, orgId);
+      const wildWest = await isWildWestMode();
+      const hasEnough = wildWest ? org.members.length >= 2 : org.members.length >= 5;
+      const trusted = !submitterIsDI && !wildWest && isTrustedContributor(submitter, orgId);
       let jurors = [], jurySeed = 0, rulesApplied = [], status = submitterIsDI ? "di_pending" : "pending_jury";
       let trustedSkip = false;
       if (submitterIsDI) {
@@ -2338,10 +2361,21 @@ function SubmitScreen({ user, onUpdate }) {
       } else if (trusted) {
         status = "approved"; trustedSkip = true;
       } else if (hasEnough) {
-        const result = await selectJury(orgId, user.username);
-        if (!result.error) { jurors = result.jurors; jurySeed = result.seed; rulesApplied = result.rulesApplied; status = "pending_review"; }
+        if (wildWest) {
+          // Wild West: pick 1 random reviewer (not self, not DI partner)
+          const eligible = org.members.filter(m => m !== user.username && m !== (submitter.diPartner || ""));
+          if (eligible.length > 0) {
+            const pick = eligible[Math.floor(Math.random() * eligible.length)];
+            jurors = [pick]; jurySeed = Math.floor(Math.random() * 10000);
+            rulesApplied = ["Wild West: 1 reviewer"];
+            status = "pending_review";
+          }
+        } else {
+          const result = await selectJury(orgId, user.username);
+          if (!result.error) { jurors = result.jurors; jurySeed = result.seed; rulesApplied = result.rulesApplied; status = "pending_review"; }
+        }
       }
-      const jurySeats = getJurySize(org.members.length);
+      const jurySeats = wildWest ? 1 : getJurySize(org.members.length);
       const sub = {
         id: gid(), url: form.url.trim(), originalHeadline: form.originalHeadline.trim(),
         replacement: form.replacement.trim(), reasoning: form.reasoning.trim(),
@@ -2771,10 +2805,11 @@ function ReviewScreen({ user }) {
 
     if (resolved) {
       sub.status = outcome; sub.resolvedAt = now;
-      // Deliberate lie: secret majority
+      // Deliberate lie: secret majority (disabled in Wild West mode)
+      const wildWestNow = await isWildWestMode();
       const allVotes = Object.values(sub[vk]);
       const lieCount = allVotes.filter(v => v.deliberateLie).length;
-      const wasLie = lieCount > allVotes.length / 2;
+      const wasLie = !wildWestNow && lieCount > allVotes.length / 2;
       sub.deliberateLieFinding = wasLie;
       sub.auditTrail.push({ time: now, action: `RESOLVED: ${outcome.toUpperCase()} (${app}/${vc} approved)${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
       // Reveal submitter identity now that voting is complete — jurors remain permanently anonymous
