@@ -263,6 +263,196 @@
       };
     }
 
+    // --- Yahoo News ---
+    if (host.includes("yahoo.com")) {
+      return {
+        name: "yahoo",
+        dynamic: true,
+        headlineSelectors: [
+          '[data-test-locator="headline"]', 'h1[data-test-locator="headline"]',
+          'h1.caas-title-url', 'h1[class*="caas-title"]',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: '.caas-body, article, [data-test-locator="articleBody"]',
+        waitSelector: '[data-test-locator="headline"], h1[class*="caas-title"], h1',
+      };
+    }
+
+    // --- Daily Mail ---
+    if (host.includes("dailymail.co.uk") || host.includes("mailonline.com")) {
+      return {
+        name: "dailymail",
+        dynamic: false,
+        headlineSelectors: [
+          'h2#js-article-text', 'h2.mol-para-with-font',
+          '#js-article-text h2', '[itemprop="headline"]',
+          'h1[class*="headline"]', 'h2[class*="headline"]',
+          'h1', 'h2',
+        ],
+        articleRoot: '#js-article-text, .article-text, article, [itemprop="articleBody"]',
+        waitSelector: null,
+      };
+    }
+
+    // --- Wall Street Journal ---
+    if (host.includes("wsj.com")) {
+      return {
+        name: "wsj",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.wsj-article-headline', 'h1[class*="StyledHeadline"]',
+          'h1[class*="headline"]', 'h1[class*="article"]',
+          'article h1', 'h1',
+        ],
+        articleRoot: '.article-content, [class*="article-body"], article',
+        waitSelector: 'h1.wsj-article-headline, h1[class*="headline"], article h1, h1',
+      };
+    }
+
+    // --- Bloomberg ---
+    if (host.includes("bloomberg.com")) {
+      return {
+        name: "bloomberg",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-component="hed"]', 'h1[class*="headline"]',
+          'h1[class*="lede"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, [class*="body-content"], .article-body',
+        waitSelector: 'h1[data-component="hed"], h1[class*="headline"], h1',
+      };
+    }
+
+    // --- Politico ---
+    if (host.includes("politico.com") || host.includes("politico.eu")) {
+      return {
+        name: "politico",
+        dynamic: true,
+        headlineSelectors: [
+          'h2.headline', 'h1.headline', 'h1[class*="headline"]',
+          'h2[class*="headline"]', '.story-main-content h2',
+          'article h1', 'article h2', 'h1', 'h2',
+        ],
+        articleRoot: '.story-text, .article__text, article, .story-main-content',
+        waitSelector: 'h2.headline, h1.headline, h1, h2',
+      };
+    }
+
+    // --- The Hill ---
+    if (host.includes("thehill.com")) {
+      return {
+        name: "thehill",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.page-title', 'h1[class*="title"]',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .field-items, .content-wrp',
+        waitSelector: 'h1.page-title, article h1, h1',
+      };
+    }
+
+    // --- Axios ---
+    if (host.includes("axios.com")) {
+      return {
+        name: "axios",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[class*="headline"]', 'h1[class*="gtm-hed"]',
+          'article h1', 'h1',
+        ],
+        articleRoot: 'article, .story-content, [class*="story-body"]',
+        waitSelector: 'article h1, h1',
+      };
+    }
+
+    // --- USA Today / Gannett properties ---
+    if (host.includes("usatoday.com") || document.querySelector('meta[name="generator"][content*="Gannett"]') || host.match(/\.(com|org)$/) && document.querySelector('[data-ss-t]')) {
+      return {
+        name: "gannett",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-ss-t]', 'h1.gnt_ar_hl', 'h1[class*="gnt_ar"]',
+          'h1[class*="headline"]', 'h1[class*="title"]',
+          'article h1', 'h1',
+        ],
+        articleRoot: '.gnt_ar_b, article, [class*="article-body"]',
+        waitSelector: 'h1[data-ss-t], h1.gnt_ar_hl, article h1, h1',
+      };
+    }
+
+    // --- Vox Media (Verge, Vox, SB Nation, Eater, Polygon) ---
+    if (host.includes("theverge.com") || host.includes("vox.com") || host.includes("sbnation.com") || host.includes("eater.com") || host.includes("polygon.com")) {
+      return {
+        name: "voxmedia",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.c-page-title', 'h1[class*="c-page-title"]',
+          'h1[class*="entry-title"]', 'h1[class*="headline"]',
+          'article h1', 'h1',
+        ],
+        articleRoot: '.c-entry-content, article, .entry-content',
+        waitSelector: 'h1.c-page-title, article h1, h1',
+      };
+    }
+
+    // --- Newsweek ---
+    if (host.includes("newsweek.com")) {
+      return {
+        name: "newsweek",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.article-title', 'h1[class*="article-title"]',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .article-body, [class*="article-body"]',
+        waitSelector: 'h1.article-title, article h1, h1',
+      };
+    }
+
+    // --- The Intercept / ProPublica / investigative ---
+    if (host.includes("theintercept.com") || host.includes("propublica.org")) {
+      return {
+        name: "investigative",
+        dynamic: false,
+        headlineSelectors: [
+          'h1[class*="headline"]', 'h1[class*="hed"]',
+          'h1.entry-title', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .entry-content, .article-body, [class*="article-body"]',
+        waitSelector: null,
+      };
+    }
+
+    // --- Al Jazeera ---
+    if (host.includes("aljazeera.com")) {
+      return {
+        name: "aljazeera",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.article-header', 'h1[class*="post-title"]',
+          'h1[class*="headline"]', 'article h1', 'h1',
+        ],
+        articleRoot: '.wysiwyg, article, .article-body',
+        waitSelector: 'article h1, h1',
+      };
+    }
+
+    // --- AMP pages (Google AMP / any publisher) ---
+    if (host.includes("amp.") || host.includes("cdn.ampproject.org") || document.documentElement.hasAttribute("amp") || document.documentElement.hasAttribute("⚡")) {
+      return {
+        name: "amp",
+        dynamic: false,
+        headlineSelectors: [
+          'h1[class*="headline"]', 'h1[class*="title"]',
+          'h1.amp-article-header', '[itemprop="headline"]',
+          'article h1', 'h1',
+        ],
+        articleRoot: 'article, amp-story, .article-body, [itemprop="articleBody"]',
+        waitSelector: null,
+      };
+    }
+
     // --- Generic / unknown (broadest set of selectors) ---
     // Detect if the site appears to be an SPA by checking for common
     // framework markers (#app, #root, #__next, [data-reactroot], etc.)
@@ -277,10 +467,11 @@
         'article h1', '[role="main"] h1',
         '.article-header h1', '.post-header h1', '.entry-title',
         'h1.article-title', 'h1.main-headline', 'h1.headline',
-        'h1', // last resort
+        'h2[class*="headline"]', 'h2.headline', // some sites use h2
+        'h1', 'h2', // last resort
       ],
-      articleRoot: 'article, [role="main"], .article-body, .post-content, .entry-content, .story-body',
-      waitSelector: spaRoot ? 'h1' : null,
+      articleRoot: 'article, [role="main"], .article-body, .post-content, .entry-content, .story-body, main',
+      waitSelector: spaRoot ? 'h1, h2' : null,
     };
   }
 
@@ -289,6 +480,62 @@
   function getSiteType() {
     if (!_siteType) _siteType = detectSiteType();
     return _siteType;
+  }
+
+  // ── Find the article body container (site-aware, reusable) ──
+  // Used by corrections, affirmations, context card, and unapplied box
+  // to find the best place to inject content. Falls back aggressively.
+  function findArticleBody() {
+    const site = getSiteType();
+    // Try site-specific roots first
+    if (site.articleRoot) {
+      for (const sel of site.articleRoot.split(", ")) {
+        try {
+          const el = document.querySelector(sel.trim());
+          if (el) return el;
+        } catch (e) {}
+      }
+    }
+    // Generic fallbacks
+    const fallbacks = [
+      "article", '[role="main"]', "main",
+      ".article-body", ".article-content", ".post-content",
+      ".entry-content", ".story-body", ".story-text",
+      "[itemprop='articleBody']", ".content-body",
+    ];
+    for (const sel of fallbacks) {
+      try {
+        const el = document.querySelector(sel);
+        if (el) return el;
+      } catch (e) {}
+    }
+    // Last resort: parent of first headline or body
+    const h1 = document.querySelector("h1") || document.querySelector("h2");
+    return (h1 && h1.parentElement) || document.body;
+  }
+
+  // ── Find the best headline element (site-aware, reusable) ──
+  function findPrimaryHeadline() {
+    const site = getSiteType();
+    for (const selector of site.headlineSelectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.textContent.trim().length > 3) return el;
+      } catch (e) {}
+    }
+    // CMS attribute fallbacks
+    const cmsFallbacks = [
+      '[itemprop="headline"]', '[data-editable="headlineText"]',
+      '[data-testid="headline"]', '[data-qa="headline"]',
+      '[data-test-locator="headline"]',
+    ];
+    for (const sel of cmsFallbacks) {
+      try {
+        const el = document.querySelector(sel);
+        if (el && el.textContent.trim().length > 3) return el;
+      } catch (e) {}
+    }
+    return document.querySelector("h1") || document.querySelector("h2");
   }
 
   // ── Wait for an element to appear in the DOM ──
@@ -746,12 +993,39 @@
     document.getElementById("ta-ext-close").addEventListener("click", () => panel.remove());
   }
 
+  // ── Fuzzy headline text matching ──
+  // Normalizes and compares two strings to determine if they refer to the
+  // same headline, handling whitespace, punctuation, and encoding differences.
+  function normalizeForMatch(text) {
+    return text.replace(/\s+/g, " ").replace(/['']/g, "'").replace(/[""]/g, '"').trim().toLowerCase();
+  }
+
+  function headlinesMatch(pageText, correctionText) {
+    const a = normalizeForMatch(pageText);
+    const b = normalizeForMatch(correctionText);
+    if (!a || !b) return false;
+    // Exact match
+    if (a === b) return true;
+    // Containment (one inside the other)
+    if (a.includes(b) || b.includes(a)) return true;
+    // Prefix/suffix match (headline may have been truncated or have trailing junk)
+    if (a.length > 20 && b.length > 20) {
+      const shorter = a.length < b.length ? a : b;
+      const longer = a.length < b.length ? b : a;
+      // 80% of shorter string matches start of longer
+      const prefixLen = Math.floor(shorter.length * 0.8);
+      if (longer.startsWith(shorter.slice(0, prefixLen))) return true;
+    }
+    return false;
+  }
+
   // ── Apply Corrections Inline on Headlines ──
   function applyInlineCorrections(corrections) {
     if (!corrections || corrections.length === 0) return;
 
     // Find all headline elements on the page
     const headlineEls = findAllHeadlineElements();
+    const articleBody = findArticleBody();
 
     // Resolve conflicts so we show the winning correction
     const resolved = resolveConflicts(corrections);
@@ -763,16 +1037,12 @@
       const sub = group.winner;
       if (!sub.originalHeadline || !sub.replacement) return;
 
-      const originalLower = sub.originalHeadline.toLowerCase().trim();
       let matched = false;
 
+      // Phase 1: Match against found headline elements
       headlineEls.forEach(el => {
-        // Skip if already annotated
         if (el.dataset.taAnnotated) return;
-
-        const elText = el.textContent.trim().toLowerCase();
-        // Match if headline text matches the correction's original (fuzzy: contained or equal)
-        if (elText !== originalLower && !elText.includes(originalLower) && !originalLower.includes(elText)) return;
+        if (!headlinesMatch(el.textContent, sub.originalHeadline)) return;
 
         matched = true;
         el.dataset.taAnnotated = "true";
@@ -781,17 +1051,14 @@
         const wrapper = document.createElement("div");
         wrapper.className = "ta-inline-correction";
 
-        // Original headline with strikethrough
         const origSpan = document.createElement("div");
         origSpan.className = "ta-inline-original";
         origSpan.textContent = el.textContent;
 
-        // Replacement headline
         const replSpan = document.createElement("div");
         replSpan.className = "ta-inline-replacement";
         replSpan.textContent = sub.replacement;
 
-        // Source attribution
         const metaSpan = document.createElement("div");
         metaSpan.className = "ta-inline-meta";
         const org = sub.orgName || "Assembly";
@@ -799,7 +1066,9 @@
         const score = sub.trustScore != null ? sub.trustScore : "—";
         metaSpan.innerHTML = `⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
 
-        // Reasoning (truncated for inline display)
+        wrapper.appendChild(origSpan);
+        wrapper.appendChild(replSpan);
+        wrapper.appendChild(metaSpan);
         if (sub.reasoning) {
           const reasonSpan = document.createElement("div");
           reasonSpan.className = "ta-inline-reasoning";
@@ -807,33 +1076,75 @@
           reasonSpan.textContent = sub.reasoning.length > maxLen
             ? sub.reasoning.slice(0, maxLen) + "…"
             : sub.reasoning;
-          wrapper.appendChild(origSpan);
-          wrapper.appendChild(replSpan);
-          wrapper.appendChild(metaSpan);
           wrapper.appendChild(reasonSpan);
-        } else {
-          wrapper.appendChild(origSpan);
-          wrapper.appendChild(replSpan);
-          wrapper.appendChild(metaSpan);
         }
 
-        // Insert the annotation after the headline
+        // Insert the annotation after the headline element
         el.parentNode.insertBefore(wrapper, el.nextSibling);
-
-        // Also visually mark the headline itself
         el.classList.add("ta-inline-headline-corrected");
       });
 
+      // Phase 2: If no headline element matched, do a raw text-node search
+      // This catches headlines in non-standard elements (spans, divs, etc.)
+      if (!matched) {
+        const searchRoot = articleBody || document.body;
+        const walker = document.createTreeWalker(searchRoot, NodeFilter.SHOW_TEXT, null, false);
+        while (walker.nextNode()) {
+          const node = walker.currentNode;
+          if (!node.textContent || node.textContent.trim().length < 10) continue;
+          // Skip our own injections
+          if (node.parentNode.closest && node.parentNode.closest("[class^='ta-inline'], [class^='ta-ext'], [id^='ta-']")) continue;
+          if (headlinesMatch(node.textContent, sub.originalHeadline)) {
+            matched = true;
+            const parent = node.parentElement;
+            if (parent && !parent.dataset.taAnnotated) {
+              parent.dataset.taAnnotated = "true";
+              const wrapper = document.createElement("div");
+              wrapper.className = "ta-inline-correction";
+
+              const origSpan = document.createElement("div");
+              origSpan.className = "ta-inline-original";
+              origSpan.textContent = node.textContent.trim();
+
+              const replSpan = document.createElement("div");
+              replSpan.className = "ta-inline-replacement";
+              replSpan.textContent = sub.replacement;
+
+              const metaSpan = document.createElement("div");
+              metaSpan.className = "ta-inline-meta";
+              const org = sub.orgName || "Assembly";
+              const profile = sub.profile?.displayName || "Citizen";
+              const score = sub.trustScore != null ? sub.trustScore : "—";
+              metaSpan.innerHTML = `⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+
+              wrapper.appendChild(origSpan);
+              wrapper.appendChild(replSpan);
+              wrapper.appendChild(metaSpan);
+              if (sub.reasoning) {
+                const reasonSpan = document.createElement("div");
+                reasonSpan.className = "ta-inline-reasoning";
+                reasonSpan.textContent = sub.reasoning.length > 180
+                  ? sub.reasoning.slice(0, 180) + "…" : sub.reasoning;
+                wrapper.appendChild(reasonSpan);
+              }
+
+              parent.parentNode.insertBefore(wrapper, parent.nextSibling);
+              parent.classList.add("ta-inline-headline-corrected");
+            }
+            break; // only match first occurrence
+          }
+        }
+      }
+
       if (matched) {
-        // Replace the headline text everywhere else in the DOM (meta tags,
-        // data-attributes, <title>, etc.) so the correction is truly universal.
         replaceHeadlineAcrossDOM(sub.originalHeadline, sub.replacement);
       } else {
         unapplied.push(sub);
       }
     });
 
-    // If any corrections couldn't be matched, show an education box
+    // If corrections couldn't be matched to any element, inject them at
+    // the top of the article body so they're always visible to the reader.
     if (unapplied.length > 0) {
       renderUnappliedCorrectionsBox(unapplied);
     }
@@ -847,27 +1158,7 @@
     // Don't render duplicates
     if (document.getElementById("ta-unapplied-box")) return;
 
-    // Find the article body to insert at the top of (site-aware)
-    const site = getSiteType();
-    let articleRoot = null;
-    if (site.articleRoot) {
-      for (const sel of site.articleRoot.split(", ")) {
-        articleRoot = document.querySelector(sel.trim());
-        if (articleRoot) break;
-      }
-    }
-    if (!articleRoot) {
-      articleRoot = document.querySelector("article")
-        || document.querySelector('[role="main"]')
-        || document.querySelector(".article-body")
-        || document.querySelector(".post-content")
-        || document.querySelector(".entry-content")
-        || document.querySelector(".story-body");
-    }
-
-    // Fall back to first h1's parent if no article container found
-    const h1 = document.querySelector("h1");
-    const insertTarget = articleRoot || (h1 && h1.parentElement) || document.body;
+    const insertTarget = findArticleBody();
 
     const box = document.createElement("div");
     box.id = "ta-unapplied-box";
@@ -927,22 +1218,11 @@
     // Don't render if there's nothing to show
     if (total === 0 && translations.length === 0) return;
 
-    // Find the headline element to insert after (site-aware)
-    const site = getSiteType();
-    let headlineEl = null;
-    for (const selector of site.headlineSelectors) {
-      try {
-        headlineEl = document.querySelector(selector);
-        if (headlineEl && headlineEl.textContent.trim()) break;
-        headlineEl = null;
-      } catch (e) {}
-    }
-    // Fallback: CMS attributes then bare h1
-    if (!headlineEl) headlineEl = document.querySelector('[itemprop="headline"]');
-    if (!headlineEl) headlineEl = document.querySelector('[data-editable="headlineText"]');
-    if (!headlineEl) headlineEl = document.querySelector('h1');
-
-    if (!headlineEl) return;
+    // Try to insert after the headline; if that fails, insert at the
+    // top of the article body. This ensures the card always renders.
+    const headlineEl = findPrimaryHeadline();
+    const articleBody = findArticleBody();
+    if (!headlineEl && !articleBody) return;
 
     const card = document.createElement("div");
     card.id = "ta-context-card";
@@ -1016,8 +1296,16 @@
 
     card.innerHTML = html;
 
-    // Insert after the headline
-    headlineEl.parentNode.insertBefore(card, headlineEl.nextSibling);
+    // Insert after the headline if found, otherwise at top of article body
+    if (headlineEl && headlineEl.parentNode) {
+      headlineEl.parentNode.insertBefore(card, headlineEl.nextSibling);
+    } else if (articleBody) {
+      if (articleBody.firstChild) {
+        articleBody.insertBefore(card, articleBody.firstChild);
+      } else {
+        articleBody.appendChild(card);
+      }
+    }
 
     // Fetch vault entries asynchronously (standing corrections, arguments, beliefs)
     fetchAndRenderVaultEntries(assemblyNames.length > 0 ? assemblies : null);
@@ -1189,21 +1477,20 @@
     if (!affirmations || affirmations.length === 0) return;
 
     const headlineEls = findAllHeadlineElements();
-    if (headlineEls.length === 0) return;
+    const articleBody = findArticleBody();
 
     affirmations.forEach(sub => {
       if (!sub.originalHeadline) return;
-      const originalLower = sub.originalHeadline.toLowerCase().trim();
+      let matched = false;
 
+      // Phase 1: Match against headline elements
       headlineEls.forEach(el => {
         if (el.dataset.taAnnotated) return;
+        if (!headlinesMatch(el.textContent, sub.originalHeadline)) return;
 
-        const elText = el.textContent.trim().toLowerCase();
-        if (elText !== originalLower && !elText.includes(originalLower) && !originalLower.includes(elText)) return;
-
+        matched = true;
         el.dataset.taAnnotated = "true";
 
-        // Create inline affirmation wrapper
         const wrapper = document.createElement("div");
         wrapper.className = "ta-inline-affirmation";
 
@@ -1229,6 +1516,42 @@
         el.parentNode.insertBefore(wrapper, el.nextSibling);
         el.classList.add("ta-inline-headline-affirmed");
       });
+
+      // Phase 2: Text-node fallback for non-standard elements
+      if (!matched) {
+        const searchRoot = articleBody || document.body;
+        const walker = document.createTreeWalker(searchRoot, NodeFilter.SHOW_TEXT, null, false);
+        while (walker.nextNode()) {
+          const node = walker.currentNode;
+          if (!node.textContent || node.textContent.trim().length < 10) continue;
+          if (node.parentNode.closest && node.parentNode.closest("[class^='ta-inline'], [class^='ta-ext'], [id^='ta-']")) continue;
+          if (headlinesMatch(node.textContent, sub.originalHeadline)) {
+            const parent = node.parentElement;
+            if (parent && !parent.dataset.taAnnotated) {
+              parent.dataset.taAnnotated = "true";
+              const wrapper = document.createElement("div");
+              wrapper.className = "ta-inline-affirmation";
+              const metaSpan = document.createElement("div");
+              metaSpan.className = "ta-inline-meta";
+              const org = sub.orgName || "Assembly";
+              const profile = sub.profile?.displayName || "Citizen";
+              const score = sub.trustScore != null ? sub.trustScore : "—";
+              metaSpan.innerHTML = `✓ Verified by <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+              wrapper.appendChild(metaSpan);
+              if (sub.reasoning) {
+                const reasonSpan = document.createElement("div");
+                reasonSpan.className = "ta-inline-reasoning";
+                reasonSpan.textContent = sub.reasoning.length > 180
+                  ? sub.reasoning.slice(0, 180) + "…" : sub.reasoning;
+                wrapper.appendChild(reasonSpan);
+              }
+              parent.parentNode.insertBefore(wrapper, parent.nextSibling);
+              parent.classList.add("ta-inline-headline-affirmed");
+            }
+            break;
+          }
+        }
+      }
     });
   }
 
@@ -1358,24 +1681,7 @@
     if (edits.length === 0) return;
 
     // Limit search to article body to avoid modifying nav, headers, footers
-    // Use site-aware selectors first, then generic fallbacks
-    const site = getSiteType();
-    let articleRoot = null;
-    if (site.articleRoot) {
-      for (const sel of site.articleRoot.split(", ")) {
-        articleRoot = document.querySelector(sel.trim());
-        if (articleRoot) break;
-      }
-    }
-    if (!articleRoot) {
-      articleRoot = document.querySelector("article")
-        || document.querySelector('[role="main"]')
-        || document.querySelector(".article-body")
-        || document.querySelector(".post-content")
-        || document.querySelector(".entry-content")
-        || document.querySelector(".story-body")
-        || document.body;
-    }
+    const articleRoot = findArticleBody();
 
     const walker = document.createTreeWalker(
       articleRoot, NodeFilter.SHOW_TEXT, null, false
