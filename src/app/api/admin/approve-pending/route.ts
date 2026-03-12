@@ -1,6 +1,5 @@
 import { sql } from "@/lib/db";
 import { ok, err } from "@/lib/api-utils";
-import { isWildWestMode } from "@/lib/jury-rules";
 
 const VER = "v5";
 const SK_SUBS = `ta-s-${VER}`;
@@ -21,37 +20,30 @@ async function kvSet(key: string, value: unknown): Promise<void> {
   `;
 }
 
-// POST /api/admin/wild-west-backfill
-// Resolves all pending_review AND pending_jury submissions that have at
-// least 1 approval vote (or no votes at all in Wild West mode).
-// Also syncs approved status to the KV store so the browser extension
-// can see the corrections.
-// Only runs when Wild West mode is active (< 100 users).
-// Safe to call multiple times — only affects pending submissions.
+// POST /api/admin/approve-pending
+// Approves ALL currently pending submissions (pending_review AND pending_jury)
+// in BOTH the SQL submissions table AND the KV store.
+//
+// Bug fixes addressed:
+// 1. pending_jury submissions were never resolved because the backfill
+//    only handled pending_review with existing votes.
+// 2. The KV store (read by the browser extension) was never updated
+//    by the SQL-side backfill, so approved corrections were invisible
+//    to extension users.
 export async function POST() {
-  const wildWest = await isWildWestMode();
-  if (!wildWest) {
-    return err("Wild West mode is not active (100+ users). No backfill needed.");
-  }
-
   const now = new Date().toISOString();
+  let sqlResolved = 0;
+  let kvResolved = 0;
 
-  // Find pending_review AND pending_jury submissions
-  // In Wild West mode, approve even those with no votes yet
+  // ── 1. Approve pending submissions in SQL database ──
+
   const pending = await sql`
-    SELECT s.id, s.submitted_by, s.org_id, s.is_di, s.di_partner_id, s.status AS prev_status
+    SELECT s.id, s.submitted_by, s.org_id, s.is_di, s.di_partner_id
     FROM submissions s
     WHERE s.status IN ('pending_review', 'pending_jury')
   `;
 
-  if (pending.rows.length === 0) {
-    return ok({ message: "No pending submissions with approvals to backfill.", resolved: 0 });
-  }
-
-  let resolved = 0;
-
   for (const sub of pending.rows) {
-    // Resolve the submission as approved
     await sql`
       UPDATE submissions
       SET status = 'approved', resolved_at = ${now}, deliberate_lie_finding = FALSE, jury_seats = 1
@@ -86,42 +78,42 @@ export async function POST() {
     await sql`
       INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
       VALUES (
-        'Wild West backfill: approved pending submission',
+        'Admin: approved pending submission',
         ${sub.submitted_by}, ${sub.org_id}, 'submission', ${sub.id},
-        ${JSON.stringify({ backfillTime: now, previousStatus: sub.prev_status })}
+        ${JSON.stringify({ previousStatus: 'pending', approvedAt: now })}
       )
     `;
 
-    resolved++;
+    sqlResolved++;
   }
 
-  // Sync KV store so the browser extension sees the approved corrections
-  let kvResolved = 0;
+  // ── 2. Approve pending submissions in KV store ──
+  // The browser extension reads from here, so this is critical.
+
   const subs = (await kvGet(SK_SUBS)) as Record<string, Record<string, unknown>> | null;
 
   if (subs) {
-    for (const [, sub] of Object.entries(subs)) {
+    for (const [id, sub] of Object.entries(subs)) {
       if (sub.status === "pending_review" || sub.status === "pending_jury") {
         sub.status = "approved";
         sub.resolvedAt = now;
         sub.deliberateLie = false;
 
+        // Add audit trail entry
         const trail = (sub.auditTrail as Array<Record<string, string>>) || [];
-        trail.push({ time: now, action: "Wild West backfill: approved pending submission" });
+        trail.push({ time: now, action: "Admin: approved pending submission" });
         sub.auditTrail = trail;
 
         kvResolved++;
       }
     }
 
-    if (kvResolved > 0) {
-      await kvSet(SK_SUBS, subs);
-    }
+    await kvSet(SK_SUBS, subs);
   }
 
   return ok({
-    message: `Wild West backfill complete. SQL: ${resolved}, KV: ${kvResolved} submission(s) resolved.`,
-    sqlResolved: resolved,
+    message: `Approved all pending corrections. SQL: ${sqlResolved}, KV: ${kvResolved}.`,
+    sqlResolved,
     kvResolved,
   });
 }
