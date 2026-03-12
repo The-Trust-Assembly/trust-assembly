@@ -99,6 +99,16 @@ export async function GET(request: NextRequest) {
         ? Math.round(((submitter?.wins as number) || 0) / totalReviews * 100)
         : null;
 
+      // Only include approved inline edits
+      const rawEdits = (sub.inlineEdits as Array<Record<string, unknown>>) || [];
+      const approvedEdits = rawEdits
+        .filter((e) => e.approved === true || e.approved === undefined)
+        .map((e) => ({
+          original: e.original,
+          replacement: e.replacement,
+          reasoning: e.reasoning || null,
+        }));
+
       const item = {
         id: sub.id,
         submissionType: sub.submissionType,
@@ -107,6 +117,7 @@ export async function GET(request: NextRequest) {
         author: sub.author,
         reasoning: sub.reasoning,
         evidence: sub.evidence || [],
+        inlineEdits: approvedEdits,
         submittedBy: sub.submittedBy,
         orgId: sub.orgId || "",
         orgName: org?.name || "",

@@ -98,6 +98,7 @@
     // Apply corrections and affirmations inline on headlines
     if (data.corrections.length > 0) {
       applyInlineCorrections(data.corrections);
+      applyInlineEdits(data.corrections);
     }
     if (data.affirmations.length > 0) {
       applyInlineAffirmations(data.affirmations);
@@ -543,6 +544,103 @@
     }
 
     return Array.from(found);
+  }
+
+  // ── Apply Inline Edits to Body Text ──
+  function applyInlineEdits(corrections) {
+    if (!corrections || corrections.length === 0) return;
+
+    // Collect all approved inline edits across all corrections
+    const edits = [];
+    corrections.forEach(sub => {
+      if (!sub.inlineEdits || sub.inlineEdits.length === 0) return;
+      sub.inlineEdits.forEach(edit => {
+        if (!edit.original || !edit.replacement) return;
+        edits.push({
+          original: edit.original,
+          replacement: edit.replacement,
+          reasoning: edit.reasoning,
+          orgName: sub.orgName || "Assembly",
+          profile: sub.profile?.displayName || "Citizen",
+          trustScore: sub.trustScore,
+        });
+      });
+    });
+
+    if (edits.length === 0) return;
+
+    // Limit search to article body to avoid modifying nav, headers, footers
+    const articleRoot = document.querySelector("article")
+      || document.querySelector('[role="main"]')
+      || document.querySelector(".article-body")
+      || document.querySelector(".post-content")
+      || document.querySelector(".entry-content")
+      || document.querySelector(".story-body")
+      || document.body;
+
+    const walker = document.createTreeWalker(
+      articleRoot, NodeFilter.SHOW_TEXT, null, false
+    );
+
+    const textNodes = [];
+    while (walker.nextNode()) {
+      // Skip nodes inside our own injected elements
+      if (walker.currentNode.parentNode.closest &&
+          walker.currentNode.parentNode.closest("[class^='ta-inline'], [class^='ta-ext']")) continue;
+      textNodes.push(walker.currentNode);
+    }
+
+    edits.forEach(edit => {
+      const originalText = edit.original;
+
+      textNodes.forEach(textNode => {
+        // Skip already-processed nodes
+        if (!textNode.parentNode) return;
+
+        const idx = textNode.nodeValue.indexOf(originalText);
+        if (idx === -1) return;
+
+        // Split the text node around the match
+        const before = textNode.nodeValue.slice(0, idx);
+        const after = textNode.nodeValue.slice(idx + originalText.length);
+
+        // Create the annotated replacement
+        const wrapper = document.createElement("span");
+        wrapper.className = "ta-inline-body-edit";
+
+        // Original text with strikethrough
+        const origSpan = document.createElement("span");
+        origSpan.className = "ta-inline-body-original";
+        origSpan.textContent = originalText;
+
+        // Replacement text
+        const replSpan = document.createElement("span");
+        replSpan.className = "ta-inline-body-replacement";
+        replSpan.textContent = edit.replacement;
+
+        // Tooltip with details
+        const tooltip = document.createElement("span");
+        tooltip.className = "ta-inline-body-tooltip";
+        const score = edit.trustScore != null ? edit.trustScore : "—";
+        let tooltipHtml = `<strong>⚖ ${escapeHtml(edit.orgName)}</strong> · ${escapeHtml(edit.profile)} · Trust Score ${score}`;
+        if (edit.reasoning) {
+          tooltipHtml += `<br><em>${escapeHtml(edit.reasoning)}</em>`;
+        }
+        tooltip.innerHTML = tooltipHtml;
+
+        wrapper.appendChild(origSpan);
+        wrapper.appendChild(replSpan);
+        wrapper.appendChild(tooltip);
+
+        // Rebuild the text around the annotation
+        const container = document.createDocumentFragment();
+        if (before) container.appendChild(document.createTextNode(before));
+        container.appendChild(wrapper);
+        if (after) container.appendChild(document.createTextNode(after));
+
+        textNode.parentNode.replaceChild(container, textNode);
+      });
+    });
   }
 
   // ── Apply Translations Inline ──

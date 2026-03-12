@@ -311,6 +311,62 @@
   border-radius: 0 4px 4px 0;
 }
 
+/* ── Inline Body Text Edits ── */
+.ta-inline-body-edit {
+  position: relative;
+  display: inline;
+}
+.ta-inline-body-original {
+  text-decoration: line-through;
+  text-decoration-color: #C4573F;
+  color: #8A8580;
+  background: #FDF0EE;
+}
+.ta-inline-body-replacement {
+  color: #C4573F;
+  font-weight: 700;
+  background: #FDF8F7;
+  border-bottom: 2px solid #C4573F;
+  margin-left: 2px;
+  cursor: help;
+}
+.ta-inline-body-replacement::after {
+  content: "ᵀᴬ";
+  font-size: 9px;
+  color: #C4573F;
+  font-weight: 700;
+  vertical-align: super;
+  margin-left: 1px;
+}
+.ta-inline-body-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 2147483645;
+  background: #1B2A4A;
+  color: #F0EDE6;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  max-width: 360px;
+  white-space: normal;
+  box-shadow: 0 4px 16px rgba(27, 42, 74, 0.25);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+.ta-inline-body-tooltip strong {
+  color: #B8963E;
+}
+.ta-inline-body-tooltip em {
+  color: #D0CBC3;
+}
+.ta-inline-body-edit:hover .ta-inline-body-tooltip {
+  display: block;
+}
+
 /* ── Inline Translation Annotations ── */
 .ta-ext-translated {
   position: relative;
