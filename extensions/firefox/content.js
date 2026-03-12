@@ -95,6 +95,14 @@
       try { browser.runtime.sendMessage({ type: "TA_COUNT", count: total, url }); } catch (_) {}
     }
 
+    // Apply corrections and affirmations inline on headlines
+    if (data.corrections.length > 0) {
+      applyInlineCorrections(data.corrections);
+    }
+    if (data.affirmations.length > 0) {
+      applyInlineAffirmations(data.affirmations);
+    }
+
     // Apply translations inline (if enabled)
     if (settings.showTranslations && data.translations.length > 0) {
       applyTranslations(data.translations);
@@ -387,6 +395,154 @@
     document.body.appendChild(panel);
 
     document.getElementById("ta-ext-close").addEventListener("click", () => panel.remove());
+  }
+
+  // ── Apply Corrections Inline on Headlines ──
+  function applyInlineCorrections(corrections) {
+    if (!corrections || corrections.length === 0) return;
+
+    // Find all headline elements on the page
+    const headlineEls = findAllHeadlineElements();
+    if (headlineEls.length === 0) return;
+
+    // Resolve conflicts so we show the winning correction
+    const resolved = resolveConflicts(corrections);
+
+    resolved.forEach(group => {
+      const sub = group.winner;
+      if (!sub.originalHeadline || !sub.replacement) return;
+
+      const originalLower = sub.originalHeadline.toLowerCase().trim();
+
+      headlineEls.forEach(el => {
+        // Skip if already annotated
+        if (el.dataset.taAnnotated) return;
+
+        const elText = el.textContent.trim().toLowerCase();
+        // Match if headline text matches the correction's original (fuzzy: contained or equal)
+        if (elText !== originalLower && !elText.includes(originalLower) && !originalLower.includes(elText)) return;
+
+        el.dataset.taAnnotated = "true";
+
+        // Create inline annotation wrapper
+        const wrapper = document.createElement("div");
+        wrapper.className = "ta-inline-correction";
+
+        // Original headline with strikethrough
+        const origSpan = document.createElement("div");
+        origSpan.className = "ta-inline-original";
+        origSpan.textContent = el.textContent;
+
+        // Replacement headline
+        const replSpan = document.createElement("div");
+        replSpan.className = "ta-inline-replacement";
+        replSpan.textContent = sub.replacement;
+
+        // Source attribution
+        const metaSpan = document.createElement("div");
+        metaSpan.className = "ta-inline-meta";
+        const org = sub.orgName || "Assembly";
+        const profile = sub.profile?.displayName || "Citizen";
+        const score = sub.trustScore != null ? sub.trustScore : "—";
+        metaSpan.innerHTML = `⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+
+        // Reasoning (truncated for inline display)
+        if (sub.reasoning) {
+          const reasonSpan = document.createElement("div");
+          reasonSpan.className = "ta-inline-reasoning";
+          const maxLen = 180;
+          reasonSpan.textContent = sub.reasoning.length > maxLen
+            ? sub.reasoning.slice(0, maxLen) + "…"
+            : sub.reasoning;
+          wrapper.appendChild(origSpan);
+          wrapper.appendChild(replSpan);
+          wrapper.appendChild(metaSpan);
+          wrapper.appendChild(reasonSpan);
+        } else {
+          wrapper.appendChild(origSpan);
+          wrapper.appendChild(replSpan);
+          wrapper.appendChild(metaSpan);
+        }
+
+        // Insert the annotation after the headline
+        el.parentNode.insertBefore(wrapper, el.nextSibling);
+
+        // Also visually mark the headline itself
+        el.classList.add("ta-inline-headline-corrected");
+      });
+    });
+  }
+
+  // ── Apply Affirmations Inline on Headlines ──
+  function applyInlineAffirmations(affirmations) {
+    if (!affirmations || affirmations.length === 0) return;
+
+    const headlineEls = findAllHeadlineElements();
+    if (headlineEls.length === 0) return;
+
+    affirmations.forEach(sub => {
+      if (!sub.originalHeadline) return;
+      const originalLower = sub.originalHeadline.toLowerCase().trim();
+
+      headlineEls.forEach(el => {
+        if (el.dataset.taAnnotated) return;
+
+        const elText = el.textContent.trim().toLowerCase();
+        if (elText !== originalLower && !elText.includes(originalLower) && !originalLower.includes(elText)) return;
+
+        el.dataset.taAnnotated = "true";
+
+        // Create inline affirmation wrapper
+        const wrapper = document.createElement("div");
+        wrapper.className = "ta-inline-affirmation";
+
+        const metaSpan = document.createElement("div");
+        metaSpan.className = "ta-inline-meta";
+        const org = sub.orgName || "Assembly";
+        const profile = sub.profile?.displayName || "Citizen";
+        const score = sub.trustScore != null ? sub.trustScore : "—";
+        metaSpan.innerHTML = `✓ Verified by <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+
+        wrapper.appendChild(metaSpan);
+
+        if (sub.reasoning) {
+          const reasonSpan = document.createElement("div");
+          reasonSpan.className = "ta-inline-reasoning";
+          const maxLen = 180;
+          reasonSpan.textContent = sub.reasoning.length > maxLen
+            ? sub.reasoning.slice(0, maxLen) + "…"
+            : sub.reasoning;
+          wrapper.appendChild(reasonSpan);
+        }
+
+        el.parentNode.insertBefore(wrapper, el.nextSibling);
+        el.classList.add("ta-inline-headline-affirmed");
+      });
+    });
+  }
+
+  // ── Find all headline elements on the page ──
+  function findAllHeadlineElements() {
+    const selectors = [
+      'h1[class*="headline"]', 'h1[class*="title"]',
+      'h1.article-title', 'h1.main-headline', 'h1.headline', 'h1.detailHeadline',
+      'article h1', '.article-header h1', '.post-header h1', '.entry-title',
+    ];
+
+    const found = new Set();
+    for (const selector of selectors) {
+      document.querySelectorAll(selector).forEach(el => {
+        if (el.textContent.trim()) found.add(el);
+      });
+    }
+
+    // Fall back to first h1 if no structured matches
+    if (found.size === 0) {
+      const h1 = document.querySelector("h1");
+      if (h1 && h1.textContent.trim()) found.add(h1);
+    }
+
+    return Array.from(found);
   }
 
   // ── Apply Translations Inline ──
