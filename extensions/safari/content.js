@@ -1141,90 +1141,57 @@
         matched = true;
         el.dataset.taAnnotated = "true";
 
-        console.log("[TrustAssembly] Injecting inline correction after headline element:", el.tagName, el.className);
+        console.log("[TrustAssembly] Applying inline correction to headline element:", el.tagName, el.className);
 
-        // Create inline annotation wrapper with forced inline styles
-        // to survive hostile site CSS (overflow:hidden, flex layouts, etc.)
-        const wrapper = document.createElement("div");
-        wrapper.className = "ta-inline-correction";
-        wrapper.setAttribute("style",
-          "display:block !important;visibility:visible !important;opacity:1 !important;" +
-          "overflow:visible !important;max-height:none !important;height:auto !important;" +
-          "position:relative !important;z-index:10000 !important;" +
-          "margin:8px 0 16px !important;padding:12px 16px !important;" +
-          "border-left:4px solid #C4573F !important;background:#FDF8F7 !important;" +
-          "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
-          "width:auto !important;min-height:40px !important;float:none !important;clear:both !important;" +
-          "clip:auto !important;clip-path:none !important;transform:none !important;"
-        );
+        // Store original text for hover tooltip
+        const originalText = el.textContent.trim();
+        el.dataset.taOriginalText = originalText;
 
-        const origSpan = document.createElement("div");
-        origSpan.className = "ta-inline-original";
-        origSpan.setAttribute("style",
-          "display:block !important;font-size:14px !important;text-decoration:line-through !important;" +
-          "text-decoration-color:#C4573F !important;color:#5A5650 !important;margin-bottom:4px !important;line-height:1.4 !important;"
-        );
-        origSpan.textContent = el.textContent;
+        // Replace headline text with the corrected version
+        el.textContent = sub.replacement;
 
-        const replSpan = document.createElement("div");
-        replSpan.className = "ta-inline-replacement";
-        replSpan.setAttribute("style",
-          "display:block !important;font-size:18px !important;color:#C4573F !important;" +
-          "font-weight:700 !important;line-height:1.4 !important;margin-bottom:6px !important;"
-        );
-        replSpan.textContent = sub.replacement;
+        // Color-code: red for corrections
+        el.style.setProperty("color", "#C4573F", "important");
+        el.style.setProperty("position", "relative", "important");
+        el.style.setProperty("cursor", "help", "important");
+        el.classList.add("ta-inline-headline-corrected");
 
-        const metaSpan = document.createElement("div");
-        metaSpan.className = "ta-inline-meta";
-        metaSpan.setAttribute("style",
-          "display:block !important;font-size:11px !important;color:#7A7570 !important;" +
-          "margin-bottom:4px !important;letter-spacing:0.02em !important;"
+        // Create hover tooltip showing original headline
+        const tooltip = document.createElement("div");
+        tooltip.className = "ta-headline-tooltip";
+        tooltip.setAttribute("style",
+          "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
+          "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
+          "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
+          "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
+          "min-width:200px !important;white-space:normal !important;" +
+          "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+          "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+          "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
         );
         const org = sub.orgName || "Assembly";
         const profile = sub.profile?.displayName || "Citizen";
         const score = sub.trustScore != null ? sub.trustScore : "—";
-        metaSpan.innerHTML = `⚖ <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
-
-        wrapper.appendChild(origSpan);
-        wrapper.appendChild(replSpan);
-        wrapper.appendChild(metaSpan);
+        let tooltipHtml = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B8963E !important;margin-bottom:4px !important;">Original Headline</div>`;
+        tooltipHtml += `<div style="font-size:14px !important;color:#F0EDE6 !important;margin-bottom:8px !important;line-height:1.4 !important;">${escapeHtml(originalText)}</div>`;
+        tooltipHtml += `<div style="font-size:10px !important;color:#B0A89C !important;border-top:1px solid rgba(240,237,230,0.15) !important;padding-top:6px !important;">⚖ <strong style="color:#B8963E !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>`;
         if (sub.reasoning) {
-          const reasonSpan = document.createElement("div");
-          reasonSpan.className = "ta-inline-reasoning";
-          reasonSpan.setAttribute("style",
-            "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
-            "line-height:1.5 !important;font-style:italic !important;"
-          );
-          const maxLen = 180;
-          reasonSpan.textContent = sub.reasoning.length > maxLen
-            ? sub.reasoning.slice(0, maxLen) + "…"
-            : sub.reasoning;
-          wrapper.appendChild(reasonSpan);
+          const maxLen = 150;
+          const reason = sub.reasoning.length > maxLen ? sub.reasoning.slice(0, maxLen) + "…" : sub.reasoning;
+          tooltipHtml += `<div style="font-size:11px !important;color:#D0CBC3 !important;font-style:italic !important;margin-top:4px !important;line-height:1.4 !important;">${escapeHtml(reason)}</div>`;
         }
+        tooltip.innerHTML = tooltipHtml;
+        el.appendChild(tooltip);
 
-        // Find a safe insertion point — walk up from the headline element
-        // to escape tightly-constrained layout containers (flex, grid,
-        // overflow:hidden) that would clip or hide our injection.
-        let insertTarget = el;
-        let insertParent = el.parentNode;
-        for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
-          const style = window.getComputedStyle(insertParent);
-          const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
-            || style.display === "flex" || style.display === "inline-flex"
-            || style.display === "grid" || style.display === "inline-grid";
-          if (isConstrained) {
-            // Move up — insert after this constrained parent instead
-            insertTarget = insertParent;
-            insertParent = insertParent.parentNode;
-            console.log("[TrustAssembly] Escaping constrained container:", insertTarget.tagName, insertTarget.className, "(" + style.display + ", overflow:" + style.overflow + ")");
-          } else {
-            break;
-          }
-        }
+        // Show/hide tooltip on hover
+        el.addEventListener("mouseenter", function() {
+          tooltip.style.setProperty("display", "block", "important");
+        });
+        el.addEventListener("mouseleave", function() {
+          tooltip.style.setProperty("display", "none", "important");
+        });
 
-        insertParent.insertBefore(wrapper, insertTarget.nextSibling);
-        el.classList.add("ta-inline-headline-corrected");
-        console.log("[TrustAssembly] Correction injected. wrapper.offsetHeight:", wrapper.offsetHeight, "wrapper.getBoundingClientRect():", JSON.stringify(wrapper.getBoundingClientRect()));
+        console.log("[TrustAssembly] Correction applied — headline replaced with corrected text (red)");
       });
 
       // Phase 2: If no headline element matched, do a raw text-node search
@@ -1243,80 +1210,45 @@
             const parent = node.parentElement;
             if (parent && !parent.dataset.taAnnotated) {
               parent.dataset.taAnnotated = "true";
-              const wrapper = document.createElement("div");
-              wrapper.className = "ta-inline-correction";
-              wrapper.setAttribute("style",
-                "display:block !important;visibility:visible !important;opacity:1 !important;" +
-                "overflow:visible !important;max-height:none !important;height:auto !important;" +
-                "position:relative !important;z-index:10000 !important;" +
-                "margin:8px 0 16px !important;padding:12px 16px !important;" +
-                "border-left:4px solid #C4573F !important;background:#FDF8F7 !important;" +
-                "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
-                "width:auto !important;min-height:40px !important;float:none !important;clear:both !important;" +
-                "clip:auto !important;clip-path:none !important;transform:none !important;"
-              );
 
-              const origSpan = document.createElement("div");
-              origSpan.className = "ta-inline-original";
-              origSpan.setAttribute("style",
-                "display:block !important;font-size:14px !important;text-decoration:line-through !important;" +
-                "text-decoration-color:#C4573F !important;color:#5A5650 !important;margin-bottom:4px !important;line-height:1.4 !important;"
-              );
-              origSpan.textContent = node.textContent.trim();
+              // Store original text for hover tooltip
+              const originalText = node.textContent.trim();
+              parent.dataset.taOriginalText = originalText;
 
-              const replSpan = document.createElement("div");
-              replSpan.className = "ta-inline-replacement";
-              replSpan.setAttribute("style",
-                "display:block !important;font-size:18px !important;color:#C4573F !important;" +
-                "font-weight:700 !important;line-height:1.4 !important;margin-bottom:6px !important;"
-              );
-              replSpan.textContent = sub.replacement;
-
-              const metaSpan = document.createElement("div");
-              metaSpan.className = "ta-inline-meta";
-              metaSpan.setAttribute("style",
-                "display:block !important;font-size:11px !important;color:#7A7570 !important;" +
-                "margin-bottom:4px !important;letter-spacing:0.02em !important;"
-              );
-              const org = sub.orgName || "Assembly";
-              const profile = sub.profile?.displayName || "Citizen";
-              const score = sub.trustScore != null ? sub.trustScore : "—";
-              metaSpan.innerHTML = `⚖ <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
-
-              wrapper.appendChild(origSpan);
-              wrapper.appendChild(replSpan);
-              wrapper.appendChild(metaSpan);
-              if (sub.reasoning) {
-                const reasonSpan = document.createElement("div");
-                reasonSpan.className = "ta-inline-reasoning";
-                reasonSpan.setAttribute("style",
-                  "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
-                  "line-height:1.5 !important;font-style:italic !important;"
-                );
-                reasonSpan.textContent = sub.reasoning.length > 180
-                  ? sub.reasoning.slice(0, 180) + "…" : sub.reasoning;
-                wrapper.appendChild(reasonSpan);
-              }
-
-              // Walk up to escape constrained containers
-              let insertTarget = parent;
-              let insertParent = parent.parentNode;
-              for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
-                const style = window.getComputedStyle(insertParent);
-                const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
-                  || style.display === "flex" || style.display === "inline-flex"
-                  || style.display === "grid" || style.display === "inline-grid";
-                if (isConstrained) {
-                  insertTarget = insertParent;
-                  insertParent = insertParent.parentNode;
-                } else {
-                  break;
-                }
-              }
-
-              insertParent.insertBefore(wrapper, insertTarget.nextSibling);
+              // Replace text with corrected version, color-coded red
+              node.textContent = sub.replacement;
+              parent.style.setProperty("color", "#C4573F", "important");
+              parent.style.setProperty("position", "relative", "important");
+              parent.style.setProperty("cursor", "help", "important");
               parent.classList.add("ta-inline-headline-corrected");
-              console.log("[TrustAssembly] Phase 2: injected via text-node match. wrapper.offsetHeight:", wrapper.offsetHeight);
+
+              // Create hover tooltip showing original
+              const tooltip = document.createElement("div");
+              tooltip.className = "ta-headline-tooltip";
+              tooltip.setAttribute("style",
+                "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
+                "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
+                "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
+                "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
+                "min-width:200px !important;white-space:normal !important;" +
+                "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+                "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+                "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
+              );
+              const org2 = sub.orgName || "Assembly";
+              const profile2 = sub.profile?.displayName || "Citizen";
+              const score2 = sub.trustScore != null ? sub.trustScore : "—";
+              tooltip.innerHTML = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B8963E !important;margin-bottom:4px !important;">Original Headline</div><div style="font-size:14px !important;color:#F0EDE6 !important;margin-bottom:8px !important;">${escapeHtml(originalText)}</div><div style="font-size:10px !important;color:#B0A89C !important;border-top:1px solid rgba(240,237,230,0.15) !important;padding-top:6px !important;">⚖ <strong style="color:#B8963E !important">${escapeHtml(org2)}</strong> · ${escapeHtml(profile2)} · Trust Score ${score2}</div>`;
+              parent.appendChild(tooltip);
+
+              parent.addEventListener("mouseenter", function() {
+                tooltip.style.setProperty("display", "block", "important");
+              });
+              parent.addEventListener("mouseleave", function() {
+                tooltip.style.setProperty("display", "none", "important");
+              });
+
+              console.log("[TrustAssembly] Phase 2: correction applied via text-node match (red color-coded)");
             }
             break; // only match first occurrence
           }
@@ -1687,64 +1619,44 @@
         matched = true;
         el.dataset.taAnnotated = "true";
 
-        const wrapper = document.createElement("div");
-        wrapper.className = "ta-inline-affirmation";
-        wrapper.setAttribute("style",
-          "display:block !important;visibility:visible !important;opacity:1 !important;" +
-          "overflow:visible !important;max-height:none !important;height:auto !important;" +
-          "position:relative !important;z-index:10000 !important;" +
-          "margin:8px 0 16px !important;padding:10px 16px !important;" +
-          "border-left:4px solid #1B5E3F !important;background:#F5FAF7 !important;" +
-          "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
-          "width:auto !important;min-height:30px !important;float:none !important;clear:both !important;" +
-          "clip:auto !important;clip-path:none !important;transform:none !important;"
-        );
+        // Color-code: dark green for affirmation
+        el.style.setProperty("color", "#1B5E3F", "important");
+        el.style.setProperty("position", "relative", "important");
+        el.style.setProperty("cursor", "help", "important");
+        el.classList.add("ta-inline-headline-affirmed");
 
-        const metaSpan = document.createElement("div");
-        metaSpan.className = "ta-inline-meta";
-        metaSpan.setAttribute("style",
-          "display:block !important;font-size:11px !important;color:#7A7570 !important;" +
-          "margin-bottom:4px !important;letter-spacing:0.02em !important;"
+        // Create hover tooltip showing verification info
+        const tooltip = document.createElement("div");
+        tooltip.className = "ta-headline-tooltip";
+        tooltip.setAttribute("style",
+          "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
+          "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
+          "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
+          "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
+          "min-width:200px !important;white-space:normal !important;" +
+          "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+          "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+          "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
         );
         const org = sub.orgName || "Assembly";
         const profile = sub.profile?.displayName || "Citizen";
         const score = sub.trustScore != null ? sub.trustScore : "—";
-        metaSpan.innerHTML = `✓ Verified by <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
-
-        wrapper.appendChild(metaSpan);
-
+        let tooltipHtml = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#A0D8B8 !important;margin-bottom:4px !important;">✓ Headline Affirmed</div>`;
+        tooltipHtml += `<div style="font-size:10px !important;color:#B0A89C !important;margin-bottom:4px !important;">Verified by <strong style="color:#B8963E !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>`;
         if (sub.reasoning) {
-          const reasonSpan = document.createElement("div");
-          reasonSpan.className = "ta-inline-reasoning";
-          reasonSpan.setAttribute("style",
-            "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
-            "line-height:1.5 !important;font-style:italic !important;"
-          );
-          const maxLen = 180;
-          reasonSpan.textContent = sub.reasoning.length > maxLen
-            ? sub.reasoning.slice(0, maxLen) + "…"
-            : sub.reasoning;
-          wrapper.appendChild(reasonSpan);
+          const maxLen = 150;
+          const reason = sub.reasoning.length > maxLen ? sub.reasoning.slice(0, maxLen) + "…" : sub.reasoning;
+          tooltipHtml += `<div style="font-size:11px !important;color:#D0CBC3 !important;font-style:italic !important;margin-top:4px !important;line-height:1.4 !important;">${escapeHtml(reason)}</div>`;
         }
+        tooltip.innerHTML = tooltipHtml;
+        el.appendChild(tooltip);
 
-        // Walk up to escape constrained layout containers
-        let insertTarget = el;
-        let insertParent = el.parentNode;
-        for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
-          const style = window.getComputedStyle(insertParent);
-          const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
-            || style.display === "flex" || style.display === "inline-flex"
-            || style.display === "grid" || style.display === "inline-grid";
-          if (isConstrained) {
-            insertTarget = insertParent;
-            insertParent = insertParent.parentNode;
-          } else {
-            break;
-          }
-        }
-
-        insertParent.insertBefore(wrapper, insertTarget.nextSibling);
-        el.classList.add("ta-inline-headline-affirmed");
+        el.addEventListener("mouseenter", function() {
+          tooltip.style.setProperty("display", "block", "important");
+        });
+        el.addEventListener("mouseleave", function() {
+          tooltip.style.setProperty("display", "none", "important");
+        });
       });
 
       // Phase 2: Text-node fallback for non-standard elements
@@ -1759,55 +1671,38 @@
             const parent = node.parentElement;
             if (parent && !parent.dataset.taAnnotated) {
               parent.dataset.taAnnotated = "true";
-              const wrapper = document.createElement("div");
-              wrapper.className = "ta-inline-affirmation";
-              wrapper.setAttribute("style",
-                "display:block !important;visibility:visible !important;opacity:1 !important;" +
-                "overflow:visible !important;max-height:none !important;height:auto !important;" +
-                "position:relative !important;z-index:10000 !important;" +
-                "margin:8px 0 16px !important;padding:10px 16px !important;" +
-                "border-left:4px solid #1B5E3F !important;background:#F5FAF7 !important;" +
-                "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
-                "width:auto !important;min-height:30px !important;float:none !important;clear:both !important;"
-              );
-              const metaSpan = document.createElement("div");
-              metaSpan.className = "ta-inline-meta";
-              metaSpan.setAttribute("style",
-                "display:block !important;font-size:11px !important;color:#7A7570 !important;"
-              );
-              const org = sub.orgName || "Assembly";
-              const profile = sub.profile?.displayName || "Citizen";
-              const score = sub.trustScore != null ? sub.trustScore : "—";
-              metaSpan.innerHTML = `✓ Verified by <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
-              wrapper.appendChild(metaSpan);
-              if (sub.reasoning) {
-                const reasonSpan = document.createElement("div");
-                reasonSpan.className = "ta-inline-reasoning";
-                reasonSpan.setAttribute("style",
-                  "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
-                  "line-height:1.5 !important;font-style:italic !important;"
-                );
-                reasonSpan.textContent = sub.reasoning.length > 180
-                  ? sub.reasoning.slice(0, 180) + "…" : sub.reasoning;
-                wrapper.appendChild(reasonSpan);
-              }
-              // Walk up to escape constrained containers
-              let insertTarget = parent;
-              let insertParent = parent.parentNode;
-              for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
-                const style = window.getComputedStyle(insertParent);
-                const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
-                  || style.display === "flex" || style.display === "inline-flex"
-                  || style.display === "grid" || style.display === "inline-grid";
-                if (isConstrained) {
-                  insertTarget = insertParent;
-                  insertParent = insertParent.parentNode;
-                } else {
-                  break;
-                }
-              }
-              insertParent.insertBefore(wrapper, insertTarget.nextSibling);
+
+              // Color-code: dark green for affirmation
+              parent.style.setProperty("color", "#1B5E3F", "important");
+              parent.style.setProperty("position", "relative", "important");
+              parent.style.setProperty("cursor", "help", "important");
               parent.classList.add("ta-inline-headline-affirmed");
+
+              // Create hover tooltip showing verification info
+              const tooltip2 = document.createElement("div");
+              tooltip2.className = "ta-headline-tooltip";
+              tooltip2.setAttribute("style",
+                "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
+                "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
+                "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
+                "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
+                "min-width:200px !important;white-space:normal !important;" +
+                "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+                "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+                "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
+              );
+              const org2 = sub.orgName || "Assembly";
+              const profile2 = sub.profile?.displayName || "Citizen";
+              const score2 = sub.trustScore != null ? sub.trustScore : "—";
+              tooltip2.innerHTML = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#A0D8B8 !important;margin-bottom:4px !important;">✓ Headline Affirmed</div><div style="font-size:10px !important;color:#B0A89C !important;">Verified by <strong style="color:#B8963E !important">${escapeHtml(org2)}</strong> · ${escapeHtml(profile2)} · Trust Score ${score2}</div>`;
+              parent.appendChild(tooltip2);
+              parent.addEventListener("mouseenter", function() {
+                tooltip2.style.setProperty("display", "block", "important");
+              });
+              parent.addEventListener("mouseleave", function() {
+                tooltip2.style.setProperty("display", "none", "important");
+              });
+
             }
             break;
           }
@@ -2086,7 +1981,73 @@
     return labels[status] || status || "Approved";
   }
 
-  // ── Listen for headline request from popup ──
+  // ── Detect article authors from page metadata ──
+  function detectAuthors() {
+    const authors = [];
+    const seen = new Set();
+
+    function addAuthor(name) {
+      if (!name) return;
+      const cleaned = name.replace(/^by\s+/i, "").replace(/\s+/g, " ").trim();
+      if (!cleaned || cleaned.length < 2 || cleaned.length > 80) return;
+      const key = cleaned.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      authors.push(cleaned);
+    }
+
+    // Strategy 1: Meta tags
+    const metaSelectors = [
+      'meta[name="author"]', 'meta[property="article:author"]',
+      'meta[name="dcterms.creator"]', 'meta[name="dc.creator"]',
+      'meta[property="og:article:author"]',
+    ];
+    metaSelectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        addAuthor(el.content || el.getAttribute("content"));
+      });
+    });
+
+    // Strategy 2: JSON-LD structured data
+    document.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
+      try {
+        const data = JSON.parse(script.textContent);
+        const items = Array.isArray(data) ? data : [data];
+        items.forEach(item => {
+          const authorField = item.author || item.creator;
+          if (!authorField) return;
+          const authorList = Array.isArray(authorField) ? authorField : [authorField];
+          authorList.forEach(a => {
+            if (typeof a === "string") addAuthor(a);
+            else if (a && a.name) addAuthor(a.name);
+          });
+        });
+      } catch (e) {}
+    });
+
+    // Strategy 3: Common byline selectors
+    const bylineSelectors = [
+      '[class*="byline"]', '[class*="author"]', '[data-testid="byline"]',
+      '[rel="author"]', '.contributor', '.writer', '[itemprop="author"]',
+      '[class*="Byline"]', '[class*="Author"]',
+    ];
+    bylineSelectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        // Only grab text from small elements (not large author bio sections)
+        const text = el.textContent.trim();
+        if (text.length > 0 && text.length < 100) {
+          // May contain "By Author Name" or "Author Name, Other Author"
+          const cleaned = text.replace(/^by\s+/i, "");
+          // Split on common separators
+          cleaned.split(/\s*[,&]\s*|\s+and\s+/i).forEach(name => addAuthor(name));
+        }
+      });
+    });
+
+    return authors.slice(0, 10);
+  }
+
+  // ── Listen for headline and author requests from popup ──
   function listenForHeadlineRequest() {
     const runtime = (typeof chrome !== "undefined" && chrome.runtime) ? chrome.runtime
       : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
@@ -2096,9 +2057,98 @@
       if (message.type === "TA_GET_HEADLINE") {
         const headline = detectHeadline();
         sendResponse({ headline: headline || "" });
-        return true; // keep channel open for async response
+        return true;
+      }
+      if (message.type === "TA_GET_AUTHORS") {
+        const authors = detectAuthors();
+        sendResponse({ authors: authors });
+        return true;
+      }
+      // Live preview: update headline text in real-time as user types
+      if (message.type === "TA_PREVIEW_HEADLINE") {
+        handleLivePreview(message.text, message.originalHeadline, message.isAffirm);
+        sendResponse({ ok: true });
+        return true;
+      }
+      // Clear preview: restore original headline
+      if (message.type === "TA_CLEAR_PREVIEW") {
+        clearLivePreview();
+        sendResponse({ ok: true });
+        return true;
       }
     });
+  }
+
+  // ── Live Preview State ──
+  let previewState = null; // { element, originalText, originalColor }
+
+  function handleLivePreview(text, originalHeadline, isAffirm) {
+    // Find the headline element to preview on
+    const headlineEls = findAllHeadlineElements();
+    let targetEl = null;
+
+    // Try to match against the original headline provided from the form
+    if (originalHeadline) {
+      for (const el of headlineEls) {
+        const elText = el.dataset.taOriginalText || el.textContent.trim();
+        if (headlinesMatch(elText, originalHeadline)) {
+          targetEl = el;
+          break;
+        }
+      }
+    }
+
+    // Fallback: use the primary headline
+    if (!targetEl) {
+      targetEl = findPrimaryHeadline();
+    }
+
+    if (!targetEl) return;
+
+    // Save original state on first preview
+    if (!previewState || previewState.element !== targetEl) {
+      previewState = {
+        element: targetEl,
+        originalText: targetEl.dataset.taOriginalText || targetEl.textContent.trim(),
+        originalColor: targetEl.style.color || "",
+        wasAnnotated: !!targetEl.dataset.taAnnotated
+      };
+    }
+
+    // Update the headline with preview text
+    if (text && text.trim()) {
+      // Remove any existing tooltip during preview
+      const existingTooltip = targetEl.querySelector(".ta-headline-tooltip");
+      if (existingTooltip) existingTooltip.style.setProperty("display", "none", "important");
+
+      targetEl.textContent = text;
+      // Gray color for preview to indicate it's a draft
+      targetEl.style.setProperty("color", "#9CA3AF", "important");
+      targetEl.style.setProperty("font-style", "italic", "important");
+
+      // Re-append tooltip if it was removed by textContent replacement
+      if (existingTooltip && !targetEl.contains(existingTooltip)) {
+        targetEl.appendChild(existingTooltip);
+      }
+    } else {
+      // Empty text — show original
+      targetEl.textContent = previewState.originalText;
+      targetEl.style.setProperty("color", previewState.originalColor || "", "important");
+      targetEl.style.removeProperty("font-style");
+    }
+  }
+
+  function clearLivePreview() {
+    if (!previewState) return;
+    const el = previewState.element;
+    el.textContent = previewState.originalText;
+    if (previewState.originalColor) {
+      el.style.setProperty("color", previewState.originalColor, "important");
+    } else {
+      el.style.removeProperty("color");
+    }
+    el.style.removeProperty("font-style");
+    previewState = null;
   }
 
   // ── MutationObserver for dynamic content (SPAs, feeds) ──

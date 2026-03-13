@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
-import { isWildWestMode } from "@/lib/jury-rules";
+import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 
 // GET /api/submissions — list submissions (filterable)
 export async function GET(request: NextRequest) {
@@ -48,8 +48,17 @@ export async function GET(request: NextRequest) {
 
   const result = await sql.query(query, params);
 
+  // Anonymize submitter identity for submissions still under review
+  const terminalStatuses = ["approved", "consensus", "rejected", "consensus_rejected"];
+  const submissions = result.rows.map((row: Record<string, unknown>) => {
+    if (!terminalStatuses.includes(row.status as string)) {
+      return { ...row, submitted_by: null, submitted_by_display_name: null };
+    }
+    return row;
+  });
+
   return ok({
-    submissions: result.rows,
+    submissions,
     limit,
     offset,
   });
@@ -130,6 +139,85 @@ export async function POST(request: NextRequest) {
     INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
     VALUES ('Submission filed', ${session.sub}, ${orgId}, 'submission', ${sub.id})
   `;
+
+  // ── Jury assignment (normal mode only) ──
+  // In Wild West mode, any org member can vote without formal assignment.
+  // In normal mode, we need to draw a jury from the org's active members.
+  if (!wildWest && initialStatus === "pending_review") {
+    const jurySize = getJurySize(count);
+    const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+
+    // Update jury_seats on the submission so vote resolution knows the target
+    await sql`
+      UPDATE submissions SET jury_seats = ${jurySize} WHERE id = ${sub.id}
+    `;
+
+    // Draw eligible jurors: active org members who are NOT the submitter
+    // and NOT the DI partner (if applicable)
+    const diPartnerId = user.rows[0].is_di ? (await sql`SELECT di_partner_id FROM users WHERE id = ${session.sub}`).rows[0]?.di_partner_id : null;
+
+    const pool = await sql`
+      SELECT om.user_id
+      FROM organization_members om
+      WHERE om.org_id = ${orgId}
+        AND om.is_active = TRUE
+        AND om.user_id != ${session.sub}
+        AND (${diPartnerId}::uuid IS NULL OR om.user_id != ${diPartnerId})
+      ORDER BY RANDOM()
+      LIMIT ${poolSize}
+    `;
+
+    for (const juror of pool.rows) {
+      await sql`
+        INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+        VALUES (${sub.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
+        ON CONFLICT DO NOTHING
+      `;
+    }
+  }
+
+  // ── KV store sync ──
+  // The browser extension reads from the KV store, so new submissions must
+  // be written there for the full pipeline to work.
+  try {
+    const SK_SUBS = "ta-s-v5";
+    const kvResult = await sql`SELECT value FROM kv_store WHERE key = ${SK_SUBS}`;
+    const subs = kvResult.rows.length > 0 && kvResult.rows[0].value
+      ? JSON.parse(kvResult.rows[0].value)
+      : {};
+
+    subs[sub.id] = {
+      id: sub.id,
+      submissionType: submissionType,
+      status: initialStatus,
+      url,
+      originalHeadline,
+      replacement: replacement || null,
+      reasoning,
+      author: author || null,
+      submittedBy: session.sub,
+      orgId,
+      trustedSkip,
+      isDi: user.rows[0].is_di,
+      evidence: evidence || [],
+      inlineEdits: [],
+      createdAt: sub.created_at,
+      resolvedAt: null,
+      deliberateLie: false,
+      auditTrail: [{ time: sub.created_at, action: "Submission filed" }],
+    };
+
+    const json = JSON.stringify(subs);
+    await sql`
+      INSERT INTO kv_store (key, value, updated_at)
+      VALUES (${SK_SUBS}, ${json}, now())
+      ON CONFLICT (key)
+      DO UPDATE SET value = ${json}, updated_at = now()
+    `;
+  } catch (e) {
+    // KV sync is non-critical — don't fail the submission
+    console.error("KV sync failed:", e);
+  }
 
   return ok(sub, 201);
 }

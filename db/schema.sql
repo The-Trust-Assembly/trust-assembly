@@ -575,3 +575,17 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_created ON audit_log(created_at DESC);
 CREATE INDEX idx_audit_entity ON audit_log(entity_type, entity_id) WHERE entity_id IS NOT NULL;
 CREATE INDEX idx_audit_user ON audit_log(user_id) WHERE user_id IS NOT NULL;
+
+-- ============================================================
+-- FEEDBACK (Beta feature requests)
+-- ============================================================
+
+CREATE TABLE feedback (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id),
+  username    VARCHAR(100) NOT NULL,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_feedback_created ON feedback(created_at DESC);

@@ -197,6 +197,26 @@ const TA = {
     }
   },
 
+  /**
+   * Submit a vault artifact (standing correction, argument, belief, or translation).
+   */
+  async submitVault(data) {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/vault`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { error: err.error || "Vault submission failed" };
+      }
+      return await res.json();
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
   // ── Existing endpoints ──
 
   /**
@@ -267,6 +287,20 @@ const TA = {
       return await res.json();
     } catch (e) {
       return [];
+    }
+  },
+
+  /**
+   * Fetch pending notifications for the current user.
+   * Returns: { totalPending, jury, applications, updates }
+   */
+  async getNotifications() {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/users/me/notifications`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
     }
   }
 };

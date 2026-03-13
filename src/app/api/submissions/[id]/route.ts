@@ -3,6 +3,11 @@ import { sql } from "@/lib/db";
 import { ok, notFound } from "@/lib/api-utils";
 
 // GET /api/submissions/[id] — submission detail with evidence and votes
+//
+// ── ANONYMITY ──
+// Submitter identity is hidden while the submission is under review.
+// Only revealed after the submission reaches a terminal status
+// (approved, consensus, rejected, consensus_rejected).
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,6 +29,14 @@ export async function GET(
   if (result.rows.length === 0) return notFound("Submission not found");
 
   const sub = result.rows[0];
+
+  // Anonymize submitter identity while under review
+  const terminalStatuses = ["approved", "consensus", "rejected", "consensus_rejected"];
+  if (!terminalStatuses.includes(sub.status)) {
+    sub.submitted_by = null;
+    sub.submitted_by_username = null;
+    sub.submitted_by_display_name = null;
+  }
 
   // Get evidence
   const evidence = await sql`

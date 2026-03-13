@@ -6,6 +6,7 @@
   "permissions": [
     "storage",
     "activeTab",
+    "notifications",
     "<all_urls>"
   ],
   "browser_action": {
