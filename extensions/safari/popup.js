@@ -112,6 +112,7 @@ function setupTabs() {
       document.getElementById("tab-submit").style.display = tab === "submit" ? "" : "none";
       document.getElementById("tab-assemblies").style.display = tab === "assemblies" ? "" : "none";
       if (tab === "submit") renderSubmitTab();
+      else clearPreviewMessage(); // Clear live preview when leaving submit tab
       if (tab === "assemblies") renderAssembliesTab();
     });
   });
@@ -224,8 +225,8 @@ function renderCorrectionItem(sub) {
   return `
     <div class="correction-item type-correction ${statusClass}">
       <div class="meta">🔴 Correction · ${escapeHtml(sub.orgName || "Assembly")}${relBadge(sub.orgId)} · ${formatStatus(sub.status)}</div>
-      <div class="headline-old">${escapeHtml(sub.originalHeadline)}</div>
       <div class="headline-new">${escapeHtml(sub.replacement)}</div>
+      <div class="headline-old">was: ${escapeHtml(sub.originalHeadline)}</div>
     </div>
   `;
 }
@@ -266,12 +267,18 @@ function relBadge(orgId) {
 }
 
 // ── Submit tab ──
+let submitType = "correction"; // "correction" or "affirmation"
+let detectedAuthors = []; // auto-detected from page
+let selectedAuthors = []; // user-selected author tags
+let vaultSectionsOpen = {}; // track which vault sections are expanded
+
 async function renderSubmitTab() {
   const gate = document.getElementById("submit-gate");
   if (!currentUser) {
     gate.innerHTML = `
       <div class="login-panel">
-        <h3>Sign in to submit corrections</h3>
+        <h3>Sign in to submit</h3>
+        <p style="font-size:11px; color:#5A5650; line-height:1.5; margin-bottom:10px;">Sign in to submit corrections, affirmations, and vault artifacts for your assemblies.</p>
         <input type="text" id="login-user" placeholder="Username or email" autocomplete="username">
         <input type="password" id="login-pass" placeholder="Password" autocomplete="current-password">
         <button class="login-btn" id="btn-login">Sign In</button>
@@ -291,7 +298,7 @@ async function renderSubmitTab() {
       <div class="submit-panel">
         <div class="empty">
           <div class="empty-icon">⚖</div>
-          You must be a member of at least one assembly to submit corrections.
+          You must be a member of at least one assembly to submit.
           <br><br>
           <a href="https://trustassembly.org/#orgs" target="_blank" style="color:#B8963E">Join an assembly on trustassembly.org</a>
         </div>
@@ -300,28 +307,251 @@ async function renderSubmitTab() {
     return;
   }
 
+  const isAffirm = submitType === "affirmation";
   let orgOptions = joinedOrgs.map(o => `<option value="${escapeHtml(o.id)}">${escapeHtml(o.name)}</option>`).join("");
+
+  // Author tags HTML
+  let authorTagsHtml = selectedAuthors.map((a, i) =>
+    `<span class="author-tag">${escapeHtml(a)}<span class="remove" data-author-idx="${i}">&times;</span></span>`
+  ).join("");
 
   gate.innerHTML = `
     <div class="submit-panel">
-      <h3>Submit a Correction</h3>
+      <h3>Submit to Trust Assembly</h3>
+
+      <!-- Submission type toggle -->
+      <div class="type-toggle">
+        <button id="btn-type-correction" class="${!isAffirm ? 'active-correction' : ''}">
+          <div>Correction</div>
+          <div class="type-desc">Headline is misleading</div>
+        </button>
+        <button id="btn-type-affirmation" class="${isAffirm ? 'active-affirmation' : ''}">
+          <div>Affirmation</div>
+          <div class="type-desc">Headline is accurate</div>
+        </button>
+      </div>
+
+      ${isAffirm ? '<div class="affirm-banner">You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>' : ''}
+
       <label>Assembly</label>
       <select id="sub-org">${orgOptions}</select>
+
       <label>Article URL</label>
       <input type="text" id="sub-url" value="${escapeHtml(currentUrl || "")}" readonly>
+
       <label>Original Headline</label>
       <input type="text" id="sub-headline" placeholder="Detecting headline…">
-      <label>Corrected Headline</label>
-      <input type="text" id="sub-replacement" placeholder="Your proposed correction">
+
+      ${!isAffirm ? `
+        <label>Corrected Headline</label>
+        <input type="text" id="sub-replacement" placeholder="Your proposed correction">
+      ` : ''}
+
+      <label>Author(s) <span style="font-size:9px;color:#B0A89C;font-weight:400">— auto-detected from page</span></label>
+      <div class="author-tags" id="author-tags">${authorTagsHtml}</div>
+      ${detectedAuthors.length > 0 && selectedAuthors.length < 10 ? `
+        <select id="author-select" style="margin-bottom:4px">
+          <option value="">Add an author…</option>
+          ${detectedAuthors.filter(a => !selectedAuthors.includes(a)).map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("")}
+          <option value="__custom__">Enter manually…</option>
+        </select>
+      ` : selectedAuthors.length < 10 ? `
+        <input type="text" id="author-manual" placeholder="Type author name and press Enter" style="margin-bottom:4px">
+      ` : ''}
+      <div class="author-hint">${selectedAuthors.length}/10 authors max</div>
+
       <label>Reasoning</label>
-      <textarea id="sub-reasoning" placeholder="Why is this correction needed?"></textarea>
-      <button class="submit-btn" id="btn-submit">Submit Correction</button>
+      <textarea id="sub-reasoning" placeholder="${isAffirm ? 'Why is this headline accurate?' : 'Why is this correction needed?'}"></textarea>
+
+      <!-- Vault Artifacts (optional) -->
+      <div class="vault-section">
+        <div class="vault-section-title" id="vault-toggle">+ Vault Artifacts (optional)</div>
+        <div id="vault-body" style="display:none">
+          <div style="font-size:10px; color:#7A7570; margin-bottom:8px; line-height:1.4;">Optionally add entries to your assembly's vaults alongside this submission.</div>
+
+          <!-- Standing Correction -->
+          <div class="vault-type-row vault-color-correction">
+            <div class="vault-type-header" data-vault="correction">
+              <span class="vault-type-label">Standing Correction</span>
+              <span class="vault-type-toggle">${vaultSectionsOpen.correction ? '−' : '+'}</span>
+            </div>
+            <div class="vault-type-body" style="display:${vaultSectionsOpen.correction ? 'block' : 'none'}" data-vault-body="correction">
+              <div class="vault-type-desc">A reusable verified fact for your assembly's Fact Vault.</div>
+              <input type="text" id="vault-sc-assertion" placeholder="Factual assertion (e.g. 'The recall was software-only, not physical')">
+              <input type="text" id="vault-sc-evidence" placeholder="Supporting evidence or source URL">
+            </div>
+          </div>
+
+          <!-- Argument -->
+          <div class="vault-type-row vault-color-argument">
+            <div class="vault-type-header" data-vault="argument">
+              <span class="vault-type-label">Argument</span>
+              <span class="vault-type-toggle">${vaultSectionsOpen.argument ? '−' : '+'}</span>
+            </div>
+            <div class="vault-type-body" style="display:${vaultSectionsOpen.argument ? 'block' : 'none'}" data-vault-body="argument">
+              <div class="vault-type-desc">A fundamental argument for reuse across articles.</div>
+              <textarea id="vault-arg-content" placeholder="The argument (e.g. 'Correlation does not imply causation — this study shows…')"></textarea>
+            </div>
+          </div>
+
+          <!-- Belief -->
+          <div class="vault-type-row vault-color-belief">
+            <div class="vault-type-header" data-vault="belief">
+              <span class="vault-type-label">Foundational Belief</span>
+              <span class="vault-type-toggle">${vaultSectionsOpen.belief ? '−' : '+'}</span>
+            </div>
+            <div class="vault-type-body" style="display:${vaultSectionsOpen.belief ? 'block' : 'none'}" data-vault-body="belief">
+              <div class="vault-type-desc">A core axiom or starting premise, not a claim of fact.</div>
+              <textarea id="vault-belief-content" placeholder="The belief (e.g. 'Free speech includes speech we disagree with')"></textarea>
+            </div>
+          </div>
+
+          <!-- Translation -->
+          <div class="vault-type-row vault-color-translation">
+            <div class="vault-type-header" data-vault="translation">
+              <span class="vault-type-label">Translation</span>
+              <span class="vault-type-toggle">${vaultSectionsOpen.translation ? '−' : '+'}</span>
+            </div>
+            <div class="vault-type-body" style="display:${vaultSectionsOpen.translation ? 'block' : 'none'}" data-vault-body="translation">
+              <div class="vault-type-desc">A plain-language replacement for jargon, spin, or propaganda.</div>
+              <input type="text" id="vault-trans-original" placeholder="Original term or phrase">
+              <input type="text" id="vault-trans-translated" placeholder="Plain-language replacement">
+              <select id="vault-trans-type">
+                <option value="clarity">Clarity</option>
+                <option value="propaganda">Anti-Propaganda</option>
+                <option value="euphemism">Euphemism</option>
+                <option value="satirical">Satirical</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="btn-submit" style="margin-top:10px; background:${isAffirm ? '#1B5E3F' : '#C4573F'}">
+        Submit ${isAffirm ? 'Affirmation' : 'Correction'}
+      </button>
       <div id="submit-msg" class="submit-msg" style="display:none"></div>
     </div>
   `;
+
+  // Wire up type toggle
+  document.getElementById("btn-type-correction").addEventListener("click", () => {
+    submitType = "correction";
+    renderSubmitTab();
+  });
+  document.getElementById("btn-type-affirmation").addEventListener("click", () => {
+    submitType = "affirmation";
+    renderSubmitTab();
+  });
+
+  // Wire up vault section toggle
+  document.getElementById("vault-toggle").addEventListener("click", () => {
+    const body = document.getElementById("vault-body");
+    const toggle = document.getElementById("vault-toggle");
+    if (body.style.display === "none") {
+      body.style.display = "block";
+      toggle.textContent = "− Vault Artifacts (optional)";
+    } else {
+      body.style.display = "none";
+      toggle.textContent = "+ Vault Artifacts (optional)";
+    }
+  });
+
+  // Wire up individual vault type toggles
+  document.querySelectorAll("[data-vault]").forEach(header => {
+    header.addEventListener("click", () => {
+      const key = header.dataset.vault;
+      const body = document.querySelector(`[data-vault-body="${key}"]`);
+      const icon = header.querySelector(".vault-type-toggle");
+      if (body.style.display === "none") {
+        body.style.display = "block";
+        icon.textContent = "−";
+        vaultSectionsOpen[key] = true;
+      } else {
+        body.style.display = "none";
+        icon.textContent = "+";
+        vaultSectionsOpen[key] = false;
+      }
+    });
+  });
+
+  // Wire up author removal
+  document.querySelectorAll("[data-author-idx]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.authorIdx);
+      selectedAuthors.splice(idx, 1);
+      renderSubmitTab();
+    });
+  });
+
+  // Wire up author selection
+  const authorSelect = document.getElementById("author-select");
+  if (authorSelect) {
+    authorSelect.addEventListener("change", () => {
+      const val = authorSelect.value;
+      if (val === "__custom__") {
+        // Replace select with manual input
+        const parent = authorSelect.parentNode;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.id = "author-manual-inline";
+        input.placeholder = "Type author name and press Enter";
+        input.style.cssText = "display:block;width:100%;padding:6px 8px;margin-bottom:4px;border:1px solid #DCD8D0;border-radius:3px;font-size:11px;background:#fff;";
+        parent.insertBefore(input, authorSelect);
+        authorSelect.style.display = "none";
+        input.focus();
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const name = input.value.trim();
+            if (name && selectedAuthors.length < 10 && !selectedAuthors.includes(name)) {
+              selectedAuthors.push(name);
+              renderSubmitTab();
+            }
+          }
+        });
+      } else if (val && selectedAuthors.length < 10 && !selectedAuthors.includes(val)) {
+        selectedAuthors.push(val);
+        renderSubmitTab();
+      }
+    });
+  }
+
+  // Wire up manual author input
+  const authorManual = document.getElementById("author-manual");
+  if (authorManual) {
+    authorManual.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const name = authorManual.value.trim();
+        if (name && selectedAuthors.length < 10 && !selectedAuthors.includes(name)) {
+          selectedAuthors.push(name);
+          renderSubmitTab();
+        }
+      }
+    });
+  }
+
+  // Wire up submit
   document.getElementById("btn-submit").addEventListener("click", doSubmit);
 
-  // Auto-detect headline from current page
+  // Wire up live preview — update headline on page as user types
+  const replacementInput = document.getElementById("sub-replacement");
+  if (replacementInput) {
+    let previewTimer = null;
+    replacementInput.addEventListener("input", () => {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => {
+        sendPreviewMessage(replacementInput.value);
+      }, 100); // debounce 100ms for smooth typing
+    });
+    // Clear preview when popup closes or field is cleared
+    replacementInput.addEventListener("blur", () => {
+      // Don't clear on blur — popup stays open
+    });
+  }
+
+  // Auto-detect headline and authors from current page
   try {
     const tabs = typeof chrome !== "undefined" && chrome.tabs
       ? await chrome.tabs.query({ active: true, currentWindow: true })
@@ -338,6 +568,17 @@ async function renderSubmitTab() {
           headlineInput.placeholder = "The original headline as published";
         } else if (headlineInput) {
           headlineInput.placeholder = "The original headline as published";
+        }
+      });
+      // Auto-detect authors
+      sendMsg(tab.id, { type: "TA_GET_AUTHORS" }, (response) => {
+        if (response && response.authors && response.authors.length > 0) {
+          detectedAuthors = response.authors.slice(0, 10);
+          // Auto-select detected authors if none selected yet
+          if (selectedAuthors.length === 0) {
+            selectedAuthors = [...detectedAuthors];
+            renderSubmitTab();
+          }
         }
       });
     }
@@ -376,23 +617,34 @@ async function doSubmit() {
   const orgId = document.getElementById("sub-org").value;
   const url = document.getElementById("sub-url").value;
   const originalHeadline = document.getElementById("sub-headline").value.trim();
-  const replacement = document.getElementById("sub-replacement").value.trim();
+  const replacementEl = document.getElementById("sub-replacement");
+  const replacement = replacementEl ? replacementEl.value.trim() : "";
   const reasoning = document.getElementById("sub-reasoning").value.trim();
+  const isAffirm = submitType === "affirmation";
 
-  if (!originalHeadline || !replacement || !reasoning) {
+  if (!originalHeadline || !reasoning) {
     msgEl.className = "submit-msg error";
-    msgEl.textContent = "All fields are required.";
+    msgEl.textContent = "Headline and reasoning are required.";
+    msgEl.style.display = "block";
+    return;
+  }
+  if (!isAffirm && !replacement) {
+    msgEl.className = "submit-msg error";
+    msgEl.textContent = "A corrected headline is required for corrections.";
     msgEl.style.display = "block";
     return;
   }
 
   msgEl.style.display = "none";
+
+  // Submit the correction/affirmation
   const result = await TA.submitCorrection({
-    submissionType: "correction",
+    submissionType: submitType,
     url,
     originalHeadline,
-    replacement,
+    replacement: isAffirm ? null : replacement,
     reasoning,
+    author: selectedAuthors.length > 0 ? selectedAuthors.join(", ") : null,
     orgId,
   });
 
@@ -400,14 +652,81 @@ async function doSubmit() {
     msgEl.className = "submit-msg error";
     msgEl.textContent = result.error;
     msgEl.style.display = "block";
-  } else {
-    msgEl.className = "submit-msg success";
-    msgEl.textContent = "Correction submitted! It will appear after review.";
-    msgEl.style.display = "block";
-    document.getElementById("sub-headline").value = "";
-    document.getElementById("sub-replacement").value = "";
-    document.getElementById("sub-reasoning").value = "";
+    return;
   }
+
+  // Submit vault artifacts if any are filled out
+  const vaultPromises = [];
+
+  // Standing Correction
+  const scAssertion = document.getElementById("vault-sc-assertion");
+  const scEvidence = document.getElementById("vault-sc-evidence");
+  if (scAssertion && scAssertion.value.trim() && scEvidence && scEvidence.value.trim()) {
+    vaultPromises.push(TA.submitVault({
+      type: "vault",
+      orgId,
+      assertion: scAssertion.value.trim(),
+      evidence: scEvidence.value.trim(),
+    }));
+  }
+
+  // Argument
+  const argContent = document.getElementById("vault-arg-content");
+  if (argContent && argContent.value.trim()) {
+    vaultPromises.push(TA.submitVault({
+      type: "argument",
+      orgId,
+      content: argContent.value.trim(),
+    }));
+  }
+
+  // Belief
+  const beliefContent = document.getElementById("vault-belief-content");
+  if (beliefContent && beliefContent.value.trim()) {
+    vaultPromises.push(TA.submitVault({
+      type: "belief",
+      orgId,
+      content: beliefContent.value.trim(),
+    }));
+  }
+
+  // Translation
+  const transOrig = document.getElementById("vault-trans-original");
+  const transTrans = document.getElementById("vault-trans-translated");
+  const transType = document.getElementById("vault-trans-type");
+  if (transOrig && transOrig.value.trim() && transTrans && transTrans.value.trim()) {
+    vaultPromises.push(TA.submitVault({
+      type: "translation",
+      orgId,
+      original: transOrig.value.trim(),
+      translated: transTrans.value.trim(),
+      translationType: transType ? transType.value : "clarity",
+    }));
+  }
+
+  // Fire vault submissions in parallel (don't block on them)
+  if (vaultPromises.length > 0) {
+    Promise.all(vaultPromises).catch(e => {
+      console.warn("[Trust Assembly] Vault submission error:", e.message);
+    });
+  }
+
+  msgEl.className = "submit-msg success";
+  msgEl.textContent = isAffirm
+    ? "Affirmation submitted! It will appear after review."
+    : "Correction submitted! It will appear after review.";
+  if (vaultPromises.length > 0) {
+    msgEl.textContent += ` ${vaultPromises.length} vault artifact(s) also submitted.`;
+  }
+  msgEl.style.display = "block";
+
+  // Clear form and preview
+  document.getElementById("sub-headline").value = "";
+  if (replacementEl) replacementEl.value = "";
+  document.getElementById("sub-reasoning").value = "";
+  selectedAuthors = [];
+  vaultSectionsOpen = {};
+  clearPreviewMessage();
 }
 
 // ── Assemblies tab ──
@@ -541,4 +860,50 @@ function formatStatus(status) {
     rejected: "Rejected", upheld: "Dispute Upheld"
   };
   return labels[status] || status || "Approved";
+}
+
+// ── Live Preview ──
+// Sends the current replacement text to the content script for real-time
+// headline preview on the page. Called on every keystroke (debounced).
+async function sendPreviewMessage(text) {
+  try {
+    const tabs = typeof chrome !== "undefined" && chrome.tabs
+      ? await chrome.tabs.query({ active: true, currentWindow: true })
+      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (!tab || !tab.id) return;
+    const headlineInput = document.getElementById("sub-headline");
+    const originalHeadline = headlineInput ? headlineInput.value.trim() : "";
+    const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
+      ? chrome.tabs.sendMessage.bind(chrome.tabs)
+      : browser.tabs.sendMessage.bind(browser.tabs);
+    sendMsg(tab.id, {
+      type: "TA_PREVIEW_HEADLINE",
+      text: text,
+      originalHeadline: originalHeadline,
+      isAffirm: submitType === "affirmation"
+    }, () => {
+      // Ignore errors (tab might not have content script)
+      if (typeof chrome !== "undefined" && chrome.runtime?.lastError) {}
+    });
+  } catch (e) {
+    // Content script may not be loaded on this page
+  }
+}
+
+// Clear preview when submitting or switching tabs
+async function clearPreviewMessage() {
+  try {
+    const tabs = typeof chrome !== "undefined" && chrome.tabs
+      ? await chrome.tabs.query({ active: true, currentWindow: true })
+      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (!tab || !tab.id) return;
+    const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
+      ? chrome.tabs.sendMessage.bind(chrome.tabs)
+      : browser.tabs.sendMessage.bind(browser.tabs);
+    sendMsg(tab.id, { type: "TA_CLEAR_PREVIEW" }, () => {
+      if (typeof chrome !== "undefined" && chrome.runtime?.lastError) {}
+    });
+  } catch (e) {}
 }

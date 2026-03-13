@@ -101,11 +101,11 @@
     .correction-item.status-consensus { border-left: 4px solid #5B2D8E; }
 
     .meta { font-size: 9px; color: #7A7570; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
-    .headline-old { font-size: 12px; text-decoration: line-through; color: #5A5650; }
+    .headline-old { font-size: 10px; color: #7A7570; margin-top: 2px; font-style: italic; }
     .headline-new { font-size: 13px; font-weight: 700; color: #C4573F; margin-top: 2px; }
     .headline-affirmed { font-size: 13px; font-weight: 700; color: #1B5E3F; }
     .trans-pair { font-size: 12px; margin-top: 2px; }
-    .trans-orig { text-decoration: line-through; color: #5A5650; }
+    .trans-orig { color: #7A7570; font-style: italic; }
     .trans-arrow { color: #D4850A; font-weight: 700; }
     .trans-result { color: #D4850A; font-weight: 700; }
 
@@ -237,6 +237,148 @@
     .submit-msg { font-size: 11px; margin-top: 6px; }
     .submit-msg.error { color: #C4573F; }
     .submit-msg.success { color: #1B5E3F; }
+
+    /* Submission type toggle */
+    .type-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1.5px solid #DCD8D0;
+    }
+    .type-toggle button {
+      flex: 1;
+      padding: 8px 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: #fff;
+      color: #7A7570;
+      transition: all 0.15s;
+    }
+    .type-toggle button.active-correction {
+      background: #C4573F;
+      color: #fff;
+    }
+    .type-toggle button.active-affirmation {
+      background: #1B5E3F;
+      color: #fff;
+    }
+    .type-toggle .type-desc {
+      font-size: 8px;
+      font-weight: 400;
+      opacity: 0.8;
+      margin-top: 1px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .affirm-banner {
+      padding: 8px 10px;
+      background: #F0FAF4;
+      border: 1px solid rgba(27,94,63,0.25);
+      border-radius: 3px;
+      margin-bottom: 10px;
+      font-size: 11px;
+      color: #1B5E3F;
+      line-height: 1.4;
+    }
+
+    /* Author tags */
+    .author-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 8px;
+      min-height: 22px;
+    }
+    .author-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      background: #F0EDE6;
+      border: 1px solid #DCD8D0;
+      border-radius: 10px;
+      font-size: 10px;
+      color: #1B2A4A;
+    }
+    .author-tag .remove {
+      cursor: pointer;
+      font-size: 12px;
+      color: #7A7570;
+      margin-left: 2px;
+      line-height: 1;
+    }
+    .author-tag .remove:hover { color: #C4573F; }
+    .author-hint { font-size: 9px; color: #B0A89C; margin-top: -4px; margin-bottom: 8px; }
+
+    /* Vault artifacts section */
+    .vault-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #DCD8D0;
+    }
+    .vault-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #7A7570;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .vault-section-title:hover { color: #1B2A4A; }
+    .vault-type-row {
+      margin-bottom: 8px;
+      padding: 8px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      background: #fff;
+    }
+    .vault-type-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .vault-type-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #1B2A4A;
+    }
+    .vault-type-toggle {
+      font-size: 9px;
+      color: #B8963E;
+      font-weight: 600;
+    }
+    .vault-type-body {
+      margin-top: 6px;
+    }
+    .vault-type-desc {
+      font-size: 10px;
+      color: #7A7570;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .vault-type-body input, .vault-type-body textarea, .vault-type-body select {
+      display: block;
+      width: 100%;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 11px;
+      background: #fff;
+    }
+    .vault-type-body textarea { resize: vertical; min-height: 48px; }
+    .vault-color-correction { border-left: 3px solid #B8963E; }
+    .vault-color-argument { border-left: 3px solid #2A6B6B; }
+    .vault-color-belief { border-left: 3px solid #5B2D8E; }
+    .vault-color-translation { border-left: 3px solid #D4850A; }
 
     /* Assemblies panel */
     .assemblies-panel {
