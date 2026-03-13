@@ -5670,10 +5670,10 @@ function ExtensionsScreen() {
       {/* Chrome instructions */}
       <div className="ta-card" style={{ marginBottom: 18 }}>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--navy)" }}>Chrome / Edge / Brave — Developer Mode Install</h3>
-        <div style={stepStyle}><div style={numStyle}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Download and <strong>unzip</strong> the Chrome extension file above. You should see a folder called <span style={codeStyle}>chrome</span> containing the extension files.</div></div>
+        <div style={stepStyle}><div style={numStyle}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Download and <strong>unzip</strong> the Chrome extension file above into a new folder.</div></div>
         <div style={stepStyle}><div style={numStyle}>2</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Open your browser and navigate to <span style={codeStyle}>chrome://extensions</span> (or <span style={codeStyle}>edge://extensions</span> / <span style={codeStyle}>brave://extensions</span>).</div></div>
         <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Toggle <strong>"Developer mode"</strong> on — it's in the top-right corner of the page.</div></div>
-        <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load unpacked"</strong> and select the <span style={codeStyle}>chrome</span> folder you unzipped.</div></div>
+        <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load unpacked"</strong> and select the folder containing the unzipped extension files (where <span style={codeStyle}>manifest.json</span> is located).</div></div>
         <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The Trust Assembly icon will appear in your toolbar. Pin it for easy access. Visit any news article to see corrections and translations overlaid automatically.</div></div>
         <div style={{ padding: 10, background: "#FFFBEB", border: "1px solid #B45309", borderRadius: 8, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
           <strong>Note:</strong> Chrome may show a "Disable developer mode extensions" popup on restart. Click the three dots and select "Keep" to keep the extension active.
@@ -5683,10 +5683,10 @@ function ExtensionsScreen() {
       {/* Firefox instructions */}
       <div className="ta-card" style={{ marginBottom: 18 }}>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 19, marginBottom: 14, color: "var(--evergreen)" }}>Firefox — Temporary Add-on Install</h3>
-        <div style={stepStyle}><div style={numStyle}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Download and <strong>unzip</strong> the Firefox extension file above.</div></div>
+        <div style={stepStyle}><div style={numStyle}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Download and <strong>unzip</strong> the Firefox extension file above into a new folder.</div></div>
         <div style={stepStyle}><div style={numStyle}>2</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Open Firefox and navigate to <span style={codeStyle}>about:debugging#/runtime/this-firefox</span></div></div>
         <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load Temporary Add-on..."</strong></div></div>
-        <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Select the <span style={codeStyle}>manifest.json</span> file inside the <span style={codeStyle}>firefox</span> folder.</div></div>
+        <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Select the <span style={codeStyle}>manifest.json</span> file from the unzipped folder.</div></div>
         <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension is now active. Visit any news article to see Trust Assembly corrections overlaid.</div></div>
         <div style={{ padding: 10, background: "#FFFBEB", border: "1px solid #B45309", borderRadius: 8, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
           <strong>Note:</strong> Firefox temporary add-ons are removed when you close the browser. You'll need to reload it each session until the extension is published to the Firefox Add-ons store.
