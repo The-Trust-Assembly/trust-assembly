@@ -5811,6 +5811,50 @@ function ExtensionsScreen() {
 }
 
 // ============================================================
+// FEEDBACK SCREEN (Admin only — thekingofamerica)
+// ============================================================
+
+function FeedbackScreen() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/feedback");
+        if (!res.ok) { setError("Failed to load feedback"); setLoading(false); return; }
+        const data = await res.json();
+        setItems(data.feedback || []);
+      } catch (e) {
+        setError("Failed to load feedback");
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return <div style={{ textAlign: "center", padding: 40, color: "var(--stone)" }}>Loading feedback...</div>;
+  if (error) return <div className="ta-error">{error}</div>;
+
+  return (
+    <div>
+      <h2 className="ta-section-head">Feedback &amp; Feature Requests</h2>
+      <p style={{ fontSize: 13, color: "var(--stone)", marginBottom: 20 }}>{items.length} submission{items.length !== 1 ? "s" : ""} from beta users</p>
+      {items.length === 0 && <div className="ta-card" style={{ textAlign: "center", color: "var(--stone)" }}>No feedback yet.</div>}
+      {items.map(item => (
+        <div key={item.id} className="ta-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>@{item.username}</span>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>{new Date(item.created_at).toLocaleString()}</span>
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--charcoal)", whiteSpace: "pre-wrap" }}>{item.message}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN APP
 // ============================================================
 
@@ -5833,6 +5877,11 @@ export default function TrustAssembly() {
   const [showManifesto, setShowManifesto] = useState(false);
   const [showMoreNav, setShowMoreNav] = useState(false);
   const [viewingCitizen, setViewingCitizen] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
 
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
@@ -5920,6 +5969,19 @@ export default function TrustAssembly() {
     setUser(null); setScreen("login");
   };
 
+  const submitFeedback = async () => {
+    if (!feedbackText.trim()) return;
+    setFeedbackSending(true); setFeedbackError("");
+    try {
+      const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: feedbackText.trim() }) });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setFeedbackError(d.error || "Failed to send"); setFeedbackSending(false); return; }
+      setFeedbackSent(true); setFeedbackText(""); setFeedbackSending(false);
+      setTimeout(() => { setShowFeedbackModal(false); setFeedbackSent(false); }, 2000);
+    } catch (e) { setFeedbackError("Network error"); setFeedbackSending(false); }
+  };
+
+  const isAdmin = user && user.username === "thekingofamerica";
+
   if (loading) return <div className="ta-root"><Loader /></div>;
 
   if (showOnboarding && user) {
@@ -5975,6 +6037,14 @@ export default function TrustAssembly() {
         .ta-success { background:#ECFDF5; border:1px solid var(--evergreen); color:var(--evergreen); padding:8px 12px; margin-bottom:14px; font-size:12px; border-radius:6px; }
         .ta-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--stone); font-family:var(--font); }
         @media(max-width:640px) { .ta-masthead h1{font-size:20px} .ta-content{padding:14px} .ta-nav button{padding:7px 7px;font-size:9px} .ta-section-head{font-size:20px} }
+        .ta-feedback-fab { position:fixed; bottom:24px; right:24px; z-index:90; background:var(--accent); color:#fff; border:none; padding:10px 16px; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; border-radius:24px; box-shadow:0 2px 8px rgba(37,99,235,0.3); transition:all 0.2s; }
+        .ta-feedback-fab:hover { background:var(--accent-hover); box-shadow:0 4px 12px rgba(37,99,235,0.4); transform:translateY(-1px); }
+        .ta-feedback-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .ta-feedback-modal { background:#fff; border-radius:12px; padding:24px; max-width:480px; width:100%; box-shadow:0 20px 40px rgba(0,0,0,0.15); }
+        .ta-feedback-modal h3 { margin:0 0 6px; font-size:18px; font-weight:700; color:var(--navy); }
+        .ta-feedback-modal p { margin:0 0 16px; font-size:13px; color:var(--stone); line-height:1.5; }
+        .ta-feedback-charcount { text-align:right; font-size:11px; color:var(--stone); margin-top:4px; }
+        @media(max-width:640px) { .ta-feedback-fab { bottom:16px; right:16px; font-size:11px; padding:8px 14px; } }
       `}</style>
 
       {!user ? (
@@ -6055,7 +6125,7 @@ export default function TrustAssembly() {
                 {NAV_BOT.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}</button>)}
                 <button className={showMoreNav || NAV_MORE.some(n => n.key === screen) ? "active" : ""} onClick={() => setShowMoreNav(v => !v)} style={{ position: "relative" }}>More {showMoreNav ? "▴" : "▾"}</button>
               </nav>
-              {showMoreNav && <nav className="ta-nav ta-nav-secondary" style={{ borderTop: "none", paddingTop: 0 }}>{NAV_MORE.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</button>)}</nav>}
+              {showMoreNav && <nav className="ta-nav ta-nav-secondary" style={{ borderTop: "none", paddingTop: 0 }}>{NAV_MORE.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</button>)}{isAdmin && <button className={screen === "feedback" ? "active" : ""} onClick={() => { setScreen("feedback"); setShowMoreNav(false); }} style={{ color: "var(--sienna)", fontWeight: 600 }}>Feedback</button>}</nav>}
             </div>
             <div className="ta-user-bar"><span>{isDIUser(user) ? "🤖 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span><button className="ta-btn-ghost" style={{ color: "#64748B" }} onClick={logout}>Sign Out</button></div>
           </div>
@@ -6077,8 +6147,49 @@ export default function TrustAssembly() {
             {screen === "about" && <AboutScreen />}
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
+            {screen === "feedback" && isAdmin && <FeedbackScreen />}
             </>}
           </div>
+
+          {/* Floating feedback button — visible to all non-admin users */}
+          {!isAdmin && (
+            <button className="ta-feedback-fab" onClick={() => { setShowFeedbackModal(true); setFeedbackSent(false); setFeedbackError(""); }}>
+              Submit Feedback / Feature Request
+            </button>
+          )}
+
+          {/* Feedback modal */}
+          {showFeedbackModal && (
+            <div className="ta-feedback-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowFeedbackModal(false); }}>
+              <div className="ta-feedback-modal">
+                <h3>Feedback &amp; Feature Requests</h3>
+                <p>Help shape the Trust Assembly. Bug reports, feature ideas, and suggestions are all welcome. Your username will be attached so we can follow up.</p>
+                {feedbackSent ? (
+                  <div className="ta-success">Thank you! Your feedback has been submitted.</div>
+                ) : (
+                  <>
+                    {feedbackError && <div className="ta-error">{feedbackError}</div>}
+                    <div className="ta-field">
+                      <textarea
+                        value={feedbackText}
+                        onChange={e => { if (e.target.value.length <= 1000) setFeedbackText(e.target.value); }}
+                        placeholder="What's on your mind? Describe a bug, suggest a feature, or share your thoughts..."
+                        rows={5}
+                        style={{ fontSize: 14 }}
+                      />
+                      <div className="ta-feedback-charcount">{feedbackText.length} / 1,000</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                      <button className="ta-btn-secondary" onClick={() => setShowFeedbackModal(false)}>Cancel</button>
+                      <button className="ta-btn-primary" onClick={submitFeedback} disabled={feedbackSending || !feedbackText.trim()}>
+                        {feedbackSending ? "Sending..." : "Submit Feedback"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
