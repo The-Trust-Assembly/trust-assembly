@@ -140,6 +140,11 @@ export async function tryResolveSubmission(
     )
   `;
 
+  // ── KV store sync ──
+  // Update the submission status in the KV store so the browser extension
+  // sees the resolved correction/affirmation in its overlay.
+  await syncSubmissionToKV(submissionId, outcome, now, wasLie, promotedToCrossGroup);
+
   return { resolved: true, outcome, promotedToCrossGroup };
 }
 
@@ -431,4 +436,47 @@ function getVaultTable(entryType: string): string | null {
     translation: "translations",
   };
   return map[entryType] || null;
+}
+
+// ---- KV Store Sync ----
+
+const SK_SUBS = "ta-s-v5";
+
+async function syncSubmissionToKV(
+  submissionId: string,
+  outcome: string,
+  resolvedAt: string,
+  wasLie: boolean,
+  promotedToCrossGroup: boolean,
+): Promise<void> {
+  try {
+    const kvResult = await sql`SELECT value FROM kv_store WHERE key = ${SK_SUBS}`;
+    if (kvResult.rows.length === 0 || !kvResult.rows[0].value) return;
+
+    const subs = JSON.parse(kvResult.rows[0].value);
+    const sub = subs[submissionId];
+    if (!sub) return;
+
+    // If promoted to cross-group, status becomes cross_review (not final yet)
+    sub.status = promotedToCrossGroup ? "cross_review" : outcome;
+    sub.resolvedAt = promotedToCrossGroup ? null : resolvedAt;
+    sub.deliberateLie = wasLie;
+
+    const trail = sub.auditTrail || [];
+    trail.push({ time: resolvedAt, action: `Resolved: ${outcome}${wasLie ? " (deception)" : ""}${promotedToCrossGroup ? " → promoted to cross-group" : ""}` });
+    sub.auditTrail = trail;
+
+    subs[submissionId] = sub;
+
+    const json = JSON.stringify(subs);
+    await sql`
+      INSERT INTO kv_store (key, value, updated_at)
+      VALUES (${SK_SUBS}, ${json}, now())
+      ON CONFLICT (key)
+      DO UPDATE SET value = ${json}, updated_at = now()
+    `;
+  } catch (e) {
+    // KV sync is non-critical
+    console.error("KV sync failed in vote resolution:", e);
+  }
 }
