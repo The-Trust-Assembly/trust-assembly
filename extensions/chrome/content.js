@@ -622,11 +622,14 @@
     lastDataHash = hashData(data);
     applyData(data, url);
 
-    // Re-apply after a short delay to survive framework hydration (React,
-    // Vue, etc.) that can wipe injected DOM nodes shortly after initial load.
+    // Re-apply after delays to survive framework hydration (React, Vue, etc.)
+    // that can wipe injected DOM nodes shortly after initial load.
+    // CNN's React hydration can take several seconds, so we retry aggressively.
     if (site.dynamic) {
-      setTimeout(() => reapplyToNewContent(data), 1500);
+      setTimeout(() => reapplyToNewContent(data), 800);
+      setTimeout(() => reapplyToNewContent(data), 2000);
       setTimeout(() => reapplyToNewContent(data), 4000);
+      setTimeout(() => reapplyToNewContent(data), 8000);
     }
 
     // Start polling for real-time updates
@@ -1068,7 +1071,8 @@
         // removing our injected siblings while leaving the h1 intact.
         if (el.dataset.taAnnotated) {
           const annotationExists = el.nextElementSibling?.classList.contains("ta-inline-correction")
-            || el.parentNode?.querySelector(".ta-inline-correction");
+            || el.parentNode?.querySelector(".ta-inline-correction")
+            || document.querySelector(".ta-inline-correction");
           if (annotationExists) return;
           // Annotation was removed — clear flag and re-apply
           delete el.dataset.taAnnotated;
@@ -1079,24 +1083,49 @@
         matched = true;
         el.dataset.taAnnotated = "true";
 
-        // Create inline annotation wrapper
+        console.log("[TrustAssembly] Injecting inline correction after headline element:", el.tagName, el.className);
+
+        // Create inline annotation wrapper with forced inline styles
+        // to survive hostile site CSS (overflow:hidden, flex layouts, etc.)
         const wrapper = document.createElement("div");
         wrapper.className = "ta-inline-correction";
+        wrapper.setAttribute("style",
+          "display:block !important;visibility:visible !important;opacity:1 !important;" +
+          "overflow:visible !important;max-height:none !important;height:auto !important;" +
+          "position:relative !important;z-index:10000 !important;" +
+          "margin:8px 0 16px !important;padding:12px 16px !important;" +
+          "border-left:4px solid #C4573F !important;background:#FDF8F7 !important;" +
+          "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+          "width:auto !important;min-height:40px !important;float:none !important;clear:both !important;" +
+          "clip:auto !important;clip-path:none !important;transform:none !important;"
+        );
 
         const origSpan = document.createElement("div");
         origSpan.className = "ta-inline-original";
+        origSpan.setAttribute("style",
+          "display:block !important;font-size:14px !important;text-decoration:line-through !important;" +
+          "text-decoration-color:#C4573F !important;color:#5A5650 !important;margin-bottom:4px !important;line-height:1.4 !important;"
+        );
         origSpan.textContent = el.textContent;
 
         const replSpan = document.createElement("div");
         replSpan.className = "ta-inline-replacement";
+        replSpan.setAttribute("style",
+          "display:block !important;font-size:18px !important;color:#C4573F !important;" +
+          "font-weight:700 !important;line-height:1.4 !important;margin-bottom:6px !important;"
+        );
         replSpan.textContent = sub.replacement;
 
         const metaSpan = document.createElement("div");
         metaSpan.className = "ta-inline-meta";
+        metaSpan.setAttribute("style",
+          "display:block !important;font-size:11px !important;color:#7A7570 !important;" +
+          "margin-bottom:4px !important;letter-spacing:0.02em !important;"
+        );
         const org = sub.orgName || "Assembly";
         const profile = sub.profile?.displayName || "Citizen";
         const score = sub.trustScore != null ? sub.trustScore : "—";
-        metaSpan.innerHTML = `⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+        metaSpan.innerHTML = `⚖ <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
 
         wrapper.appendChild(origSpan);
         wrapper.appendChild(replSpan);
@@ -1104,6 +1133,10 @@
         if (sub.reasoning) {
           const reasonSpan = document.createElement("div");
           reasonSpan.className = "ta-inline-reasoning";
+          reasonSpan.setAttribute("style",
+            "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
+            "line-height:1.5 !important;font-style:italic !important;"
+          );
           const maxLen = 180;
           reasonSpan.textContent = sub.reasoning.length > maxLen
             ? sub.reasoning.slice(0, maxLen) + "…"
@@ -1111,14 +1144,35 @@
           wrapper.appendChild(reasonSpan);
         }
 
-        // Insert the annotation after the headline element
-        el.parentNode.insertBefore(wrapper, el.nextSibling);
+        // Find a safe insertion point — walk up from the headline element
+        // to escape tightly-constrained layout containers (flex, grid,
+        // overflow:hidden) that would clip or hide our injection.
+        let insertTarget = el;
+        let insertParent = el.parentNode;
+        for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
+          const style = window.getComputedStyle(insertParent);
+          const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
+            || style.display === "flex" || style.display === "inline-flex"
+            || style.display === "grid" || style.display === "inline-grid";
+          if (isConstrained) {
+            // Move up — insert after this constrained parent instead
+            insertTarget = insertParent;
+            insertParent = insertParent.parentNode;
+            console.log("[TrustAssembly] Escaping constrained container:", insertTarget.tagName, insertTarget.className, "(" + style.display + ", overflow:" + style.overflow + ")");
+          } else {
+            break;
+          }
+        }
+
+        insertParent.insertBefore(wrapper, insertTarget.nextSibling);
         el.classList.add("ta-inline-headline-corrected");
+        console.log("[TrustAssembly] Correction injected. wrapper.offsetHeight:", wrapper.offsetHeight, "wrapper.getBoundingClientRect():", JSON.stringify(wrapper.getBoundingClientRect()));
       });
 
       // Phase 2: If no headline element matched, do a raw text-node search
       // This catches headlines in non-standard elements (spans, divs, etc.)
       if (!matched) {
+        console.log("[TrustAssembly] Phase 1 failed, trying text-node search...");
         const searchRoot = articleBody || document.body;
         const walker = document.createTreeWalker(searchRoot, NodeFilter.SHOW_TEXT, null, false);
         while (walker.nextNode()) {
@@ -1133,21 +1187,43 @@
               parent.dataset.taAnnotated = "true";
               const wrapper = document.createElement("div");
               wrapper.className = "ta-inline-correction";
+              wrapper.setAttribute("style",
+                "display:block !important;visibility:visible !important;opacity:1 !important;" +
+                "overflow:visible !important;max-height:none !important;height:auto !important;" +
+                "position:relative !important;z-index:10000 !important;" +
+                "margin:8px 0 16px !important;padding:12px 16px !important;" +
+                "border-left:4px solid #C4573F !important;background:#FDF8F7 !important;" +
+                "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+                "width:auto !important;min-height:40px !important;float:none !important;clear:both !important;" +
+                "clip:auto !important;clip-path:none !important;transform:none !important;"
+              );
 
               const origSpan = document.createElement("div");
               origSpan.className = "ta-inline-original";
+              origSpan.setAttribute("style",
+                "display:block !important;font-size:14px !important;text-decoration:line-through !important;" +
+                "text-decoration-color:#C4573F !important;color:#5A5650 !important;margin-bottom:4px !important;line-height:1.4 !important;"
+              );
               origSpan.textContent = node.textContent.trim();
 
               const replSpan = document.createElement("div");
               replSpan.className = "ta-inline-replacement";
+              replSpan.setAttribute("style",
+                "display:block !important;font-size:18px !important;color:#C4573F !important;" +
+                "font-weight:700 !important;line-height:1.4 !important;margin-bottom:6px !important;"
+              );
               replSpan.textContent = sub.replacement;
 
               const metaSpan = document.createElement("div");
               metaSpan.className = "ta-inline-meta";
+              metaSpan.setAttribute("style",
+                "display:block !important;font-size:11px !important;color:#7A7570 !important;" +
+                "margin-bottom:4px !important;letter-spacing:0.02em !important;"
+              );
               const org = sub.orgName || "Assembly";
               const profile = sub.profile?.displayName || "Citizen";
               const score = sub.trustScore != null ? sub.trustScore : "—";
-              metaSpan.innerHTML = `⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+              metaSpan.innerHTML = `⚖ <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
 
               wrapper.appendChild(origSpan);
               wrapper.appendChild(replSpan);
@@ -1155,13 +1231,34 @@
               if (sub.reasoning) {
                 const reasonSpan = document.createElement("div");
                 reasonSpan.className = "ta-inline-reasoning";
+                reasonSpan.setAttribute("style",
+                  "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
+                  "line-height:1.5 !important;font-style:italic !important;"
+                );
                 reasonSpan.textContent = sub.reasoning.length > 180
                   ? sub.reasoning.slice(0, 180) + "…" : sub.reasoning;
                 wrapper.appendChild(reasonSpan);
               }
 
-              parent.parentNode.insertBefore(wrapper, parent.nextSibling);
+              // Walk up to escape constrained containers
+              let insertTarget = parent;
+              let insertParent = parent.parentNode;
+              for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
+                const style = window.getComputedStyle(insertParent);
+                const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
+                  || style.display === "flex" || style.display === "inline-flex"
+                  || style.display === "grid" || style.display === "inline-grid";
+                if (isConstrained) {
+                  insertTarget = insertParent;
+                  insertParent = insertParent.parentNode;
+                } else {
+                  break;
+                }
+              }
+
+              insertParent.insertBefore(wrapper, insertTarget.nextSibling);
               parent.classList.add("ta-inline-headline-corrected");
+              console.log("[TrustAssembly] Phase 2: injected via text-node match. wrapper.offsetHeight:", wrapper.offsetHeight);
             }
             break; // only match first occurrence
           }
@@ -1521,7 +1618,8 @@
       headlineEls.forEach(el => {
         if (el.dataset.taAnnotated) {
           const annotationExists = el.nextElementSibling?.classList.contains("ta-inline-affirmation")
-            || el.parentNode?.querySelector(".ta-inline-affirmation");
+            || el.parentNode?.querySelector(".ta-inline-affirmation")
+            || document.querySelector(".ta-inline-affirmation");
           if (annotationExists) return;
           delete el.dataset.taAnnotated;
           el.classList.remove("ta-inline-headline-affirmed");
@@ -1533,19 +1631,37 @@
 
         const wrapper = document.createElement("div");
         wrapper.className = "ta-inline-affirmation";
+        wrapper.setAttribute("style",
+          "display:block !important;visibility:visible !important;opacity:1 !important;" +
+          "overflow:visible !important;max-height:none !important;height:auto !important;" +
+          "position:relative !important;z-index:10000 !important;" +
+          "margin:8px 0 16px !important;padding:10px 16px !important;" +
+          "border-left:4px solid #1B5E3F !important;background:#F5FAF7 !important;" +
+          "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+          "width:auto !important;min-height:30px !important;float:none !important;clear:both !important;" +
+          "clip:auto !important;clip-path:none !important;transform:none !important;"
+        );
 
         const metaSpan = document.createElement("div");
         metaSpan.className = "ta-inline-meta";
+        metaSpan.setAttribute("style",
+          "display:block !important;font-size:11px !important;color:#7A7570 !important;" +
+          "margin-bottom:4px !important;letter-spacing:0.02em !important;"
+        );
         const org = sub.orgName || "Assembly";
         const profile = sub.profile?.displayName || "Citizen";
         const score = sub.trustScore != null ? sub.trustScore : "—";
-        metaSpan.innerHTML = `✓ Verified by <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+        metaSpan.innerHTML = `✓ Verified by <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
 
         wrapper.appendChild(metaSpan);
 
         if (sub.reasoning) {
           const reasonSpan = document.createElement("div");
           reasonSpan.className = "ta-inline-reasoning";
+          reasonSpan.setAttribute("style",
+            "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
+            "line-height:1.5 !important;font-style:italic !important;"
+          );
           const maxLen = 180;
           reasonSpan.textContent = sub.reasoning.length > maxLen
             ? sub.reasoning.slice(0, maxLen) + "…"
@@ -1553,7 +1669,23 @@
           wrapper.appendChild(reasonSpan);
         }
 
-        el.parentNode.insertBefore(wrapper, el.nextSibling);
+        // Walk up to escape constrained layout containers
+        let insertTarget = el;
+        let insertParent = el.parentNode;
+        for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
+          const style = window.getComputedStyle(insertParent);
+          const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
+            || style.display === "flex" || style.display === "inline-flex"
+            || style.display === "grid" || style.display === "inline-grid";
+          if (isConstrained) {
+            insertTarget = insertParent;
+            insertParent = insertParent.parentNode;
+          } else {
+            break;
+          }
+        }
+
+        insertParent.insertBefore(wrapper, insertTarget.nextSibling);
         el.classList.add("ta-inline-headline-affirmed");
       });
 
@@ -1571,21 +1703,52 @@
               parent.dataset.taAnnotated = "true";
               const wrapper = document.createElement("div");
               wrapper.className = "ta-inline-affirmation";
+              wrapper.setAttribute("style",
+                "display:block !important;visibility:visible !important;opacity:1 !important;" +
+                "overflow:visible !important;max-height:none !important;height:auto !important;" +
+                "position:relative !important;z-index:10000 !important;" +
+                "margin:8px 0 16px !important;padding:10px 16px !important;" +
+                "border-left:4px solid #1B5E3F !important;background:#F5FAF7 !important;" +
+                "border-radius:0 4px 4px 0 !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+                "width:auto !important;min-height:30px !important;float:none !important;clear:both !important;"
+              );
               const metaSpan = document.createElement("div");
               metaSpan.className = "ta-inline-meta";
+              metaSpan.setAttribute("style",
+                "display:block !important;font-size:11px !important;color:#7A7570 !important;"
+              );
               const org = sub.orgName || "Assembly";
               const profile = sub.profile?.displayName || "Citizen";
               const score = sub.trustScore != null ? sub.trustScore : "—";
-              metaSpan.innerHTML = `✓ Verified by <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
+              metaSpan.innerHTML = `✓ Verified by <strong style="color:#1B2A4A !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}`;
               wrapper.appendChild(metaSpan);
               if (sub.reasoning) {
                 const reasonSpan = document.createElement("div");
                 reasonSpan.className = "ta-inline-reasoning";
+                reasonSpan.setAttribute("style",
+                  "display:block !important;font-size:12px !important;color:#5A5650 !important;" +
+                  "line-height:1.5 !important;font-style:italic !important;"
+                );
                 reasonSpan.textContent = sub.reasoning.length > 180
                   ? sub.reasoning.slice(0, 180) + "…" : sub.reasoning;
                 wrapper.appendChild(reasonSpan);
               }
-              parent.parentNode.insertBefore(wrapper, parent.nextSibling);
+              // Walk up to escape constrained containers
+              let insertTarget = parent;
+              let insertParent = parent.parentNode;
+              for (let i = 0; i < 5 && insertParent && insertParent !== document.body; i++) {
+                const style = window.getComputedStyle(insertParent);
+                const isConstrained = style.overflow === "hidden" || style.overflow === "clip"
+                  || style.display === "flex" || style.display === "inline-flex"
+                  || style.display === "grid" || style.display === "inline-grid";
+                if (isConstrained) {
+                  insertTarget = insertParent;
+                  insertParent = insertParent.parentNode;
+                } else {
+                  break;
+                }
+              }
+              insertParent.insertBefore(wrapper, insertTarget.nextSibling);
               parent.classList.add("ta-inline-headline-affirmed");
             }
             break;
