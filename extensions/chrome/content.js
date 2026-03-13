@@ -622,6 +622,14 @@
     lastDataHash = hashData(data);
     applyData(data, url);
 
+    // Re-apply after a short delay to survive framework hydration (React,
+    // Vue, etc.) that can wipe injected DOM nodes shortly after initial load.
+    const site = getSiteType();
+    if (site.dynamic) {
+      setTimeout(() => reapplyToNewContent(data), 1500);
+      setTimeout(() => reapplyToNewContent(data), 4000);
+    }
+
     // Start polling for real-time updates
     startPolling(url);
   }
@@ -1056,7 +1064,17 @@
 
       // Phase 1: Match against found headline elements
       headlineEls.forEach(el => {
-        if (el.dataset.taAnnotated) return;
+        // If previously annotated, check that the annotation still exists
+        // in the DOM. Frameworks like React can re-render parent containers,
+        // removing our injected siblings while leaving the h1 intact.
+        if (el.dataset.taAnnotated) {
+          const annotationExists = el.nextElementSibling?.classList.contains("ta-inline-correction")
+            || el.parentNode?.querySelector(".ta-inline-correction");
+          if (annotationExists) return;
+          // Annotation was removed — clear flag and re-apply
+          delete el.dataset.taAnnotated;
+          el.classList.remove("ta-inline-headline-corrected");
+        }
         if (!headlinesMatch(el.textContent, sub.originalHeadline)) return;
 
         matched = true;
@@ -1502,7 +1520,13 @@
 
       // Phase 1: Match against headline elements
       headlineEls.forEach(el => {
-        if (el.dataset.taAnnotated) return;
+        if (el.dataset.taAnnotated) {
+          const annotationExists = el.nextElementSibling?.classList.contains("ta-inline-affirmation")
+            || el.parentNode?.querySelector(".ta-inline-affirmation");
+          if (annotationExists) return;
+          delete el.dataset.taAnnotated;
+          el.classList.remove("ta-inline-headline-affirmed");
+        }
         if (!headlinesMatch(el.textContent, sub.originalHeadline)) return;
 
         matched = true;
