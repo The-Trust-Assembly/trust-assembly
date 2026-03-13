@@ -624,7 +624,6 @@
 
     // Re-apply after a short delay to survive framework hydration (React,
     // Vue, etc.) that can wipe injected DOM nodes shortly after initial load.
-    const site = getSiteType();
     if (site.dynamic) {
       setTimeout(() => reapplyToNewContent(data), 1500);
       setTimeout(() => reapplyToNewContent(data), 4000);
