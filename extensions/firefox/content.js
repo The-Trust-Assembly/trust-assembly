@@ -68,6 +68,64 @@
     }
   }
 
+  // ── Fetch via Background Service Worker ──
+  // Content scripts run in the page's origin (e.g. cnn.com), NOT the
+  // extension's origin. In Manifest V3, Chrome no longer grants content
+  // scripts the extension's CORS bypass, so a fetch from cnn.com to
+  // trustassembly.org is blocked by the browser's same-origin policy.
+  //
+  // Solution: route the fetch through the background service worker,
+  // which runs in the extension's origin and is not subject to CORS.
+  // Falls back to direct fetch (via TA.getForURL) if messaging fails.
+  function fetchViaBackground(url) {
+    const apiUrl = (typeof TA !== "undefined" ? "https://trustassembly.org" : "https://trustassembly.org")
+      + "/api/corrections?url=" + encodeURIComponent(url);
+    return new Promise((resolve) => {
+      const empty = { corrections: [], affirmations: [], translations: [], meta: {} };
+      try {
+        const rt = (typeof chrome !== "undefined" && chrome.runtime) ? chrome.runtime
+          : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
+        if (!rt || !rt.sendMessage) {
+          console.warn("[TrustAssembly] No runtime.sendMessage — falling back to direct fetch");
+          TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+          return;
+        }
+        rt.sendMessage({ type: "TA_FETCH", url: apiUrl }, (response) => {
+          if (rt.lastError) {
+            console.warn("[TrustAssembly] Background fetch failed:", rt.lastError.message, "— falling back to direct fetch");
+            TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+            return;
+          }
+          if (response && response.ok && response.data) {
+            const data = response.data;
+            // Normalize: older API versions may return flat array
+            if (Array.isArray(data)) {
+              resolve({
+                corrections: data.filter(s => s.submissionType !== "affirmation"),
+                affirmations: data.filter(s => s.submissionType === "affirmation"),
+                translations: [],
+                meta: {}
+              });
+            } else {
+              resolve({
+                corrections: data.corrections || [],
+                affirmations: data.affirmations || [],
+                translations: data.translations || [],
+                meta: data.meta || {}
+              });
+            }
+          } else {
+            console.warn("[TrustAssembly] Background fetch returned error:", response?.error);
+            TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+          }
+        });
+      } catch (e) {
+        console.warn("[TrustAssembly] Exception sending message to background:", e.message);
+        TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+      }
+    });
+  }
+
   // ── Site Architecture Detection ──
   // Branching logic to identify the site's CMS/framework and choose
   // the optimal headline selectors. Each site type returns a ranked
@@ -612,7 +670,7 @@
       console.log("[TrustAssembly] Using cached data for:", url);
     } else {
       console.log("[TrustAssembly] Fetching from API for:", url);
-      data = await TA.getForURL(url);
+      data = await fetchViaBackground(url);
       setCachedData(url, data);
     }
 
@@ -686,7 +744,7 @@
 
     pollTimer = setInterval(async () => {
       try {
-        const freshData = await TA.getForURL(url);
+        const freshData = await fetchViaBackground(url);
         const freshHash = hashData(freshData);
 
         if (freshHash !== lastDataHash) {

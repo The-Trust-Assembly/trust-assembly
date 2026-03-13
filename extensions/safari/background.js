@@ -7,7 +7,7 @@
 const runtime = typeof chrome !== "undefined" ? chrome.runtime : browser.runtime;
 const action = typeof chrome !== "undefined" ? chrome.action : browser.browserAction;
 
-runtime.onMessage.addListener((message, sender) => {
+runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TA_COUNT" && sender.tab) {
     const count = message.count;
     if (count > 0 && action) {
@@ -16,6 +16,18 @@ runtime.onMessage.addListener((message, sender) => {
     } else if (action) {
       action.setBadgeText({ text: "", tabId: sender.tab.id });
     }
+  }
+
+  // Proxy fetch requests from content scripts.
+  // Content scripts run in the page's origin (e.g. cnn.com), so cross-origin
+  // fetches to trustassembly.org may be blocked by CORS. The background
+  // service worker runs in the extension's origin and is not subject to CORS.
+  if (message.type === "TA_FETCH") {
+    fetch(message.url)
+      .then(res => res.json())
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(err => sendResponse({ ok: false, error: err.message }));
+    return true; // keep message channel open for async response
   }
 
   // Relay settings changes from popup to content scripts in all tabs
