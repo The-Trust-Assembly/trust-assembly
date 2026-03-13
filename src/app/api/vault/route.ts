@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
   if (!session) return unauthorized();
 
   const body = await request.json();
-  const { orgId, orgIds, type } = body;
+  const { orgId, orgIds, type, submissionId } = body;
 
   // Support single orgId or array of orgIds
   const targetOrgIds: string[] = orgIds && Array.isArray(orgIds) && orgIds.length > 0
@@ -113,6 +113,16 @@ export async function POST(request: NextRequest) {
 
   if (targetOrgIds.length === 0) {
     return err("orgId or orgIds is required");
+  }
+
+  // If submissionId is provided, verify the submission exists and belongs to this user
+  if (submissionId) {
+    const sub = await sql`
+      SELECT id FROM submissions WHERE id = ${submissionId} AND submitted_by = ${session.sub}
+    `;
+    if (sub.rows.length === 0) {
+      return err("Invalid submission ID");
+    }
   }
 
   const entryType = type || "vault";
@@ -124,9 +134,9 @@ export async function POST(request: NextRequest) {
         const { content } = body;
         if (!content) return err("content is required for arguments");
         const result = await sql`
-          INSERT INTO arguments (org_id, submitted_by, content)
-          VALUES (${targetOrgId}, ${session.sub}, ${content})
-          RETURNING id, org_id, content, status, created_at
+          INSERT INTO arguments (org_id, submitted_by, content, submission_id)
+          VALUES (${targetOrgId}, ${session.sub}, ${content}, ${submissionId || null})
+          RETURNING id, org_id, content, status, submission_id, created_at
         `;
         results.push(result.rows[0]);
         break;
@@ -135,9 +145,9 @@ export async function POST(request: NextRequest) {
         const { content } = body;
         if (!content) return err("content is required for beliefs");
         const result = await sql`
-          INSERT INTO beliefs (org_id, submitted_by, content)
-          VALUES (${targetOrgId}, ${session.sub}, ${content})
-          RETURNING id, org_id, content, status, created_at
+          INSERT INTO beliefs (org_id, submitted_by, content, submission_id)
+          VALUES (${targetOrgId}, ${session.sub}, ${content}, ${submissionId || null})
+          RETURNING id, org_id, content, status, submission_id, created_at
         `;
         results.push(result.rows[0]);
         break;
@@ -148,9 +158,9 @@ export async function POST(request: NextRequest) {
           return err("original, translated, and translationType are required for translations");
         }
         const result = await sql`
-          INSERT INTO translations (org_id, submitted_by, original_text, translated_text, translation_type)
-          VALUES (${targetOrgId}, ${session.sub}, ${original}, ${translated}, ${translationType})
-          RETURNING id, org_id, original_text, translated_text, translation_type, status, created_at
+          INSERT INTO translations (org_id, submitted_by, original_text, translated_text, translation_type, submission_id)
+          VALUES (${targetOrgId}, ${session.sub}, ${original}, ${translated}, ${translationType}, ${submissionId || null})
+          RETURNING id, org_id, original_text, translated_text, translation_type, status, submission_id, created_at
         `;
         results.push(result.rows[0]);
         break;
@@ -161,9 +171,9 @@ export async function POST(request: NextRequest) {
           return err("assertion and evidence are required for vault entries");
         }
         const result = await sql`
-          INSERT INTO vault_entries (org_id, submitted_by, assertion, evidence)
-          VALUES (${targetOrgId}, ${session.sub}, ${assertion}, ${evidence})
-          RETURNING id, org_id, assertion, evidence, status, created_at
+          INSERT INTO vault_entries (org_id, submitted_by, assertion, evidence, submission_id)
+          VALUES (${targetOrgId}, ${session.sub}, ${assertion}, ${evidence}, ${submissionId || null})
+          RETURNING id, org_id, assertion, evidence, status, submission_id, created_at
         `;
         results.push(result.rows[0]);
         break;

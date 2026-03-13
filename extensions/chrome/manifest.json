@@ -5,7 +5,9 @@
   "description": "Truth Will Out. Overlay community-verified corrections, affirmations, and translations on any webpage.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "notifications",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"

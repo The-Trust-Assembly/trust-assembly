@@ -655,7 +655,8 @@ async function doSubmit() {
     return;
   }
 
-  // Submit vault artifacts if any are filled out
+  // Link vault artifacts to the submission so they graduate through jury review
+  const submissionId = result.id;
   const vaultPromises = [];
 
   // Standing Correction
@@ -665,6 +666,7 @@ async function doSubmit() {
     vaultPromises.push(TA.submitVault({
       type: "vault",
       orgId,
+      submissionId,
       assertion: scAssertion.value.trim(),
       evidence: scEvidence.value.trim(),
     }));
@@ -676,6 +678,7 @@ async function doSubmit() {
     vaultPromises.push(TA.submitVault({
       type: "argument",
       orgId,
+      submissionId,
       content: argContent.value.trim(),
     }));
   }
@@ -686,6 +689,7 @@ async function doSubmit() {
     vaultPromises.push(TA.submitVault({
       type: "belief",
       orgId,
+      submissionId,
       content: beliefContent.value.trim(),
     }));
   }
@@ -698,6 +702,7 @@ async function doSubmit() {
     vaultPromises.push(TA.submitVault({
       type: "translation",
       orgId,
+      submissionId,
       original: transOrig.value.trim(),
       translated: transTrans.value.trim(),
       translationType: transType ? transType.value : "clarity",
@@ -716,7 +721,7 @@ async function doSubmit() {
     ? "Affirmation submitted! It will appear after review."
     : "Correction submitted! It will appear after review.";
   if (vaultPromises.length > 0) {
-    msgEl.textContent += ` ${vaultPromises.length} vault artifact(s) also submitted.`;
+    msgEl.textContent += ` ${vaultPromises.length} vault artifact(s) linked — they'll be reviewed with your submission.`;
   }
   msgEl.style.display = "block";
 

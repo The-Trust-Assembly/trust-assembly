@@ -288,6 +288,20 @@ const TA = {
     } catch (e) {
       return [];
     }
+  },
+
+  /**
+   * Fetch pending notifications for the current user.
+   * Returns: { totalPending, jury, applications, updates }
+   */
+  async getNotifications() {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/users/me/notifications`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
   }
 };
 
