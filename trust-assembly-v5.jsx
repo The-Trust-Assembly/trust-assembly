@@ -22,7 +22,9 @@ function buildAnonMap(submitterUsername, jurorUsernames) {
   jurorUsernames.forEach(j => { map[j] = genAnonId("Juror"); });
   return map;
 }
-function anonName(username, anonMap, isResolved) { return isResolved || !anonMap ? `@${username}` : (anonMap[username] || `@${username}`); }
+const ADMIN_USERNAME = "thekingofamerica";
+function crownUser(username) { return username === ADMIN_USERNAME ? `👑 @${username}` : `@${username}`; }
+function anonName(username, anonMap, isResolved) { return isResolved || !anonMap ? crownUser(username) : (anonMap[username] || crownUser(username)); }
 function fDate(iso) { if (!iso) return "N/A"; return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
 function sDate(iso) { if (!iso) return ""; const d = (Date.now() - new Date(iso).getTime()) / 1000; if (d < 60) return "just now"; if (d < 3600) return Math.floor(d / 60) + "m"; if (d < 86400) return Math.floor(d / 3600) + "h"; if (d < 604800) return Math.floor(d / 86400) + "d"; return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
 function daysBetween(a, b) { return Math.abs(Math.floor((new Date(a).getTime() - new Date(b).getTime()) / 86400000)); }
@@ -2037,7 +2039,7 @@ function DiscoveryFeed({ onLogin, onRegister }) {
             <div style={{ minWidth: 28, textAlign: "center", paddingTop: 2, fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : "#64748B" }}>{i + 1}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.submittedBy === ADMIN_USERNAME ? "👑 " : ""}@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
                 <StatusPill status={sub.status} />
               </div>
               <SubHeadline sub={sub} size={12} />
@@ -3463,7 +3465,7 @@ function VaultScreen({ user }) {
         {tab === "trans" && <div>
           <p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Translation Vault — plain-language replacements for jargon, spin, propaganda, and euphemisms. Approved translations can be applied automatically by the browser extension across all articles. Categories: Clarity (strip jargon), Anti-Propaganda (rename spin), Euphemism (call it what it is), Satirical (approved humor).</p>
           {translations.map(t => <div key={t.id} className="ta-card" style={{ borderLeft: "4px solid #B45309" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}><OrgLabel orgId={t.orgId} />@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}><OrgLabel orgId={t.orgId} />{t.submittedBy === ADMIN_USERNAME ? "👑 " : ""}@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
               <span style={{ textDecoration: "line-through", color: "#475569" }}>{t.original}</span>
               <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
@@ -3688,10 +3690,10 @@ function ProfileScreen({ user, onViewCitizen }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
-              {isDIUser(u) && <span style={{ marginRight: 6 }}>🤖</span>}
+              {isDIUser(u) ? <span style={{ marginRight: 6 }}>🤖</span> : u.username === ADMIN_USERNAME ? <span style={{ marginRight: 6 }}>👑</span> : null}
               @{u.displayName || u.username}
             </h3>
-            <div style={{ color: "#475569", fontSize: 13, marginTop: 3 }}>@{u.username}</div>
+            <div style={{ color: "#475569", fontSize: 13, marginTop: 3 }}>{u.username === ADMIN_USERNAME ? "👑 " : ""}@{u.username}</div>
             {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4F46E5" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} style={{ fontSize: 12, color: "#4F46E5" }} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
@@ -3815,7 +3817,7 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
-              {isDIUser(u) && <span style={{ marginRight: 6 }}>🤖</span>}
+              {isDIUser(u) ? <span style={{ marginRight: 6 }}>🤖</span> : u.username === ADMIN_USERNAME ? <span style={{ marginRight: 6 }}>👑</span> : null}
               @{u.displayName || u.username}
             </h3>
             {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "#4F46E5" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "⏳ Pending"}</div>}
@@ -3870,7 +3872,7 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
 }
 
 function UsernameLink({ username, onClick, style }) {
-  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#2563EB", fontSize: 11, textDecoration: "underline", textDecorationColor: "#CBD5E1", ...style }}>@{username}</button>;
+  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#2563EB", fontSize: 11, textDecoration: "underline", textDecorationColor: "#CBD5E1", ...style }}>{username === ADMIN_USERNAME ? "👑 " : ""}@{username}</button>;
 }
 
 function AuditScreen() {
@@ -4412,7 +4414,7 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
               return (
                 <div key={s.id} style={{ padding: 8, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 6 }}>
                   <div style={{ fontSize: 12 }}><SubHeadline sub={s} size={12} /></div>
-                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginTop: 3 }}>by @{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
+                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginTop: 3 }}>by {s.submittedBy === ADMIN_USERNAME ? "👑 " : ""}@{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
                   {alreadyConceded ? <div style={{ fontSize: 10, color: "#7C3AED", fontFamily: "var(--mono)", marginTop: 3 }}>Concession proposed</div> : (
                     <div style={{ marginTop: 6 }}>
                       <textarea value={concessionReason} onChange={e => setConcessionReason(e.target.value)} placeholder="Why should the Assembly concede?" rows={2} style={{ width: "100%", padding: 6, border: "1px solid #CBD5E1", fontSize: 12, borderRadius: 8, boxSizing: "border-box", fontFamily: "var(--body)" }} />
@@ -4560,7 +4562,7 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
             <div key={a.id} className="ta-card" style={{ borderLeft: `4px solid ${isTribal ? "#EA580C" : "#0D9488"}`, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, marginBottom: 4 }}><strong>@{a.displayName}</strong> wants to join <strong>{a.orgName}</strong></div>
+                  <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{a.userId === ADMIN_USERNAME ? "👑 " : ""}@{a.displayName}</strong> wants to join <strong>{a.orgName}</strong></div>
                   {isTribal && <span style={{ fontSize: 8, padding: "1px 5px", background: "#FFFBEB", color: "#A16207", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700, display: "inline-block", marginBottom: 4 }}>Tribal Rule — Founder Approval</span>}
                   {!isTribal && <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>{a.sponsors.length}/{a.sponsorsNeeded} sponsor{a.sponsorsNeeded > 1 ? "s" : ""} · Applied {sDate(a.createdAt)}</div>}
                   {a.reason && <div style={{ fontSize: 12, color: "#1E293B", lineHeight: 1.6, padding: 8, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8, marginBottom: 4 }}><div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>Why They Want to Join</div>{a.reason}</div>}
@@ -5844,7 +5846,7 @@ function FeedbackScreen() {
       {items.map(item => (
         <div key={item.id} className="ta-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>@{item.username}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>{item.username === ADMIN_USERNAME ? "👑 " : ""}@{item.username}</span>
             <span style={{ fontSize: 11, color: "var(--stone)" }}>{new Date(item.created_at).toLocaleString()}</span>
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--charcoal)", whiteSpace: "pre-wrap" }}>{item.message}</div>
@@ -5980,7 +5982,7 @@ export default function TrustAssembly() {
     } catch (e) { setFeedbackError("Network error"); setFeedbackSending(false); }
   };
 
-  const isAdmin = user && user.username === "thekingofamerica";
+  const isAdmin = user && user.username === ADMIN_USERNAME;
 
   if (loading) return <div className="ta-root"><Loader /></div>;
 
@@ -6127,7 +6129,7 @@ export default function TrustAssembly() {
               </nav>
               {showMoreNav && <nav className="ta-nav ta-nav-secondary" style={{ borderTop: "none", paddingTop: 0 }}>{NAV_MORE.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</button>)}{isAdmin && <button className={screen === "feedback" ? "active" : ""} onClick={() => { setScreen("feedback"); setShowMoreNav(false); }} style={{ color: "var(--sienna)", fontWeight: 600 }}>Feedback</button>}</nav>}
             </div>
-            <div className="ta-user-bar"><span>{isDIUser(user) ? "🤖 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span><button className="ta-btn-ghost" style={{ color: "#64748B" }} onClick={logout}>Sign Out</button></div>
+            <div className="ta-user-bar"><span>{isDIUser(user) ? "🤖 " : user.username === ADMIN_USERNAME ? "👑 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span><button className="ta-btn-ghost" style={{ color: "#64748B" }} onClick={logout}>Sign Out</button></div>
           </div>
           <div className="ta-content">
             <CitizenCounter />
