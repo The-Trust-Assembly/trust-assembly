@@ -608,13 +608,27 @@
 
     // Check cache first, then API
     let data = getCachedData(url);
-    if (!data) {
+    if (data) {
+      console.log("[TrustAssembly] Using cached data for:", url);
+    } else {
+      console.log("[TrustAssembly] Fetching from API for:", url);
       data = await TA.getForURL(url);
       setCachedData(url, data);
     }
 
+    console.log("[TrustAssembly] API response:", data.corrections.length, "corrections,",
+      data.affirmations.length, "affirmations,", data.translations.length, "translations");
+
     lastDataHash = hashData(data);
     applyData(data, url);
+
+    // Re-apply after a short delay to survive framework hydration (React,
+    // Vue, etc.) that can wipe injected DOM nodes shortly after initial load.
+    const site = getSiteType();
+    if (site.dynamic) {
+      setTimeout(() => reapplyToNewContent(data), 1500);
+      setTimeout(() => reapplyToNewContent(data), 4000);
+    }
 
     // Start polling for real-time updates
     startPolling(url);
@@ -1027,8 +1041,15 @@
     const headlineEls = findAllHeadlineElements();
     const articleBody = findArticleBody();
 
+    console.log("[TrustAssembly] Found", headlineEls.length, "headline elements on page");
+    headlineEls.forEach((el, i) => {
+      console.log("[TrustAssembly]   headline[" + i + "]:", JSON.stringify(el.textContent.trim().slice(0, 80)));
+    });
+
     // Resolve conflicts so we show the winning correction
     const resolved = resolveConflicts(corrections);
+
+    console.log("[TrustAssembly] Resolved to", resolved.length, "correction group(s)");
 
     // Track which corrections could not be matched to any element
     const unapplied = [];
@@ -1037,11 +1058,23 @@
       const sub = group.winner;
       if (!sub.originalHeadline || !sub.replacement) return;
 
+      console.log("[TrustAssembly] Looking for match — originalHeadline:", JSON.stringify(sub.originalHeadline.slice(0, 80)));
+
       let matched = false;
 
       // Phase 1: Match against found headline elements
       headlineEls.forEach(el => {
-        if (el.dataset.taAnnotated) return;
+        // If previously annotated, check that the annotation still exists
+        // in the DOM. Frameworks like React can re-render parent containers,
+        // removing our injected siblings while leaving the h1 intact.
+        if (el.dataset.taAnnotated) {
+          const annotationExists = el.nextElementSibling?.classList.contains("ta-inline-correction")
+            || el.parentNode?.querySelector(".ta-inline-correction");
+          if (annotationExists) return;
+          // Annotation was removed — clear flag and re-apply
+          delete el.dataset.taAnnotated;
+          el.classList.remove("ta-inline-headline-corrected");
+        }
         if (!headlinesMatch(el.textContent, sub.originalHeadline)) return;
 
         matched = true;
@@ -1137,8 +1170,10 @@
       }
 
       if (matched) {
+        console.log("[TrustAssembly] ✓ Matched and applied correction for:", JSON.stringify(sub.originalHeadline.slice(0, 80)));
         replaceHeadlineAcrossDOM(sub.originalHeadline, sub.replacement);
       } else {
+        console.log("[TrustAssembly] ✗ No match found for correction:", JSON.stringify(sub.originalHeadline.slice(0, 80)));
         unapplied.push(sub);
       }
     });
@@ -1485,7 +1520,13 @@
 
       // Phase 1: Match against headline elements
       headlineEls.forEach(el => {
-        if (el.dataset.taAnnotated) return;
+        if (el.dataset.taAnnotated) {
+          const annotationExists = el.nextElementSibling?.classList.contains("ta-inline-affirmation")
+            || el.parentNode?.querySelector(".ta-inline-affirmation");
+          if (annotationExists) return;
+          delete el.dataset.taAnnotated;
+          el.classList.remove("ta-inline-headline-affirmed");
+        }
         if (!headlinesMatch(el.textContent, sub.originalHeadline)) return;
 
         matched = true;
