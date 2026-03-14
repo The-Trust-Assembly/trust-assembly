@@ -159,8 +159,14 @@ export async function POST(request: NextRequest) {
       VALUES ('Submission filed', ${session.sub}, ${targetOrg}, 'submission', ${sub.id})
     `;
 
+    // ── Trusted contributor: auto-approve ──
+    if (trustedSkip) {
+      await sql`UPDATE submissions SET status = 'approved', resolved_at = NOW() WHERE id = ${sub.id}`;
+      await sql`UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1 WHERE id = ${session.sub}`;
+    }
+
     // ── Jury assignment (normal mode only) ──
-    if (!wildWest && initialStatus === "pending_review") {
+    if (!trustedSkip && !wildWest && initialStatus === "pending_review") {
       const jurySize = getJurySize(count);
       const poolSize = jurySize * JURY_POOL_MULTIPLIER;
 
@@ -206,10 +212,29 @@ export async function POST(request: NextRequest) {
           }))
         : [];
 
+      // Get org name for display
+      const orgRow = await sql`SELECT name FROM organizations WHERE id = ${targetOrg}`;
+      const orgName = orgRow.rows[0]?.name || "";
+
+      // Get jury pool usernames for KV store
+      const juryPool = await sql`
+        SELECT u.username FROM jury_assignments ja
+        JOIN users u ON u.id = ja.user_id
+        WHERE ja.submission_id = ${sub.id}
+      `;
+      const jurorUsernames = juryPool.rows.map((r: Record<string, unknown>) => r.username as string);
+
+      // Build anon map
+      const anonMap: Record<string, string> = {};
+      anonMap[session.sub] = `Citizen-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+      jurorUsernames.forEach((j: string, i: number) => { anonMap[j] = `Juror-${String.fromCharCode(65 + i)}`; });
+
+      const jurySize = (!wildWest && initialStatus === "pending_review") ? getJurySize(count) : (wildWest ? 1 : 0);
+
       subs[sub.id] = {
         id: sub.id,
         submissionType: submissionType,
-        status: initialStatus,
+        status: trustedSkip ? "approved" : initialStatus,
         url,
         originalHeadline,
         replacement: replacement || null,
@@ -217,14 +242,42 @@ export async function POST(request: NextRequest) {
         author: author || null,
         submittedBy: session.sub,
         orgId: targetOrg,
+        orgName,
         trustedSkip,
-        isDi: user.rows[0].is_di,
+        isDI: user.rows[0].is_di,
+        diPartner: null,
         evidence: evidence || [],
         inlineEdits: editsList,
+        standingCorrection: body.standingCorrection || null,
+        standingCorrections: body.standingCorrections || [],
+        argumentEntry: body.argumentEntry || null,
+        argumentEntries: body.argumentEntries || [],
+        beliefEntry: body.beliefEntry || null,
+        beliefEntries: body.beliefEntries || [],
+        translationEntry: body.translationEntry || null,
+        translationEntries: body.translationEntries || [],
+        linkedVaultEntries: body.linkedVaultEntries || [],
+        jurors: jurorUsernames,
+        jurySeed: Math.floor(Math.random() * 10000),
+        jurySeats: jurySize,
+        acceptedJurors: [],
+        acceptedAt: {},
+        votes: {},
+        crossGroupJurors: [],
+        crossGroupVotes: {},
+        crossGroupSeed: 0,
+        crossGroupAcceptedJurors: [],
+        crossGroupAcceptedAt: {},
+        crossGroupJurySize: 0,
+        anonMap,
         createdAt: sub.created_at,
-        resolvedAt: null,
+        resolvedAt: trustedSkip ? sub.created_at : null,
         deliberateLie: false,
-        auditTrail: [{ time: sub.created_at, action: "Submission filed" }],
+        auditTrail: [{ time: sub.created_at, action: trustedSkip
+          ? "🛡 Submitted (Trusted Contributor — jury skipped, disputable)"
+          : initialStatus === "pending_review"
+          ? `Submission received. Jury pool: ${jurorUsernames.length} jurors — ${jurySize} seats.`
+          : `Submission received. Queued — ${count} members, 5 needed.` }],
       };
 
       const json = JSON.stringify(subs);
