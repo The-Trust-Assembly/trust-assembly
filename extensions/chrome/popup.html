@@ -101,8 +101,36 @@
     .correction-item.status-consensus { border-left: 4px solid #5B2D8E; }
 
     .meta { font-size: 9px; color: #7A7570; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
-    .headline-old { font-size: 10px; color: #7A7570; margin-top: 2px; font-style: italic; }
-    .headline-new { font-size: 13px; font-weight: 700; color: #C4573F; margin-top: 2px; }
+    .headline-old { display: none; }
+    .headline-new {
+      font-size: 13px; font-weight: 700; color: #C4573F; margin-top: 2px;
+      position: relative; cursor: help;
+    }
+    .headline-new .headline-original-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 0;
+      z-index: 999;
+      background: #1B2A4A;
+      color: #F0EDE6;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.4;
+      max-width: 340px;
+      min-width: 160px;
+      white-space: normal;
+      box-shadow: 0 4px 12px rgba(27,42,74,0.3);
+      font-weight: 400;
+      font-style: normal;
+      pointer-events: none;
+    }
+    .headline-new .headline-original-tooltip .tooltip-label {
+      font-size: 8px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #B8963E; margin-bottom: 3px;
+    }
+    .headline-new:hover .headline-original-tooltip { display: block; }
     .headline-affirmed { font-size: 13px; font-weight: 700; color: #1B5E3F; }
     .trans-pair { font-size: 12px; margin-top: 2px; }
     .trans-orig { color: #7A7570; font-style: italic; }

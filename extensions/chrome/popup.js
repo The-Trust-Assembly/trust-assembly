@@ -225,8 +225,7 @@ function renderCorrectionItem(sub) {
   return `
     <div class="correction-item type-correction ${statusClass}">
       <div class="meta">🔴 Correction · ${escapeHtml(sub.orgName || "Assembly")}${relBadge(sub.orgId)} · ${formatStatus(sub.status)}</div>
-      <div class="headline-new">${escapeHtml(sub.replacement)}</div>
-      <div class="headline-old">was: ${escapeHtml(sub.originalHeadline)}</div>
+      <div class="headline-new">${escapeHtml(sub.replacement)}<div class="headline-original-tooltip"><div class="tooltip-label">Original Headline</div>${escapeHtml(sub.originalHeadline)}</div></div>
     </div>
   `;
 }

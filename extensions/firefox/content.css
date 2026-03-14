@@ -26,7 +26,7 @@
   letter-spacing: 0.02em;
   border: 1.5px solid #B8963E;
 }
-.ta-ext-badge-icon { font-size: 16px; }
+.ta-ext-badge-icon { width: 28px; height: 28px; border-radius: 2px; }
 .ta-ext-badge-count {
   background: #B8963E;
   color: #1B2A4A;
@@ -150,12 +150,7 @@
 }
 
 .ta-ext-headline-original {
-  font-size: 13px;
-  text-decoration: line-through;
-  text-decoration-color: #C4573F;
-  color: #5A5650;
-  margin-bottom: 3px;
-  line-height: 1.4;
+  display: none;
 }
 .ta-ext-headline-replacement {
   font-size: 15px;
@@ -163,6 +158,39 @@
   font-weight: 700;
   line-height: 1.4;
   margin-bottom: 6px;
+  position: relative;
+  cursor: help;
+}
+.ta-ext-headline-original-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 2147483647;
+  background: #1B2A4A;
+  color: #F0EDE6;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 400px;
+  min-width: 180px;
+  white-space: normal;
+  box-shadow: 0 4px 16px rgba(27, 42, 74, 0.3);
+  font-weight: 400;
+  font-style: normal;
+  pointer-events: none;
+}
+.ta-ext-headline-original-tooltip .ta-tooltip-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #B8963E;
+  margin-bottom: 4px;
+}
+.ta-ext-headline-replacement:hover .ta-ext-headline-original-tooltip {
+  display: block;
 }
 .ta-ext-headline-affirmed {
   font-size: 15px;
@@ -555,20 +583,10 @@
   margin-bottom: 0;
 }
 .ta-unapplied-original {
-  font-size: 14px;
-  text-decoration: line-through;
-  text-decoration-color: #B8963E;
-  color: #5A5650;
-  line-height: 1.4;
-  margin-bottom: 4px;
+  display: none;
 }
 .ta-unapplied-arrow {
-  font-size: 10px;
-  color: #B8963E;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 4px;
+  display: none;
 }
 .ta-unapplied-replacement {
   font-size: 16px;
@@ -576,6 +594,11 @@
   font-weight: 700;
   line-height: 1.4;
   margin-bottom: 6px;
+  position: relative;
+  cursor: help;
+}
+.ta-unapplied-replacement:hover .ta-ext-headline-original-tooltip {
+  display: block;
 }
 .ta-unapplied-meta {
   font-size: 11px;
