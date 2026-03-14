@@ -944,6 +944,9 @@ async function doSubmit() {
     .filter(e => e.original && e.replacement)
     .map(e => ({ original: e.original, replacement: e.replacement, reasoning: e.reasoning || null }));
 
+  // Build evidence from the article URL
+  const evidence = [{ url, explanation: "Source article under review" }];
+
   // Submit the correction/affirmation (multi-assembly via orgIds)
   const result = await TA.submitCorrection({
     submissionType: formState.submitType,
@@ -953,6 +956,7 @@ async function doSubmit() {
     reasoning,
     author: formState.selectedAuthors.length > 0 ? formState.selectedAuthors.join(", ") : null,
     orgIds: selectedOrgs,
+    evidence,
     inlineEdits: inlineEdits.length > 0 ? inlineEdits : undefined,
   });
 
@@ -970,55 +974,45 @@ async function doSubmit() {
     ? result.submissions.map(s => s.id)
     : result.id ? [result.id] : [];
 
-  // Submit vault artifacts — link to all submissions, submit to all selected orgs
+  // Submit vault artifacts — one entry per vault item per submission (each submission maps to one org)
   const vaultPromises = [];
 
-  for (const item of formState.vaultItems.correction) {
-    if (item.assertion && item.evidence) {
-      for (const subId of submissionIds) {
+  for (const subId of submissionIds) {
+    for (const item of formState.vaultItems.correction) {
+      if (item.assertion && item.evidence) {
         vaultPromises.push(TA.submitVault({
           type: "vault",
-          orgIds: selectedOrgs,
           submissionId: subId,
           assertion: item.assertion.trim(),
           evidence: item.evidence.trim(),
         }));
       }
     }
-  }
 
-  for (const item of formState.vaultItems.argument) {
-    if (item.content) {
-      for (const subId of submissionIds) {
+    for (const item of formState.vaultItems.argument) {
+      if (item.content) {
         vaultPromises.push(TA.submitVault({
           type: "argument",
-          orgIds: selectedOrgs,
           submissionId: subId,
           content: item.content.trim(),
         }));
       }
     }
-  }
 
-  for (const item of formState.vaultItems.belief) {
-    if (item.content) {
-      for (const subId of submissionIds) {
+    for (const item of formState.vaultItems.belief) {
+      if (item.content) {
         vaultPromises.push(TA.submitVault({
           type: "belief",
-          orgIds: selectedOrgs,
           submissionId: subId,
           content: item.content.trim(),
         }));
       }
     }
-  }
 
-  for (const item of formState.vaultItems.translation) {
-    if (item.original && item.translated) {
-      for (const subId of submissionIds) {
+    for (const item of formState.vaultItems.translation) {
+      if (item.original && item.translated) {
         vaultPromises.push(TA.submitVault({
           type: "translation",
-          orgIds: selectedOrgs,
           submissionId: subId,
           original: item.original.trim(),
           translated: item.translated.trim(),

@@ -133,6 +133,17 @@ async function sS(k, v) {
   } catch { return false; }
 }
 
+async function createNotification(username, type, data) {
+  const users = (await sG(SK.USERS)) || {};
+  const u = users[username];
+  if (!u) return;
+  u.notifications = u.notifications || [];
+  u.notifications.unshift({ id: gid(), type, data, read: false, createdAt: new Date().toISOString() });
+  if (u.notifications.length > 50) u.notifications = u.notifications.slice(0, 50);
+  users[username] = u;
+  await sS(SK.USERS, users);
+}
+
 async function ensureGeneralPublic() {
   // sG throws on read failure, so this will never mistake an error for "no data"
   let gpId = await sG(SK.GP);
@@ -809,7 +820,7 @@ async function recuseJuror(subId, jurorUsername, isCross = false) {
   const jurorKey = isCross ? "crossGroupJurors" : "jurors";
   const voteKey = isCross ? "crossGroupVotes" : "votes";
   if (!sub[jurorKey].includes(jurorUsername)) return { error: "Not on this jury." };
-  if (sub[voteKey][jurorUsername]) return { error: "Already voted — cannot recuse." };
+  if (sub[voteKey]?.[jurorUsername]) return { error: "Already voted — cannot recuse." };
 
   // Remove from jury
   sub[jurorKey] = sub[jurorKey].filter(j => j !== jurorUsername);
@@ -881,6 +892,12 @@ async function fileDispute(subId, disputerUsername, reasoning, evidence) {
   const disputes = (await sG(SK.DISPUTES)) || {};
   const existing = Object.values(disputes).find(d => d.subId === subId && d.status === "pending_review");
   if (existing) return { error: "This submission already has an active dispute." };
+  // Prevent re-disputes within 30 days of a resolved dispute
+  const recentDispute = Object.values(disputes).find(d => d.subId === subId && d.resolvedAt && (Date.now() - new Date(d.resolvedAt).getTime()) < 30 * 24 * 60 * 60 * 1000);
+  if (recentDispute) return { error: "This submission was disputed within the last 30 days. Please wait before re-disputing." };
+  // Cap total disputes on a single submission
+  const totalDisputes = Object.values(disputes).filter(d => d.subId === subId).length;
+  if (totalDisputes >= 3) return { error: "This submission has reached the maximum number of disputes (3)." };
 
   const now = new Date().toISOString();
   // Select jury: exclude disputer, original submitter, DI partners, and any prior jurors on the submission
@@ -932,6 +949,13 @@ async function fileDispute(subId, disputerUsername, reasoning, evidence) {
   const audit = (await sG(SK.AUDIT)) || [];
   audit.push({ time: now, action: `Dispute filed on "${sub.replacement}"` });
   await sS(SK.AUDIT, audit);
+
+  // Notify dispute jurors
+  for (const j of jurors) {
+    await createNotification(j, "dispute_jury_assigned", { disputeId: dispute.id, headline: sub.replacement || sub.originalHeadline, orgName: sub.orgName });
+  }
+  // Notify original submitter that their submission is disputed
+  await createNotification(sub.submittedBy, "submission_disputed", { disputeId: dispute.id, subId, headline: sub.replacement || sub.originalHeadline });
 
   return { success: true, disputeId: dispute.id };
 }
@@ -1027,6 +1051,13 @@ async function resolveDispute(disputeId, voterUsername, approve, note, lieChecke
     const audit = (await sG(SK.AUDIT)) || [];
     audit.push({ time: now, action: `Dispute ${d.status}: @${d.disputedBy} vs @${d.originalSubmitter} — ${disputerWins ? "Disputer wins" : "Original vindicated"}${wasLie ? " ⚠LIE" : ""}` });
     await sS(SK.AUDIT, audit);
+  }
+
+  // Notify both parties of dispute resolution
+  if (d.resolvedAt) {
+    const disputeOutcome = disputerWins ? "upheld" : "dismissed";
+    await createNotification(d.disputedBy, "dispute_resolved", { disputeId, outcome: disputeOutcome, headline: d.submissionHeadline });
+    await createNotification(d.originalSubmitter, "dispute_resolved", { disputeId, outcome: disputeOutcome, headline: d.submissionHeadline });
   }
 
   disputes[disputeId] = d;
@@ -2512,8 +2543,8 @@ function SubmitScreen({ user, onUpdate }) {
         }
       }
 
-      // Save vault entries for first org only to avoid duplicates
-      if (submittedNames.length === 0) {
+      // Save vault entries for each org (each gets its own linked entry)
+      {
         // Standing Corrections — multiple
         const validSCs = standingCorrections.filter(sc => sc.assertion.trim());
         if (validSCs.length > 0) {
@@ -2553,6 +2584,23 @@ function SubmitScreen({ user, onUpdate }) {
             allTrans[tId] = { id: tId, orgId, orgName: org.name, original: tr.original.trim(), translated: tr.translated.trim(), type: tr.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
           }
           await sS(SK.TRANSLATIONS, allTrans);
+        }
+      }
+
+      // Notify jurors of assignment
+      if (status === "pending_review" && jurors.length > 0) {
+        for (const j of jurors) {
+          await createNotification(j, "jury_assigned", { subId: sub.id, headline: sub.replacement || sub.originalHeadline, orgName: org.name });
+        }
+      }
+      // Notify DI partner
+      if (submitterIsDI && submitter.diPartner) {
+        await createNotification(submitter.diPartner, "di_needs_approval", { subId: sub.id, headline: sub.replacement || sub.originalHeadline, submittedBy: user.username });
+      }
+      // Notify cross-group jurors if trusted skip promoted
+      if (trustedSkip && sub.crossGroupJurors.length > 0) {
+        for (const j of sub.crossGroupJurors) {
+          await createNotification(j, "jury_assigned", { subId: sub.id, headline: sub.replacement || sub.originalHeadline, orgName: org.name, crossGroup: true });
         }
       }
 
@@ -2929,14 +2977,21 @@ function ReviewScreen({ user }) {
         alert("You cannot serve on this jury — you are registered to the submitter."); load(); return;
       }
     }
-    // Wild West: anyone in the org can review — auto-add to jurors and expand seats
+    // Wild West: anyone in the org can review — auto-add to jurors and expand seats (capped)
     const ww = await isWildWestMode();
     if (ww && !isCross) {
       if (!sub.jurors.includes(user.username)) {
         sub.jurors.push(user.username);
       }
-      // Expand seats to accommodate open review
-      sub.jurySeats = Math.max(sub.jurySeats || 1, sub[acceptedKey].length + 1);
+      // Expand seats to accommodate open review, but cap at getJurySize for the org
+      const orgs = (await sG(SK.ORGS)) || {};
+      const org = orgs[sub.orgId];
+      const maxSeats = org ? getJurySize((org.members || []).length) : 3;
+      sub.jurySeats = Math.min(Math.max(sub.jurySeats || 1, sub[acceptedKey].length + 1), maxSeats);
+      if (sub[acceptedKey].length >= maxSeats) {
+        alert("This jury has been filled — thank you for your willingness to serve.");
+        load(); return;
+      }
     } else {
       // Normal mode: check if jury is full
       if (sub[acceptedKey].length >= seats) {
@@ -2968,6 +3023,7 @@ function ReviewScreen({ user }) {
     if (me && me.isDI && me.diPartner === sub.submittedBy) return alert("You cannot vote on submissions from your partner.");
     const now = new Date().toISOString();
     const vk = isCross ? "crossGroupVotes" : "votes";
+    sub[vk] = sub[vk] || {};
     sub[vk][user.username] = { approve, note: voteNote.trim(), time: now, newsworthy: newsRating, interesting: funRating, deliberateLie: lieChecked, editVotes: { ...editVotes }, vaultVotes: { ...vaultVotes } };
     sub.anonMap = sub.anonMap || {};
     if (!sub.anonMap[user.username]) sub.anonMap[user.username] = genAnonId("Juror");
@@ -3003,7 +3059,7 @@ function ReviewScreen({ user }) {
         const voters = Object.values(sub[vk]);
         sub.inlineEdits.forEach((edit, idx) => {
           const editApprovals = voters.filter(v => v.editVotes && v.editVotes[idx] === true).length;
-          edit.approved = editApprovals > voters.length / 2;
+          edit.approved = editApprovals >= Math.ceil(voters.length / 2);
         });
         const editSummary = sub.inlineEdits.map((e, i) => `Edit#${i + 1}:${e.approved ? "✓" : "✗"}`).join(" ");
         sub.auditTrail.push({ time: now, action: `Edit verdicts: ${editSummary}` });
@@ -3014,7 +3070,7 @@ function ReviewScreen({ user }) {
         const vaultStores = { correction: SK.VAULT, argument: SK.ARGS, belief: SK.BELIEFS };
         for (const entry of sub.linkedVaultEntries) {
           const stillApplies = allVoters.filter(v => v.vaultVotes && v.vaultVotes[entry.id] === true).length;
-          entry.stillApplies = stillApplies > allVoters.length / 2;
+          entry.stillApplies = stillApplies >= Math.ceil(allVoters.length / 2);
           if (entry.stillApplies) {
             const storeKey = vaultStores[entry.type];
             if (storeKey) {
@@ -3073,12 +3129,13 @@ function ReviewScreen({ user }) {
             scoreTarget.assemblyStreaks[sub.orgId] = 0;
             if (wasTrusted) {
               sub.auditTrail.push({ time: now, action: `⚠ @${scoreUsername} lost Trusted Contributor status in this Assembly` });
+              await createNotification(scoreUsername, "trusted_lost", { orgName: sub.orgName });
             }
             if (wasLie) { scoreTarget.deliberateLies = (scoreTarget.deliberateLies || 0) + 1; scoreTarget.lastDeceptionFinding = now; }
             if (sm && sm.isDI) sub.auditTrail.push({ time: now, action: `📊 Loss credited to partner @${scoreUsername}${wasLie ? " ⚠ DECEPTION PENALTY APPLIED TO PARTNER" : ""}` });
           }
           scoreTarget.ratingsReceived = scoreTarget.ratingsReceived || [];
-          Object.values(sub.votes).forEach(v => { if (v.newsworthy) scoreTarget.ratingsReceived.push({ newsworthy: v.newsworthy, interesting: v.interesting }); });
+          Object.values(sub[vk]).forEach(v => { if (v.newsworthy) scoreTarget.ratingsReceived.push({ newsworthy: v.newsworthy, interesting: v.interesting }); });
           scoreTarget.reviewHistory = scoreTarget.reviewHistory || []; scoreTarget.reviewHistory.push({ subId, outcome, time: now, fromDI: sm && sm.isDI ? sub.submittedBy : undefined });
           users[scoreUsername] = scoreTarget; await sS(SK.USERS, users);
         }
@@ -3108,6 +3165,60 @@ function ReviewScreen({ user }) {
             sub.auditTrail.push({ time: now, action: `🏛 CROSS-GROUP DECEPTION FINDING on ${originOrg.name} — ${CROSS_GROUP_DECEPTION_MULT}× Assembly penalty (finding #${originOrg.crossGroupDeceptionFindings})` });
           }
           orgs2[sub.orgId] = originOrg; await sS(SK.ORGS, orgs2);
+        }
+        // Cross-group scoring for the submitter
+        const users = (await sG(SK.USERS)) || {}; const sm = users[sub.submittedBy];
+        const scoreTarget = (sm && sm.isDI && sm.diPartner && users[sm.diPartner]) ? users[sm.diPartner] : sm;
+        const scoreUsername = (sm && sm.isDI && sm.diPartner) ? sm.diPartner : sub.submittedBy;
+        if (scoreTarget) {
+          if (outcome === "approved") {
+            // Cross-group consensus is harder to achieve — award bonus win
+            scoreTarget.totalWins = (scoreTarget.totalWins || 0) + 1;
+            scoreTarget.crossGroupWins = (scoreTarget.crossGroupWins || 0) + 1;
+            sub.auditTrail.push({ time: now, action: `📊 Cross-group consensus win credited to @${scoreUsername}` });
+          } else {
+            scoreTarget.totalLosses = (scoreTarget.totalLosses || 0) + 1;
+            scoreTarget.crossGroupLosses = (scoreTarget.crossGroupLosses || 0) + 1;
+            // Cross-group rejection resets streak
+            scoreTarget.currentStreak = 0;
+            scoreTarget.assemblyStreaks = scoreTarget.assemblyStreaks || {};
+            const wasTrusted = (scoreTarget.assemblyStreaks[sub.orgId] || 0) >= TRUSTED_STREAK;
+            scoreTarget.assemblyStreaks[sub.orgId] = 0;
+            if (wasTrusted) {
+              sub.auditTrail.push({ time: now, action: `⚠ @${scoreUsername} lost Trusted Contributor status after cross-group rejection` });
+              await createNotification(scoreUsername, "trusted_lost", { orgName: sub.orgName });
+            }
+            if (wasLie) { scoreTarget.deliberateLies = (scoreTarget.deliberateLies || 0) + 1; scoreTarget.lastDeceptionFinding = now; }
+            sub.auditTrail.push({ time: now, action: `📊 Cross-group ${wasLie ? "deception" : "rejection"} loss credited to @${scoreUsername}` });
+          }
+          scoreTarget.ratingsReceived = scoreTarget.ratingsReceived || [];
+          Object.values(sub[vk]).forEach(v => { if (v.newsworthy) scoreTarget.ratingsReceived.push({ newsworthy: v.newsworthy, interesting: v.interesting }); });
+          scoreTarget.reviewHistory = scoreTarget.reviewHistory || [];
+          scoreTarget.reviewHistory.push({ subId, outcome, time: now, crossGroup: true, fromDI: sm && sm.isDI ? sub.submittedBy : undefined });
+          users[scoreUsername] = scoreTarget; await sS(SK.USERS, users);
+        }
+      }
+
+      // Notify submitter of outcome
+      await createNotification(sub.submittedBy, "submission_resolved", { subId, outcome, headline: sub.replacement || sub.originalHeadline, isCross });
+      // Notify submitter of cross-group promotion
+      if (!isCross && outcome === "approved" && sub.status === "cross_review") {
+        await createNotification(sub.submittedBy, "cross_group_started", { subId, headline: sub.replacement || sub.originalHeadline });
+        // Notify cross-group jurors
+        for (const j of sub.crossGroupJurors) {
+          await createNotification(j, "jury_assigned", { subId, headline: sub.replacement || sub.originalHeadline, orgName: sub.orgName, crossGroup: true });
+        }
+      }
+      // Notify trusted contributor status changes
+      if (!isCross) {
+        const scoreUsername2 = (sub.isDI && sub.diPartner) ? sub.diPartner : sub.submittedBy;
+        const usrs2 = (await sG(SK.USERS)) || {};
+        const st2 = usrs2[scoreUsername2];
+        if (st2) {
+          const streak = (st2.assemblyStreaks || {})[sub.orgId] || 0;
+          if (outcome === "approved" && streak === TRUSTED_STREAK) {
+            await createNotification(scoreUsername2, "trusted_earned", { orgName: sub.orgName });
+          }
         }
       }
     }
@@ -3422,6 +3533,14 @@ function DIPanelContent({ user, subs, onReload }) {
     } else {
       sub.status = "pending_jury";
       sub.auditTrail.push({ time: now, action: `👤 Partner @${user.username} approved. Queued — ${org ? org.members.length : 0} members, 5 needed.` });
+    }
+    // Notify DI submitter that partner approved
+    await createNotification(sub.submittedBy, "di_approved", { subId, headline: sub.replacement || sub.originalHeadline, approvedBy: user.username });
+    // Notify jurors if assigned
+    if (sub.status === "pending_review" && sub.jurors && sub.jurors.length > 0) {
+      for (const j of sub.jurors) {
+        await createNotification(j, "jury_assigned", { subId, headline: sub.replacement || sub.originalHeadline, orgName: sub.orgName });
+      }
     }
     allSubs[subId] = sub; await sS(SK.SUBS, allSubs); onReload();
   };
@@ -6156,6 +6275,24 @@ const NAV_MORE = [
   { key: "about", label: "About" }, { key: "vision", label: "Vision" }, { key: "extensions", label: "Extension" },
 ];
 
+function formatNotification(n) {
+  const d = n.data || {};
+  switch (n.type) {
+    case "jury_assigned": return `You've been selected as a juror for a ${d.submissionType || "submission"}.`;
+    case "submission_resolved": return `Your submission was ${d.outcome === "approved" ? "approved" : d.outcome === "rejected" ? "rejected" : d.outcome || "resolved"}.`;
+    case "cross_group_started": return "Your submission has been promoted to cross-group review!";
+    case "consensus_reached": return "Your submission achieved cross-group consensus!";
+    case "consensus_rejected": return "Your submission was rejected in cross-group review.";
+    case "dispute_jury_assigned": return "You've been assigned to a dispute jury.";
+    case "submission_disputed": return "Your approved submission has been disputed.";
+    case "dispute_resolved": return `A dispute was resolved: ${d.outcome || "see details"}.`;
+    case "di_approved": return "Your DI submission was approved by your human partner.";
+    case "trusted_earned": return "You've earned Trusted Contributor status! Your submissions now skip jury review.";
+    case "trusted_lost": return "Your Trusted Contributor status was revoked after a rejection.";
+    default: return d.message || "New notification";
+  }
+}
+
 export default function TrustAssembly() {
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
@@ -6170,6 +6307,8 @@ export default function TrustAssembly() {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
@@ -6253,7 +6392,7 @@ export default function TrustAssembly() {
           if (serverUser?.username) {
             const users = (await sG(SK.USERS)) || {};
             const u = users[serverUser.username];
-            if (u) { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
+            if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
           }
         }
       } catch (e) { console.error("Init error:", e); }
@@ -6267,8 +6406,25 @@ export default function TrustAssembly() {
     check(); const i = setInterval(check, 5000); return () => clearInterval(i);
   }, [user, screen]);
 
-  const refreshUser = async () => { try { if (!user) return; const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setUser(all[user.username]); } catch {} };
+  const refreshUser = async () => { try { if (!user) return; const all = (await sG(SK.USERS)) || {}; const u = all[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); } } catch {} };
   useEffect(() => { if (user) refreshUser(); }, [screen]);
+
+  // Mark notifications as read
+  const markNotifsRead = async () => {
+    if (!user || notifications.length === 0) return;
+    const unread = notifications.filter(n => !n.read);
+    if (unread.length === 0) return;
+    try {
+      const users = (await sG(SK.USERS)) || {};
+      const u = users[user.username];
+      if (u && u.notifications) {
+        u.notifications = u.notifications.map(n => ({ ...n, read: true }));
+        users[user.username] = u;
+        await sS(SK.USERS, users);
+        setNotifications(u.notifications);
+      }
+    } catch {}
+  };
 
   const logout = async () => {
     try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
@@ -6343,6 +6499,18 @@ export default function TrustAssembly() {
         .ta-success { background:#ECFDF5; border:1px solid var(--evergreen); color:var(--evergreen); padding:8px 12px; margin-bottom:14px; font-size:12px; border-radius:6px; }
         .ta-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--stone); font-family:var(--font); }
         @media(max-width:640px) { .ta-masthead h1{font-size:20px} .ta-content{padding:14px} .ta-nav button{padding:7px 7px;font-size:9px} .ta-section-head{font-size:20px} }
+        .ta-notif-bell { position:relative; color:var(--stone); padding:4px; cursor:pointer; }
+        .ta-notif-bell:hover { color:var(--charcoal); }
+        .ta-notif-badge { position:absolute; top:-2px; right:-4px; background:var(--fired-clay); color:#fff; font-size:8px; min-width:14px; height:14px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-weight:700; padding:0 3px; }
+        .ta-notif-dropdown { position:absolute; top:28px; right:0; width:300px; max-height:400px; background:#fff; border:1px solid var(--brass); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); z-index:100; overflow:hidden; }
+        .ta-notif-header { padding:10px 14px; font-size:12px; font-weight:700; border-bottom:1px solid var(--brass); color:var(--navy); }
+        .ta-notif-empty { padding:24px 14px; text-align:center; color:var(--stone); font-size:12px; }
+        .ta-notif-list { max-height:350px; overflow-y:auto; }
+        .ta-notif-item { padding:10px 14px; border-bottom:1px solid #f1f5f9; font-size:12px; }
+        .ta-notif-item:last-child { border-bottom:none; }
+        .ta-notif-unread { background:#f0f7ff; }
+        .ta-notif-text { color:var(--charcoal); line-height:1.4; }
+        .ta-notif-time { color:var(--stone); font-size:10px; margin-top:3px; }
         .ta-feedback-fab { position:fixed; bottom:24px; right:24px; z-index:90; background:var(--accent); color:#fff; border:none; padding:10px 16px; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; border-radius:24px; box-shadow:0 2px 8px rgba(37,99,235,0.3); transition:all 0.2s; }
         .ta-feedback-fab:hover { background:var(--accent-hover); box-shadow:0 4px 12px rgba(37,99,235,0.4); transform:translateY(-1px); }
         .ta-feedback-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -6437,7 +6605,35 @@ export default function TrustAssembly() {
               </nav>
               {showMoreNav && <nav className="ta-nav ta-nav-secondary" style={{ borderTop: "none", paddingTop: 0 }}>{NAV_MORE.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</button>)}{isAdmin && <button className={screen === "feedback" ? "active" : ""} onClick={() => { setScreen("feedback"); setShowMoreNav(false); }} style={{ color: "var(--sienna)", fontWeight: 600 }}>Feedback</button>}</nav>}
             </div>
-            <div className="ta-user-bar"><span>{isDIUser(user) ? "🤖 " : user.username === ADMIN_USERNAME ? "👑 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span><button className="ta-btn-ghost" style={{ color: "#64748B" }} onClick={logout}>Sign Out</button></div>
+            <div className="ta-user-bar">
+              <span>{isDIUser(user) ? "🤖 " : user.username === ADMIN_USERNAME ? "👑 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ position: "relative" }}>
+                  <button className="ta-btn-ghost ta-notif-bell" onClick={() => { setShowNotifDropdown(v => !v); if (!showNotifDropdown) markNotifsRead(); }} title="Notifications">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    {notifications.filter(n => !n.read).length > 0 && <span className="ta-notif-badge">{notifications.filter(n => !n.read).length}</span>}
+                  </button>
+                  {showNotifDropdown && (
+                    <div className="ta-notif-dropdown">
+                      <div className="ta-notif-header">Notifications</div>
+                      {notifications.length === 0 ? (
+                        <div className="ta-notif-empty">No notifications yet</div>
+                      ) : (
+                        <div className="ta-notif-list">
+                          {notifications.slice(0, 20).map(n => (
+                            <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`}>
+                              <div className="ta-notif-text">{formatNotification(n)}</div>
+                              <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button className="ta-btn-ghost" style={{ color: "#64748B" }} onClick={logout}>Sign Out</button>
+              </div>
+            </div>
           </div>
           <div className="ta-content">
             <CitizenCounter />
