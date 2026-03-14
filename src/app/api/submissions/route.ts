@@ -70,154 +70,177 @@ export async function POST(request: NextRequest) {
   if (!session) return unauthorized();
 
   const body = await request.json();
-  const { submissionType, url, originalHeadline, replacement, reasoning, author, orgId, evidence } = body;
+  const { submissionType, url, originalHeadline, replacement, reasoning, author, orgId, orgIds, evidence, inlineEdits } = body;
+
+  // Support single orgId or multiple orgIds for multi-assembly submission
+  const targetOrgIds: string[] = orgIds && Array.isArray(orgIds) && orgIds.length > 0
+    ? orgIds
+    : orgId ? [orgId] : [];
 
   // Validate required fields
-  if (!submissionType || !url || !originalHeadline || !reasoning || !orgId) {
-    return err("submissionType, url, originalHeadline, reasoning, and orgId are required");
+  if (!submissionType || !url || !originalHeadline || !reasoning || targetOrgIds.length === 0) {
+    return err("submissionType, url, originalHeadline, reasoning, and orgId (or orgIds) are required");
   }
 
   if (submissionType === "correction" && !replacement) {
     return err("Corrections require a replacement headline");
   }
 
-  // Verify user is member of org
-  const membership = await sql`
-    SELECT id FROM organization_members
-    WHERE org_id = ${orgId} AND user_id = ${session.sub} AND is_active = TRUE
-  `;
-  if (membership.rows.length === 0) {
-    return err("You must be a member of this assembly to submit");
+  // Verify user is member of all target orgs
+  for (const targetOrg of targetOrgIds) {
+    const membership = await sql`
+      SELECT id FROM organization_members
+      WHERE org_id = ${targetOrg} AND user_id = ${session.sub} AND is_active = TRUE
+    `;
+    if (membership.rows.length === 0) {
+      return err("You must be a member of all selected assemblies to submit");
+    }
   }
 
-  // Check member count for initial status
   const wildWest = await isWildWestMode();
-  const memberCount = await sql`
-    SELECT COUNT(*) as count FROM organization_members
-    WHERE org_id = ${orgId} AND is_active = TRUE
-  `;
-  const count = parseInt(memberCount.rows[0].count);
-  // Wild West: only need 2 members (submitter + 1 reviewer); normal: need 5
-  const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
-
-  // Check if user is trusted contributor (10+ streak) — disabled in Wild West mode
   const user = await sql`SELECT current_streak, is_di FROM users WHERE id = ${session.sub}`;
   const trustedSkip = !wildWest && user.rows[0].current_streak >= 10;
-
-  // In Wild West mode, only 1 jury seat is needed
   const jurySeats = wildWest ? 1 : null;
 
-  // Create submission
-  const result = await sql`
-    INSERT INTO submissions (
-      submission_type, status, url, original_headline, replacement,
-      reasoning, author, submitted_by, org_id, trusted_skip, is_di, jury_seats
-    ) VALUES (
-      ${submissionType}, ${initialStatus}, ${url}, ${originalHeadline},
-      ${replacement || null}, ${reasoning}, ${author || null},
-      ${session.sub}, ${orgId}, ${trustedSkip}, ${user.rows[0].is_di}, ${jurySeats}
-    ) RETURNING id, submission_type, status, created_at
-  `;
+  const createdSubs: Record<string, unknown>[] = [];
 
-  const sub = result.rows[0];
+  for (const targetOrg of targetOrgIds) {
+    // Check member count for initial status
+    const memberCount = await sql`
+      SELECT COUNT(*) as count FROM organization_members
+      WHERE org_id = ${targetOrg} AND is_active = TRUE
+    `;
+    const count = parseInt(memberCount.rows[0].count);
+    const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
-  // Insert evidence if provided
-  if (evidence && Array.isArray(evidence)) {
-    for (let i = 0; i < evidence.length; i++) {
-      const e = evidence[i];
-      if (e.url && e.explanation) {
+    // Create submission
+    const result = await sql`
+      INSERT INTO submissions (
+        submission_type, status, url, original_headline, replacement,
+        reasoning, author, submitted_by, org_id, trusted_skip, is_di, jury_seats
+      ) VALUES (
+        ${submissionType}, ${initialStatus}, ${url}, ${originalHeadline},
+        ${replacement || null}, ${reasoning}, ${author || null},
+        ${session.sub}, ${targetOrg}, ${trustedSkip}, ${user.rows[0].is_di}, ${jurySeats}
+      ) RETURNING id, submission_type, status, created_at
+    `;
+
+    const sub = result.rows[0];
+
+    // Insert evidence if provided
+    if (evidence && Array.isArray(evidence)) {
+      for (let i = 0; i < evidence.length; i++) {
+        const e = evidence[i];
+        if (e.url && e.explanation) {
+          await sql`
+            INSERT INTO submission_evidence (submission_id, url, explanation, sort_order)
+            VALUES (${sub.id}, ${e.url}, ${e.explanation}, ${i})
+          `;
+        }
+      }
+    }
+
+    // Insert inline edits (body corrections) if provided
+    if (inlineEdits && Array.isArray(inlineEdits)) {
+      for (let i = 0; i < inlineEdits.length; i++) {
+        const edit = inlineEdits[i];
+        if (edit.original && edit.replacement) {
+          await sql`
+            INSERT INTO submission_inline_edits (submission_id, original_text, replacement_text, reasoning, sort_order)
+            VALUES (${sub.id}, ${edit.original}, ${edit.replacement}, ${edit.reasoning || null}, ${i})
+          `;
+        }
+      }
+    }
+
+    // Audit log
+    await sql`
+      INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
+      VALUES ('Submission filed', ${session.sub}, ${targetOrg}, 'submission', ${sub.id})
+    `;
+
+    // ── Jury assignment (normal mode only) ──
+    if (!wildWest && initialStatus === "pending_review") {
+      const jurySize = getJurySize(count);
+      const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+
+      await sql`
+        UPDATE submissions SET jury_seats = ${jurySize} WHERE id = ${sub.id}
+      `;
+
+      const diPartnerId = user.rows[0].is_di ? (await sql`SELECT di_partner_id FROM users WHERE id = ${session.sub}`).rows[0]?.di_partner_id : null;
+
+      const pool = await sql`
+        SELECT om.user_id
+        FROM organization_members om
+        WHERE om.org_id = ${targetOrg}
+          AND om.is_active = TRUE
+          AND om.user_id != ${session.sub}
+          AND (${diPartnerId}::uuid IS NULL OR om.user_id != ${diPartnerId})
+        ORDER BY RANDOM()
+        LIMIT ${poolSize}
+      `;
+
+      for (const juror of pool.rows) {
         await sql`
-          INSERT INTO submission_evidence (submission_id, url, explanation, sort_order)
-          VALUES (${sub.id}, ${e.url}, ${e.explanation}, ${i})
+          INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+          VALUES (${sub.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
+          ON CONFLICT DO NOTHING
         `;
       }
     }
-  }
 
-  // Audit log
-  await sql`
-    INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
-    VALUES ('Submission filed', ${session.sub}, ${orgId}, 'submission', ${sub.id})
-  `;
+    // ── KV store sync ──
+    try {
+      const SK_SUBS = "ta-s-v5";
+      const kvResult = await sql`SELECT value FROM kv_store WHERE key = ${SK_SUBS}`;
+      const subs = kvResult.rows.length > 0 && kvResult.rows[0].value
+        ? JSON.parse(kvResult.rows[0].value)
+        : {};
 
-  // ── Jury assignment (normal mode only) ──
-  // In Wild West mode, any org member can vote without formal assignment.
-  // In normal mode, we need to draw a jury from the org's active members.
-  if (!wildWest && initialStatus === "pending_review") {
-    const jurySize = getJurySize(count);
-    const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+      const editsList = (inlineEdits && Array.isArray(inlineEdits))
+        ? inlineEdits.filter((e: Record<string, unknown>) => e.original && e.replacement).map((e: Record<string, unknown>) => ({
+            original: e.original,
+            replacement: e.replacement,
+            reasoning: e.reasoning || null,
+          }))
+        : [];
 
-    // Update jury_seats on the submission so vote resolution knows the target
-    await sql`
-      UPDATE submissions SET jury_seats = ${jurySize} WHERE id = ${sub.id}
-    `;
+      subs[sub.id] = {
+        id: sub.id,
+        submissionType: submissionType,
+        status: initialStatus,
+        url,
+        originalHeadline,
+        replacement: replacement || null,
+        reasoning,
+        author: author || null,
+        submittedBy: session.sub,
+        orgId: targetOrg,
+        trustedSkip,
+        isDi: user.rows[0].is_di,
+        evidence: evidence || [],
+        inlineEdits: editsList,
+        createdAt: sub.created_at,
+        resolvedAt: null,
+        deliberateLie: false,
+        auditTrail: [{ time: sub.created_at, action: "Submission filed" }],
+      };
 
-    // Draw eligible jurors: active org members who are NOT the submitter
-    // and NOT the DI partner (if applicable)
-    const diPartnerId = user.rows[0].is_di ? (await sql`SELECT di_partner_id FROM users WHERE id = ${session.sub}`).rows[0]?.di_partner_id : null;
-
-    const pool = await sql`
-      SELECT om.user_id
-      FROM organization_members om
-      WHERE om.org_id = ${orgId}
-        AND om.is_active = TRUE
-        AND om.user_id != ${session.sub}
-        AND (${diPartnerId}::uuid IS NULL OR om.user_id != ${diPartnerId})
-      ORDER BY RANDOM()
-      LIMIT ${poolSize}
-    `;
-
-    for (const juror of pool.rows) {
+      const json = JSON.stringify(subs);
       await sql`
-        INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
-        VALUES (${sub.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
-        ON CONFLICT DO NOTHING
+        INSERT INTO kv_store (key, value, updated_at)
+        VALUES (${SK_SUBS}, ${json}, now())
+        ON CONFLICT (key)
+        DO UPDATE SET value = ${json}, updated_at = now()
       `;
+    } catch (e) {
+      console.error("KV sync failed:", e);
     }
+
+    createdSubs.push(sub);
   }
 
-  // ── KV store sync ──
-  // The browser extension reads from the KV store, so new submissions must
-  // be written there for the full pipeline to work.
-  try {
-    const SK_SUBS = "ta-s-v5";
-    const kvResult = await sql`SELECT value FROM kv_store WHERE key = ${SK_SUBS}`;
-    const subs = kvResult.rows.length > 0 && kvResult.rows[0].value
-      ? JSON.parse(kvResult.rows[0].value)
-      : {};
-
-    subs[sub.id] = {
-      id: sub.id,
-      submissionType: submissionType,
-      status: initialStatus,
-      url,
-      originalHeadline,
-      replacement: replacement || null,
-      reasoning,
-      author: author || null,
-      submittedBy: session.sub,
-      orgId,
-      trustedSkip,
-      isDi: user.rows[0].is_di,
-      evidence: evidence || [],
-      inlineEdits: [],
-      createdAt: sub.created_at,
-      resolvedAt: null,
-      deliberateLie: false,
-      auditTrail: [{ time: sub.created_at, action: "Submission filed" }],
-    };
-
-    const json = JSON.stringify(subs);
-    await sql`
-      INSERT INTO kv_store (key, value, updated_at)
-      VALUES (${SK_SUBS}, ${json}, now())
-      ON CONFLICT (key)
-      DO UPDATE SET value = ${json}, updated_at = now()
-    `;
-  } catch (e) {
-    // KV sync is non-critical — don't fail the submission
-    console.error("KV sync failed:", e);
-  }
-
-  return ok(sub, 201);
+  // Return single for backward compat, array for multi-org
+  return ok(createdSubs.length === 1 ? createdSubs[0] : { submissions: createdSubs, count: createdSubs.length }, 201);
 }

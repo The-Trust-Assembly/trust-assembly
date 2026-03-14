@@ -2310,7 +2310,14 @@ function clearDraft(key) { try { localStorage.removeItem(key); } catch {} }
 
 function SubmitScreen({ user, onUpdate }) {
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
+  const [authors, setAuthors] = useState([]);
+  const [authorInput, setAuthorInput] = useState("");
   const [inlineEdits, setInlineEdits] = useState([{ original: "", replacement: "", reasoning: "" }]);
+  const [standingCorrections, setStandingCorrections] = useState([{ assertion: "", evidence: "" }]);
+  const [submitArgs, setSubmitArgs] = useState([""]);
+  const [submitBeliefs, setSubmitBeliefs] = useState([""]);
+  const [submitTranslations, setSubmitTranslations] = useState([{ original: "", translated: "", type: "clarity" }]);
+  // Legacy single-entry state aliases for draft restore compatibility
   const [standingCorrection, setStandingCorrection] = useState({ assertion: "", evidence: "" });
   const [submitArg, setSubmitArg] = useState("");
   const [submitBelief, setSubmitBelief] = useState("");
@@ -2324,10 +2331,17 @@ function SubmitScreen({ user, onUpdate }) {
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
 
   // Auto-save draft
-  const draftState = useMemo(() => ({ form, inlineEdits, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds }), [form, inlineEdits, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds]);
+  const draftState = useMemo(() => ({ form, authors, inlineEdits, standingCorrections, submitArgs, submitBeliefs, submitTranslations, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds }), [form, authors, inlineEdits, standingCorrections, submitArgs, submitBeliefs, submitTranslations, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds]);
   useDraft("ta_draft_submit", draftState, (d) => {
     if (d.form) setForm(f => ({ ...f, ...d.form }));
+    if (d.authors) setAuthors(d.authors);
     if (d.inlineEdits) setInlineEdits(d.inlineEdits);
+    // Restore multi-entry vault state
+    if (d.standingCorrections) setStandingCorrections(d.standingCorrections);
+    if (d.submitArgs) setSubmitArgs(d.submitArgs);
+    if (d.submitBeliefs) setSubmitBeliefs(d.submitBeliefs);
+    if (d.submitTranslations) setSubmitTranslations(d.submitTranslations);
+    // Legacy single-entry restore
     if (d.standingCorrection) setStandingCorrection(d.standingCorrection);
     if (d.submitArg !== undefined) setSubmitArg(d.submitArg);
     if (d.submitBelief !== undefined) setSubmitBelief(d.submitBelief);
@@ -2449,15 +2463,20 @@ function SubmitScreen({ user, onUpdate }) {
         }
       }
       const jurySeats = wildWest ? 1 : getJurySize(org.members.length);
+      const authorStr = authors.length > 0 ? authors.join(", ") : (form.author ? form.author.trim() : null);
       const sub = {
         id: gid(), url: form.url.trim(), originalHeadline: form.originalHeadline.trim(),
         replacement: form.replacement.trim(), reasoning: form.reasoning.trim(),
-        author: form.author.trim() || null, submissionType: form.submissionType,
+        author: authorStr, submissionType: form.submissionType,
         evidence: validEvidence, inlineEdits: validEdits.length > 0 ? validEdits : [],
-        standingCorrection: standingCorrection.assertion.trim() ? standingCorrection : null,
-        argumentEntry: submitArg.trim() ? { content: submitArg.trim() } : null,
-        beliefEntry: submitBelief.trim() ? { content: submitBelief.trim() } : null,
-        translationEntry: submitTranslation.original.trim() && submitTranslation.translated.trim() ? submitTranslation : null,
+        standingCorrection: standingCorrections.find(sc => sc.assertion.trim()) || null,
+        standingCorrections: standingCorrections.filter(sc => sc.assertion.trim()),
+        argumentEntry: submitArgs.find(a => a.trim()) ? { content: submitArgs.find(a => a.trim()) } : null,
+        argumentEntries: submitArgs.filter(a => a.trim()).map(a => ({ content: a.trim() })),
+        beliefEntry: submitBeliefs.find(b => b.trim()) ? { content: submitBeliefs.find(b => b.trim()) } : null,
+        beliefEntries: submitBeliefs.filter(b => b.trim()).map(b => ({ content: b.trim() })),
+        translationEntry: submitTranslations.find(t => t.original.trim() && t.translated.trim()) || null,
+        translationEntries: submitTranslations.filter(t => t.original.trim() && t.translated.trim()),
         linkedVaultEntries: linkedEntries.length > 0 ? linkedEntries.map(e => ({ id: e.id, type: e.type, label: e.label, detail: e.detail || null })) : [],
         submittedBy: user.username, orgId, orgName: org.name,
         status, jurors, jurySeed, jurySeats, acceptedJurors: [], acceptedAt: {}, votes: {}, trustedSkip,
@@ -2495,28 +2514,44 @@ function SubmitScreen({ user, onUpdate }) {
 
       // Save vault entries for first org only to avoid duplicates
       if (submittedNames.length === 0) {
-        if (standingCorrection.assertion.trim()) {
+        // Standing Corrections — multiple
+        const validSCs = standingCorrections.filter(sc => sc.assertion.trim());
+        if (validSCs.length > 0) {
           const standing = (await sG(SK.VAULT)) || {};
-          const scId = gid();
-          standing[scId] = { id: scId, orgId, orgName: org.name, assertion: standingCorrection.assertion.trim(), evidence: standingCorrection.evidence.trim(), submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, votes: {} };
+          for (const sc of validSCs) {
+            const scId = gid();
+            standing[scId] = { id: scId, orgId, orgName: org.name, assertion: sc.assertion.trim(), evidence: sc.evidence.trim(), submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, votes: {} };
+          }
           await sS(SK.VAULT, standing);
         }
-        if (submitArg.trim()) {
+        // Arguments — multiple
+        const validArgs = submitArgs.filter(a => a.trim());
+        if (validArgs.length > 0) {
           const allArgs = (await sG(SK.ARGS)) || {};
-          const argId = gid();
-          allArgs[argId] = { id: argId, orgId, orgName: org.name, content: submitArg.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          for (const arg of validArgs) {
+            const argId = gid();
+            allArgs[argId] = { id: argId, orgId, orgName: org.name, content: arg.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          }
           await sS(SK.ARGS, allArgs);
         }
-        if (submitBelief.trim()) {
+        // Beliefs — multiple
+        const validBeliefs = submitBeliefs.filter(b => b.trim());
+        if (validBeliefs.length > 0) {
           const allBeliefs = (await sG(SK.BELIEFS)) || {};
-          const bId = gid();
-          allBeliefs[bId] = { id: bId, orgId, orgName: org.name, content: submitBelief.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          for (const belief of validBeliefs) {
+            const bId = gid();
+            allBeliefs[bId] = { id: bId, orgId, orgName: org.name, content: belief.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
+          }
           await sS(SK.BELIEFS, allBeliefs);
         }
-        if (submitTranslation.original.trim() && submitTranslation.translated.trim()) {
+        // Translations — multiple
+        const validTrans = submitTranslations.filter(t => t.original.trim() && t.translated.trim());
+        if (validTrans.length > 0) {
           const allTrans = (await sG(SK.TRANSLATIONS)) || {};
-          const tId = gid();
-          allTrans[tId] = { id: tId, orgId, orgName: org.name, original: submitTranslation.original.trim(), translated: submitTranslation.translated.trim(), type: submitTranslation.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
+          for (const tr of validTrans) {
+            const tId = gid();
+            allTrans[tId] = { id: tId, orgId, orgName: org.name, original: tr.original.trim(), translated: tr.translated.trim(), type: tr.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
+          }
           await sS(SK.TRANSLATIONS, allTrans);
         }
       }
@@ -2531,7 +2566,7 @@ function SubmitScreen({ user, onUpdate }) {
     setLoading(false);
     if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
-    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArg(""); setSubmitBelief(""); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
+    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setAuthors([]); setAuthorInput(""); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrections([{ assertion: "", evidence: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArgs([""]); setSubmitArg(""); setSubmitBeliefs([""]); setSubmitBelief(""); setSubmitTranslations([{ original: "", translated: "", type: "clarity" }]); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
     clearDraft("ta_draft_submit");
   };
 
@@ -2605,7 +2640,28 @@ function SubmitScreen({ user, onUpdate }) {
           <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
-            <div className="ta-field"><label>Author <span style={{ fontWeight: 400, color: "#64748B" }}>(optional)</span></label><input value={form.author} onChange={e => setForm({ ...form, author: e.target.value })} placeholder="Who wrote the article" maxLength={200} /></div>
+            <div className="ta-field"><label>Author(s) <span style={{ fontWeight: 400, color: "#64748B" }}>(optional — up to 10)</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6, minHeight: 24 }}>
+                {authors.map((a, i) => (
+                  <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: 12, fontSize: 11, color: "#0F172A" }}>
+                    {a}
+                    <span onClick={() => setAuthors(authors.filter((_, j) => j !== i))} style={{ cursor: "pointer", color: "#DC2626", fontSize: 13, lineHeight: 1 }}>&times;</span>
+                  </span>
+                ))}
+              </div>
+              {authors.length < 10 && <input value={authorInput} onChange={e => setAuthorInput(e.target.value)} onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const name = authorInput.trim();
+                  if (name && authors.length < 10 && !authors.includes(name)) {
+                    setAuthors([...authors, name]);
+                    setAuthorInput("");
+                    // Sync to form.author for backward compat
+                    setForm(f => ({ ...f, author: [...authors, name].join(", ") }));
+                  }
+                }
+              }} placeholder="Type author name and press Enter" maxLength={200} />}
+            </div>
           </div>
         </div>}
       </div>
@@ -2650,7 +2706,7 @@ function SubmitScreen({ user, onUpdate }) {
       {/* ── STEP 4: Assembly Vault (optional) ── */}
       <div className="ta-card" style={{ borderRadius: "0 0 2px 2px" }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 4 ? 0 : 4 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#059669" : "#CBD5E1", color: linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "#fff" : "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{linkedEntries.length > 0 || standingCorrection.assertion || submitArg || submitBelief || submitTranslation.original ? "✓" : "4"}</span>
+          <span style={{ width: 24, height: 24, borderRadius: "50%", background: linkedEntries.length > 0 || standingCorrections.some(sc => sc.assertion) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original) ? "#059669" : "#CBD5E1", color: linkedEntries.length > 0 || standingCorrections.some(sc => sc.assertion) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original) ? "#fff" : "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{linkedEntries.length > 0 || standingCorrections.some(sc => sc.assertion) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original) ? "✓" : "4"}</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>Assembly Vault <span style={{ fontWeight: 400, color: "#64748B", fontSize: 11 }}>optional</span></div>
             <div style={{ fontSize: 11, color: "#64748B" }}>Link reusable facts, arguments, beliefs, or translations to strengthen your submission.</div>
@@ -2702,38 +2758,78 @@ function SubmitScreen({ user, onUpdate }) {
             </div>}
           </div>
 
-          {/* Propose new entries */}
+          {/* Propose new entries — supports multiples */}
           <details style={{ marginTop: 4 }}>
-            <summary style={{ cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#475569", padding: "6px 0" }}>+ Propose New Vault Entry</summary>
+            <summary style={{ cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#475569", padding: "6px 0" }}>+ Propose New Vault Entries</summary>
             <div style={{ marginTop: 10 }}>
+              {/* Standing Corrections — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span style={{ color: "#059669" }}>🏛</span> Standing Correction <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— a reusable fact</span></div>
-                <StandingCorrectionInput value={standingCorrection} onChange={setStandingCorrection} />
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span style={{ color: "#059669" }}>🏛</span> Standing Corrections <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— reusable facts</span></div>
+                {standingCorrections.map((sc, i) => (
+                  <div key={i} style={{ marginBottom: 8, padding: i > 0 ? "8px 0 0 0" : 0, borderTop: i > 0 ? "1px solid #E2E8F0" : "none" }}>
+                    {standingCorrections.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 9, color: "#64748B" }}>#{i + 1}</span>
+                      <button onClick={() => setStandingCorrections(standingCorrections.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>&times; Remove</button>
+                    </div>}
+                    <StandingCorrectionInput value={sc} onChange={v => { const next = [...standingCorrections]; next[i] = v; setStandingCorrections(next); setStandingCorrection(next[0] || { assertion: "", evidence: "" }); }} />
+                  </div>
+                ))}
+                <button onClick={() => setStandingCorrections([...standingCorrections, { assertion: "", evidence: "" }])} style={{ background: "none", border: "1px dashed #CBD5E1", color: "#059669", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", padding: "4px 10px", borderRadius: 8, width: "100%", marginTop: 4 }}>+ Add another standing correction</button>
               </div>
 
+              {/* Arguments — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>⚔️</span> Argument <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— a reusable rhetorical or logical tool</span></div>
-                <textarea className="ta-field" value={submitArg} onChange={e => setSubmitArg(e.target.value)} rows={2} placeholder='e.g. "When an article cites unnamed experts, the absence of names IS the story."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", resize: "vertical" }} />
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>⚔️</span> Arguments <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— reusable rhetorical or logical tools</span></div>
+                {submitArgs.map((arg, i) => (
+                  <div key={i} style={{ marginBottom: 8, position: "relative" }}>
+                    {submitArgs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 9, color: "#64748B" }}>#{i + 1}</span>
+                      <button onClick={() => { const next = submitArgs.filter((_, j) => j !== i); setSubmitArgs(next); setSubmitArg(next[0] || ""); }} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>&times; Remove</button>
+                    </div>}
+                    <textarea className="ta-field" value={arg} onChange={e => { const next = [...submitArgs]; next[i] = e.target.value; setSubmitArgs(next); setSubmitArg(next[0] || ""); }} rows={2} placeholder='e.g. "When an article cites unnamed experts, the absence of names IS the story."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", resize: "vertical" }} />
+                  </div>
+                ))}
+                <button onClick={() => setSubmitArgs([...submitArgs, ""])} style={{ background: "none", border: "1px dashed #CBD5E1", color: "#0D9488", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", padding: "4px 10px", borderRadius: 8, width: "100%", marginTop: 4 }}>+ Add another argument</button>
               </div>
 
-              <div style={{ padding: 12, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🧭</span> Foundational Belief <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— an axiom your Assembly holds</span></div>
-                <textarea value={submitBelief} onChange={e => setSubmitBelief(e.target.value)} rows={2} placeholder='e.g. "Every person deserves to make informed decisions based on truthful reporting."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", resize: "vertical" }} />
+              {/* Beliefs — multiple */}
+              <div style={{ marginBottom: 12, padding: 12, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🧭</span> Foundational Beliefs <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— axioms your Assembly holds</span></div>
+                {submitBeliefs.map((belief, i) => (
+                  <div key={i} style={{ marginBottom: 8, position: "relative" }}>
+                    {submitBeliefs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 9, color: "#64748B" }}>#{i + 1}</span>
+                      <button onClick={() => { const next = submitBeliefs.filter((_, j) => j !== i); setSubmitBeliefs(next); setSubmitBelief(next[0] || ""); }} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>&times; Remove</button>
+                    </div>}
+                    <textarea value={belief} onChange={e => { const next = [...submitBeliefs]; next[i] = e.target.value; setSubmitBeliefs(next); setSubmitBelief(next[0] || ""); }} rows={2} placeholder='e.g. "Every person deserves to make informed decisions based on truthful reporting."' style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", resize: "vertical" }} />
+                  </div>
+                ))}
+                <button onClick={() => setSubmitBeliefs([...submitBeliefs, ""])} style={{ background: "none", border: "1px dashed #CBD5E1", color: "#7C3AED", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", padding: "4px 10px", borderRadius: 8, width: "100%", marginTop: 4 }}>+ Add another belief</button>
               </div>
 
+              {/* Translations — multiple */}
               <div style={{ padding: 12, background: "#FFFBEB", border: "1px solid #B4530940", borderRadius: 8 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🔄</span> Translation <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— strip spin, jargon, or propaganda from language</span></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "start", marginBottom: 8 }}>
-                  <input value={submitTranslation.original} onChange={e => setSubmitTranslation({ ...submitTranslation, original: e.target.value })} placeholder='e.g. "Enhanced interrogation techniques"' style={{ padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 12, borderRadius: 8, fontFamily: "inherit" }} />
-                  <span style={{ padding: "8px 4px", color: "#B45309", fontWeight: 700 }}>→</span>
-                  <input value={submitTranslation.translated} onChange={e => setSubmitTranslation({ ...submitTranslation, translated: e.target.value })} placeholder='e.g. "Torture"' style={{ padding: "8px 10px", border: "1.5px solid #B4530980", background: "#fff", fontSize: 12, borderRadius: 8, fontFamily: "inherit" }} />
-                </div>
-                <select value={submitTranslation.type} onChange={e => setSubmitTranslation({ ...submitTranslation, type: e.target.value })} style={{ padding: "6px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 11, borderRadius: 8, fontFamily: "var(--mono)", color: "#475569" }}>
-                  <option value="clarity">Clarity — strip jargon</option>
-                  <option value="propaganda">Anti-Propaganda — rename spin</option>
-                  <option value="euphemism">Euphemism — call it what it is</option>
-                  <option value="satirical">Satirical — approved humor</option>
-                </select>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🔄</span> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "#475569" }}>— strip spin, jargon, or propaganda from language</span></div>
+                {submitTranslations.map((tr, i) => (
+                  <div key={i} style={{ marginBottom: 8, paddingTop: i > 0 ? 8 : 0, borderTop: i > 0 ? "1px solid #E2E8F0" : "none" }}>
+                    {submitTranslations.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 9, color: "#64748B" }}>#{i + 1}</span>
+                      <button onClick={() => { const next = submitTranslations.filter((_, j) => j !== i); setSubmitTranslations(next); setSubmitTranslation(next[0] || { original: "", translated: "", type: "clarity" }); }} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: 0 }}>&times; Remove</button>
+                    </div>}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "start", marginBottom: 8 }}>
+                      <input value={tr.original} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], original: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} placeholder='e.g. "Enhanced interrogation techniques"' style={{ padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 12, borderRadius: 8, fontFamily: "inherit" }} />
+                      <span style={{ padding: "8px 4px", color: "#B45309", fontWeight: 700 }}>→</span>
+                      <input value={tr.translated} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], translated: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} placeholder='e.g. "Torture"' style={{ padding: "8px 10px", border: "1.5px solid #B4530980", background: "#fff", fontSize: 12, borderRadius: 8, fontFamily: "inherit" }} />
+                    </div>
+                    <select value={tr.type} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], type: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} style={{ padding: "6px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 11, borderRadius: 8, fontFamily: "var(--mono)", color: "#475569" }}>
+                      <option value="clarity">Clarity — strip jargon</option>
+                      <option value="propaganda">Anti-Propaganda — rename spin</option>
+                      <option value="euphemism">Euphemism — call it what it is</option>
+                      <option value="satirical">Satirical — approved humor</option>
+                    </select>
+                  </div>
+                ))}
+                <button onClick={() => setSubmitTranslations([...submitTranslations, { original: "", translated: "", type: "clarity" }])} style={{ background: "none", border: "1px dashed #CBD5E1", color: "#B45309", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", padding: "4px 10px", borderRadius: 8, width: "100%", marginTop: 4 }}>+ Add another translation</button>
               </div>
             </div>
           </details>
