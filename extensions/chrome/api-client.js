@@ -179,6 +179,7 @@ const TA = {
 
   /**
    * Submit a correction or affirmation from the extension.
+   * Supports orgId (single) or orgIds (array) for multi-assembly submission.
    */
   async submitCorrection(data) {
     try {
@@ -188,8 +189,8 @@ const TA = {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return { error: err.error || "Submission failed" };
+        const errBody = await res.json().catch(() => ({}));
+        return { error: errBody.error || `Submission failed (${res.status})` };
       }
       return await res.json();
     } catch (e) {
@@ -199,6 +200,7 @@ const TA = {
 
   /**
    * Submit a vault artifact (standing correction, argument, belief, or translation).
+   * Supports orgId (single) or orgIds (array) for multi-assembly submission.
    */
   async submitVault(data) {
     try {
@@ -208,8 +210,8 @@ const TA = {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return { error: err.error || "Vault submission failed" };
+        const errBody = await res.json().catch(() => ({}));
+        return { error: errBody.error || `Vault submission failed (${res.status})` };
       }
       return await res.json();
     } catch (e) {

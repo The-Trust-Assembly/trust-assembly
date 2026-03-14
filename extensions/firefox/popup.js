@@ -1,13 +1,89 @@
 /**
  * Trust Assembly Extension — Popup Script
- * Handles: corrections display, login, follow, submit, color-coding, conflict resolution
+ * Handles: corrections display, login, follow, submit, color-coding, conflict resolution,
+ * state persistence, floating window, body corrections, multi-vault, multi-assembly
  */
 
 let currentUrl = null;
 let currentUser = null;
 let userAssemblies = null; // { joined: [], followed: [] }
 
+// ── Form state persistence ──
+const FORM_STATE_KEY = "ta-form-draft";
+let formState = {
+  submitType: "correction",
+  headline: "",
+  replacement: "",
+  reasoning: "",
+  selectedAuthors: [],
+  selectedOrgIds: [],
+  inlineEdits: [],
+  vaultItems: { correction: [], argument: [], belief: [], translation: [] },
+  vaultSectionsOpen: {},
+  vaultBodyOpen: false,
+  inlineEditsOpen: false,
+};
+
+async function saveFormState() {
+  try {
+    await storageSet({ [FORM_STATE_KEY]: JSON.stringify(formState) });
+  } catch (e) {}
+}
+
+async function loadFormState() {
+  try {
+    const result = await storageGet([FORM_STATE_KEY]);
+    if (result[FORM_STATE_KEY]) {
+      const saved = JSON.parse(result[FORM_STATE_KEY]);
+      formState = { ...formState, ...saved };
+    }
+  } catch (e) {}
+}
+
+async function clearFormState() {
+  formState = {
+    submitType: "correction",
+    headline: "",
+    replacement: "",
+    reasoning: "",
+    selectedAuthors: [],
+    selectedOrgIds: [],
+    inlineEdits: [],
+    vaultItems: { correction: [], argument: [], belief: [], translation: [] },
+    vaultSectionsOpen: {},
+    vaultBodyOpen: false,
+    inlineEditsOpen: false,
+  };
+  try { await storageSet({ [FORM_STATE_KEY]: "" }); } catch (e) {}
+}
+
+// Debounced save on input changes
+let saveTimer = null;
+function debouncedSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveFormState, 300);
+}
+
+// Capture current form field values into formState
+function captureFormFields() {
+  const headline = document.getElementById("sub-headline");
+  const replacement = document.getElementById("sub-replacement");
+  const reasoning = document.getElementById("sub-reasoning");
+  if (headline) formState.headline = headline.value;
+  if (replacement) formState.replacement = replacement.value;
+  if (reasoning) formState.reasoning = reasoning.value;
+
+  // Capture selected org checkboxes
+  const checkboxes = document.querySelectorAll(".org-checkbox:checked");
+  if (checkboxes.length > 0) {
+    formState.selectedOrgIds = Array.from(checkboxes).map(cb => cb.value);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+  // Load saved form state first
+  await loadFormState();
+
   // Get current tab URL
   try {
     const [tab] = typeof chrome !== "undefined" && chrome.tabs
@@ -38,7 +114,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Settings toggles
   setupSettings();
+
+  // Wire up detach button
+  const detachBtn = document.getElementById("btn-detach");
+  if (detachBtn) {
+    detachBtn.addEventListener("click", detachToWindow);
+  }
 });
+
+// ── Detach to floating window ──
+async function detachToWindow() {
+  // Save current form state before detaching
+  captureFormFields();
+  await saveFormState();
+
+  const popupUrl = typeof chrome !== "undefined" && chrome.runtime
+    ? chrome.runtime.getURL("popup.html")
+    : browser.runtime.getURL("popup.html");
+
+  const createWindow = typeof chrome !== "undefined" && chrome.windows
+    ? chrome.windows.create.bind(chrome.windows)
+    : browser.windows.create.bind(browser.windows);
+
+  createWindow({
+    url: popupUrl + "?detached=1",
+    type: "popup",
+    width: 420,
+    height: 700,
+    top: 100,
+    left: Math.max(0, screen.width - 460),
+  });
+
+  // Close the popup
+  window.close();
+}
 
 // ── Auth header ──
 function renderAuthHeader() {
@@ -167,9 +276,7 @@ async function loadCorrections() {
 
     // Corrections (conflict-resolved)
     resolved.forEach(group => {
-      // Winner: full display
       html += renderCorrectionItem(group.winner);
-      // Others: collapsed
       if (group.others.length > 0) {
         const gid = "cg-" + Math.random().toString(36).slice(2, 8);
         html += `<div class="conflict-others" onclick="document.getElementById('${gid}').classList.toggle('conflict-hidden')">See ${group.others.length} other correction${group.others.length !== 1 ? "s" : ""} for this headline</div>`;
@@ -231,9 +338,6 @@ function renderCorrectionItem(sub) {
 }
 
 // ── Conflict resolution ──
-// Group corrections by originalHeadline. Within each group, pick winner by:
-// 1. Highest trustScore (descending)
-// 2. Ties: alphabetical by orgName (ascending)
 function resolveConflicts(corrections) {
   const groups = {};
   corrections.forEach(sub => {
@@ -246,8 +350,8 @@ function resolveConflicts(corrections) {
     items.sort((a, b) => {
       const sa = a.trustScore ?? -1;
       const sb = b.trustScore ?? -1;
-      if (sb !== sa) return sb - sa; // Higher trust score first
-      return (a.orgName || "").localeCompare(b.orgName || ""); // Alphabetical tiebreak
+      if (sb !== sa) return sb - sa;
+      return (a.orgName || "").localeCompare(b.orgName || "");
     });
     return { winner: items[0], others: items.slice(1) };
   });
@@ -266,10 +370,7 @@ function relBadge(orgId) {
 }
 
 // ── Submit tab ──
-let submitType = "correction"; // "correction" or "affirmation"
 let detectedAuthors = []; // auto-detected from page
-let selectedAuthors = []; // user-selected author tags
-let vaultSectionsOpen = {}; // track which vault sections are expanded
 
 async function renderSubmitTab() {
   const gate = document.getElementById("submit-gate");
@@ -306,13 +407,96 @@ async function renderSubmitTab() {
     return;
   }
 
-  const isAffirm = submitType === "affirmation";
-  let orgOptions = joinedOrgs.map(o => `<option value="${escapeHtml(o.id)}">${escapeHtml(o.name)}</option>`).join("");
+  const isAffirm = formState.submitType === "affirmation";
+
+  // Multi-assembly checkboxes
+  const orgCheckboxesHtml = joinedOrgs.map(o => {
+    const checked = formState.selectedOrgIds.length > 0
+      ? formState.selectedOrgIds.includes(o.id) ? "checked" : ""
+      : joinedOrgs.length === 1 ? "checked" : "";
+    return `<label class="org-checkbox-label"><input type="checkbox" class="org-checkbox" value="${escapeHtml(o.id)}" ${checked}> ${escapeHtml(o.name)}</label>`;
+  }).join("");
 
   // Author tags HTML
-  let authorTagsHtml = selectedAuthors.map((a, i) =>
+  let authorTagsHtml = formState.selectedAuthors.map((a, i) =>
     `<span class="author-tag">${escapeHtml(a)}<span class="remove" data-author-idx="${i}">&times;</span></span>`
   ).join("");
+
+  // Inline edits (body corrections) HTML
+  let inlineEditsHtml = formState.inlineEdits.map((edit, i) => `
+    <div class="inline-edit-entry" data-edit-idx="${i}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:10px;font-weight:600;color:#1B2A4A">Body Edit #${i + 1}</span>
+        <span class="remove-edit" data-edit-remove="${i}" style="cursor:pointer;color:#C4573F;font-size:12px">&times; Remove</span>
+      </div>
+      <input type="text" class="edit-original" data-edit-field="original" data-edit-idx="${i}" placeholder="Original text from article" value="${escapeHtml(edit.original || "")}">
+      <input type="text" class="edit-replacement" data-edit-field="replacement" data-edit-idx="${i}" placeholder="Corrected text" value="${escapeHtml(edit.replacement || "")}">
+      <input type="text" class="edit-reasoning" data-edit-field="reasoning" data-edit-idx="${i}" placeholder="Why this change? (optional)" value="${escapeHtml(edit.reasoning || "")}">
+    </div>
+  `).join("");
+
+  // Build vault items HTML for each type supporting multiples
+  function buildVaultItemsHtml(type, items, config) {
+    let html = items.map((item, i) => {
+      let fieldsHtml = "";
+      config.fields.forEach(f => {
+        if (f.type === "textarea") {
+          fieldsHtml += `<textarea class="vault-item-field" data-vault-type="${type}" data-vault-idx="${i}" data-vault-field="${f.key}" placeholder="${f.placeholder}">${escapeHtml(item[f.key] || "")}</textarea>`;
+        } else if (f.type === "select") {
+          const opts = f.options.map(o => `<option value="${o.value}" ${item[f.key] === o.value ? "selected" : ""}>${o.label}</option>`).join("");
+          fieldsHtml += `<select class="vault-item-field" data-vault-type="${type}" data-vault-idx="${i}" data-vault-field="${f.key}">${opts}</select>`;
+        } else {
+          fieldsHtml += `<input type="text" class="vault-item-field" data-vault-type="${type}" data-vault-idx="${i}" data-vault-field="${f.key}" placeholder="${f.placeholder}" value="${escapeHtml(item[f.key] || "")}">`;
+        }
+      });
+      return `
+        <div class="vault-multi-entry" style="margin-bottom:6px;padding:6px;background:#FDFBF5;border:1px solid #EBE8E2;border-radius:3px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:9px;color:#7A7570">#${i + 1}</span>
+            <span class="remove-vault-item" data-vault-type="${type}" data-vault-remove="${i}" style="cursor:pointer;color:#C4573F;font-size:11px">&times;</span>
+          </div>
+          ${fieldsHtml}
+        </div>
+      `;
+    }).join("");
+    html += `<button class="add-vault-item-btn" data-vault-add="${type}" style="font-size:10px;color:#B8963E;background:none;border:1px dashed #DCD8D0;padding:4px 8px;border-radius:3px;cursor:pointer;width:100%;margin-top:4px">+ Add another ${config.label}</button>`;
+    return html;
+  }
+
+  const vaultConfigs = {
+    correction: {
+      label: "standing correction",
+      fields: [
+        { key: "assertion", type: "text", placeholder: "Factual assertion (e.g. 'The recall was software-only')" },
+        { key: "evidence", type: "text", placeholder: "Supporting evidence or source URL" },
+      ]
+    },
+    argument: {
+      label: "argument",
+      fields: [
+        { key: "content", type: "textarea", placeholder: "The argument (e.g. 'Correlation does not imply causation…')" },
+      ]
+    },
+    belief: {
+      label: "belief",
+      fields: [
+        { key: "content", type: "textarea", placeholder: "The belief (e.g. 'Free speech includes speech we disagree with')" },
+      ]
+    },
+    translation: {
+      label: "translation",
+      fields: [
+        { key: "original", type: "text", placeholder: "Original term or phrase" },
+        { key: "translated", type: "text", placeholder: "Plain-language replacement" },
+        { key: "translationType", type: "select", options: [
+          { value: "clarity", label: "Clarity" },
+          { value: "propaganda", label: "Anti-Propaganda" },
+          { value: "euphemism", label: "Euphemism" },
+          { value: "satirical", label: "Satirical" },
+        ]},
+      ]
+    },
+  };
 
   gate.innerHTML = `
     <div class="submit-panel">
@@ -330,97 +514,99 @@ async function renderSubmitTab() {
         </button>
       </div>
 
-      ${isAffirm ? '<div class="affirm-banner">You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>' : ''}
+      ${isAffirm ? '<div class="affirm-banner">You are affirming this headline is <strong>accurate</strong>. The original headline will be wrapped in green to signal accuracy. No replacement needed.</div>' : ''}
 
-      <label>Assembly</label>
-      <select id="sub-org">${orgOptions}</select>
+      <label>Submit to Assembly(s) ${joinedOrgs.length > 1 ? '<span style="font-size:9px;color:#B0A89C;font-weight:400">— select one or more</span>' : ''}</label>
+      <div class="org-checkboxes" id="org-checkboxes">${orgCheckboxesHtml}</div>
 
       <label>Article URL</label>
       <input type="text" id="sub-url" value="${escapeHtml(currentUrl || "")}" readonly>
 
       <label>Original Headline</label>
-      <input type="text" id="sub-headline" placeholder="Detecting headline…">
+      <input type="text" id="sub-headline" placeholder="Detecting headline…" value="${escapeHtml(formState.headline || "")}">
 
       ${!isAffirm ? `
         <label>Corrected Headline</label>
-        <input type="text" id="sub-replacement" placeholder="Your proposed correction">
+        <input type="text" id="sub-replacement" placeholder="Your proposed correction" value="${escapeHtml(formState.replacement || "")}">
       ` : ''}
 
       <label>Author(s) <span style="font-size:9px;color:#B0A89C;font-weight:400">— auto-detected from page</span></label>
       <div class="author-tags" id="author-tags">${authorTagsHtml}</div>
-      ${detectedAuthors.length > 0 && selectedAuthors.length < 10 ? `
+      ${detectedAuthors.length > 0 && formState.selectedAuthors.length < 10 ? `
         <select id="author-select" style="margin-bottom:4px">
           <option value="">Add an author…</option>
-          ${detectedAuthors.filter(a => !selectedAuthors.includes(a)).map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("")}
+          ${detectedAuthors.filter(a => !formState.selectedAuthors.includes(a)).map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("")}
           <option value="__custom__">Enter manually…</option>
         </select>
-      ` : selectedAuthors.length < 10 ? `
+      ` : formState.selectedAuthors.length < 10 ? `
         <input type="text" id="author-manual" placeholder="Type author name and press Enter" style="margin-bottom:4px">
       ` : ''}
-      <div class="author-hint">${selectedAuthors.length}/10 authors max</div>
+      <div class="author-hint">${formState.selectedAuthors.length}/10 authors max</div>
 
       <label>Reasoning</label>
-      <textarea id="sub-reasoning" placeholder="${isAffirm ? 'Why is this headline accurate?' : 'Why is this correction needed?'}"></textarea>
+      <textarea id="sub-reasoning" placeholder="${isAffirm ? 'Why is this headline accurate?' : 'Why is this correction needed?'}">${escapeHtml(formState.reasoning || "")}</textarea>
+
+      <!-- Body Corrections (inline edits) -->
+      <div class="vault-section">
+        <div class="vault-section-title" id="inline-edits-toggle">${formState.inlineEditsOpen ? '−' : '+'} Body Corrections (optional)</div>
+        <div id="inline-edits-body" style="display:${formState.inlineEditsOpen ? 'block' : 'none'}">
+          <div style="font-size:10px; color:#7A7570; margin-bottom:8px; line-height:1.4;">Correct specific text within the article body. Select the original text and provide the corrected version.</div>
+          <div id="inline-edits-list">${inlineEditsHtml}</div>
+          ${formState.inlineEdits.length === 0 ? `<button id="add-first-edit" class="add-vault-item-btn" style="font-size:10px;color:#B8963E;background:none;border:1px dashed #DCD8D0;padding:4px 8px;border-radius:3px;cursor:pointer;width:100%">+ Add a body correction</button>` : ''}
+        </div>
+      </div>
 
       <!-- Vault Artifacts (optional) -->
       <div class="vault-section">
-        <div class="vault-section-title" id="vault-toggle">+ Vault Artifacts (optional)</div>
-        <div id="vault-body" style="display:none">
-          <div style="font-size:10px; color:#7A7570; margin-bottom:8px; line-height:1.4;">Optionally add entries to your assembly's vaults alongside this submission.</div>
+        <div class="vault-section-title" id="vault-toggle">${formState.vaultBodyOpen ? '−' : '+'} Vault Artifacts (optional)</div>
+        <div id="vault-body" style="display:${formState.vaultBodyOpen ? 'block' : 'none'}">
+          <div style="font-size:10px; color:#7A7570; margin-bottom:8px; line-height:1.4;">Optionally add entries to your assembly's vaults alongside this submission. You can add multiple of each type.</div>
 
           <!-- Standing Correction -->
           <div class="vault-type-row vault-color-correction">
             <div class="vault-type-header" data-vault="correction">
-              <span class="vault-type-label">Standing Correction</span>
-              <span class="vault-type-toggle">${vaultSectionsOpen.correction ? '−' : '+'}</span>
+              <span class="vault-type-label">Standing Corrections</span>
+              <span class="vault-type-toggle">${formState.vaultSectionsOpen.correction ? '−' : '+'}</span>
             </div>
-            <div class="vault-type-body" style="display:${vaultSectionsOpen.correction ? 'block' : 'none'}" data-vault-body="correction">
-              <div class="vault-type-desc">A reusable verified fact for your assembly's Fact Vault.</div>
-              <input type="text" id="vault-sc-assertion" placeholder="Factual assertion (e.g. 'The recall was software-only, not physical')">
-              <input type="text" id="vault-sc-evidence" placeholder="Supporting evidence or source URL">
+            <div class="vault-type-body" style="display:${formState.vaultSectionsOpen.correction ? 'block' : 'none'}" data-vault-body="correction">
+              <div class="vault-type-desc">Reusable verified facts for your assembly's Fact Vault.</div>
+              ${buildVaultItemsHtml("correction", formState.vaultItems.correction, vaultConfigs.correction)}
             </div>
           </div>
 
           <!-- Argument -->
           <div class="vault-type-row vault-color-argument">
             <div class="vault-type-header" data-vault="argument">
-              <span class="vault-type-label">Argument</span>
-              <span class="vault-type-toggle">${vaultSectionsOpen.argument ? '−' : '+'}</span>
+              <span class="vault-type-label">Arguments</span>
+              <span class="vault-type-toggle">${formState.vaultSectionsOpen.argument ? '−' : '+'}</span>
             </div>
-            <div class="vault-type-body" style="display:${vaultSectionsOpen.argument ? 'block' : 'none'}" data-vault-body="argument">
-              <div class="vault-type-desc">A fundamental argument for reuse across articles.</div>
-              <textarea id="vault-arg-content" placeholder="The argument (e.g. 'Correlation does not imply causation — this study shows…')"></textarea>
+            <div class="vault-type-body" style="display:${formState.vaultSectionsOpen.argument ? 'block' : 'none'}" data-vault-body="argument">
+              <div class="vault-type-desc">Fundamental arguments for reuse across articles.</div>
+              ${buildVaultItemsHtml("argument", formState.vaultItems.argument, vaultConfigs.argument)}
             </div>
           </div>
 
           <!-- Belief -->
           <div class="vault-type-row vault-color-belief">
             <div class="vault-type-header" data-vault="belief">
-              <span class="vault-type-label">Foundational Belief</span>
-              <span class="vault-type-toggle">${vaultSectionsOpen.belief ? '−' : '+'}</span>
+              <span class="vault-type-label">Foundational Beliefs</span>
+              <span class="vault-type-toggle">${formState.vaultSectionsOpen.belief ? '−' : '+'}</span>
             </div>
-            <div class="vault-type-body" style="display:${vaultSectionsOpen.belief ? 'block' : 'none'}" data-vault-body="belief">
-              <div class="vault-type-desc">A core axiom or starting premise, not a claim of fact.</div>
-              <textarea id="vault-belief-content" placeholder="The belief (e.g. 'Free speech includes speech we disagree with')"></textarea>
+            <div class="vault-type-body" style="display:${formState.vaultSectionsOpen.belief ? 'block' : 'none'}" data-vault-body="belief">
+              <div class="vault-type-desc">Core axioms or starting premises, not claims of fact.</div>
+              ${buildVaultItemsHtml("belief", formState.vaultItems.belief, vaultConfigs.belief)}
             </div>
           </div>
 
           <!-- Translation -->
           <div class="vault-type-row vault-color-translation">
             <div class="vault-type-header" data-vault="translation">
-              <span class="vault-type-label">Translation</span>
-              <span class="vault-type-toggle">${vaultSectionsOpen.translation ? '−' : '+'}</span>
+              <span class="vault-type-label">Translations</span>
+              <span class="vault-type-toggle">${formState.vaultSectionsOpen.translation ? '−' : '+'}</span>
             </div>
-            <div class="vault-type-body" style="display:${vaultSectionsOpen.translation ? 'block' : 'none'}" data-vault-body="translation">
-              <div class="vault-type-desc">A plain-language replacement for jargon, spin, or propaganda.</div>
-              <input type="text" id="vault-trans-original" placeholder="Original term or phrase">
-              <input type="text" id="vault-trans-translated" placeholder="Plain-language replacement">
-              <select id="vault-trans-type">
-                <option value="clarity">Clarity</option>
-                <option value="propaganda">Anti-Propaganda</option>
-                <option value="euphemism">Euphemism</option>
-                <option value="satirical">Satirical</option>
-              </select>
+            <div class="vault-type-body" style="display:${formState.vaultSectionsOpen.translation ? 'block' : 'none'}" data-vault-body="translation">
+              <div class="vault-type-desc">Plain-language replacements for jargon, spin, or propaganda.</div>
+              ${buildVaultItemsHtml("translation", formState.vaultItems.translation, vaultConfigs.translation)}
             </div>
           </div>
         </div>
@@ -433,63 +619,169 @@ async function renderSubmitTab() {
     </div>
   `;
 
-  // Wire up type toggle
+  // ── Wire up event listeners ──
+
+  // Type toggle (save on change, but don't re-render to avoid losing unsaved field values)
   document.getElementById("btn-type-correction").addEventListener("click", () => {
-    submitType = "correction";
+    captureFormFields();
+    formState.submitType = "correction";
+    debouncedSave();
     renderSubmitTab();
   });
   document.getElementById("btn-type-affirmation").addEventListener("click", () => {
-    submitType = "affirmation";
+    captureFormFields();
+    formState.submitType = "affirmation";
+    debouncedSave();
     renderSubmitTab();
   });
 
-  // Wire up vault section toggle
-  document.getElementById("vault-toggle").addEventListener("click", () => {
-    const body = document.getElementById("vault-body");
-    const toggle = document.getElementById("vault-toggle");
-    if (body.style.display === "none") {
-      body.style.display = "block";
-      toggle.textContent = "− Vault Artifacts (optional)";
-    } else {
-      body.style.display = "none";
-      toggle.textContent = "+ Vault Artifacts (optional)";
+  // Form field persistence on input
+  ["sub-headline", "sub-replacement", "sub-reasoning"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", () => {
+        if (id === "sub-headline") formState.headline = el.value;
+        else if (id === "sub-replacement") formState.replacement = el.value;
+        else if (id === "sub-reasoning") formState.reasoning = el.value;
+        debouncedSave();
+      });
     }
   });
 
-  // Wire up individual vault type toggles
+  // Org checkbox persistence
+  document.querySelectorAll(".org-checkbox").forEach(cb => {
+    cb.addEventListener("change", () => {
+      formState.selectedOrgIds = Array.from(document.querySelectorAll(".org-checkbox:checked")).map(c => c.value);
+      debouncedSave();
+    });
+  });
+
+  // Inline edits toggle
+  document.getElementById("inline-edits-toggle").addEventListener("click", () => {
+    const body = document.getElementById("inline-edits-body");
+    formState.inlineEditsOpen = body.style.display === "none";
+    body.style.display = formState.inlineEditsOpen ? "block" : "none";
+    document.getElementById("inline-edits-toggle").textContent = (formState.inlineEditsOpen ? "− " : "+ ") + "Body Corrections (optional)";
+    debouncedSave();
+  });
+
+  // Add first inline edit
+  const addFirstEdit = document.getElementById("add-first-edit");
+  if (addFirstEdit) {
+    addFirstEdit.addEventListener("click", () => {
+      formState.inlineEdits.push({ original: "", replacement: "", reasoning: "" });
+      debouncedSave();
+      renderSubmitTab();
+    });
+  }
+
+  // Inline edit field changes
+  document.querySelectorAll(".edit-original, .edit-replacement, .edit-reasoning").forEach(el => {
+    el.addEventListener("input", () => {
+      const idx = parseInt(el.dataset.editIdx);
+      const field = el.dataset.editField;
+      if (formState.inlineEdits[idx]) {
+        formState.inlineEdits[idx][field] = el.value;
+        debouncedSave();
+      }
+    });
+  });
+
+  // Remove inline edit
+  document.querySelectorAll("[data-edit-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.editRemove);
+      formState.inlineEdits.splice(idx, 1);
+      debouncedSave();
+      renderSubmitTab();
+    });
+  });
+
+  // Vault body toggle
+  document.getElementById("vault-toggle").addEventListener("click", () => {
+    const body = document.getElementById("vault-body");
+    formState.vaultBodyOpen = body.style.display === "none";
+    body.style.display = formState.vaultBodyOpen ? "block" : "none";
+    document.getElementById("vault-toggle").textContent = (formState.vaultBodyOpen ? "− " : "+ ") + "Vault Artifacts (optional)";
+    debouncedSave();
+  });
+
+  // Individual vault type toggles
   document.querySelectorAll("[data-vault]").forEach(header => {
     header.addEventListener("click", () => {
       const key = header.dataset.vault;
       const body = document.querySelector(`[data-vault-body="${key}"]`);
       const icon = header.querySelector(".vault-type-toggle");
-      if (body.style.display === "none") {
-        body.style.display = "block";
-        icon.textContent = "−";
-        vaultSectionsOpen[key] = true;
-      } else {
-        body.style.display = "none";
-        icon.textContent = "+";
-        vaultSectionsOpen[key] = false;
+      formState.vaultSectionsOpen[key] = body.style.display === "none";
+      body.style.display = formState.vaultSectionsOpen[key] ? "block" : "none";
+      icon.textContent = formState.vaultSectionsOpen[key] ? "−" : "+";
+      debouncedSave();
+    });
+  });
+
+  // Vault item field changes
+  document.querySelectorAll(".vault-item-field").forEach(el => {
+    el.addEventListener("input", () => {
+      const type = el.dataset.vaultType;
+      const idx = parseInt(el.dataset.vaultIdx);
+      const field = el.dataset.vaultField;
+      if (formState.vaultItems[type] && formState.vaultItems[type][idx]) {
+        formState.vaultItems[type][idx][field] = el.value;
+        debouncedSave();
+      }
+    });
+    // Also capture select changes
+    el.addEventListener("change", () => {
+      const type = el.dataset.vaultType;
+      const idx = parseInt(el.dataset.vaultIdx);
+      const field = el.dataset.vaultField;
+      if (formState.vaultItems[type] && formState.vaultItems[type][idx]) {
+        formState.vaultItems[type][idx][field] = el.value;
+        debouncedSave();
       }
     });
   });
 
-  // Wire up author removal
-  document.querySelectorAll("[data-author-idx]").forEach(btn => {
+  // Add vault item buttons
+  document.querySelectorAll("[data-vault-add]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const idx = parseInt(btn.dataset.authorIdx);
-      selectedAuthors.splice(idx, 1);
+      captureFormFields();
+      const type = btn.dataset.vaultAdd;
+      const defaults = { correction: { assertion: "", evidence: "" }, argument: { content: "" }, belief: { content: "" }, translation: { original: "", translated: "", translationType: "clarity" } };
+      formState.vaultItems[type].push({ ...(defaults[type] || {}) });
+      debouncedSave();
       renderSubmitTab();
     });
   });
 
-  // Wire up author selection
+  // Remove vault item buttons
+  document.querySelectorAll("[data-vault-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      captureFormFields();
+      const type = btn.dataset.vaultType;
+      const idx = parseInt(btn.dataset.vaultRemove);
+      formState.vaultItems[type].splice(idx, 1);
+      debouncedSave();
+      renderSubmitTab();
+    });
+  });
+
+  // Author removal
+  document.querySelectorAll("[data-author-idx]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.authorIdx);
+      formState.selectedAuthors.splice(idx, 1);
+      debouncedSave();
+      renderSubmitTab();
+    });
+  });
+
+  // Author selection
   const authorSelect = document.getElementById("author-select");
   if (authorSelect) {
     authorSelect.addEventListener("change", () => {
       const val = authorSelect.value;
       if (val === "__custom__") {
-        // Replace select with manual input
         const parent = authorSelect.parentNode;
         const input = document.createElement("input");
         input.type = "text";
@@ -503,38 +795,41 @@ async function renderSubmitTab() {
           if (e.key === "Enter") {
             e.preventDefault();
             const name = input.value.trim();
-            if (name && selectedAuthors.length < 10 && !selectedAuthors.includes(name)) {
-              selectedAuthors.push(name);
+            if (name && formState.selectedAuthors.length < 10 && !formState.selectedAuthors.includes(name)) {
+              formState.selectedAuthors.push(name);
+              debouncedSave();
               renderSubmitTab();
             }
           }
         });
-      } else if (val && selectedAuthors.length < 10 && !selectedAuthors.includes(val)) {
-        selectedAuthors.push(val);
+      } else if (val && formState.selectedAuthors.length < 10 && !formState.selectedAuthors.includes(val)) {
+        formState.selectedAuthors.push(val);
+        debouncedSave();
         renderSubmitTab();
       }
     });
   }
 
-  // Wire up manual author input
+  // Manual author input
   const authorManual = document.getElementById("author-manual");
   if (authorManual) {
     authorManual.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
         const name = authorManual.value.trim();
-        if (name && selectedAuthors.length < 10 && !selectedAuthors.includes(name)) {
-          selectedAuthors.push(name);
+        if (name && formState.selectedAuthors.length < 10 && !formState.selectedAuthors.includes(name)) {
+          formState.selectedAuthors.push(name);
+          debouncedSave();
           renderSubmitTab();
         }
       }
     });
   }
 
-  // Wire up submit
+  // Submit button
   document.getElementById("btn-submit").addEventListener("click", doSubmit);
 
-  // Wire up live preview — update headline on page as user types
+  // Live preview for replacement headline
   const replacementInput = document.getElementById("sub-replacement");
   if (replacementInput) {
     let previewTimer = null;
@@ -542,11 +837,7 @@ async function renderSubmitTab() {
       clearTimeout(previewTimer);
       previewTimer = setTimeout(() => {
         sendPreviewMessage(replacementInput.value);
-      }, 100); // debounce 100ms for smooth typing
-    });
-    // Clear preview when popup closes or field is cleared
-    replacementInput.addEventListener("blur", () => {
-      // Don't clear on blur — popup stays open
+      }, 100);
     });
   }
 
@@ -564,18 +855,19 @@ async function renderSubmitTab() {
         const headlineInput = document.getElementById("sub-headline");
         if (response && response.headline && headlineInput && !headlineInput.value) {
           headlineInput.value = response.headline;
+          formState.headline = response.headline;
           headlineInput.placeholder = "The original headline as published";
+          debouncedSave();
         } else if (headlineInput) {
           headlineInput.placeholder = "The original headline as published";
         }
       });
-      // Auto-detect authors
       sendMsg(tab.id, { type: "TA_GET_AUTHORS" }, (response) => {
         if (response && response.authors && response.authors.length > 0) {
           detectedAuthors = response.authors.slice(0, 10);
-          // Auto-select detected authors if none selected yet
-          if (selectedAuthors.length === 0) {
-            selectedAuthors = [...detectedAuthors];
+          if (formState.selectedAuthors.length === 0) {
+            formState.selectedAuthors = [...detectedAuthors];
+            debouncedSave();
             renderSubmitTab();
           }
         }
@@ -607,20 +899,27 @@ async function doLogin() {
   userAssemblies = await TA.getMyAssemblies();
   renderAuthHeader();
   renderSubmitTab();
-  // Reload corrections to show badges
   loadCorrections();
 }
 
 async function doSubmit() {
   const msgEl = document.getElementById("submit-msg");
-  const orgId = document.getElementById("sub-org").value;
   const url = document.getElementById("sub-url").value;
   const originalHeadline = document.getElementById("sub-headline").value.trim();
   const replacementEl = document.getElementById("sub-replacement");
   const replacement = replacementEl ? replacementEl.value.trim() : "";
   const reasoning = document.getElementById("sub-reasoning").value.trim();
-  const isAffirm = submitType === "affirmation";
+  const isAffirm = formState.submitType === "affirmation";
 
+  // Get selected assemblies
+  const selectedOrgs = Array.from(document.querySelectorAll(".org-checkbox:checked")).map(c => c.value);
+
+  if (selectedOrgs.length === 0) {
+    msgEl.className = "submit-msg error";
+    msgEl.textContent = "Select at least one assembly.";
+    msgEl.style.display = "block";
+    return;
+  }
   if (!originalHeadline || !reasoning) {
     msgEl.className = "submit-msg error";
     msgEl.textContent = "Headline and reasoning are required.";
@@ -634,102 +933,125 @@ async function doSubmit() {
     return;
   }
 
+  // Disable submit button and show loading
+  const btnSubmit = document.getElementById("btn-submit");
+  btnSubmit.disabled = true;
+  btnSubmit.textContent = "Submitting…";
   msgEl.style.display = "none";
 
-  // Submit the correction/affirmation
+  // Collect inline edits
+  const inlineEdits = formState.inlineEdits
+    .filter(e => e.original && e.replacement)
+    .map(e => ({ original: e.original, replacement: e.replacement, reasoning: e.reasoning || null }));
+
+  // Submit the correction/affirmation (multi-assembly via orgIds)
   const result = await TA.submitCorrection({
-    submissionType: submitType,
+    submissionType: formState.submitType,
     url,
     originalHeadline,
     replacement: isAffirm ? null : replacement,
     reasoning,
-    author: selectedAuthors.length > 0 ? selectedAuthors.join(", ") : null,
-    orgId,
+    author: formState.selectedAuthors.length > 0 ? formState.selectedAuthors.join(", ") : null,
+    orgIds: selectedOrgs,
+    inlineEdits: inlineEdits.length > 0 ? inlineEdits : undefined,
   });
 
   if (result.error) {
     msgEl.className = "submit-msg error";
     msgEl.textContent = result.error;
     msgEl.style.display = "block";
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = isAffirm ? "Submit Affirmation" : "Submit Correction";
     return;
   }
 
-  // Link vault artifacts to the submission so they graduate through jury review
-  const submissionId = result.id;
+  // Get submission ID(s) for vault linking
+  const submissionIds = result.submissions
+    ? result.submissions.map(s => s.id)
+    : result.id ? [result.id] : [];
+
+  // Submit vault artifacts — link to all submissions, submit to all selected orgs
   const vaultPromises = [];
 
-  // Standing Correction
-  const scAssertion = document.getElementById("vault-sc-assertion");
-  const scEvidence = document.getElementById("vault-sc-evidence");
-  if (scAssertion && scAssertion.value.trim() && scEvidence && scEvidence.value.trim()) {
-    vaultPromises.push(TA.submitVault({
-      type: "vault",
-      orgId,
-      submissionId,
-      assertion: scAssertion.value.trim(),
-      evidence: scEvidence.value.trim(),
-    }));
+  for (const item of formState.vaultItems.correction) {
+    if (item.assertion && item.evidence) {
+      for (const subId of submissionIds) {
+        vaultPromises.push(TA.submitVault({
+          type: "vault",
+          orgIds: selectedOrgs,
+          submissionId: subId,
+          assertion: item.assertion.trim(),
+          evidence: item.evidence.trim(),
+        }));
+      }
+    }
   }
 
-  // Argument
-  const argContent = document.getElementById("vault-arg-content");
-  if (argContent && argContent.value.trim()) {
-    vaultPromises.push(TA.submitVault({
-      type: "argument",
-      orgId,
-      submissionId,
-      content: argContent.value.trim(),
-    }));
+  for (const item of formState.vaultItems.argument) {
+    if (item.content) {
+      for (const subId of submissionIds) {
+        vaultPromises.push(TA.submitVault({
+          type: "argument",
+          orgIds: selectedOrgs,
+          submissionId: subId,
+          content: item.content.trim(),
+        }));
+      }
+    }
   }
 
-  // Belief
-  const beliefContent = document.getElementById("vault-belief-content");
-  if (beliefContent && beliefContent.value.trim()) {
-    vaultPromises.push(TA.submitVault({
-      type: "belief",
-      orgId,
-      submissionId,
-      content: beliefContent.value.trim(),
-    }));
+  for (const item of formState.vaultItems.belief) {
+    if (item.content) {
+      for (const subId of submissionIds) {
+        vaultPromises.push(TA.submitVault({
+          type: "belief",
+          orgIds: selectedOrgs,
+          submissionId: subId,
+          content: item.content.trim(),
+        }));
+      }
+    }
   }
 
-  // Translation
-  const transOrig = document.getElementById("vault-trans-original");
-  const transTrans = document.getElementById("vault-trans-translated");
-  const transType = document.getElementById("vault-trans-type");
-  if (transOrig && transOrig.value.trim() && transTrans && transTrans.value.trim()) {
-    vaultPromises.push(TA.submitVault({
-      type: "translation",
-      orgId,
-      submissionId,
-      original: transOrig.value.trim(),
-      translated: transTrans.value.trim(),
-      translationType: transType ? transType.value : "clarity",
-    }));
+  for (const item of formState.vaultItems.translation) {
+    if (item.original && item.translated) {
+      for (const subId of submissionIds) {
+        vaultPromises.push(TA.submitVault({
+          type: "translation",
+          orgIds: selectedOrgs,
+          submissionId: subId,
+          original: item.original.trim(),
+          translated: item.translated.trim(),
+          translationType: item.translationType || "clarity",
+        }));
+      }
+    }
   }
 
-  // Fire vault submissions in parallel (don't block on them)
   if (vaultPromises.length > 0) {
     Promise.all(vaultPromises).catch(e => {
       console.warn("[Trust Assembly] Vault submission error:", e.message);
     });
   }
 
+  const orgCount = selectedOrgs.length;
   msgEl.className = "submit-msg success";
   msgEl.textContent = isAffirm
-    ? "Affirmation submitted! It will appear after review."
-    : "Correction submitted! It will appear after review.";
+    ? `Affirmation submitted to ${orgCount} assembly${orgCount > 1 ? "s" : ""}! It will appear after review.`
+    : `Correction submitted to ${orgCount} assembly${orgCount > 1 ? "s" : ""}! It will appear after review.`;
+  if (inlineEdits.length > 0) {
+    msgEl.textContent += ` ${inlineEdits.length} body correction(s) included.`;
+  }
   if (vaultPromises.length > 0) {
-    msgEl.textContent += ` ${vaultPromises.length} vault artifact(s) linked — they'll be reviewed with your submission.`;
+    msgEl.textContent += ` ${vaultPromises.length} vault artifact(s) linked.`;
   }
   msgEl.style.display = "block";
 
-  // Clear form and preview
-  document.getElementById("sub-headline").value = "";
-  if (replacementEl) replacementEl.value = "";
-  document.getElementById("sub-reasoning").value = "";
-  selectedAuthors = [];
-  vaultSectionsOpen = {};
+  btnSubmit.disabled = false;
+  btnSubmit.textContent = isAffirm ? "Submit Affirmation" : "Submit Correction";
+
+  // Clear form state and preview
+  await clearFormState();
   clearPreviewMessage();
 }
 
@@ -762,14 +1084,12 @@ async function renderAssembliesTab() {
     return;
   }
 
-  // Fetch fresh assemblies
   if (!userAssemblies) {
     userAssemblies = await TA.getMyAssemblies();
   }
 
   let html = '<div class="assemblies-panel">';
 
-  // Joined assemblies
   html += '<h3>Joined Assemblies</h3>';
   if (userAssemblies.joined.length === 0) {
     html += '<div style="font-size:11px; color:#B0A89C; padding:8px 0;">No memberships. <a href="https://trustassembly.org/#orgs" target="_blank" style="color:#B8963E">Join on the web</a></div>';
@@ -783,7 +1103,6 @@ async function renderAssembliesTab() {
     });
   }
 
-  // Followed assemblies
   html += '<h3 style="margin-top:14px;">Followed Assemblies</h3>';
   if (userAssemblies.followed.length === 0) {
     html += '<div style="font-size:11px; color:#B0A89C; padding:8px 0;">Not following any assemblies yet.</div>';
@@ -801,7 +1120,6 @@ async function renderAssembliesTab() {
   html += '</div>';
   container.innerHTML = html;
 
-  // Wire up unfollow buttons
   container.querySelectorAll("[data-unfollow]").forEach(btn => {
     btn.addEventListener("click", async () => {
       await TA.unfollowOrg(btn.dataset.unfollow);
@@ -867,8 +1185,6 @@ function formatStatus(status) {
 }
 
 // ── Live Preview ──
-// Sends the current replacement text to the content script for real-time
-// headline preview on the page. Called on every keystroke (debounced).
 async function sendPreviewMessage(text) {
   try {
     const tabs = typeof chrome !== "undefined" && chrome.tabs
@@ -885,17 +1201,13 @@ async function sendPreviewMessage(text) {
       type: "TA_PREVIEW_HEADLINE",
       text: text,
       originalHeadline: originalHeadline,
-      isAffirm: submitType === "affirmation"
+      isAffirm: formState.submitType === "affirmation"
     }, () => {
-      // Ignore errors (tab might not have content script)
       if (typeof chrome !== "undefined" && chrome.runtime?.lastError) {}
     });
-  } catch (e) {
-    // Content script may not be loaded on this page
-  }
+  } catch (e) {}
 }
 
-// Clear preview when submitting or switching tabs
 async function clearPreviewMessage() {
   try {
     const tabs = typeof chrome !== "undefined" && chrome.tabs

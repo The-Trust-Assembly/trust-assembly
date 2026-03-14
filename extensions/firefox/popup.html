@@ -40,6 +40,66 @@
     }
     .header-user button:hover { background: rgba(255,255,255,0.25); }
 
+    /* Detach button */
+    .btn-detach {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: #F0EDE6;
+      font-size: 13px;
+      padding: 3px 6px;
+      border-radius: 2px;
+      cursor: pointer;
+      margin-left: auto;
+      margin-right: 4px;
+      opacity: 0.7;
+      line-height: 1;
+    }
+    .btn-detach:hover { opacity: 1; background: rgba(255,255,255,0.25); }
+
+    /* Multi-assembly checkboxes */
+    .org-checkboxes {
+      margin-bottom: 8px;
+    }
+    .org-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      margin-bottom: 2px;
+      font-size: 12px;
+      color: #1B2A4A;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .org-checkbox-label:hover { background: #F0EDE6; }
+    .org-checkbox { margin: 0; cursor: pointer; }
+
+    /* Inline edit entries */
+    .inline-edit-entry {
+      padding: 8px;
+      margin-bottom: 6px;
+      border: 1px solid #DCD8D0;
+      border-left: 3px solid #C4573F;
+      border-radius: 3px;
+      background: #fff;
+    }
+    .inline-edit-entry input {
+      display: block;
+      width: 100%;
+      padding: 5px 8px;
+      margin-bottom: 4px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 11px;
+      background: #fff;
+    }
+
+    /* Add button style for vault/inline edits */
+    .add-vault-item-btn:hover {
+      background: #F0EDE6 !important;
+      border-color: #B8963E !important;
+    }
+
     /* Tab bar */
     .tab-bar {
       display: flex;
@@ -443,6 +503,7 @@
       <div class="header-title">Trust Assembly</div>
       <div class="header-motto">Truth Will Out</div>
     </div>
+    <button class="btn-detach" id="btn-detach" title="Open in floating window">⧉</button>
     <div class="header-user" id="header-user" style="display:none">
       <span class="username" id="header-username"></span>
       <button id="btn-signout">Sign Out</button>

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 
 // GET /api/vault — list vault entries (filterable by type)
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/vault — create a vault entry (supports single orgId or multiple orgIds)
 export async function POST(request: NextRequest) {
-  const session = await getCurrentUser();
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const body = await request.json();
