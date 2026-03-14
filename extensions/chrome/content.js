@@ -943,8 +943,7 @@
           </span>
           <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}${relBadge(sub.orgId, assemblies)}</span>
         </div>
-        <div class="ta-ext-headline-original">${escapeHtml(sub.originalHeadline)}</div>
-        <div class="ta-ext-headline-replacement">${escapeHtml(sub.replacement)}</div>
+        <div class="ta-ext-headline-replacement">${escapeHtml(sub.replacement)}<div class="ta-ext-headline-original-tooltip"><div class="ta-tooltip-label">Original Headline</div>${escapeHtml(sub.originalHeadline)}</div></div>
         ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
         <div class="ta-ext-reasoning">${escapeHtml(sub.reasoning)}</div>
         ${sub.evidence && sub.evidence.length > 0 ? `
@@ -1301,9 +1300,7 @@
 
       html += `
         <div class="ta-unapplied-item">
-          <div class="ta-unapplied-original">${escapeHtml(sub.originalHeadline)}</div>
-          <div class="ta-unapplied-arrow">↓ corrected to</div>
-          <div class="ta-unapplied-replacement">${escapeHtml(sub.replacement)}</div>
+          <div class="ta-unapplied-replacement">${escapeHtml(sub.replacement)}<div class="ta-ext-headline-original-tooltip"><div class="ta-tooltip-label">Original Headline</div>${escapeHtml(sub.originalHeadline)}</div></div>
           <div class="ta-unapplied-meta">⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>
           ${sub.reasoning ? `<div class="ta-unapplied-reasoning">${escapeHtml(sub.reasoning)}</div>` : ""}
         </div>
