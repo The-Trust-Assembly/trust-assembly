@@ -3739,6 +3739,8 @@ function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
   const [disputingId, setDisputingId] = useState(null);
   const [disputeForm, setDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
   const [disputeError, setDisputeError] = useState(""); const [disputeSuccess, setDisputeSuccess] = useState("");
+  const [approveMsg, setApproveMsg] = useState("");
+  const isAdmin = user && user.username === ADMIN_USERNAME;
 
   const load = async () => { setSubs((await sG(SK.SUBS)) || {}); setOrgs((await sG(SK.ORGS)) || {}); setLoading(false); };
   useEffect(() => { load(); }, []);
@@ -3750,6 +3752,31 @@ function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
     if (!["approved", "consensus"].includes(sub.status)) return false;
     const org = orgs[sub.orgId];
     return org && org.members.length >= 100;
+  };
+
+  const approveAllPending = async () => {
+    setApproveMsg("");
+    const now = new Date().toISOString();
+    const allSubs = (await sG(SK.SUBS)) || {};
+    const pendingStatuses = new Set(["pending_jury", "pending_review", "di_pending", "cross_review"]);
+    let count = 0;
+    for (const sub of Object.values(allSubs)) {
+      if (pendingStatuses.has(sub.status)) {
+        const prevStatus = sub.status;
+        sub.status = prevStatus === "cross_review" ? "consensus" : "approved";
+        sub.resolvedAt = now;
+        sub.auditTrail = sub.auditTrail || [];
+        sub.auditTrail.push({ time: now, action: `Admin: approved pending submission (was ${prevStatus})` });
+        count++;
+      }
+    }
+    if (count > 0) {
+      await sS(SK.SUBS, allSubs);
+      // Also hit the API endpoint to update SQL
+      try { await fetch("/api/admin/approve-pending", { method: "POST" }); } catch {}
+    }
+    setApproveMsg(count > 0 ? `Approved ${count} pending submission${count > 1 ? "s" : ""}.` : "No pending submissions found.");
+    load();
   };
 
   const submitDispute = async (subId) => {
@@ -3771,6 +3798,13 @@ function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Record</h2>
+      {isAdmin && (
+        <div style={{ marginBottom: 12, padding: 10, background: "#FFF7ED", border: "1px solid #EA580C", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", fontWeight: 700 }}>ADMIN</span>
+          <button className="ta-btn-primary" style={{ background: "#EA580C", fontSize: 11, padding: "6px 14px" }} onClick={approveAllPending}>Approve All Pending Submissions</button>
+          {approveMsg && <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>{approveMsg}</span>}
+        </div>
+      )}
       {user && !Object.values(subs || {}).some(s => s.submittedBy === user.username) && (
         <div style={{ padding: 16, background: "#fff", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 16, textAlign: "center" }}>
           <div style={{ fontSize: 18, marginBottom: 6 }}>⚖</div>
