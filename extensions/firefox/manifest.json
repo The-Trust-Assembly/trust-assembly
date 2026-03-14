@@ -33,6 +33,11 @@
     "48": "icon48.png",
     "128": "icon128.png"
   },
+  "web_accessible_resources": [
+    "icon128.png",
+    "icon128-corrected.png",
+    "icon128-affirmed.png"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "extension@trustassembly.org",

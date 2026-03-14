@@ -697,11 +697,21 @@
   function applyData(data, url) {
     const total = data.corrections.length + data.affirmations.length + data.translations.length;
 
-    // Notify background script for badge count (even if zero, to clear old counts)
+    // Determine page signal type
+    let signalType = "neutral";
+    if (data.corrections.length > 0 && data.affirmations.length === 0) {
+      signalType = "corrected";
+    } else if (data.affirmations.length > 0 && data.corrections.length === 0) {
+      signalType = "affirmed";
+    } else if (data.corrections.length > 0 && data.affirmations.length > 0) {
+      signalType = "mixed";
+    }
+
+    // Notify background script for badge count and signal type
     try {
-      chrome.runtime.sendMessage({ type: "TA_COUNT", count: total, url });
+      chrome.runtime.sendMessage({ type: "TA_COUNT", count: total, url, signalType });
     } catch (e) {
-      try { browser.runtime.sendMessage({ type: "TA_COUNT", count: total, url }); } catch (_) {}
+      try { browser.runtime.sendMessage({ type: "TA_COUNT", count: total, url, signalType }); } catch (_) {}
     }
 
     if (total === 0 && (!data.vault || data.vault.length === 0)) return;
@@ -873,16 +883,40 @@
   }
 
   // ── Floating Badge ──
+  function getIconUrl(filename) {
+    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.getURL) {
+      return chrome.runtime.getURL(filename);
+    }
+    if (typeof browser !== "undefined" && browser.runtime && browser.runtime.getURL) {
+      return browser.runtime.getURL(filename);
+    }
+    return filename;
+  }
+
   function renderBadge(data) {
     const total = data.corrections.length + data.affirmations.length + data.translations.length;
     if (document.getElementById(BADGE_ID)) return;
 
+    // Determine which lighthouse icon to show
+    let iconFile = "icon128.png"; // default gold
+    let borderColor = COLORS.gold;
+    let countBg = COLORS.gold;
+    if (data.corrections.length > 0 && data.affirmations.length === 0) {
+      iconFile = "icon128-corrected.png";
+      borderColor = COLORS.red;
+      countBg = COLORS.red;
+    } else if (data.affirmations.length > 0 && data.corrections.length === 0) {
+      iconFile = "icon128-affirmed.png";
+      borderColor = COLORS.green;
+      countBg = COLORS.green;
+    }
+
     const badge = document.createElement("div");
     badge.id = BADGE_ID;
     badge.innerHTML = `
-      <div class="ta-ext-badge-inner">
-        <div class="ta-ext-badge-icon">⚖</div>
-        <div class="ta-ext-badge-count">${total}</div>
+      <div class="ta-ext-badge-inner" style="border-color:${borderColor}">
+        <img class="ta-ext-badge-icon" src="${getIconUrl(iconFile)}" alt="Trust Assembly" />
+        <div class="ta-ext-badge-count" style="background:${countBg}">${total}</div>
       </div>
     `;
     badge.addEventListener("click", () => togglePanel(data));

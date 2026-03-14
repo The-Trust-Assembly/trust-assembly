@@ -199,11 +199,38 @@ startPolling();
 runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TA_COUNT" && sender.tab) {
     const count = message.count;
-    // Per-tab correction count badge — only set if no global notification badge
-    // We use the per-tab badge so corrections badge appears per-page
+    const signalType = message.signalType || "neutral";
+
+    // Update toolbar icon based on page signal type
+    if (action && action.setIcon) {
+      let iconSuffix = "";
+      if (signalType === "corrected") iconSuffix = "-corrected";
+      else if (signalType === "affirmed") iconSuffix = "-affirmed";
+      // mixed and neutral keep the default gold icon
+
+      try {
+        action.setIcon({
+          path: {
+            "16": "icon16" + iconSuffix + ".png",
+            "48": "icon48" + iconSuffix + ".png",
+            "128": "icon128" + iconSuffix + ".png"
+          },
+          tabId: sender.tab.id
+        });
+      } catch (e) {}
+    }
+
+    // Per-tab correction count badge
+    const badgeColors = {
+      corrected: "#C4573F",
+      affirmed: "#1B5E3F",
+      mixed: "#B8963E",
+      neutral: "#B8963E"
+    };
+
     if (count > 0 && action) {
       action.setBadgeText({ text: String(count), tabId: sender.tab.id });
-      action.setBadgeBackgroundColor({ color: "#B8963E", tabId: sender.tab.id });
+      action.setBadgeBackgroundColor({ color: badgeColors[signalType] || "#B8963E", tabId: sender.tab.id });
     } else if (action) {
       action.setBadgeText({ text: "", tabId: sender.tab.id });
     }
