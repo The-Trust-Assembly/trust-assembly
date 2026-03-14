@@ -3636,7 +3636,7 @@ function RecordScreen({ recordId, onBack, onViewCitizen }) {
   );
 }
 
-function FeedScreen({ user, onNavigate, onViewCitizen }) {
+function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
   const [expandedId, setExpandedId] = useState(null);
@@ -3688,6 +3688,7 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
         const isExpanded = expandedId === sub.id;
         return (
         <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : sub.status === "rejected" || sub.status === "disputed" ? "#DC2626" : "#D97706"}` }}>
+          {!isExpanded && <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
@@ -3697,22 +3698,21 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
             </div>
           </div>
           <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
-          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8, cursor: "pointer" }} onClick={() => setExpandedId(isExpanded ? null : sub.id)}>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8, cursor: "pointer" }} onClick={() => setExpandedId(sub.id)}>
             <SubHeadline sub={sub} size={13} />
           </div>
-
-          {!isExpanded && (
             <div>
               <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
               {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#475569", marginBottom: 4 }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
               {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#0D9488", marginBottom: 4 }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
               {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#2563EB" }} onClick={() => setExpandedId(sub.id)}>View Full Record</button>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#2563EB" }} onClick={() => setExpandedId(sub.id)}>Expand</button>
+                {onViewRecord && <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#0D9488" }} onClick={() => onViewRecord(sub.id)}>Open Full Record</button>}
                 <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
               </div>
             </div>
-          )}
+          </>}
 
           {isExpanded && (
             <div>
@@ -3738,6 +3738,7 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
 
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => setExpandedId(null)}>Collapse</button>
+                {onViewRecord && <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#0D9488" }} onClick={() => onViewRecord(sub.id)}>Open Full Record</button>}
                 <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
               </div>
             </div>
@@ -6315,7 +6316,7 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={navigateToCitizen} />}
+            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} />}
             {screen === "review" && <ReviewScreen user={user} />}
