@@ -3521,9 +3521,125 @@ function ConsensusScreen({ onViewCitizen }) {
   );
 }
 
+function RecordDetailView({ sub, onViewCitizen, onDispute, canDispute: canDisputeFn }) {
+  if (!sub) return null;
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
+          {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
+          <StatusPill status={sub.status} />
+        </div>
+      </div>
+      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+      <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+        <SubHeadline sub={sub} size={15} />
+      </div>
+      <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+
+      {sub.evidence && sub.evidence.length > 0 && (
+        <div style={{ marginTop: 12, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
+          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569", marginTop: 2 }}>↳ {e.explanation}</div>}</div>)}
+        </div>
+      )}
+
+      {sub.inlineEdits && sub.inlineEdits.length > 0 && (
+        <div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>{sub.inlineEdits.length} In-Line Edit{sub.inlineEdits.length > 1 ? "s" : ""}</div>
+          {sub.inlineEdits.map((e, i) => (
+            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid #E2E8F0" : "none" }}>
+              <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
+                <span style={{ textDecoration: "line-through", color: "#64748B" }}>{e.original}</span> → <span style={{ color: "#DC2626", fontWeight: 600 }}>{e.replacement}</span>
+                {e.reasoning && <div style={{ fontSize: 12, color: "#475569", marginTop: 1 }}>↳ {e.reasoning}</div>}
+              </div>
+              {e.approved !== undefined && (
+                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.approved ? "#059669" : "#DC2626", fontWeight: 700 }}>{e.approved ? "✓ APPROVED" : "✗ REJECTED"}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {sub.standingCorrection && (
+        <div style={{ marginTop: 14, padding: 12, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
+          <div style={{ color: "#1E293B", fontWeight: 600 }}>{sub.standingCorrection.assertion}</div>
+          {sub.standingCorrection.evidence && <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>Source: {sub.standingCorrection.evidence}</div>}
+        </div>
+      )}
+
+      {sub.argumentEntry && (
+        <div style={{ marginTop: 8, padding: 10, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 3 }}>⚔️ Argument Proposed</div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6 }}>{sub.argumentEntry.content}</div>
+        </div>
+      )}
+
+      {sub.beliefEntry && (
+        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief Proposed</div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6, fontStyle: "italic" }}>{sub.beliefEntry.content}</div>
+        </div>
+      )}
+
+      {sub.translationEntry && (
+        <div style={{ marginTop: 8, padding: 10, background: "#FFFBEB", border: "1px solid #B4530980", borderRadius: 8, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation Proposed — {sub.translationEntry.type}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ textDecoration: "line-through", color: "#475569" }}>{sub.translationEntry.original}</span>
+            <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
+            <span style={{ color: "#B45309", fontWeight: 700 }}>{sub.translationEntry.translated}</span>
+          </div>
+        </div>
+      )}
+
+      {sub.linkedVaultEntries && sub.linkedVaultEntries.length > 0 && (
+        <div style={{ marginTop: 10, padding: 10, background: "#F1F5F9", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 8 }}>📎 {sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"}</div>
+          {sub.linkedVaultEntries.map(e => {
+            const tc = { correction: ["🏛", "#059669", "#ECFDF5"], argument: ["⚔️", "#0D9488", "#F0FDFA"], belief: ["🧭", "#7C3AED", "#F3E8F9"] }[e.type] || ["📎", "#475569", "#F1F5F9"];
+            return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{tc[0]} Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
+              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B" }}>{e.label}</div>
+              {e.detail && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Source: {e.detail}</div>}
+              {e.stillApplies !== undefined && (
+                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.stillApplies ? "#059669" : "#DC2626", fontWeight: 700 }}>{e.stillApplies ? "✓ STILL APPLIES" : "✗ NO LONGER VALID"}</span>
+              )}
+            </div>;
+          })}
+        </div>
+      )}
+
+      {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
+
+      <AuditTrail entries={sub.auditTrail} />
+    </div>
+  );
+}
+
+function RecordScreen({ recordId, onBack, onViewCitizen }) {
+  const [sub, setSub] = useState(null); const [loading, setLoading] = useState(true);
+  useEffect(() => { (async () => { const s = (await sG(SK.SUBS)) || {}; setSub(s[recordId] || null); setLoading(false); })(); }, [recordId]);
+  if (loading) return <Loader />;
+  if (!sub) return <div><button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button><Empty text="Record not found." /></div>;
+  return (
+    <div>
+      <button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back to Record</button>
+      <div className="ta-section-rule" /><h2 className="ta-section-head">Record Detail</h2>
+      <div className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : sub.status === "rejected" || sub.status === "disputed" ? "#DC2626" : "#D97706"}` }}>
+        <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
+      </div>
+    </div>
+  );
+}
+
 function FeedScreen({ user, onNavigate, onViewCitizen }) {
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
   const [disputingId, setDisputingId] = useState(null);
   const [disputeForm, setDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
   const [disputeError, setDisputeError] = useState(""); const [disputeSuccess, setDisputeSuccess] = useState("");
@@ -3568,7 +3684,9 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
         </div>
       )}
       {disputeSuccess && <div className="ta-success">{disputeSuccess}</div>}
-      {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => (
+      {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => {
+        const isExpanded = expandedId === sub.id;
+        return (
         <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : sub.status === "rejected" || sub.status === "disputed" ? "#DC2626" : "#D97706"}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
@@ -3579,35 +3697,53 @@ function FeedScreen({ user, onNavigate, onViewCitizen }) {
             </div>
           </div>
           <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
-          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8, cursor: "pointer" }} onClick={() => setExpandedId(isExpanded ? null : sub.id)}>
             <SubHeadline sub={sub} size={13} />
           </div>
-          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
-          {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#475569", marginBottom: 4 }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
-          {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#0D9488", marginBottom: 4 }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
-          {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
 
-          {canDispute(sub) && disputingId !== sub.id && (
-            <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
-          )}
-
-          {disputingId === sub.id && (
-            <div style={{ marginTop: 10, padding: 14, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
-              <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
-              {disputeError && <div className="ta-error">{disputeError}</div>}
-              <div className="ta-field"><label>Why is this submission wrong? *</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain specifically what is incorrect, misleading, or deceptive..." /></div>
-              <EvidenceFields evidence={disputeForm.evidence} onChange={ev => setDisputeForm({ ...disputeForm, evidence: ev })} />
-              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => submitDispute(sub.id)}>File Dispute</button>
-                <button className="ta-btn-ghost" onClick={() => setDisputingId(null)}>Cancel</button>
+          {!isExpanded && (
+            <div>
+              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+              {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#475569", marginBottom: 4 }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
+              {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#0D9488", marginBottom: 4 }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
+              {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#2563EB" }} onClick={() => setExpandedId(sub.id)}>View Full Record</button>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
               </div>
             </div>
           )}
 
-          <AuditTrail entries={sub.auditTrail} />
+          {isExpanded && (
+            <div>
+              <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
+
+              {canDispute(sub) && disputingId !== sub.id && (
+                <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
+              )}
+
+              {disputingId === sub.id && (
+                <div style={{ marginTop: 10, padding: 14, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
+                  <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
+                  {disputeError && <div className="ta-error">{disputeError}</div>}
+                  <div className="ta-field"><label>Why is this submission wrong? *</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain specifically what is incorrect, misleading, or deceptive..." /></div>
+                  <EvidenceFields evidence={disputeForm.evidence} onChange={ev => setDisputeForm({ ...disputeForm, evidence: ev })} />
+                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                    <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => submitDispute(sub.id)}>File Dispute</button>
+                    <button className="ta-btn-ghost" onClick={() => setDisputingId(null)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => setExpandedId(null)}>Collapse</button>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
+              </div>
+            </div>
+          )}
         </div>
-      ))}
+      );})}
       <LegalDisclaimer short />
     </div>
   );
@@ -4471,8 +4607,26 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
   }).sort((a, b) => { const sa = orgStats[a.id] || { activityScore: 0 }; const sb = orgStats[b.id] || { activityScore: 0 }; if (sortBy === "members") return b.members.length - a.members.length; if (sortBy === "newest") return new Date(b.createdAt) - new Date(a.createdAt); if (sortBy === "az") return a.name.localeCompare(b.name); return sb.activityScore - sa.activityScore; });
   const sorts = [["activity", "Active"], ["members", "Members"], ["newest", "New"], ["az", "A–Z"]];
 
-  // Pending apps for assemblies I'm in (to sponsor)
-  const pendingApps = Object.values(apps || {}).filter(a => a.status === "pending" && isMember(a.orgId) && a.userId !== user.username);
+  // Pending apps for assemblies I'm in — filtered by role:
+  // Tribal mode: only the founder sees these
+  // Sponsor mode: only members who could potentially sponsor see these
+  const pendingApps = Object.values(apps || {}).filter(a => {
+    if (a.status !== "pending" || !isMember(a.orgId) || a.userId === user.username) return false;
+    const org = orgs[a.orgId];
+    if (!org) return false;
+    const founders = org.founders || [org.createdBy];
+    if (a.mode === "tribal") {
+      // Only the founder sees tribal admission requests
+      return founders.includes(user.username);
+    }
+    // Sponsor mode: show to members who have at least submitted or reviewed in this assembly
+    // (founders always see them too)
+    if (founders.includes(user.username)) return true;
+    const orgSubs = Object.values(subs || {}).filter(s => s.orgId === a.orgId);
+    const hasSubmitted = orgSubs.some(s => s.submittedBy === user.username);
+    const hasJudged = orgSubs.some(s => (s.votes && s.votes[user.username]) || (s.crossGroupVotes && s.crossGroupVotes[user.username]));
+    return hasSubmitted || hasJudged;
+  });
   // My pending apps
   const myPendingApps = Object.values(apps || {}).filter(a => a.status === "pending" && a.userId === user.username);
 
@@ -4665,7 +4819,7 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
         })}
       </div>
 
-      {activeOrg && <InviteCTA orgName={activeOrg.name} memberCount={activeOrg.members.length} />}
+      {activeOrg && (activeOrg.founders || [activeOrg.createdBy]).includes(user.username) && <InviteCTA orgName={activeOrg.name} memberCount={activeOrg.members.length} />}
     </div>
   );
 }
@@ -5879,6 +6033,7 @@ export default function TrustAssembly() {
   const [showManifesto, setShowManifesto] = useState(false);
   const [showMoreNav, setShowMoreNav] = useState(false);
   const [viewingCitizen, setViewingCitizen] = useState(null);
+  const [viewingRecord, setViewingRecord] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
@@ -5889,8 +6044,9 @@ export default function TrustAssembly() {
   const skipPush = useRef(false);
   const setScreen = useCallback((s) => {
     setScreenRaw(s);
+    setViewingRecord(null);
     if (!skipPush.current) {
-      window.history.pushState({ screen: s, citizen: null }, "", "#" + s);
+      window.history.pushState({ screen: s, citizen: null, record: null }, "", "#" + s);
     }
     skipPush.current = false;
   }, []);
@@ -5901,24 +6057,38 @@ export default function TrustAssembly() {
   const navigateToCitizen = useCallback((username) => {
     if (!username) { window.history.back(); return; }
     setViewingCitizen(username);
-    window.history.pushState({ screen: screenRef.current, citizen: username }, "", "#citizen/" + encodeURIComponent(username));
+    setViewingRecord(null);
+    window.history.pushState({ screen: screenRef.current, citizen: username, record: null }, "", "#citizen/" + encodeURIComponent(username));
+  }, []);
+
+  const navigateToRecord = useCallback((recordId) => {
+    if (!recordId) { window.history.back(); return; }
+    setViewingRecord(recordId);
+    setViewingCitizen(null);
+    window.history.pushState({ screen: screenRef.current, citizen: null, record: recordId }, "", "#record/" + encodeURIComponent(recordId));
   }, []);
 
   useEffect(() => {
     const onPop = (e) => {
       skipPush.current = true;
       if (e.state) {
-        if (e.state.citizen) {
+        if (e.state.record) {
+          setViewingRecord(e.state.record);
+          setViewingCitizen(null);
+        } else if (e.state.citizen) {
           setViewingCitizen(e.state.citizen);
+          setViewingRecord(null);
         } else {
           setViewingCitizen(null);
+          setViewingRecord(null);
           if (e.state.screen) setScreenRaw(e.state.screen);
         }
       } else {
         // Handle initial/hashless state — parse from URL hash
         setViewingCitizen(null);
+        setViewingRecord(null);
         const hash = window.location.hash.slice(1);
-        if (hash && !hash.startsWith("citizen/")) setScreenRaw(hash);
+        if (hash && !hash.startsWith("citizen/") && !hash.startsWith("record/")) setScreenRaw(hash);
       }
       skipPush.current = false;
     };
@@ -5929,12 +6099,15 @@ export default function TrustAssembly() {
     if (hash.startsWith("citizen/")) {
       const username = decodeURIComponent(hash.slice(8));
       setViewingCitizen(username);
+    } else if (hash.startsWith("record/")) {
+      const recordId = decodeURIComponent(hash.slice(7));
+      setViewingRecord(recordId);
     } else if (hash && hash !== "login" && hash !== "register") {
       setScreenRaw(hash);
     }
 
     // Seed initial history entry
-    window.history.replaceState({ screen, citizen: null }, "", window.location.hash || "#" + screen);
+    window.history.replaceState({ screen, citizen: null, record: null }, "", window.location.hash || "#" + screen);
     return () => window.removeEventListener("popstate", onPop);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -6049,7 +6222,11 @@ export default function TrustAssembly() {
         @media(max-width:640px) { .ta-feedback-fab { bottom:16px; right:16px; font-size:11px; padding:8px 14px; } }
       `}</style>
 
-      {!user ? (
+      {!user && viewingRecord ? (
+        <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
+          <RecordScreen recordId={viewingRecord} onBack={() => { setViewingRecord(null); window.history.back(); }} onViewCitizen={navigateToCitizen} />
+        </div>
+      ) : !user ? (
         <div>
           <div style={{ textAlign: "center", padding: "40px 20px 0", maxWidth: 580, margin: "0 auto" }}>
             <img src={CREST_IMG} style={{ width: 100, display: "block", margin: "0 auto 16px" }} alt="Trust Assembly Crest" />
@@ -6133,7 +6310,9 @@ export default function TrustAssembly() {
           </div>
           <div className="ta-content">
             <CitizenCounter />
-            {viewingCitizen ? (
+            {viewingRecord ? (
+              <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
+            ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
             {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={navigateToCitizen} />}
