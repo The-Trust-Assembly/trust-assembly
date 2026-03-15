@@ -89,6 +89,9 @@
   padding: .5em 1.5em;
   border-radius: 6px;
   margin-top: 1.5em;
+  border: none;
+  cursor: pointer;
+  font-size: inherit;
 }
 
 .social-icons {
