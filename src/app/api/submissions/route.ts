@@ -98,9 +98,19 @@ export async function POST(request: NextRequest) {
   }
 
   const wildWest = await isWildWestMode();
-  const user = await sql`SELECT current_streak, is_di FROM users WHERE id = ${session.sub}`;
-  const trustedSkip = !wildWest && user.rows[0].current_streak >= 10;
+  const user = await sql`SELECT current_streak, is_di, di_partner_id FROM users WHERE id = ${session.sub}`;
+  const submitterIsDI = user.rows[0].is_di;
+  const trustedSkip = !submitterIsDI && !wildWest && user.rows[0].current_streak >= 10;
   const jurySeats = wildWest ? 1 : null;
+
+  // Look up DI partner username if submitter is a DI
+  let diPartnerUsername: string | null = null;
+  if (submitterIsDI && user.rows[0].di_partner_id) {
+    const partner = await sql`SELECT username FROM users WHERE id = ${user.rows[0].di_partner_id}`;
+    if (partner.rows.length > 0) {
+      diPartnerUsername = partner.rows[0].username;
+    }
+  }
 
   const createdSubs: Record<string, unknown>[] = [];
 
@@ -111,17 +121,18 @@ export async function POST(request: NextRequest) {
       WHERE org_id = ${targetOrg} AND is_active = TRUE
     `;
     const count = parseInt(memberCount.rows[0].count);
-    const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
+    // DI submissions require partner pre-approval before entering jury review
+    const initialStatus = submitterIsDI ? "di_pending" : count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
     // Create submission
     const result = await sql`
       INSERT INTO submissions (
         submission_type, status, url, original_headline, replacement,
-        reasoning, author, submitted_by, org_id, trusted_skip, is_di, jury_seats
+        reasoning, author, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats
       ) VALUES (
         ${submissionType}, ${initialStatus}, ${url}, ${originalHeadline},
         ${replacement || null}, ${reasoning}, ${author || null},
-        ${session.sub}, ${targetOrg}, ${trustedSkip}, ${user.rows[0].is_di}, ${jurySeats}
+        ${session.sub}, ${targetOrg}, ${trustedSkip}, ${submitterIsDI}, ${user.rows[0].di_partner_id || null}, ${jurySeats}
       ) RETURNING id, submission_type, status, created_at
     `;
 
@@ -244,8 +255,8 @@ export async function POST(request: NextRequest) {
         orgId: targetOrg,
         orgName,
         trustedSkip,
-        isDI: user.rows[0].is_di,
-        diPartner: null,
+        isDI: submitterIsDI,
+        diPartner: diPartnerUsername,
         evidence: evidence || [],
         inlineEdits: editsList,
         standingCorrection: body.standingCorrection || null,
@@ -273,7 +284,9 @@ export async function POST(request: NextRequest) {
         createdAt: sub.created_at,
         resolvedAt: trustedSkip ? sub.created_at : null,
         deliberateLie: false,
-        auditTrail: [{ time: sub.created_at, action: trustedSkip
+        auditTrail: [{ time: sub.created_at, action: submitterIsDI
+          ? `🤖 Submitted by a Digital Intelligence — awaiting partner pre-approval`
+          : trustedSkip
           ? "🛡 Submitted (Trusted Contributor — jury skipped, disputable)"
           : initialStatus === "pending_review"
           ? `Submission received. Jury pool: ${jurorUsernames.length} jurors — ${jurySize} seats.`
