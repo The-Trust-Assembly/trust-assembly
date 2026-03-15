@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
 
 const ADMIN_USERNAME = "thekingofamerica";
@@ -27,7 +27,7 @@ async function ensureTable() {
 
 // POST /api/feedback — submit feedback (any authenticated user)
 export async function POST(request: NextRequest) {
-  const session = await getCurrentUser();
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const body = await request.json();
@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
 }
 
 // GET /api/feedback — list all feedback (admin only)
-export async function GET() {
-  const session = await getCurrentUser();
+export async function GET(request: NextRequest) {
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   if (session.username !== ADMIN_USERNAME) {

@@ -138,7 +138,7 @@ Two auth paths exist:
 - **Web app:** HTTP-only session cookie (`ta-session`, SameSite=lax, Secure in production, 7-day expiry)
 - **Browser extension:** `Authorization: Bearer <token>` header (token returned at login)
 
-The `getCurrentUserFromRequest()` function checks the Bearer header first, then falls back to cookie-based auth.
+The `getCurrentUserFromRequest()` function checks the Bearer header first, then falls back to cookie-based auth. All API routes use this function to support both authentication methods uniformly.
 
 ### 2.2 JWT Payload
 
@@ -459,9 +459,12 @@ All routes use consistent response helpers from `api-utils.ts`:
 
 The middleware (`src/middleware.ts`) applies to all `/api/*` routes and handles browser extension cross-origin requests:
 
-- **Extension origins** (chrome-extension://, moz-extension://, safari-web-extension://): Allowed for all methods
-- **GET/OPTIONS from any origin**: Allowed (read-only public data)
-- **POST/PUT/DELETE from non-extension origins**: Blocked at the CORS level (still require valid JWT)
+- **Extension origins** (chrome-extension://, moz-extension://, safari-web-extension://): Allowed for all methods, with `Access-Control-Allow-Credentials: true`
+- **Same-origin** (trustassembly.org): Allowed for all methods, with `Access-Control-Allow-Credentials: true`
+- **Public read-only endpoints** (`/api/corrections`, `/api/vault`, `/api/orgs`): Any origin allowed for GET (content scripts need this), without credentials
+- **All other cross-origin requests**: Blocked at the CORS level
+
+This prevents malicious websites from making authenticated cross-origin requests using the user's session cookie while still allowing content scripts (which use Bearer tokens, not cookies) to fetch public correction data.
 
 ### 4.3 Query Building Pattern
 
@@ -515,6 +518,8 @@ The KV store bridges the legacy SPA's `window.storage` pattern to the relational
 The browser extension's `/api/corrections?url=` endpoint reads from these KV blobs rather than performing relational joins, providing fast read access for the content script overlay. All user-generated text fields are HTML-entity-encoded on output via `escapeHtml()` from `lib/sanitize.ts` to prevent stored XSS in the extension's content scripts.
 
 **Write Protection:** The `POST /api/kv` endpoint requires authentication for all writes. Protected keys (currently `ta-s-v5` — the submissions cache) require admin privileges. Other keys remain writable by authenticated users for legacy frontend compatibility. Protected key writes are audit-logged.
+
+**Submitter Anonymity:** Unauthenticated reads of `ta-s-v5` have `submittedBy` and `anonMap` fields stripped from submissions still under review (status not in approved/rejected/consensus). This prevents submitter identity from leaking to unauthenticated readers during the blind review period. Authenticated users (the SPA) receive the full data for business logic.
 
 ---
 

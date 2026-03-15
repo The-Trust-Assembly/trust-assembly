@@ -11,9 +11,12 @@ import { ok, err, forbidden } from "@/lib/api-utils";
 // submission creation, and admin backfill routes. The POST endpoint
 // is restricted to admin users only.
 
+// Submission statuses that indicate review is complete — submitter identity
+// can be revealed. Submissions still under review must have their submitter
+// identity stripped to prevent bias (M3: submitter anonymity).
+const RESOLVED_STATUSES = new Set(["approved", "rejected", "consensus"]);
+
 export async function GET(request: NextRequest) {
-  // Reads are unauthenticated — the app needs to read users/session data
-  // to bootstrap login. All data on this platform is public by design.
   const key = request.nextUrl.searchParams.get("key");
   if (!key) return err("key is required");
 
@@ -24,7 +27,40 @@ export async function GET(request: NextRequest) {
   if (result.rows.length === 0) {
     return ok({ key, value: null });
   }
-  return ok({ key, value: result.rows[0].value });
+
+  let value = result.rows[0].value;
+
+  // M3: Protect submitter anonymity for non-resolved submissions.
+  // Unauthenticated reads of the submissions blob get submittedBy and
+  // anonMap stripped from submissions still under review. Authenticated
+  // users (the SPA) get the full data for business logic.
+  if (key === "ta-s-v5" && value) {
+    const { getCurrentUserFromRequest } = await import("@/lib/auth");
+    const session = await getCurrentUserFromRequest(request);
+    if (!session) {
+      try {
+        const parsed = typeof value === "string" ? JSON.parse(value) : value;
+        if (parsed && typeof parsed === "object") {
+          const redacted: Record<string, unknown> = {};
+          for (const [id, sub] of Object.entries(parsed)) {
+            const s = sub as Record<string, unknown>;
+            if (!RESOLVED_STATUSES.has(s.status as string)) {
+              // Strip identity fields from in-review submissions
+              const { submittedBy, anonMap, ...rest } = s;
+              redacted[id] = rest;
+            } else {
+              redacted[id] = s;
+            }
+          }
+          value = JSON.stringify(redacted);
+        }
+      } catch {
+        // If parsing fails, return as-is rather than breaking
+      }
+    }
+  }
+
+  return ok({ key, value });
 }
 
 // Keys that contain critical data and should ONLY be written by server-side

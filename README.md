@@ -90,8 +90,11 @@ The `GET /api/corrections?url=` endpoint is **stateless and blind by design**. I
 
 - Admin endpoints require `is_admin` role check via `requireAdmin()`
 - KV store writes to protected keys (submissions cache) require admin
+- KV store reads strip submitter identity from in-review submissions for unauthenticated requests
 - Vote resolution pipeline runs in database transactions (BEGIN/COMMIT/ROLLBACK)
 - All user-generated text served to browser extensions is HTML-entity-encoded on output
+- CORS policy restricts credentialed requests to same-origin and extension origins; public read-only endpoints allow any origin without credentials
+- All API routes support both cookie and Bearer token authentication via `getCurrentUserFromRequest()`
 - JWT expiry reduced to 7 days (from 365 days)
 - Audit logging on admin actions with user attribution
 

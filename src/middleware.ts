@@ -28,6 +28,10 @@ import { NextRequest, NextResponse } from "next/server";
 const ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Authorization";
 
+// The application's own origin — cookie-authenticated requests should only
+// be allowed from here or from browser extension origins.
+const APP_ORIGIN = process.env.NEXT_PUBLIC_APP_URL || "https://trustassembly.org";
+
 function isExtensionOrigin(origin: string | null): boolean {
   if (!origin) return false;
   return (
@@ -37,39 +41,81 @@ function isExtensionOrigin(origin: string | null): boolean {
   );
 }
 
+function isSameOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  try {
+    const app = new URL(APP_ORIGIN);
+    const req = new URL(origin);
+    return req.hostname === app.hostname;
+  } catch {
+    return false;
+  }
+}
+
+// Public, read-only endpoints that content scripts need access to.
+// These serve data that is public by design and contain no user-specific
+// information, so reflecting any origin is safe.
+const PUBLIC_GET_PATHS = [
+  "/api/corrections",
+  "/api/vault",
+  "/api/orgs",
+];
+
+function isPublicGetPath(pathname: string): boolean {
+  return PUBLIC_GET_PATHS.some(p => pathname.startsWith(p));
+}
+
 function shouldAllowOrigin(
   origin: string | null,
   method: string,
+  pathname: string,
 ): boolean {
   // Extension origins are always allowed (popup, background, service worker)
   if (isExtensionOrigin(origin)) return true;
-  // GET requests serve public, read-only data — allow any origin so that
-  // content scripts injected into arbitrary news sites can fetch corrections.
-  if (method === "GET" || method === "OPTIONS") return true;
+  // Same-origin requests are always allowed (the web app itself)
+  if (isSameOrigin(origin)) return true;
+  // Public read-only endpoints allow any origin for GET — content scripts
+  // injected into arbitrary news sites need to fetch corrections/vault data.
+  // These endpoints don't use cookie auth and contain no user-specific data.
+  if ((method === "GET" || method === "OPTIONS") && isPublicGetPath(pathname)) return true;
   return false;
+}
+
+function addCorsHeaders(
+  response: NextResponse,
+  origin: string,
+  isExtOrSameOrigin: boolean,
+): void {
+  response.headers.set("Access-Control-Allow-Origin", origin);
+  response.headers.set("Access-Control-Allow-Methods", ALLOWED_METHODS);
+  response.headers.set("Access-Control-Allow-Headers", ALLOWED_HEADERS);
+  // Only allow credentials (cookies) for same-origin and extension requests.
+  // Third-party origins should never receive cookie-authenticated responses.
+  if (isExtOrSameOrigin) {
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  }
 }
 
 export function middleware(request: NextRequest) {
   const origin = request.headers.get("origin");
+  const pathname = request.nextUrl.pathname;
+
+  const extOrSame = isExtensionOrigin(origin) || isSameOrigin(origin);
 
   // Handle preflight OPTIONS requests
   if (request.method === "OPTIONS") {
     const response = new NextResponse(null, { status: 204 });
-    if (origin && shouldAllowOrigin(origin, "OPTIONS")) {
-      response.headers.set("Access-Control-Allow-Origin", origin);
+    if (origin && shouldAllowOrigin(origin, "OPTIONS", pathname)) {
+      addCorsHeaders(response, origin, extOrSame);
     }
-    response.headers.set("Access-Control-Allow-Methods", ALLOWED_METHODS);
-    response.headers.set("Access-Control-Allow-Headers", ALLOWED_HEADERS);
     response.headers.set("Access-Control-Max-Age", "86400");
     return response;
   }
 
   // For actual requests, continue and add CORS headers to the response
   const response = NextResponse.next();
-  if (origin && shouldAllowOrigin(origin, request.method)) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
-    response.headers.set("Access-Control-Allow-Methods", ALLOWED_METHODS);
-    response.headers.set("Access-Control-Allow-Headers", ALLOWED_HEADERS);
+  if (origin && shouldAllowOrigin(origin, request.method, pathname)) {
+    addCorsHeaders(response, origin, extOrSame);
   }
   return response;
 }
