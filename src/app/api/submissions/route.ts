@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
 
       // Build anon map
       const anonMap: Record<string, string> = {};
-      anonMap[session.sub] = `Citizen-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+      anonMap[session.username] = `Citizen-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
       jurorUsernames.forEach((j: string, i: number) => { anonMap[j] = `Juror-${String.fromCharCode(65 + i)}`; });
 
       const jurySize = (!wildWest && initialStatus === "pending_review") ? getJurySize(count) : (wildWest ? 1 : 0);
@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
         replacement: replacement || null,
         reasoning,
         author: author || null,
-        submittedBy: session.sub,
+        submittedBy: session.username,
         orgId: targetOrg,
         orgName,
         trustedSkip,

@@ -3134,7 +3134,31 @@ function ReviewScreen({ user }) {
     await processJuryRotation();
     const ww = await isWildWestMode();
     setWildWest(ww);
-    setSubs((await sG(SK.SUBS)) || {}); setDisputes((await sG(SK.DISPUTES)) || {}); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
+    // ── Backfill di_pending submissions missing diPartner or with UUID submittedBy ──
+    const allSubs = (await sG(SK.SUBS)) || {};
+    const users = (await sG(SK.USERS)) || {};
+    let kvDirty = false;
+    // Build reverse lookup: find username for any DI user by scanning users
+    const diUsersByPartner = {};
+    for (const [uname, u] of Object.entries(users)) {
+      if (u.isDI && u.diPartner) diUsersByPartner[uname] = u.diPartner;
+    }
+    for (const [id, sub] of Object.entries(allSubs)) {
+      let changed = false;
+      // Fix diPartner if missing on DI submissions
+      if (sub.isDI && !sub.diPartner && sub.submittedBy) {
+        const partner = diUsersByPartner[sub.submittedBy];
+        if (partner) { sub.diPartner = partner; changed = true; }
+      }
+      // Fix submittedBy if it looks like a UUID (from API route before fix)
+      if (sub.submittedBy && sub.submittedBy.includes("-") && sub.submittedBy.length > 30) {
+        const match = Object.entries(users).find(([, u]) => u.id === sub.submittedBy);
+        if (match) { sub.submittedBy = match[0]; changed = true; }
+      }
+      if (changed) { allSubs[id] = sub; kvDirty = true; }
+    }
+    if (kvDirty) await sS(SK.SUBS, allSubs);
+    setSubs(allSubs); setDisputes((await sG(SK.DISPUTES)) || {}); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
     // Compute jury score for display
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
