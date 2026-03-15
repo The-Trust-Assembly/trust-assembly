@@ -1,5 +1,7 @@
+import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, err } from "@/lib/api-utils";
+import { requireAdmin } from "@/lib/auth";
+import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
 
 const VER = "v5";
 const SK_SUBS = `ta-s-${VER}`;
@@ -32,7 +34,10 @@ const PENDING_STATUSES = [
 // Approves ALL currently non-resolved submissions in BOTH the SQL
 // submissions table AND the KV store. Catches legacy bugs where
 // submissions got stuck in intermediate states.
-export async function POST() {
+// REQUIRES admin authentication.
+export async function POST(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin) return forbidden("Admin access required");
   const now = new Date().toISOString();
   let sqlResolved = 0;
   let kvResolved = 0;
@@ -84,8 +89,8 @@ export async function POST() {
       INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
       VALUES (
         'Admin: approved pending submission',
-        ${sub.submitted_by}, ${sub.org_id}, 'submission', ${sub.id},
-        ${JSON.stringify({ previousStatus: sub.prev_status, resolvedAs: sub.prev_status === 'cross_review' ? 'consensus' : 'approved', approvedAt: now })}
+        ${admin.sub}, ${sub.org_id}, 'submission', ${sub.id},
+        ${JSON.stringify({ previousStatus: sub.prev_status, resolvedAs: sub.prev_status === 'cross_review' ? 'consensus' : 'approved', approvedAt: now, adminUsername: admin.username })}
       )
     `;
 

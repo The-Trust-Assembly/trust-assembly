@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { ok, err } from "@/lib/api-utils";
+import { escapeHtml } from "@/lib/sanitize";
 
 // GET /api/corrections?url=<url> — browser extension endpoint
 // Reads from the KV store (where the React SPA stores all data)
@@ -109,22 +110,36 @@ export async function GET(request: NextRequest) {
           reasoning: e.reasoning || null,
         }));
 
+      // Sanitize all user-generated text fields to prevent stored XSS.
+      // The browser extension's content script renders this data into
+      // arbitrary web pages — unsanitized HTML in a headline or reasoning
+      // field would be injected into every page the URL matches.
+      const safeStr = (v: unknown) => typeof v === "string" ? escapeHtml(v) : v;
+
       const item = {
         id: sub.id,
         submissionType: sub.submissionType,
-        originalHeadline: sub.originalHeadline,
-        replacement: sub.replacement,
-        author: sub.author,
-        reasoning: sub.reasoning,
-        evidence: sub.evidence || [],
-        inlineEdits: approvedEdits,
+        originalHeadline: safeStr(sub.originalHeadline),
+        replacement: safeStr(sub.replacement),
+        author: safeStr(sub.author),
+        reasoning: safeStr(sub.reasoning),
+        evidence: ((sub.evidence || []) as Array<Record<string, unknown>>).map(e => ({
+          ...e,
+          url: safeStr(e.url),
+          explanation: safeStr(e.explanation),
+        })),
+        inlineEdits: approvedEdits.map(e => ({
+          original: safeStr(e.original),
+          replacement: safeStr(e.replacement),
+          reasoning: safeStr(e.reasoning),
+        })),
         submittedBy: sub.submittedBy,
         orgId: sub.orgId || "",
-        orgName: org?.name || "",
+        orgName: safeStr(org?.name) || "",
         status: sub.status,
         trustScore,
         profile: {
-          displayName: submitter?.displayName || submitter?.username || "",
+          displayName: safeStr(submitter?.displayName || submitter?.username || ""),
           gender: submitter?.gender,
           age: submitter?.age,
           country: submitter?.country,
@@ -142,14 +157,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Get approved translations (these apply globally, not per-URL)
+    // Sanitize translation text since it gets injected into article DOMs
     const translations = Object.values(trans)
       .filter((t: Record<string, unknown>) => t.status === "approved")
       .map((t: Record<string, unknown>) => ({
         id: t.id,
-        original: t.original,
-        translated: t.translated,
+        original: typeof t.original === "string" ? escapeHtml(t.original) : t.original,
+        translated: typeof t.translated === "string" ? escapeHtml(t.translated) : t.translated,
         type: t.type,
-        orgName: (orgs[t.orgId as string] as Record<string, unknown>)?.name || "",
+        orgName: typeof (orgs[t.orgId as string] as Record<string, unknown>)?.name === "string"
+          ? escapeHtml((orgs[t.orgId as string] as Record<string, unknown>).name as string)
+          : "",
         status: t.status,
       }));
 
