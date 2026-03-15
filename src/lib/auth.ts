@@ -9,7 +9,7 @@ if (!jwtSecret) {
 const JWT_SECRET = new TextEncoder().encode(jwtSecret);
 
 const COOKIE_NAME = "ta-session";
-const TOKEN_EXPIRY = "365d";
+const TOKEN_EXPIRY = "7d";
 
 export interface JWTPayload {
   sub: string; // user id
@@ -50,7 +50,7 @@ export async function setSessionCookie(token: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 365, // 1 year
+    maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 }
 
@@ -79,4 +79,22 @@ export async function getCurrentUserFromRequest(request: Request): Promise<JWTPa
   }
   // Fall back to cookie-based auth
   return getCurrentUser();
+}
+
+/**
+ * Check if the authenticated user has admin privileges.
+ * Admin status is determined by an is_admin column on the users table.
+ * Returns the user payload if admin, null otherwise.
+ */
+export async function requireAdmin(request?: Request): Promise<JWTPayload | null> {
+  const { sql } = await import("@/lib/db");
+  const user = request
+    ? await getCurrentUserFromRequest(request)
+    : await getCurrentUser();
+  if (!user) return null;
+
+  const result = await sql`SELECT is_admin FROM users WHERE id = ${user.sub}`;
+  if (result.rows.length === 0 || !result.rows[0].is_admin) return null;
+
+  return user;
 }

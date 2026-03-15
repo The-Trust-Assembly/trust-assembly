@@ -86,6 +86,9 @@ CREATE TABLE users (
   deliberate_lies INTEGER NOT NULL DEFAULT 0,
   last_deception_finding TIMESTAMPTZ,
 
+  -- Admin flag
+  is_admin      BOOLEAN NOT NULL DEFAULT FALSE,
+
   -- Primary assembly
   primary_org_id UUID,
 

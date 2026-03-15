@@ -1,5 +1,7 @@
+import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, err } from "@/lib/api-utils";
+import { requireAdmin } from "@/lib/auth";
+import { ok, err, forbidden } from "@/lib/api-utils";
 import { isWildWestMode } from "@/lib/jury-rules";
 
 const VER = "v5";
@@ -28,7 +30,10 @@ async function kvSet(key: string, value: unknown): Promise<void> {
 // can see the corrections.
 // Only runs when Wild West mode is active (< 100 users).
 // Safe to call multiple times — only affects pending submissions.
-export async function POST() {
+// REQUIRES admin authentication.
+export async function POST(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin) return forbidden("Admin access required");
   const wildWest = await isWildWestMode();
   if (!wildWest) {
     return err("Wild West mode is not active (100+ users). No backfill needed.");
@@ -87,8 +92,8 @@ export async function POST() {
       INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
       VALUES (
         'Wild West backfill: approved pending submission',
-        ${sub.submitted_by}, ${sub.org_id}, 'submission', ${sub.id},
-        ${JSON.stringify({ backfillTime: now, previousStatus: sub.prev_status })}
+        ${admin.sub}, ${sub.org_id}, 'submission', ${sub.id},
+        ${JSON.stringify({ backfillTime: now, previousStatus: sub.prev_status, adminUsername: admin.username })}
       )
     `;
 

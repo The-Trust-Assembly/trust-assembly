@@ -98,51 +98,70 @@ export async function tryResolveSubmission(
   const lieCount = votes.filter(v => v.deliberate_lie).length;
   const wasLie = !wildWest && lieCount > votes.length / 2;
 
-  // Update submission status
-  await sql`
-    UPDATE submissions
-    SET status = ${outcome}, resolved_at = ${now}, deliberate_lie_finding = ${wasLie}
-    WHERE id = ${submissionId}
-  `;
-
-  // Resolve inline edits independently
-  await resolveInlineEdits(submissionId, votes);
-
-  // Resolve linked vault entry survival votes
-  if (outcome === "approved" || outcome === "consensus") {
-    await resolveVaultSurvival(submissionId, votes, now);
-    await graduateLinkedVaultEntries(submissionId, now);
-  }
-
-  // Reputation updates (in-group only — cross-group affects the org)
+  // ── TRANSACTION ──
+  // Wrap the entire resolution pipeline in a database transaction.
+  // If any step fails (timeout, constraint violation, connection drop),
+  // all changes roll back and the system stays consistent.
+  // KV sync is intentionally OUTSIDE the transaction — it's a cache
+  // that can be rebuilt from the relational tables.
   let promotedToCrossGroup = false;
-  if (!isCross) {
-    await updateSubmitterReputation(sub, outcome, wasLie, votes, now);
 
-    // Auto-promote to cross-group if in-group approved
-    if (outcome === "approved") {
-      promotedToCrossGroup = await promoteToCrossGroup(submissionId, sub.org_id, sub.submitted_by, now);
+  try {
+    await sql`BEGIN`;
+
+    // Update submission status
+    await sql`
+      UPDATE submissions
+      SET status = ${outcome}, resolved_at = ${now}, deliberate_lie_finding = ${wasLie}
+      WHERE id = ${submissionId}
+    `;
+
+    // Resolve inline edits independently
+    await resolveInlineEdits(submissionId, votes);
+
+    // Resolve linked vault entry survival votes
+    if (outcome === "approved" || outcome === "consensus") {
+      await resolveVaultSurvival(submissionId, votes, now);
+      await graduateLinkedVaultEntries(submissionId, now);
     }
+
+    // Reputation updates (in-group only — cross-group affects the org)
+    if (!isCross) {
+      await updateSubmitterReputation(sub, outcome, wasLie, votes, now);
+
+      // Auto-promote to cross-group if in-group approved
+      if (outcome === "approved") {
+        promotedToCrossGroup = await promoteToCrossGroup(submissionId, sub.org_id, sub.submitted_by, now);
+      }
+    }
+
+    // Track cross-group results on the originating org
+    if (isCross) {
+      await recordCrossGroupResult(sub, outcome, wasLie, now);
+    }
+
+    // Audit log
+    await sql`
+      INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+      VALUES (
+        ${`Submission resolved: ${outcome.toUpperCase()}${wasLie ? " (DECEPTION FINDING)" : ""}`},
+        ${sub.submitted_by}, ${sub.org_id}, 'submission', ${submissionId},
+        ${JSON.stringify({ outcome, approveCount, rejectCount, voteCount, expectedJurors, wasLie })}
+      )
+    `;
+
+    await sql`COMMIT`;
+  } catch (e) {
+    await sql`ROLLBACK`;
+    console.error("Vote resolution transaction failed, rolled back:", e);
+    throw e;
   }
 
-  // Track cross-group results on the originating org
-  if (isCross) {
-    await recordCrossGroupResult(sub, outcome, wasLie, now);
-  }
-
-  // Audit log
-  await sql`
-    INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-    VALUES (
-      ${`Submission resolved: ${outcome.toUpperCase()}${wasLie ? " (DECEPTION FINDING)" : ""}`},
-      ${sub.submitted_by}, ${sub.org_id}, 'submission', ${submissionId},
-      ${JSON.stringify({ outcome, approveCount, rejectCount, voteCount, expectedJurors, wasLie })}
-    )
-  `;
-
-  // ── KV store sync ──
+  // ── KV store sync (outside transaction) ──
   // Update the submission status in the KV store so the browser extension
   // sees the resolved correction/affirmation in its overlay.
+  // This is non-critical — if it fails, the relational tables are the
+  // source of truth and the KV cache can be rebuilt.
   await syncSubmissionToKV(submissionId, outcome, now, wasLie, promotedToCrossGroup);
 
   return { resolved: true, outcome, promotedToCrossGroup };

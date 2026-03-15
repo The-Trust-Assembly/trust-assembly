@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
 
 // POST /api/orgs/[id]/leave — leave an assembly
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getCurrentUser();
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const { id } = await params;

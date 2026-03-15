@@ -1857,6 +1857,220 @@ function AuditTrail({ entries }) {
   );
 }
 
+// ═══════════════════════════════════
+// CREST ICON — SVG for dark band header and landing
+// ═══════════════════════════════════
+function CrestIcon({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M12 3L17 5.5V11C17 14.8 14.2 18.2 12 19.3C9.8 18.2 7 14.8 7 11V5.5L12 3Z" stroke="#B8963E" strokeWidth="0.8" fill="none"/>
+      <path d="M12 2L14 8H10L12 2Z" fill="#B8963E" opacity="0.9"/>
+      <rect x="10" y="8" width="4" height="10" rx="0.5" fill="#B8963E" opacity="0.8"/>
+      <path d="M7 18H17L18 22H6L7 18Z" fill="#B8963E" opacity="0.7"/>
+      <circle cx="12" cy="4" r="2.5" fill="none" stroke="#B8963E" strokeWidth="0.7" opacity="0.35"/>
+      <circle cx="12" cy="4" r="4.5" fill="none" stroke="#B8963E" strokeWidth="0.4" opacity="0.18"/>
+      <line x1="6" y1="5" x2="8.5" y2="5" stroke="#B8963E" strokeWidth="0.5" opacity="0.3"/>
+      <line x1="15.5" y1="5" x2="18" y2="5" stroke="#B8963E" strokeWidth="0.5" opacity="0.3"/>
+    </svg>
+  );
+}
+
+function LighthouseIcon({ size = 12, color = "#B8963E" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M12 2L14 8H10L12 2Z" fill={color} opacity="0.9"/>
+      <rect x="10" y="8" width="4" height="10" rx="0.5" fill={color} opacity="0.8"/>
+      <path d="M7 18H17L18 22H6L7 18Z" fill={color} opacity="0.7"/>
+    </svg>
+  );
+}
+
+function TABadge({ text, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+      <LighthouseIcon size={10} color="#B8963E" />
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8.5, fontWeight: 600, color: "#B8963E", letterSpacing: "0.04em" }}>TRUST ASSEMBLY</span>
+      <span style={{ fontSize: 8.5, fontWeight: 700, color, backgroundColor: color + "18", padding: "1px 5px", borderRadius: 6, fontFamily: "monospace" }}>{text}</span>
+    </div>
+  );
+}
+
+function AttrLine({ label, org, votes, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 5, fontFamily: "'IBM Plex Mono', monospace", fontSize: 9.5, color, opacity: 0.65 }}>
+      <span style={{ fontWeight: 600, letterSpacing: "0.04em" }}>{label}</span>
+      <span style={{ opacity: 0.4 }}>·</span>
+      <span>{org}</span>
+      <span style={{ opacity: 0.4 }}>·</span>
+      <span>{votes}</span>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════
+// LANDING HERO SLIDES
+// ═══════════════════════════════════
+const HERO_SLIDES = [
+  {
+    id: "sensationalism",
+    pills: "📰 Sensationalized Headlines",
+    label: "When a headline turns a nothingburger into the apocalypse",
+    layout: "columns",
+    before: (
+      <div style={{ padding: "18px 20px", backgroundColor: "#fff", borderRadius: 8, height: "100%" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>Daily Health Wire</div>
+        <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, color: "#1a1a1a", fontFamily: "Georgia, serif" }}>Common Grocery Store Item Linked to 300% Surge in Cancer Risk, Study Warns</div>
+        <div style={{ fontSize: 11, color: "#999", marginTop: 10, fontFamily: "Helvetica, sans-serif" }}>By Staff Report · March 14, 2026</div>
+      </div>
+    ),
+    after: (
+      <div style={{ padding: "18px 20px", backgroundColor: "#fff", borderRadius: 8, height: "100%" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>Daily Health Wire</div>
+        <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, color: "#8B2D2D", fontFamily: "Georgia, serif" }}>
+          Preliminary Lab Study of 12 Mice Finds Cell Changes from High-Dose Additive Exposure Not Replicated in Humans
+          <span style={{ marginLeft: 5 }}><LighthouseIcon size={12} color="#8B2D2D" /></span>
+        </div>
+        <AttrLine label="CORRECTED" org="Science Watch" votes="9/9" color="#8B2D2D" />
+        <div style={{ fontSize: 11, color: "#999", marginTop: 10, fontFamily: "Helvetica, sans-serif" }}>By Staff Report · March 14, 2026</div>
+      </div>
+    ),
+  },
+  {
+    id: "twitter",
+    pills: "𝕏 Political Spin",
+    label: "When the framing does the lying so the words don't have to",
+    layout: "stacked",
+    before: (
+      <div style={{ padding: "12px 14px", backgroundColor: "#000", borderRadius: 8, color: "#E7E9EA", fontFamily: "-apple-system, sans-serif" }}>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", backgroundColor: "#2D3557", flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>Capitol Insider</span>
+              <svg width="14" height="14" viewBox="0 0 22 22"><path d="M20.4 11l-2.2-2.5.3-3.3-3.2-.7L13.1 1.5 11 2.5 8.9 1.5 6.7 4.5l-3.2.7.3 3.3L1.6 11l2.2 2.5-.3 3.3 3.2.7 2.2 3 2.1-1 2.1 1 2.2-3 3.2-.7-.3-3.3z" fill="#1D9BF0"/><path d="M9.5 14.2L6.8 11.5l1.4-1.4 1.3 1.3 3.3-3.3 1.4 1.4z" fill="#fff"/></svg>
+              <span style={{ color: "#71767B", fontSize: 13 }}>@capitolinsider · 1h</span>
+            </div>
+            <div style={{ fontSize: 14, lineHeight: 1.4 }}>Economy in FREEFALL 📉 Jobs report MISSES expectations as unemployment crisis deepens. Is this the worst economy in a generation?</div>
+            <div style={{ display: "flex", gap: 16, color: "#71767B", fontSize: 11, marginTop: 8 }}><span>💬 4.1K</span><span>🔁 12.3K</span><span>❤️ 28.7K</span></div>
+          </div>
+        </div>
+      </div>
+    ),
+    after: (
+      <div style={{ borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ padding: "12px 14px", backgroundColor: "#000", color: "#E7E9EA", fontFamily: "-apple-system, sans-serif" }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", backgroundColor: "#2D3557", flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 3 }}>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>Capitol Insider</span>
+                <svg width="14" height="14" viewBox="0 0 22 22"><path d="M20.4 11l-2.2-2.5.3-3.3-3.2-.7L13.1 1.5 11 2.5 8.9 1.5 6.7 4.5l-3.2.7.3 3.3L1.6 11l2.2 2.5-.3 3.3 3.2.7 2.2 3 2.1-1 2.1 1 2.2-3 3.2-.7-.3-3.3z" fill="#1D9BF0"/><path d="M9.5 14.2L6.8 11.5l1.4-1.4 1.3 1.3 3.3-3.3 1.4 1.4z" fill="#fff"/></svg>
+                <span style={{ color: "#71767B", fontSize: 13 }}>@capitolinsider · 1h</span>
+              </div>
+              <div style={{ fontSize: 14, lineHeight: 1.4 }}>Economy in FREEFALL 📉 Jobs report MISSES expectations as unemployment crisis deepens. Is this the worst economy in a generation?</div>
+              <div style={{ display: "flex", gap: 16, color: "#71767B", fontSize: 11, marginTop: 8 }}><span>💬 4.1K</span><span>🔁 12.3K</span><span>❤️ 28.7K</span></div>
+            </div>
+          </div>
+        </div>
+        <div style={{ width: 2, height: 6, backgroundColor: "#D4766E33", margin: "0 auto" }} />
+        <div style={{ margin: "0 14px 10px 56px", padding: "10px 12px", backgroundColor: "#150A0A", border: "1px solid #3D1F1F", borderRadius: 10, fontFamily: "-apple-system, sans-serif" }}>
+          <TABadge text="⚑ CORRECTED" color="#D4766E" />
+          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: "#D4766E" }}>Economy added 187,000 jobs — 13,000 below the 200,000 forecast. Unemployment held steady at 3.7%. "Freefall" and "crisis" are editorializing. The miss was within normal monthly variance.</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: "#71767B", marginTop: 6 }}>The General Public · 11/13 · ✦ Consensus</div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "body",
+    pills: "✏️ Buried Numbers",
+    label: "When the details quietly contradict the headline",
+    layout: "columns",
+    before: (
+      <div style={{ padding: "18px 20px", backgroundColor: "#fff", borderRadius: 8, fontFamily: "Georgia, serif", height: "100%" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>Metro Chronicle</div>
+        <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "#333" }}>
+          The city's <span style={{ backgroundColor: "#FFF3CD", padding: "0 2px" }}>wildly popular</span> new transit line carried <span style={{ backgroundColor: "#FFF3CD", padding: "0 2px" }}>millions of riders</span> in its first year, built for <span style={{ backgroundColor: "#FFF3CD", padding: "0 2px" }}>a fraction of the projected cost</span>, officials announced at a press conference Tuesday.
+        </div>
+      </div>
+    ),
+    after: (
+      <div style={{ padding: "18px 20px", backgroundColor: "#fff", borderRadius: 8, fontFamily: "Georgia, serif", height: "100%" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>Metro Chronicle</div>
+        <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "#333" }}>
+          The city's <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>below-projection</span> new transit line carried <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>1.2 million riders against a 3 million target</span> in its first year, built for <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>$2.1B vs. a $2.4B budget (12% under, not the 40% claimed)</span>, officials announced at a press conference Tuesday.
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "reddit",
+    pills: "🔴 Viral Misinformation",
+    label: "When a false post has 30,000 upvotes before anyone checks",
+    layout: "stacked",
+    before: (
+      <div style={{ backgroundColor: "#1A1A1B", borderRadius: 8, fontFamily: "-apple-system, sans-serif", color: "#D7DADC", display: "flex" }}>
+        <div style={{ width: 34, padding: "8px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, backgroundColor: "#161617", borderRadius: "8px 0 0 8px" }}>
+          <span style={{ fontSize: 13, color: "#818384" }}>▲</span>
+          <span style={{ fontSize: 10, fontWeight: 700 }}>31.4k</span>
+          <span style={{ fontSize: 13, color: "#818384" }}>▼</span>
+        </div>
+        <div style={{ flex: 1, padding: "8px 12px" }}>
+          <div style={{ fontSize: 10, color: "#818384", marginBottom: 3 }}><span style={{ fontWeight: 700, color: "#D7DADC" }}>r/technology</span> · u/futurewatch · 3h</div>
+          <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.3, marginBottom: 6 }}>Apple confirms all iPhones will require monthly subscription fee starting January 2027</div>
+          <div style={{ display: "flex", gap: 14, color: "#818384", fontSize: 10, fontWeight: 700 }}><span>💬 4,291</span><span>🔗 Share</span></div>
+        </div>
+      </div>
+    ),
+    after: (
+      <div style={{ borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ backgroundColor: "#1A1A1B", fontFamily: "-apple-system, sans-serif", color: "#D7DADC", display: "flex" }}>
+          <div style={{ width: 34, padding: "8px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, backgroundColor: "#161617", borderRadius: "8px 0 0 0" }}>
+            <span style={{ fontSize: 13, color: "#818384" }}>▲</span>
+            <span style={{ fontSize: 10, fontWeight: 700 }}>31.4k</span>
+            <span style={{ fontSize: 13, color: "#818384" }}>▼</span>
+          </div>
+          <div style={{ flex: 1, padding: "8px 12px" }}>
+            <div style={{ fontSize: 10, color: "#818384", marginBottom: 3 }}><span style={{ fontWeight: 700, color: "#D7DADC" }}>r/technology</span> · u/futurewatch · 3h</div>
+            <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.3, marginBottom: 6 }}>Apple confirms all iPhones will require monthly subscription fee starting January 2027</div>
+            <div style={{ display: "flex", gap: 14, color: "#818384", fontSize: 10, fontWeight: 700 }}><span>💬 4,291</span><span>🔗 Share</span></div>
+          </div>
+        </div>
+        <div style={{ width: 2, height: 6, backgroundColor: "#D4766E33", margin: "0 auto" }} />
+        <div style={{ margin: "0 8px 8px 42px", padding: "9px 11px", backgroundColor: "#150A0A", border: "1px solid #3D1F1F", borderRadius: 8, fontFamily: "-apple-system, sans-serif" }}>
+          <TABadge text="⚑ CORRECTED" color="#D4766E" />
+          <div style={{ fontSize: 12, lineHeight: 1.45, color: "#D4766E" }}>Apple announced an optional premium support tier, not a mandatory subscription. All existing iPhone functionality remains free. The source is a satire blog that was shared without context.</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: "#818384", marginTop: 5 }}>Tech Accuracy · 9/9 jurors</div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "affirm",
+    pills: "✓ Good Reporting",
+    label: "When a journalist gets it right and nobody notices",
+    layout: "columns",
+    before: (
+      <div style={{ padding: "18px 20px", backgroundColor: "#fff", borderRadius: 8, height: "100%" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>The Independent Register</div>
+        <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, color: "#1a1a1a", fontFamily: "Georgia, serif" }}>City Water Tests Reveal Lead Levels 4× Federal Limit in Three School Districts</div>
+        <div style={{ fontSize: 12, color: "#777", marginTop: 10, lineHeight: 1.5, fontFamily: "Georgia, serif" }}>Testing data obtained through public records request. Reporter cross-referenced with EPA enforcement records and interviewed the lab that conducted the analysis.</div>
+      </div>
+    ),
+    after: (
+      <div style={{ padding: "18px 20px", backgroundColor: "#fff", borderRadius: 8, height: "100%" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>The Independent Register</div>
+        <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, color: "#1B5E3F", fontFamily: "Georgia, serif" }}>
+          City Water Tests Reveal Lead Levels 4× Federal Limit in Three School Districts
+          <span style={{ marginLeft: 5 }}><LighthouseIcon size={12} color="#1B5E3F" /></span>
+        </div>
+        <AttrLine label="✓ AFFIRMED" org="Local Watch Assembly" votes="7/7 jurors" color="#1B5E3F" />
+        <div style={{ fontSize: 12, color: "#777", marginTop: 10, lineHeight: 1.5, fontFamily: "Georgia, serif" }}>Testing data obtained through public records request. Reporter cross-referenced with EPA enforcement records and interviewed the lab that conducted the analysis.</div>
+      </div>
+    ),
+  },
+];
+
 function CitizenCounter() {
   const [count, setCount] = useState(0);
   const [orgStats, setOrgStats] = useState({ total: 0, large: 0 });
@@ -6298,7 +6512,12 @@ export default function TrustAssembly() {
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showExtDetails, setShowExtDetails] = useState(false);
+  const [showExtPage, setShowExtPage] = useState(false);
   const [showManifesto, setShowManifesto] = useState(false);
+  const [loginAccordion, setLoginAccordion] = useState(false);
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  const [heroFading, setHeroFading] = useState(false);
   const [showMoreNav, setShowMoreNav] = useState(false);
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
@@ -6400,6 +6619,16 @@ export default function TrustAssembly() {
     })();
   }, []);
 
+  // Hero slide auto-advance (landing page only)
+  useEffect(() => {
+    if (user || heroPaused) return;
+    const t = setInterval(() => {
+      setHeroFading(true);
+      setTimeout(() => { setHeroIdx(i => (i + 1) % HERO_SLIDES.length); setHeroFading(false); }, 280);
+    }, 8000);
+    return () => clearInterval(t);
+  }, [user, heroPaused]);
+
   useEffect(() => {
     if (!user) return;
     const check = async () => { try { const s = (await sG(SK.SUBS)) || {}; const v = Object.values(s); setReviewCount(v.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]).length); setCrossCount(v.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]).length); const d = (await sG(SK.DISPUTES)) || {}; setDisputeCount(Object.values(d).filter(x => x.status === "pending_review" && x.jurors.includes(user.username) && !x.votes[user.username]).length); } catch {} };
@@ -6453,17 +6682,35 @@ export default function TrustAssembly() {
   return (
     <div className="ta-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500;6..72,600;6..72,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
         :root {
           --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          --serif: var(--font); --mono: var(--font); --body: var(--font);
+          --serif: 'Newsreader', Georgia, serif; --mono: 'IBM Plex Mono', monospace; --body: var(--font);
           --accent: #2563EB; --accent-hover: #1D4ED8; --accent-light: #EFF6FF;
-          --navy: #0F172A; --linen: #F9FAFB; --vellum: #FFFFFF; --charcoal: #1E293B;
+          --navy: #0F172A; --linen: #F0EDE6; --vellum: #FFFFFF; --charcoal: #1E293B;
           --stone: #64748B; --brass: #E2E8F0; --evergreen: #059669; --fired-clay: #DC2626;
           --crimson: #991B1B; --amber: #D97706; --purple: #7C3AED; --teal: #0D9488;
-          --sienna: #EA580C; --indigo: #4F46E5; --gold: #CA8A04; --slate: #94A3B8; --bronze: #A16207;
+          --sienna: #EA580C; --indigo: #4F46E5; --gold: #B8963E; --slate: #94A3B8; --bronze: #A16207;
         }
+        @keyframes ta-fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes ta-prog { from { width:0%; } to { width:100%; } }
         .ta-root { min-height:100vh; background:var(--linen); font-family:var(--font); color:var(--charcoal); font-size:15px; line-height:1.6; }
+        /* ── DARK BAND HEADER ── */
+        .ta-dark-band { position:sticky; top:0; z-index:100; background:linear-gradient(180deg, #1a1a1a 0%, #222 100%); padding:14px 24px; display:flex; align-items:center; gap:12; }
+        .ta-dark-band-title { font-family:var(--serif); font-weight:600; font-size:18px; color:#F0EDE6; letter-spacing:0.12em; line-height:1; }
+        .ta-dark-band-cap { font-size:25px; }
+        .ta-dark-band-sub { font-size:9px; letter-spacing:0.15em; color:var(--gold); font-weight:600; }
+        .ta-dark-band-beta { background:#16A085; color:#fff; padding:1px 6px; border-radius:3px; font-size:8px; font-weight:700; letter-spacing:0.05em; }
+        /* ── NAV ROWS (white, below dark band) ── */
+        .ta-nav-row { background:#fff; padding:0 24px; display:flex; align-items:stretch; border-bottom:1px solid #eee; }
+        .ta-nav-row-item { padding:10px 0; margin-right:20px; font-size:13.5px; font-weight:400; color:#999; border-bottom:2px solid transparent; cursor:pointer; transition:all 0.12s; white-space:nowrap; }
+        .ta-nav-row-item.active { font-weight:600; color:#1a1a1a; border-bottom-color:#1a1a1a; }
+        .ta-nav-row-item .ta-nav-badge { position:relative; top:-1px; }
+        .ta-nav-row-secondary .ta-nav-row-item { font-size:12px; padding:8px 0; margin-right:16px; }
+        .ta-nav-row-secondary .ta-nav-row-item.active { color:#1a1a1a; border-bottom-color:#1a1a1a; }
+        /* ── USER BAR ── */
+        .ta-user-bar-new { background:#fff; padding:8px 24px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #eee; }
+        /* ── LEGACY HEADER (kept for fallback) ── */
         .ta-header { background:#FFFFFF; color:var(--charcoal); border-bottom:1px solid var(--brass); box-shadow:0 1px 3px rgba(0,0,0,0.05); }
         .ta-header-inner { max-width:780px; margin:0 auto; padding:14px 20px 0; }
         .ta-masthead { text-align:center; padding-bottom:10px; border-bottom:1px solid var(--brass); }
@@ -6525,116 +6772,263 @@ export default function TrustAssembly() {
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
           <RecordScreen recordId={viewingRecord} onBack={() => { setViewingRecord(null); window.history.back(); }} onViewCitizen={navigateToCitizen} />
         </div>
-      ) : !user ? (
+      ) : !user && showExtPage ? (
+        /* ── EXTENSION PAGE (unauthenticated, standalone) ── */
         <div>
-          <div style={{ textAlign: "center", padding: "40px 20px 0", maxWidth: 580, margin: "0 auto" }}>
-            <img src={CREST_IMG} style={{ width: 100, display: "block", margin: "0 auto 16px" }} alt="Trust Assembly Crest" />
-            <h1 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 4px", color: "#0F172A" }}>The Trust Assembly</h1>
-            <div style={{ fontSize: 13, letterSpacing: ".04em", color: "#2563EB", marginBottom: 6, fontWeight: 500 }}>Truth Will Out.</div>
-            <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24 }}>A republic of citizens verifying truth through adversarial review.</div>
-            <CitizenCounter />
-
-            {/* Opening Statement */}
-            <div style={{ textAlign: "left", maxWidth: 520, margin: "0 auto 28px", padding: "20px 24px", background: "#fff", border: "1px solid #E2E8F0", borderLeft: "4px solid #2563EB", borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-              <p style={{ fontSize: 16, lineHeight: 1.8, color: "#0F172A", fontWeight: 600, margin: 0 }}>
-                The Trust Assembly is an experiment in self-government.
-              </p>
-              <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "12px 0 0" }}>
-                It begins with a simple question: what happens when ordinary people are given a place to reason together in public, under fair rules, with truth as the aim rather than attention?
-              </p>
-              {!showManifesto && (
-                <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12 }} onClick={() => setShowManifesto(true)}>
-                  Read more
-                </button>
-              )}
-              {showManifesto && (
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
-                    We believe the answer matters. Much of the modern internet has become a continuous, unregulated election in which every claim competes for power through speed, outrage, and repetition. The Trust Assembly is an attempt to build something different. A place where claims can be examined, language can be challenged, evidence can be weighed, and judgment can be made visible.
-                  </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
-                    This system is not designed for ease in the manner of social media. It is designed for seriousness. It asks for patience, good faith, and the courage to make an argument plainly. We cannot automate wisdom, and we do not intend to. Human beings must still bear the responsibility of speaking honestly, listening carefully, and revising their views when better reasoning appears.
-                  </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
-                    What a system can do is establish rules. It can create a structure in which thoughtful participation is rewarded, deception is punished, and a serious voice cannot simply be buried by noise. It can make room for people to pay purposeful attention.
-                  </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
-                    We do not claim perfection. We do not claim finality. The rules of this institution will change as we learn. But we are convinced that something like a civic algorithm is needed. One that strengthens discernment instead of undermining it, and that helps truth travel as far and as fast as falsehood.
-                  </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 12px" }}>
-                    Our purpose is not to abolish fun, spontaneity, or disagreement. It is to create one place of esteem. A place where a person is not foolish for wanting to pursue the truth, and where public trust can be rebuilt through reasoned, accountable process.
-                  </p>
-                  <p style={{ fontSize: 15, lineHeight: 1.8, color: "#0F172A", fontWeight: 600, fontStyle: "italic", margin: "0 0 16px" }}>
-                    We hope to build a lighthouse on a hill.
-                  </p>
-                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#1E293B", margin: "0 0 16px", padding: "12px 16px", background: "#F1F5F9", borderRadius: 8 }}>
-                    To succeed in this institution, you must make sense to those who agree with you. And you must make sense to those who do not. Everything worth building in civilization rests on that foundation.
-                  </p>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }} onClick={() => setScreen("register")}>Submit a Correction</button>
-                    <button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }} onClick={() => { setShowExtDetails(true); document.querySelector('.ta-link-btn[style*="Installation"]')?.scrollIntoView({ behavior: "smooth" }); }}>Get the Extension</button>
-                  </div>
-                  <button className="ta-link-btn" style={{ marginTop: 12, fontSize: 12, color: "#64748B" }} onClick={() => setShowManifesto(false)}>
-                    Collapse
-                  </button>
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-              <a href="/trust-assembly-chrome.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px" }}>Download Chrome Extension</button></a>
-              <a href="/trust-assembly-firefox.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "var(--evergreen)" }}>Download Firefox Extension</button></a>
-              <a href="/trust-assembly-safari.zip" download style={{ textDecoration: "none" }}><button className="ta-btn-primary" style={{ fontSize: 11, padding: "10px 18px", background: "#0071E3" }}>Download Safari Extension</button></a>
-            </div>
-            <div style={{ marginBottom: 20, fontSize: 12, color: "var(--stone)" }}>
-              <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => setShowExtDetails(!showExtDetails)}>{showExtDetails ? "Hide installation details" : "Installation instructions & details"}</button>
-            </div>
-            {showExtDetails && <ExtensionsScreen />}
-            {screen === "login" ? <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} /> : <div><RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} /><div style={{ marginTop: 16, textAlign: "center" }}><button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button></div></div>}
-          </div>
-          <div style={{ maxWidth: 580, margin: "0 auto", padding: "0 20px 40px" }}><DiscoveryFeed onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} /></div>
-        </div>
-      ) : (
-        <div>
-          <div className="ta-header">
-            <div className="ta-header-inner">
-              <div className="ta-masthead"><img src={CREST_IMG} style={{ width: 36, height: 36, marginRight: 10, verticalAlign: "middle" }} alt="" /><h1 style={{ display: "inline" }}>The Trust Assembly</h1><div className="ta-masthead-sub">Truth Will Out. <span style={{ background: "#2563EB", color: "#fff", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, marginLeft: 6, letterSpacing: "0.1em" }}>BETA</span></div></div>
-              <nav className="ta-nav">{NAV_TOP.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}{n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}</button>)}</nav>
-              <nav className="ta-nav ta-nav-secondary">
-                {NAV_BOT.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>{n.label}</button>)}
-                <button className={showMoreNav || NAV_MORE.some(n => n.key === screen) ? "active" : ""} onClick={() => setShowMoreNav(v => !v)} style={{ position: "relative" }}>More {showMoreNav ? "▴" : "▾"}</button>
-              </nav>
-              {showMoreNav && <nav className="ta-nav ta-nav-secondary" style={{ borderTop: "none", paddingTop: 0 }}>{NAV_MORE.map(n => <button key={n.key} className={screen === n.key ? "active" : ""} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</button>)}{isAdmin && <button className={screen === "feedback" ? "active" : ""} onClick={() => { setScreen("feedback"); setShowMoreNav(false); }} style={{ color: "var(--sienna)", fontWeight: 600 }}>Feedback</button>}</nav>}
-            </div>
-            <div className="ta-user-bar">
-              <span>{isDIUser(user) ? "🤖 " : user.username === ADMIN_USERNAME ? "👑 " : ""}@{user.displayName || user.username} · <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} /></span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ position: "relative" }}>
-                  <button className="ta-btn-ghost ta-notif-bell" onClick={() => { setShowNotifDropdown(v => !v); if (!showNotifDropdown) markNotifsRead(); }} title="Notifications">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    {notifications.filter(n => !n.read).length > 0 && <span className="ta-notif-badge">{notifications.filter(n => !n.read).length}</span>}
-                  </button>
-                  {showNotifDropdown && (
-                    <div className="ta-notif-dropdown">
-                      <div className="ta-notif-header">Notifications</div>
-                      {notifications.length === 0 ? (
-                        <div className="ta-notif-empty">No notifications yet</div>
-                      ) : (
-                        <div className="ta-notif-list">
-                          {notifications.slice(0, 20).map(n => (
-                            <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`}>
-                              <div className="ta-notif-text">{formatNotification(n)}</div>
-                              <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <button className="ta-btn-ghost" style={{ color: "#64748B" }} onClick={logout}>Sign Out</button>
+          <div className="ta-dark-band" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CrestIcon size={38} />
+            <div>
+              <span className="ta-dark-band-title"><span className="ta-dark-band-cap">T</span>RUST<span style={{ letterSpacing: "0.22em" }}> </span><span className="ta-dark-band-cap">A</span>SSEMBLY</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                <span className="ta-dark-band-sub">TRUTH WILL OUT.</span>
+                <span className="ta-dark-band-beta">BETA</span>
               </div>
             </div>
           </div>
+          <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
+            <button className="ta-link-btn" style={{ fontSize: 12, marginBottom: 16 }} onClick={() => setShowExtPage(false)}>&larr; Back to home</button>
+            <ExtensionsScreen />
+          </div>
+        </div>
+      ) : !user ? (
+        /* ═══════════════════════════════════
+           LANDING PAGE — Hero with showcase
+           ═══════════════════════════════════ */
+        <div style={{ minHeight: "100vh", backgroundColor: "#fff" }}>
+          {/* DARK BAND */}
+          <div className="ta-dark-band" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CrestIcon size={38} />
+            <div>
+              <span className="ta-dark-band-title"><span className="ta-dark-band-cap">T</span>RUST<span style={{ letterSpacing: "0.22em" }}> </span><span className="ta-dark-band-cap">A</span>SSEMBLY</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                <span className="ta-dark-band-sub">TRUTH WILL OUT.</span>
+                <span className="ta-dark-band-beta">BETA</span>
+              </div>
+            </div>
+          </div>
+
+          {/* HERO SECTION */}
+          <div style={{ background: "linear-gradient(180deg, #0D0D0D 0%, #1B2A4A 100%)", padding: "40px 24px 40px", textAlign: "center", overflow: "hidden" }}>
+            <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, fontWeight: 400, color: "#F0EDE6", lineHeight: 1.3, maxWidth: 560, margin: "0 auto 28px", animation: "ta-fadeUp 0.6s ease" }}>
+              The internet's corrections layer.
+            </h1>
+
+            {/* Category pills */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 5, marginBottom: 22, flexWrap: "wrap" }}
+              onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
+              {HERO_SLIDES.map((sl, i) => (
+                <button key={sl.id} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
+                  fontFamily: "-apple-system, sans-serif", fontSize: 11, fontWeight: heroIdx === i ? 600 : 400,
+                  color: heroIdx === i ? "#fff" : "#777",
+                  backgroundColor: heroIdx === i ? "#ffffff12" : "transparent",
+                  border: `1px solid ${heroIdx === i ? "#ffffff22" : "#ffffff0a"}`,
+                  borderRadius: 20, padding: "5px 12px", cursor: "pointer", transition: "all 0.2s",
+                }}>
+                  {sl.pills}
+                </button>
+              ))}
+            </div>
+
+            {/* Slide label */}
+            <div style={{ fontFamily: "-apple-system, sans-serif", fontSize: 13, color: "#999", marginBottom: 14, fontStyle: "italic", opacity: heroFading ? 0 : 1, transition: "opacity 0.2s" }}>
+              {HERO_SLIDES[heroIdx].label}
+            </div>
+
+            {/* CONTENT AREA */}
+            <div style={{ maxWidth: 740, margin: "0 auto", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(5px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
+              onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
+              {HERO_SLIDES[heroIdx].layout === "columns" ? (
+                <>
+                  <div style={{ display: "flex", gap: 16, marginBottom: 6, padding: "0 4px" }}>
+                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, minHeight: 200 }}>
+                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.55 }}>{HERO_SLIDES[heroIdx].before}</div>
+                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ maxWidth: 520, margin: "0 auto" }}>
+                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.55, marginBottom: 12 }}>{HERO_SLIDES[heroIdx].before}</div>
+                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
+                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Progress dots */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
+              {HERO_SLIDES.map((_, i) => (
+                <div key={i} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
+                  width: heroIdx === i ? 24 : 8, height: 8, borderRadius: 4,
+                  backgroundColor: heroIdx === i ? "var(--gold)" : "#ffffff18",
+                  cursor: "pointer", transition: "all 0.3s", overflow: "hidden", position: "relative",
+                }}>
+                  {heroIdx === i && !heroPaused && (
+                    <div style={{ position: "absolute", top: 0, left: 0, height: "100%", backgroundColor: "#D4B45E", borderRadius: 4, animation: "ta-prog 8s linear" }} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Descriptive text */}
+            <div style={{ maxWidth: 480, margin: "28px auto 0" }}>
+              <p style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14.5, color: "#888", lineHeight: 1.65 }}>
+                Community juries review headlines and claims across the web.
+                Corrections appear right where the misinformation lives — in your browser,
+                on every platform. No algorithm decides what's true. People do.
+              </p>
+            </div>
+
+            {/* CTAs */}
+            <div style={{ marginTop: 24, display: "flex", justifyContent: "center", gap: 12 }}>
+              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a1a1a", backgroundColor: "var(--gold)", border: "none", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
+                onClick={() => setShowExtPage(true)}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#D4B45E"}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
+              >Install Extension</button>
+              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
+                onClick={() => setLoginAccordion(true)}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
+              >Join as Citizen</button>
+            </div>
+          </div>
+
+          {/* HOW IT WORKS */}
+          <div style={{ padding: "48px 24px", backgroundColor: "#fff", maxWidth: 660, margin: "0 auto" }}>
+            <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 400, color: "#1a1a1a", textAlign: "center", marginBottom: 32 }}>How it works</h2>
+            {[
+              { n: "1", title: "Someone notices a misleading claim", desc: "A citizen submits a correction with evidence. An affirmation if the reporting is accurate. Both go through the same jury process." },
+              { n: "2", title: "A random jury reviews it", desc: "Jurors are randomly drawn from the citizen's Assembly. They vote independently. The math rewards honesty and makes deception structurally irrational." },
+              { n: "3", title: "Independent groups verify it", desc: "Approved corrections advance to juries from other Assemblies — people with different perspectives reviewing the same evidence. What survives both achieves Consensus." },
+              { n: "4", title: "The correction appears in your browser", desc: "Misleading headlines turn red. Accurate reporting turns green. Correction cards appear in social feeds. The truth surfaces everywhere the original claim lives." },
+            ].map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 16, padding: "18px 0", borderBottom: i < 3 ? "1px solid #eee" : "none" }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", backgroundColor: "#1a1a1a", color: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{step.n}</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{step.title}</div>
+                  <div style={{ fontSize: 13.5, color: "#777", lineHeight: 1.6 }}>{step.desc}</div>
+                </div>
+              </div>
+            ))}
+
+            {/* Closing CTA */}
+            <div style={{ textAlign: "center", marginTop: 40, padding: "32px 0", borderTop: "1px solid #eee" }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>The truth has a browser extension.</div>
+              <div style={{ fontSize: 13, color: "#999", marginBottom: 20 }}>Free. Open. Jury-verified. No algorithm decides what's true.</div>
+              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", backgroundColor: "#1a1a1a", border: "none", borderRadius: 6, padding: "12px 32px", cursor: "pointer" }}
+                onClick={() => setLoginAccordion(true)}
+              >Get Started</button>
+            </div>
+          </div>
+
+          {/* LOGIN/REGISTER ACCORDION */}
+          {loginAccordion && (
+            <div style={{ maxWidth: 580, margin: "0 auto", padding: "0 20px 40px" }}>
+              <div style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: "24px", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>
+                    {screen === "login" ? "Return to the Assembly" : "Become a Citizen"}
+                  </h2>
+                  <button onClick={() => setLoginAccordion(false)} style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }}>&times;</button>
+                </div>
+                {screen === "login" ? (
+                  <LoginScreen onLogin={u => { setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} />
+                ) : (
+                  <div>
+                    <RegisterScreen onRegister={u => { setUser(u); setShowOnboarding(true); }} />
+                    <div style={{ marginTop: 16, textAlign: "center" }}>
+                      <button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* DISCOVERY FEED */}
+          <div style={{ maxWidth: 580, margin: "0 auto", padding: "0 20px 40px" }}>
+            <DiscoveryFeed onLogin={() => { setLoginAccordion(true); setScreen("login"); }} onRegister={() => { setLoginAccordion(true); setScreen("register"); }} />
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* ── DARK BAND HEADER (logged-in) ── */}
+          <div className="ta-dark-band" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CrestIcon size={38} />
+            <div>
+              <span className="ta-dark-band-title"><span className="ta-dark-band-cap">T</span>RUST<span style={{ letterSpacing: "0.22em" }}> </span><span className="ta-dark-band-cap">A</span>SSEMBLY</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                <span className="ta-dark-band-sub">TRUTH WILL OUT.</span>
+                <span className="ta-dark-band-beta">BETA</span>
+              </div>
+            </div>
+          </div>
+
+          {/* NAV ROW 1 — primary workflow */}
+          <div className="ta-nav-row">
+            {NAV_TOP.map(n => (
+              <div key={n.key} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={() => setScreen(n.key)}>
+                {n.label}
+                {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ position: "relative", top: -1, marginLeft: 4, background: "var(--fired-clay)", color: "#fff", fontSize: 8, width: 13, height: 13, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{reviewCount + crossCount + disputeCount}</span>}
+              </div>
+            ))}
+          </div>
+
+          {/* NAV ROW 2 — reference pages */}
+          <div className="ta-nav-row ta-nav-row-secondary" style={{ flexWrap: "wrap" }}>
+            {NAV_BOT.map(n => (
+              <div key={n.key} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={() => setScreen(n.key)}>{n.label}</div>
+            ))}
+            <div className={`ta-nav-row-item ${showMoreNav || NAV_MORE.some(n => n.key === screen) ? "active" : ""}`} onClick={() => setShowMoreNav(v => !v)}>More {showMoreNav ? "▴" : "▾"}</div>
+          </div>
+          {showMoreNav && (
+            <div className="ta-nav-row ta-nav-row-secondary" style={{ borderTop: "none" }}>
+              {NAV_MORE.map(n => (
+                <div key={n.key} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={() => { setScreen(n.key); setShowMoreNav(false); }}>{n.label}</div>
+              ))}
+              {isAdmin && <div className={`ta-nav-row-item ${screen === "feedback" ? "active" : ""}`} onClick={() => { setScreen("feedback"); setShowMoreNav(false); }} style={{ color: "var(--sienna)", fontWeight: 600 }}>Feedback</div>}
+            </div>
+          )}
+
+          {/* USER BAR */}
+          <div className="ta-user-bar-new">
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 14 }}>{isDIUser(user) ? "🤖" : user.username === ADMIN_USERNAME ? "👑" : ""}</span>
+              <span style={{ fontSize: 13, color: "#333" }}>@{user.displayName || user.username} ·</span>
+              <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ position: "relative" }}>
+                <button className="ta-btn-ghost ta-notif-bell" onClick={() => { setShowNotifDropdown(v => !v); if (!showNotifDropdown) markNotifsRead(); }} title="Notifications">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  {notifications.filter(n => !n.read).length > 0 && <span className="ta-notif-badge">{notifications.filter(n => !n.read).length}</span>}
+                </button>
+                {showNotifDropdown && (
+                  <div className="ta-notif-dropdown">
+                    <div className="ta-notif-header">Notifications</div>
+                    {notifications.length === 0 ? (
+                      <div className="ta-notif-empty">No notifications yet</div>
+                    ) : (
+                      <div className="ta-notif-list">
+                        {notifications.slice(0, 20).map(n => (
+                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`}>
+                            <div className="ta-notif-text">{formatNotification(n)}</div>
+                            <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <span style={{ fontSize: 12, color: "#999", cursor: "pointer" }} onClick={logout}>Sign Out</span>
+            </div>
+          </div>
+
           <div className="ta-content">
             <CitizenCounter />
             {viewingRecord ? (

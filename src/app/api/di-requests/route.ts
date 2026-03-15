@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 
 // GET /api/di-requests — list DI requests for current user (as partner)
-export async function GET() {
-  const session = await getCurrentUser();
+export async function GET(request: NextRequest) {
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const result = await sql`
@@ -23,7 +23,7 @@ export async function GET() {
 
 // POST /api/di-requests — create DI partnership request
 export async function POST(request: NextRequest) {
-  const session = await getCurrentUser();
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const body = await request.json();

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { tryResolveSubmission } from "@/lib/vote-resolution";
 import { isWildWestMode } from "@/lib/jury-rules";
@@ -10,7 +10,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getCurrentUser();
+  const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
   const { id } = await params;

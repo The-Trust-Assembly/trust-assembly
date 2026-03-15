@@ -3,25 +3,13 @@ import { sql } from "@/lib/db";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
 
-// Drop the UNIQUE constraint on email so DIs can share their partner's email.
-// Idempotent — safe to run on every cold start.
-let schemaMigrated = false;
-async function ensureEmailNotUnique() {
-  if (schemaMigrated) return;
-  try {
-    // Try common constraint naming patterns
-    await sql`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key`;
-    await sql`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_unique`;
-    // Also drop any unique index on email
-    await sql`DROP INDEX IF EXISTS users_email_key`;
-    await sql`DROP INDEX IF EXISTS idx_users_email_unique`;
-  } catch { /* constraints may not exist */ }
-  schemaMigrated = true;
-}
+// Email is intentionally NOT unique in the schema — DIs may share their
+// partner's email. Uniqueness for non-DI accounts is enforced in
+// application logic below (the registration query checks for existing
+// email on non-DI registrations).
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  await ensureEmailNotUnique();
 
   const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation } = body;
   const isDI = gender === "di";
