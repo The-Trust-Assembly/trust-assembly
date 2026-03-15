@@ -1,13 +1,18 @@
+import { useState } from "react";
 import Page from "./components/Page";
 
 export default function Index() {
+  const [signInOpen, setSignInOpen] = useState(false);
+
   return (
-    <Page>
+    <Page signInOpen={signInOpen} onSignInClose={() => setSignInOpen(false)}>
       <div className="hero-bg">
         <div className="flex flex-col items-center hero">
           <div className="hero-text">Repair the Headlines.</div>
           <div className="hero-text">Rebuild the Narrative.</div>
-          <div className="hero-button">Get Started</div>
+          <button className="hero-button" onClick={() => setSignInOpen(true)}>
+            Get Started
+          </button>
         </div>
       </div>
       <div className="flex flex-col md:flex-row justify-between text-lg small-width">

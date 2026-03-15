@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "@/contexts/SessionProvider";
 import Logo from "./Logo";
 import Modal from "./Modal";
@@ -8,12 +8,19 @@ import LoginButton from "./LoginButton";
 
 type NavbarProps = React.ComponentProps<'nav'> & {
   signInOpen?: boolean;
+  onSignInClose?: () => void;
 };
 
 export default function Navbar(props: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(props.signInOpen ?? false);
   const session = useSession();
+
+  useEffect(() => {
+    if (props.signInOpen) {
+      setIsLoginModalOpen(true);
+    }
+  }, [props.signInOpen]);
 
   return (
     <nav {...props}>
@@ -74,7 +81,7 @@ export default function Navbar(props: NavbarProps) {
           </div>
         </div>
       )}
-      <Modal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)}>
+      <Modal isOpen={isLoginModalOpen} onClose={() => { setIsLoginModalOpen(false); props.onSignInClose?.(); }}>
         <>
           {
             session.type === "loggedIn" ? (
