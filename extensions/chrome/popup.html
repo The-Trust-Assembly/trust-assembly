@@ -11,16 +11,18 @@
       color: #2B2B2B;
     }
     .header {
-      background: #1B2A4A;
+      background: linear-gradient(180deg, #1a1a1a 0%, #222 100%);
       color: #F0EDE6;
-      padding: 14px 16px;
+      padding: 10px 14px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    .header-icon { font-size: 20px; }
-    .header-title { font-size: 15px; font-weight: 700; letter-spacing: 0.03em; }
-    .header-motto { font-size: 9px; opacity: 0.6; letter-spacing: 0.1em; text-transform: uppercase; }
+    .header-icon { display: flex; align-items: center; justify-content: center; }
+    .header-icon svg { width: 22px; height: 22px; }
+    .header-title { font-size: 14px; font-weight: 600; letter-spacing: 0.1em; line-height: 1; }
+    .header-title .cap { font-size: 19px; }
+    .header-motto { font-size: 8px; letter-spacing: 0.12em; color: #B8963E; font-weight: 500; margin-top: 2px; }
     .header-user {
       margin-left: auto;
       display: flex;
@@ -103,27 +105,30 @@
     /* Tab bar */
     .tab-bar {
       display: flex;
-      border-bottom: 1px solid #DCD8D0;
-      background: #F0EDE6;
+      padding: 0 14px;
+      border-bottom: 1px solid #eee;
+      background: #fff;
     }
     .tab-bar button {
-      flex: 1;
-      padding: 8px 4px;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      padding: 9px 0;
+      margin-right: 18px;
+      font-size: 12.5px;
+      font-weight: 400;
       border: none;
       background: none;
-      color: #7A7570;
+      color: #999;
       cursor: pointer;
       border-bottom: 2px solid transparent;
+      transition: all 0.12s;
+      text-transform: none;
+      letter-spacing: normal;
     }
     .tab-bar button.active {
-      color: #1B2A4A;
-      border-bottom-color: #B8963E;
+      color: #1a1a1a;
+      font-weight: 600;
+      border-bottom-color: #1a1a1a;
     }
-    .tab-bar button:hover { color: #1B2A4A; }
+    .tab-bar button:hover { color: #1a1a1a; }
 
     .status {
       padding: 12px 16px;
@@ -281,15 +286,15 @@
     .login-panel .login-btn {
       width: 100%;
       padding: 8px;
-      background: #1B2A4A;
-      color: #F0EDE6;
+      background: #1a1a1a;
+      color: #fff;
       border: none;
-      border-radius: 3px;
+      border-radius: 4px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
     }
-    .login-panel .login-btn:hover { background: #2A3D6A; }
+    .login-panel .login-btn:hover { background: #333; }
     .login-panel .login-error { color: #C4573F; font-size: 11px; margin-top: 6px; }
     .login-panel .login-hint { font-size: 10px; color: #B0A89C; margin-top: 8px; }
 
@@ -498,10 +503,17 @@
 </head>
 <body>
   <div class="header">
-    <div class="header-icon">⚖</div>
-    <div>
-      <div class="header-title">Trust Assembly</div>
-      <div class="header-motto">Truth Will Out</div>
+    <div class="header-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 3L17 5.5V11C17 14.8 14.2 18.2 12 19.3C9.8 18.2 7 14.8 7 11V5.5L12 3Z" stroke="#B8963E" stroke-width="0.8" fill="none"/>
+        <path d="M12 2L14 8H10L12 2Z" fill="#B8963E" opacity="0.9"/>
+        <rect x="10" y="8" width="4" height="10" rx="0.5" fill="#B8963E" opacity="0.8"/>
+        <path d="M7 18H17L18 22H6L7 18Z" fill="#B8963E" opacity="0.7"/>
+      </svg>
+    </div>
+    <div style="flex:1">
+      <div class="header-title"><span class="cap">T</span>RUST <span class="cap">A</span>SSEMBLY</div>
+      <div class="header-motto">TRUTH WILL OUT</div>
     </div>
     <button class="btn-detach" id="btn-detach" title="Open in floating window">⧉</button>
     <div class="header-user" id="header-user" style="display:none">
@@ -511,7 +523,7 @@
   </div>
 
   <div class="tab-bar" id="tab-bar">
-    <button class="active" data-tab="corrections">Corrections</button>
+    <button class="active" data-tab="corrections">This Page</button>
     <button data-tab="submit">Submit</button>
     <button data-tab="assemblies">Assemblies</button>
   </div>
@@ -547,7 +559,7 @@
 
   <div class="footer">
     <a href="https://trustassembly.org" target="_blank">trustassembly.org</a>
-    <span class="footer-motto">Truth Will Out.</span>
+    <span class="footer-motto" style="font-style:normal; color:#999; font-size:9px">Truth Will Out.</span>
   </div>
 
   <script src="api-client.js"></script>
