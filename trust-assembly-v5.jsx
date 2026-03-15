@@ -7096,7 +7096,7 @@ export default function TrustAssembly() {
             </div>
 
             {/* CONTENT AREA */}
-            <div style={{ maxWidth: 740, margin: "0 auto", maxHeight: 340, overflow: "hidden", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(5px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
+            <div style={{ maxWidth: 740, margin: "0 auto", height: 480, overflow: "hidden", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(5px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
               onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
               {HERO_SLIDES[heroIdx].layout === "columns" ? (
                 <>
