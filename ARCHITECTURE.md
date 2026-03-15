@@ -135,7 +135,7 @@ Citizen submits correction/affirmation
 Authentication uses **JWT tokens** signed with HS256 via the `jose` library. Passwords are hashed with `bcryptjs` using a cost factor of 12.
 
 Two auth paths exist:
-- **Web app:** HTTP-only session cookie (`ta-session`, SameSite=lax, Secure in production, 365-day expiry)
+- **Web app:** HTTP-only session cookie (`ta-session`, SameSite=lax, Secure in production, 7-day expiry)
 - **Browser extension:** `Authorization: Bearer <token>` header (token returned at login)
 
 The `getCurrentUserFromRequest()` function checks the Bearer header first, then falls back to cookie-based auth.
@@ -149,7 +149,18 @@ interface JWTPayload {
 }
 ```
 
-Token expiry: 365 days. No refresh token mechanism.
+Token expiry: 7 days. No refresh token mechanism.
+
+### 2.3 Admin Role
+
+Admin privileges are granted via the `is_admin` column on the `users` table. The `requireAdmin()` helper in `auth.ts` verifies both authentication and admin status. Admin-only endpoints:
+- `POST /api/admin/approve-pending` — Bulk-approve pending submissions
+- `POST /api/admin/wild-west-backfill` — Backfill pre-existing submissions
+- `POST /api/kv` (protected keys only) — Write to `ta-s-v5` (submissions cache)
+
+### 2.4 Audit Log Access Control
+
+The `GET /api/audit` endpoint requires authentication. Non-admin users can only view their own audit entries. Admin users have full access to all entries.
 
 ---
 
@@ -209,6 +220,7 @@ The central identity table. Stores authentication credentials, demographics, DI 
 | state | VARCHAR(100) | Optional |
 | political_affiliation | VARCHAR(100) | Optional |
 | bio | VARCHAR(500) | Optional |
+| is_admin | BOOLEAN | Admin role flag (default FALSE) |
 | is_di | BOOLEAN | Digital Intelligence flag |
 | di_partner_id | UUID FK→users | Human partner for DI accounts |
 | di_approved | BOOLEAN | Whether DI partnership is approved |
@@ -473,7 +485,7 @@ const result = await sql.query(query, params);
 
 ### 4.4 Vote Resolution Pipeline
 
-`vote-resolution.ts` is the most complex module. After each vote:
+`vote-resolution.ts` is the most complex module. The entire resolution pipeline runs inside a `BEGIN/COMMIT/ROLLBACK` transaction to prevent partial state corruption. KV cache sync runs outside the transaction (it's a denormalized cache, not authoritative). After each vote:
 
 1. **Count votes** by role (in_group or cross_group)
 2. **Check majority** — `floor(jurySize/2) + 1`
@@ -500,7 +512,9 @@ The KV store bridges the legacy SPA's `window.storage` pattern to the relational
 | `ta-o-v5` | Assemblies (members, reputation) |
 | `ta-trans-v5` | Translations |
 
-The browser extension's `/api/corrections?url=` endpoint reads from these KV blobs rather than performing relational joins, providing fast read access for the content script overlay.
+The browser extension's `/api/corrections?url=` endpoint reads from these KV blobs rather than performing relational joins, providing fast read access for the content script overlay. All user-generated text fields are HTML-entity-encoded on output via `escapeHtml()` from `lib/sanitize.ts` to prevent stored XSS in the extension's content scripts.
+
+**Write Protection:** The `POST /api/kv` endpoint requires authentication for all writes. Protected keys (currently `ta-s-v5` — the submissions cache) require admin privileges. Other keys remain writable by authenticated users for legacy frontend compatibility. Protected key writes are audit-logged.
 
 ---
 
@@ -556,7 +570,8 @@ Background service worker polls `GET /api/users/me/notifications` every 60 secon
 | Setting | Value |
 |---------|-------|
 | Cookie name | ta-session |
-| Token expiry | 365 days |
+| Token expiry | 7 days |
+| Cookie maxAge | 7 days |
 | bcrypt cost factor | 12 |
 | JWT algorithm | HS256 |
 | Max assemblies per user | 12 |

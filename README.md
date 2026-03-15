@@ -23,88 +23,79 @@ Trust Assembly is a structured reputation system for media correction, fact veri
 
 ## Architecture
 
-Trust Assembly is currently a **single-file React SPA** (`trust-assembly-v5.jsx`, ~4,600 lines) designed to run as a Claude.ai artifact. It uses `window.storage` for persistence (a key-value store available in the artifact sandbox).
+Trust Assembly is a **Next.js 14 App Router** application deployed on Vercel with a PostgreSQL database (Vercel Postgres). The frontend is a large single-file React SPA (`trust-assembly-v5.jsx`, ~7,100 lines) that handles all UI, with server-side API routes for authentication, data persistence, and the browser extension API.
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `trust-assembly-v5.jsx` | The complete application — all components, business logic, scoring, and UI |
-| `trust-assembly-v5.js` | Same file with .js extension for environments that prefer it |
-| `trust-assembly-crest.png` | 1024×1024 woodcut-style heraldic shield logo |
-| `future-vision.md` | Public-facing roadmap document (also rendered in-app on the Vision tab) |
+| `trust-assembly-v5.jsx` | Complete frontend — all components, business logic, scoring, and UI |
+| `src/app/page.tsx` | Next.js page that renders the TrustAssembly component |
+| `src/app/api/` | Server-side API routes (auth, submissions, voting, corrections, etc.) |
+| `src/lib/auth.ts` | JWT authentication, bcrypt hashing, session management |
+| `src/lib/db.ts` | Database connection (Vercel Postgres) |
+| `src/lib/vote-resolution.ts` | Vote counting, reputation updates, cross-group promotion |
+| `src/lib/sanitize.ts` | XSS output sanitization for browser extension content |
+| `db/schema.sql` | PostgreSQL schema (20+ tables) |
+| `extensions/chrome/` | Chrome extension (MV3) — popup, content script, background worker |
+| `extensions/firefox/` | Firefox extension (MV2) |
+| `extensions/safari/` | Safari extension (MV3) |
 
 ### Technology
 
+- **Next.js 14** (App Router) on **Vercel**
+- **Vercel Postgres** (PostgreSQL 16+) with `@vercel/postgres`
 - **React** (functional components with hooks)
-- **Tailwind-compatible inline styles** using CSS custom properties
-- **No build step** — runs directly in environments that support JSX
-- **Fonts**: EB Garamond (serif), IBM Plex Mono (mono), Source Serif 4 (body)
-- **Color palette**: Navy (#1B2A4A), Linen (#F0EDE6), Vellum (#FDFBF5), Gold (#B8963E)
+- **JWT** (HS256 via `jose`, 7-day expiry, HTTP-only cookies + Bearer tokens)
+- **bcryptjs** (cost factor 12 for password hashing)
+- **Fonts**: Newsreader (serif), IBM Plex Mono (mono), Inter (system)
+- **Color palette**: Dark (#1a1a1a), Linen (#F0EDE6), Gold (#B8963E), Charcoal (#1E293B)
+- **Browser extensions**: Chrome (MV3), Firefox (MV2), Safari (MV3)
 
-### Storage Keys
-
-All data is stored under versioned keys (currently `v6`):
-
-| Key | Contents |
-|-----|----------|
-| `ta-u-v6` | User accounts (hashed passwords, profiles, scoring data) |
-| `ta-o-v6` | Assemblies (members, reputation, concessions) |
-| `ta-s-v6` | Submissions (corrections, affirmations, votes, audit trails) |
-| `ta-vault-v6` | Standing Corrections vault |
-| `ta-args-v6` | Arguments vault |
-| `ta-beliefs-v6` | Foundational Beliefs vault |
-| `ta-trans-v6` | Translations vault |
-| `ta-disp-v6` | Disputes |
-| `ta-a-v6` | Global audit trail |
-| `ta-concessions` | Assembly concession proposals and votes |
-
-### Scoring Formula
+### API Endpoints
 
 ```
-Trust Score = √(Points) × Quality / Drag + Cassandra Bonus
+POST   /api/auth/register         Create citizen account
+POST   /api/auth/login            Authenticate (sets cookie, returns token)
+POST   /api/auth/logout           Clear session
+GET    /api/auth/me               Current user from session
 
-Points   = (wins × w_win) + (disputeWins × w_disputeWin) + floor(streak / w_streakInterval)
-Quality  = min((avgNews + avgFun) / w_qualityDivisor, w_qualityCap) ^ w_qualityExp
-Drag     = 1 + √(reg_losses × w_lossDrag + failed_disputes × w_failedDisputeDrag) + (lies × w_lieDrag)
+POST   /api/submissions           Create correction or affirmation
+GET    /api/submissions/:id       Get submission with votes and audit trail
+POST   /api/submissions/:id/vote  Cast jury vote
 
-Cassandra = Σ w_vindicationBase × (news/10 × fun/10) × rejections ^ w_persistenceExp
+POST   /api/disputes              File dispute
+POST   /api/concessions           Propose concession
+
+GET    /api/orgs                  List assemblies
+POST   /api/orgs                  Create assembly
+GET    /api/users/:id/profile     Trust Score breakdown
+
+GET    /api/corrections?url=      Corrections for a URL (extension endpoint, stateless)
+GET    /api/audit                 Audit log (auth required, RBAC)
+POST   /api/admin/approve-pending Admin: bulk-approve submissions
+POST   /api/admin/wild-west-backfill Admin: backfill submissions
+
+GET    /api/kv?key=               Read KV cache
+POST   /api/kv                    Write KV cache (auth required, protected keys need admin)
+
+POST   /api/feedback              Submit beta feedback
 ```
 
-Default weights (all election-settable):
-| Weight | Value | Purpose |
-|--------|-------|---------|
-| w_win | 1.0 | Points per approved correction |
-| w_disputeWin | 2.0 | Points per successful dispute |
-| w_streakInterval | 3 | Consecutive wins per bonus point |
-| w_qualityDivisor | 10 | Quality normalization |
-| w_qualityCap | 1.6 | Soft cap preventing rating inflation |
-| w_qualityExp | 1.5 | Amplifies quality gap between trivial and important work |
-| w_lossDrag | 2.0 | Loss severity (inside √, diminishing) |
-| w_lieDrag | 3.0 | Lie severity (linear, no mercy) |
-| w_failedDisputeDrag | 2.0 | Failed dispute severity (inside √) |
-| w_vindicationBase | 10.0 | Base value of Cassandra vindication |
-| w_persistenceExp | 1.5 | Exponent on rejection count |
+### Privacy
 
-### Submission Types
+The `GET /api/corrections?url=` endpoint is **stateless and blind by design**. It does not log, store, or record the queried URL, the requester's IP, or any request metadata. The URL is used solely as an in-memory filter key, then discarded. No analytics. No telemetry.
 
-| Type | Purpose | Required Fields |
-|------|---------|----------------|
-| Correction | Headline is misleading | URL, headline, replacement, reasoning, evidence |
-| Affirmation | Headline is accurate | URL, headline, reasoning, evidence |
+### Security
 
-Both types capture the optional **author** field for future writer accountability ratings.
+- Admin endpoints require `is_admin` role check via `requireAdmin()`
+- KV store writes to protected keys (submissions cache) require admin
+- Vote resolution pipeline runs in database transactions (BEGIN/COMMIT/ROLLBACK)
+- All user-generated text served to browser extensions is HTML-entity-encoded on output
+- JWT expiry reduced to 7 days (from 365 days)
+- Audit logging on admin actions with user attribution
 
-### Vault Types
-
-| Vault | Icon | Purpose | Categories |
-|-------|------|---------|------------|
-| Standing Corrections | 🏛 | Reusable verified facts | — |
-| Arguments | ⚔️ | Fundamental arguments for reuse | — |
-| Foundational Beliefs | 🧭 | Core axioms — starting premises | — |
-| Translations | 🔄 | Plain-language replacements | Clarity, Anti-Propaganda, Euphemism, Satirical |
-
-## Navigation
+### Navigation
 
 Two-row navigation with clear hierarchy:
 
@@ -114,42 +105,34 @@ Two-row navigation with clear hierarchy:
 
 ## Getting Started
 
-### As a Claude Artifact
+### Prerequisites
 
-1. Open Claude.ai
-2. Create a new artifact
-3. Paste the contents of `trust-assembly-v5.jsx`
-4. The app renders with the interactive onboarding tutorial
+- Node.js 18+
+- PostgreSQL 16+ (or Vercel Postgres)
+- Environment variables: `POSTGRES_URL`, `JWT_SECRET`
 
 ### Local Development
 
-The app is a single React component with a default export:
+```bash
+npm install
+npm run dev
+```
+
+### Database Setup
 
 ```bash
-cp trust-assembly-v5.jsx src/App.jsx
-npm start
+psql $POSTGRES_URL < db/schema.sql
 ```
 
-Note: `window.storage` is specific to the Claude.ai sandbox. For local dev, implement a compatible storage adapter (localStorage, IndexedDB, or backend API).
+### Browser Extension
 
-## Planned API Endpoints
-
-```
-POST   /api/submissions          Create correction or affirmation
-GET    /api/submissions/:id      Get submission with votes and audit trail
-POST   /api/submissions/:id/vote Cast jury vote
-POST   /api/disputes             File dispute
-POST   /api/concessions          Propose concession
-GET    /api/assemblies            List assemblies
-GET    /api/users/:id/profile    Trust Score breakdown
-GET    /api/vault/:orgId         Assembly vault entries
-GET    /api/translations/:orgId  Assembly translations
-GET    /api/corrections?url=     Get corrections for a URL (extension endpoint)
-```
+1. Download the extension for your browser from the Extensions page
+2. Load as unpacked (Chrome/Edge/Brave) or temporary add-on (Firefox)
+3. The extension overlays corrections on articles as you browse
 
 ## Future Development
 
-See `future-vision.md` for the complete roadmap including browser extension, bounty system, subscriptions, appeal adjudication, AI agents, writer ratings, The Forum (AI-compatible government), and delegated voting.
+See `future-vision.md` for the complete roadmap including bounty system, subscriptions, appeal adjudication, AI agents, writer ratings, The Forum (AI-compatible government), and delegated voting.
 
 ## Contributing
 
