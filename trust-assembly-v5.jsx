@@ -7056,9 +7056,23 @@ export default function TrustAssembly() {
 
           {/* HERO SECTION */}
           <div style={{ background: "linear-gradient(180deg, #0D0D0D 0%, #1B2A4A 100%)", padding: "40px 24px 40px", textAlign: "center", overflow: "hidden" }}>
-            <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, fontWeight: 400, color: "#F0EDE6", lineHeight: 1.3, maxWidth: 560, margin: "0 auto 28px", animation: "ta-fadeUp 0.6s ease" }}>
+            <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, fontWeight: 400, color: "#F0EDE6", lineHeight: 1.3, maxWidth: 560, margin: "0 auto 16px", animation: "ta-fadeUp 0.6s ease" }}>
               The internet's corrections layer.
             </h1>
+
+            {/* CTAs */}
+            <div style={{ marginBottom: 28, display: "flex", justifyContent: "center", gap: 12 }}>
+              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a1a1a", backgroundColor: "var(--gold)", border: "none", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
+                onClick={() => setShowExtPage(true)}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#D4B45E"}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
+              >Install Extension</button>
+              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
+                onClick={() => setLoginAccordion(true)}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
+              >Join as Citizen</button>
+            </div>
 
             {/* Category pills */}
             <div style={{ display: "flex", justifyContent: "center", gap: 5, marginBottom: 22, flexWrap: "wrap" }}
@@ -7082,7 +7096,7 @@ export default function TrustAssembly() {
             </div>
 
             {/* CONTENT AREA */}
-            <div style={{ maxWidth: 740, margin: "0 auto", minHeight: 340, opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(5px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
+            <div style={{ maxWidth: 740, margin: "0 auto", maxHeight: 340, overflow: "hidden", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(5px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
               onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
               {HERO_SLIDES[heroIdx].layout === "columns" ? (
                 <>
@@ -7129,19 +7143,6 @@ export default function TrustAssembly() {
               </p>
             </div>
 
-            {/* CTAs */}
-            <div style={{ marginTop: 24, display: "flex", justifyContent: "center", gap: 12 }}>
-              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a1a1a", backgroundColor: "var(--gold)", border: "none", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => setShowExtPage(true)}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#D4B45E"}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
-              >Install Extension</button>
-              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => setLoginAccordion(true)}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
-              >Join as Citizen</button>
-            </div>
           </div>
 
           {/* HOW IT WORKS */}
