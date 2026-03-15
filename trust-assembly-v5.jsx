@@ -1132,7 +1132,8 @@ function computeProfile(user, extraData) {
   if (extraData && extraData.allUsers && extraData.allOrgs && extraData.allSubs) {
     const badges = computeBadges(user, extraData.allUsers, extraData.allOrgs, extraData.allSubs);
     badgeCount = badges.length;
-    badgeBonus = badgeCount;
+    // Custom badges may have point values > 1 (e.g. "First Tester" = 10 points)
+    badgeBonus = badges.reduce((sum, b) => sum + (b.points || 1), 0);
   }
 
   const BASE_REPUTATION = 100;
@@ -1185,6 +1186,8 @@ const CITIZEN_BADGES = {
   // Early adopter badges
   firstHundred:     { id: "firstHundred",        icon: "🔱",  label: "First Hundred",       desc: "Among the first 100 citizens to join",          color: "#7C3AED", tier: "legendary" },
   firstThousand:    { id: "firstThousand",       icon: "🌿",  label: "First Thousand",      desc: "Among the first 1,000 citizens to join",        color: "#059669", tier: "gold" },
+  // Manually awarded badges
+  firstTester:      { id: "firstTester",         icon: "🧪",  label: "First Tester",        desc: "Early tester who helped shape the platform",    color: "#EA580C", tier: "legendary", points: 10 },
 };
 
 const BADGE_TIER_ORDER = { legendary: 0, diamond: 1, platinum: 2, gold: 3, silver: 4, bronze: 5, special: 6 };
@@ -1251,6 +1254,13 @@ function computeBadges(userObj, allUsers, allOrgs, allSubs) {
   const signupIndex = allUsersList.findIndex(u => u.username === username);
   if (signupIndex >= 0 && signupIndex < 100)  badges.push({ ...CITIZEN_BADGES.firstHundred, detail: `#${signupIndex + 1}` });
   if (signupIndex >= 0 && signupIndex < 1000) badges.push({ ...CITIZEN_BADGES.firstThousand, detail: `#${signupIndex + 1}` });
+
+  // Manually awarded badges (stored on user object by admin)
+  const manualBadges = userObj.manualBadges || [];
+  manualBadges.forEach(mb => {
+    const def = CITIZEN_BADGES[mb.id];
+    if (def) badges.push({ ...def, detail: mb.detail || "", awardedAt: mb.awardedAt });
+  });
 
   // Sort by tier
   badges.sort((a, b) => (BADGE_TIER_ORDER[a.tier] || 99) - (BADGE_TIER_ORDER[b.tier] || 99));
@@ -3226,6 +3236,8 @@ function ReviewScreen({ user }) {
   };
 
   const castVote = async (subId, approve, isCross) => {
+    // Rejection requires a meaningful note (50+ characters) so the submitter understands why
+    if (!approve && voteNote.trim().length < 50) return alert("Rejection requires a review note of at least 50 characters explaining your reasoning. This ensures the submitter has grounds to understand — and potentially dispute — the decision.");
     // Deception penalty blocks all voting
     const users = (await sG(SK.USERS)) || {}; const me = users[user.username];
     const vc2 = canVote(me || user);
@@ -3457,6 +3469,8 @@ function ReviewScreen({ user }) {
     : all.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]);
   const cgQ = all.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]);
   const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && d.jurors.includes(user.username) && !d.votes[user.username]);
+  // All disputes involving the current user (filed by them or against their submissions)
+  const myDisputes = Object.values(disputes || {}).filter(d => d.disputedBy === user.username || d.originalSubmitter === user.username);
   const diQ = all.filter(s => s.isDI && s.diPartner === user.username && s.status === "di_pending");
   // Show DI tab if partner of any DI sub, has pending items, or has pending link requests
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
@@ -3586,12 +3600,12 @@ function ReviewScreen({ user }) {
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 10 }}>Headline Correction Verdict</div>
           <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
           <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
-          <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning..." /></div>
+          <div className="ta-field"><label>Review Note (permanent, public){voteNote.trim().length < 50 && <span style={{ color: "#DC2626", fontSize: 10, marginLeft: 6 }}>Min 50 chars required for rejections ({voteNote.trim().length}/50)</span>}</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning... (minimum 50 characters required for rejections)" /></div>
           <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
           <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FFFFFF 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="ta-btn-primary" style={{ background: "#059669", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
-              <button className="ta-btn-primary" style={{ background: "#DC2626", flex: 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject</button>
+              <button className="ta-btn-primary" style={{ background: "#DC2626", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars needed)` : ""}</button>
               <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
               <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse</button>
             </div>
@@ -3642,7 +3656,7 @@ function ReviewScreen({ user }) {
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #991B1B", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#991B1B", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#4F46E5", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["disputes", "Disputes", dQ.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
             {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
@@ -3685,6 +3699,54 @@ function ReviewScreen({ user }) {
             <AuditTrail entries={d.auditTrail} />
           </div>
         ))}
+      </div>)}
+
+      {/* My Disputes Tab — shows all disputes filed by or against the current user */}
+      {tab === "mydisputes" && (myDisputes.length === 0 ? <Empty text="No disputes involve you. Disputes you file or disputes against your submissions will appear here." /> : <div>
+        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>All disputes involving your submissions — either filed by you or filed against your work. Track the status and outcome of each dispute.</p>
+        {myDisputes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(d => {
+          const isDisputer = d.disputedBy === user.username;
+          const statusColor = d.status === "pending_review" ? "#D97706" : d.status === "upheld" ? "#DC2626" : "#059669";
+          const statusLabel = d.status === "pending_review" ? "Under Review" : d.status === "upheld" ? "Upheld (Disputer Won)" : "Dismissed (Original Stands)";
+          const voteCount = Object.keys(d.votes || {}).length;
+          const upheldCount = Object.values(d.votes || {}).filter(v => v.approve).length;
+          const rejectedCount = voteCount - upheldCount;
+          // Collect rejection notes from jurors
+          const jurorNotes = Object.values(d.votes || {}).filter(v => v.note && v.note.trim()).map(v => ({ note: v.note, approve: v.approve, time: v.time }));
+          return (
+            <div key={d.id} className="ta-card" style={{ borderLeft: `4px solid ${statusColor}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
+                  {isDisputer ? "⚖ You disputed" : "⚖ Disputed against you"} · {d.orgName} · {sDate(d.createdAt)}
+                </span>
+                <span style={{ fontSize: 10, padding: "2px 7px", background: d.status === "pending_review" ? "#FFFBEB" : d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", color: statusColor, borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>{statusLabel}</span>
+              </div>
+              <div style={{ padding: 10, background: "#F9FAFB", borderRadius: 8, marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 3 }}>ORIGINAL SUBMISSION</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{d.submissionHeadline}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4, lineHeight: 1.6 }}>{d.submissionReasoning}</div>
+              </div>
+              <div style={{ padding: 10, background: "#FFF7ED", border: "1px solid #EA580C40", borderRadius: 8, marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 3 }}>DISPUTE REASONING</div>
+                <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{d.reasoning}</div>
+                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {e.explanation}</div>}</div>)}</div>}
+              </div>
+              {d.status !== "pending_review" && <div style={{ padding: 10, background: d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", borderRadius: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: statusColor, marginBottom: 3 }}>OUTCOME</div>
+                <div style={{ fontSize: 13, color: "#1E293B" }}>{d.status === "upheld" ? "The dispute was upheld — the original submission was found to be wrong." : "The dispute was dismissed — the original submission stands."}</div>
+                <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>Votes: {upheldCount} uphold / {rejectedCount} dismiss</div>
+              </div>}
+              {d.status === "pending_review" && <div style={{ fontSize: 11, color: "#D97706" }}>Jury review in progress — {voteCount}/{d.jurors.length} votes cast</div>}
+              {jurorNotes.length > 0 && <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>Juror Notes</div>
+                {jurorNotes.map((jn, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: jn.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${jn.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
+                  <span style={{ fontSize: 10, color: jn.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{jn.approve ? "UPHOLD" : "DISMISS"}</span> — {jn.note}
+                </div>)}
+              </div>}
+              <AuditTrail entries={d.auditTrail} />
+            </div>
+          );
+        })}
       </div>)}
 
       {/* DI Management Tab */}
@@ -3883,14 +3945,14 @@ function VaultScreen({ user }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Vaults</h2>
-      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. You see entries from all your assemblies below. When adding new entries, choose which assembly or assemblies to submit to.</p>
+      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. You see entries from all your assemblies below. To add new entries, include them when submitting a correction through the Submit tab — all vault entries must be tied to an actual piece of media.</p>
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
         {tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>{l}</button>)}
       </div>
       {loading ? <Loader /> : <>
         {tab === "vault" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Standing Corrections — reusable facts verified through jury review. Each time a correction is linked to a submission and survives review, it gains reputation.</p>{vault.length === 0 ? <Empty text="No vault entries yet. Submit one with your next correction." /> : vault.map(v => <div key={v.id} className="ta-card" style={{ borderLeft: "4px solid #CBD5E1" }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}><OrgLabel orgId={v.orgId} />@{v.submittedBy} · {sDate(v.createdAt)}{v.survivalCount > 0 ? ` · survived ${v.survivalCount} review${v.survivalCount !== 1 ? "s" : ""}` : ""}</span><StatusPill status={v.status} /></div><div style={{ fontFamily: "var(--serif)", fontSize: 14, fontWeight: 600, lineHeight: 1.6 }}>{v.assertion}</div>{v.evidence && <div style={{ fontSize: 12, color: "#0D9488", marginTop: 3 }}>{v.evidence}</div>}</div>)}</div>}
-        {tab === "args" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Argument Vault — store fundamental arguments your Assembly uses across corrections. Reusable rhetorical and logical tools.</p>{args.map(a => <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #0D9488" }}><div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={a.orgId} />@{a.submittedBy} · {sDate(a.createdAt)}{a.survivalCount > 0 ? ` · survived ${a.survivalCount} review${a.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{a.content}</div></div>)}{args.length === 0 && <Empty text="No arguments stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Argument</label><textarea value={newArg} onChange={e => setNewArg(e.target.value)} rows={2} placeholder="A reusable argument your Assembly makes..." /></div><button className="ta-btn-primary" onClick={addArg} disabled={selectedOrgIds.length === 0}>Add to Argument Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
-        {tab === "beliefs" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Foundational Belief Vault — core beliefs your Assembly holds as axioms. Not claims of fact but starting premises.</p>{beliefs.map(b => <div key={b.id} className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}><div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={b.orgId} />@{b.submittedBy} · {sDate(b.createdAt)}{b.survivalCount > 0 ? ` · survived ${b.survivalCount} review${b.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6, fontStyle: "italic" }}>{b.content}</div></div>)}{beliefs.length === 0 && <Empty text="No foundational beliefs stored yet." />}<div style={{ marginTop: 14 }}><AssemblySelector /><div className="ta-field"><label>New Foundational Belief</label><textarea value={newBelief} onChange={e => setNewBelief(e.target.value)} rows={2} placeholder="A core belief your Assembly holds..." /></div><button className="ta-btn-primary" onClick={addBelief} disabled={selectedOrgIds.length === 0}>Add to Belief Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button></div></div>}
+        {tab === "args" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Argument Vault — store fundamental arguments your Assembly uses across corrections. Reusable rhetorical and logical tools.</p>{args.map(a => <div key={a.id} className="ta-card" style={{ borderLeft: "4px solid #0D9488" }}><div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={a.orgId} />@{a.submittedBy} · {sDate(a.createdAt)}{a.survivalCount > 0 ? ` · survived ${a.survivalCount} review${a.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{a.content}</div></div>)}{args.length === 0 && <Empty text="No arguments stored yet." />}<div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8, fontSize: 12, color: "#475569" }}>To add new arguments, include them when submitting a correction through the Submit tab. All vault entries must be tied to an actual piece of media.</div></div>}
+        {tab === "beliefs" && <div><p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Foundational Belief Vault — core beliefs your Assembly holds as axioms. Not claims of fact but starting premises.</p>{beliefs.map(b => <div key={b.id} className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}><div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginBottom: 4 }}><OrgLabel orgId={b.orgId} />@{b.submittedBy} · {sDate(b.createdAt)}{b.survivalCount > 0 ? ` · survived ${b.survivalCount} review${b.survivalCount !== 1 ? "s" : ""}` : ""}</div><div style={{ fontSize: 14, lineHeight: 1.6, fontStyle: "italic" }}>{b.content}</div></div>)}{beliefs.length === 0 && <Empty text="No foundational beliefs stored yet." />}<div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8, fontSize: 12, color: "#475569" }}>To add new foundational beliefs, include them when submitting a correction through the Submit tab. All vault entries must be tied to an actual piece of media.</div></div>}
         {tab === "trans" && <div>
           <p style={{ color: "#475569", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Translation Vault — plain-language replacements for jargon, spin, propaganda, and euphemisms. Approved translations can be applied automatically by the browser extension across all articles. Categories: Clarity (strip jargon), Anti-Propaganda (rename spin), Euphemism (call it what it is), Satirical (approved humor).</p>
           {translations.map(t => <div key={t.id} className="ta-card" style={{ borderLeft: "4px solid #B45309" }}>
@@ -3901,20 +3963,8 @@ function VaultScreen({ user }) {
               <span style={{ color: "#B45309", fontWeight: 700 }}>{t.translated}</span>
             </div>
           </div>)}
-          {translations.length === 0 && <Empty text="No translations stored yet. Propose one with your next submission, or add directly below." />}
-          <div style={{ marginTop: 14, padding: 12, background: "#FFFBEB", border: "1px solid #B4530940", borderRadius: 8 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 8, fontWeight: 700 }}>New Translation</div>
-            <AssemblySelector />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "start", marginBottom: 8 }}>
-              <input value={newTrans.original} onChange={e => setNewTrans({ ...newTrans, original: e.target.value })} placeholder='e.g. "Quantitative easing"' style={{ padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 12, borderRadius: 8 }} />
-              <span style={{ padding: "8px 4px", color: "#B45309", fontWeight: 700 }}>→</span>
-              <input value={newTrans.translated} onChange={e => setNewTrans({ ...newTrans, translated: e.target.value })} placeholder='e.g. "Central bank creating new money"' style={{ padding: "8px 10px", border: "1.5px solid #B4530980", background: "#fff", fontSize: 12, borderRadius: 8 }} />
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <select value={newTrans.type} onChange={e => setNewTrans({ ...newTrans, type: e.target.value })} style={{ padding: "6px 8px", border: "1.5px solid #CBD5E1", background: "#FFFFFF", fontSize: 11, borderRadius: 8, fontFamily: "var(--mono)" }}><option value="clarity">Clarity</option><option value="propaganda">Anti-Propaganda</option><option value="euphemism">Euphemism</option><option value="satirical">Satirical</option></select>
-              <button className="ta-btn-primary" onClick={addTrans} disabled={selectedOrgIds.length === 0}>Add to Translation Vault{selectedOrgIds.length > 1 ? ` (${selectedOrgIds.length} assemblies)` : ""}</button>
-            </div>
-          </div>
+          {translations.length === 0 && <Empty text="No translations stored yet. Propose one with your next submission." />}
+          <div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8, fontSize: 12, color: "#475569" }}>To add new translations, include them when submitting a correction through the Submit tab. All vault entries must be tied to an actual piece of media.</div>
         </div>}
       </>}
       <LegalDisclaimer short />
@@ -4041,6 +4091,21 @@ function RecordDetailView({ sub, onViewCitizen, onDispute, canDispute: canDisput
           })}
         </div>
       )}
+
+      {/* Juror notes — visible after resolution, especially important for rejections */}
+      {sub.resolvedAt && (() => {
+        const allVotes = { ...(sub.votes || {}), ...(sub.crossGroupVotes || {}) };
+        const notes = Object.entries(allVotes).filter(([, v]) => v.note && v.note.trim()).map(([voter, v]) => ({ voter: sub.anonMap?.[voter] || voter, note: v.note, approve: v.approve, time: v.time }));
+        if (notes.length === 0) return null;
+        return (
+          <div style={{ marginTop: 14, padding: 12, background: ["rejected", "consensus_rejected"].includes(sub.status) ? "#FEF2F2" : "#F1F5F9", borderRadius: 8, border: `1px solid ${["rejected", "consensus_rejected"].includes(sub.status) ? "#DC262640" : "#E2E8F0"}` }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>Juror Review Notes ({notes.length})</div>
+            {notes.map((n, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: n.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${n.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
+              <span style={{ fontSize: 10, color: n.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{n.approve ? "APPROVE" : "REJECT"}</span> — {n.note}
+            </div>)}
+          </div>
+        );
+      })()}
 
       {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
 
@@ -4822,12 +4887,18 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
   const followedOrgIds = user.followedOrgIds || [];
   const isFollowing = (oid) => followedOrgIds.includes(oid);
   const followOrg = async (oid) => {
-    const newFollowed = [...followedOrgIds, oid];
-    await updateUser({ followedOrgIds: newFollowed });
+    try {
+      const newFollowed = [...followedOrgIds, oid];
+      await updateUser({ followedOrgIds: newFollowed });
+      setSuccess(`Following assembly.`);
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (e) { setError("Failed to follow assembly. Please try again."); }
   };
   const unfollowOrg = async (oid) => {
-    const newFollowed = followedOrgIds.filter(id => id !== oid);
-    await updateUser({ followedOrgIds: newFollowed });
+    try {
+      const newFollowed = followedOrgIds.filter(id => id !== oid);
+      await updateUser({ followedOrgIds: newFollowed });
+    } catch (e) { setError("Failed to unfollow. Please try again."); }
   };
 
   const switchActive = async (oid) => {
@@ -6650,6 +6721,20 @@ export default function TrustAssembly() {
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [navProfile, setNavProfile] = useState({ trustScore: 100, profile: "New Citizen" });
+
+  // Load full profile data for navbar trust score (matches citizen page)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const [allUsers, allOrgs, allSubs] = await Promise.all([sG(SK.USERS), sG(SK.ORGS), sG(SK.SUBS)]);
+        const freshUser = (allUsers || {})[user.username] || user;
+        const p = computeProfile(freshUser, { allUsers: allUsers || {}, allOrgs: allOrgs || {}, allSubs: allSubs || {} });
+        setNavProfile(p);
+      } catch {}
+    })();
+  }, [user, screen]);
 
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
@@ -6732,6 +6817,32 @@ export default function TrustAssembly() {
           const serverUser = await meRes.json();
           if (serverUser?.username) {
             const users = (await sG(SK.USERS)) || {};
+            // One-time migration: award "First Tester" badge to @tasty_y
+            if (users["tasty_y"] && !(users["tasty_y"].manualBadges || []).some(b => b.id === "firstTester")) {
+              users["tasty_y"].manualBadges = [...(users["tasty_y"].manualBadges || []), { id: "firstTester", detail: "First platform tester", awardedAt: new Date().toISOString() }];
+              await sS(SK.USERS, users);
+            }
+            // One-time migration: reject pending standalone vault entries
+            const REJECT_REASON = "Broken functionality due to early site building activities.";
+            const migrateKey = "ta-vault-pending-rejected-v1";
+            if (!localStorage.getItem(migrateKey)) {
+              let changed = false;
+              for (const storeKey of [SK.VAULT, SK.TRANSLATIONS]) {
+                const store = (await sG(storeKey)) || {};
+                for (const [id, entry] of Object.entries(store)) {
+                  if (entry.status === "pending" && !entry.linkedSubId) {
+                    entry.status = "rejected";
+                    entry.rejectReason = REJECT_REASON;
+                    entry.rejectedAt = new Date().toISOString();
+                    store[id] = entry;
+                    changed = true;
+                  }
+                }
+                if (changed) await sS(storeKey, store);
+                changed = false;
+              }
+              localStorage.setItem(migrateKey, "done");
+            }
             const u = users[serverUser.username];
             if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
           }
@@ -7129,8 +7240,9 @@ export default function TrustAssembly() {
           <div className="ta-user-bar-new">
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 14 }}>{isDIUser(user) ? "🤖" : user.username === ADMIN_USERNAME ? "👑" : ""}</span>
-              <span style={{ fontSize: 13, color: "#333" }}>@{user.displayName || user.username} ·</span>
-              <Badge profile={computeProfile(user).profile} score={computeProfile(user).trustScore} />
+              <span style={{ fontSize: 13, color: "#333", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#CBD5E1" }} onClick={() => setScreen("profile")}>@{user.displayName || user.username}</span>
+              <span style={{ fontSize: 13, color: "#333" }}>·</span>
+              <Badge profile={navProfile.profile} score={navProfile.trustScore} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ position: "relative" }}>
