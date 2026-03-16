@@ -19,10 +19,10 @@ export async function GET() {
       s.url AS submission_url,
       o.name AS org_name
     FROM disputes d
-    JOIN submissions s ON s.id = d.submission_id
-    JOIN users disputer ON disputer.id = d.disputed_by
-    JOIN users orig_user ON orig_user.id = s.submitted_by
-    JOIN organizations o ON o.id = d.org_id
+    LEFT JOIN submissions s ON s.id = d.submission_id
+    LEFT JOIN users disputer ON disputer.id = d.disputed_by
+    LEFT JOIN users orig_user ON orig_user.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = d.org_id
     ORDER BY d.created_at DESC
   `;
 
@@ -83,14 +83,14 @@ export async function GET() {
       id,
       subId: row.submission_id,
       orgId: row.org_id,
-      orgName: row.org_name,
+      orgName: row.org_name || "Unknown Org",
       reasoning: row.reasoning,
       status: row.status,
       deliberateLieFinding: row.deliberate_lie_finding,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
-      disputedBy: row.disputed_by,
-      originalSubmitter: row.original_submitter,
+      disputedBy: row.disputed_by || "unknown",
+      originalSubmitter: row.original_submitter || "unknown",
       submissionHeadline: row.submission_headline,
       submissionReasoning: row.submission_reasoning,
       submissionReplacement: row.submission_replacement,
