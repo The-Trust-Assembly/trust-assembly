@@ -2961,9 +2961,9 @@ function ReviewScreen({ user }) {
   // All disputes involving the current user (filed by them or against their submissions)
   const myDisputes = Object.values(disputes || {}).filter(d => d.disputedBy === user.username || d.originalSubmitter === user.username);
   const diQ = all.filter(s => s.status === "di_pending" && (s.diPartner === user.username || (s.isDI && s.diPartner === user.username)));
-  // Show DI tab if partner of any DI sub, has pending items, or has pending link requests
+  // Show DI tab if user has any DI relationship, pending items, or pending link requests
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
-  const hasDIPartnership = all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
+  const hasDIPartnership = !!user.diPartner || all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
 
   const castDisputeVote = async (disputeId, upheld) => {
     // ── Vote on dispute via relational API (single source of truth) ──
