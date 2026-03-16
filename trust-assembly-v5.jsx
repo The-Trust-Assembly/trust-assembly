@@ -941,6 +941,19 @@ async function fileDispute(subId, disputerUsername, reasoning, evidence) {
   disputes[dispute.id] = dispute;
   await sS(SK.DISPUTES, disputes);
 
+  // ── Dual-write: also file dispute in relational table ──
+  try {
+    await fetch("/api/disputes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submissionId: subId,
+        reasoning: reasoning.trim(),
+        evidence: (evidence || []).map(e => ({ url: e.url, explanation: e.explanation })),
+      }),
+    });
+  } catch (e) { console.warn("Relational dual-write failed (dispute still saved to KV):", e); }
+
   // Mark submission as disputed
   subs[subId].status = "disputed";
   subs[subId].auditTrail.push({ time: now, action: `⚖ DISPUTED. Dispute ID: ${dispute.id}` });
@@ -1062,6 +1075,16 @@ async function resolveDispute(disputeId, voterUsername, approve, note, lieChecke
 
   disputes[disputeId] = d;
   await sS(SK.DISPUTES, disputes);
+
+  // ── Dual-write: also record dispute vote in relational table ──
+  try {
+    await fetch(`/api/disputes/${disputeId}/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approve, note: note.trim(), deliberateLie: lieChecked }),
+    });
+  } catch (e) { console.warn("Relational dual-write failed (dispute vote still saved to KV):", e); }
+
   return { success: true };
 }
 
@@ -2748,6 +2771,25 @@ function SubmitScreen({ user, onUpdate }) {
       };
       subs[sub.id] = sub;
 
+      // ── Dual-write: also create in relational submissions table ──
+      try {
+        await fetch("/api/submissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            submissionType: form.submissionType,
+            url: form.url.trim(),
+            originalHeadline: form.originalHeadline.trim(),
+            replacement: form.replacement.trim() || null,
+            reasoning: form.reasoning.trim(),
+            author: authorStr || null,
+            orgId,
+            evidence: validEvidence.map(e => ({ url: e.url.trim(), explanation: e.explanation?.trim() || "" })),
+            inlineEdits: validEdits.map(e => ({ original: e.original.trim(), replacement: e.replacement.trim(), reasoning: e.reasoning?.trim() || null })),
+          }),
+        });
+      } catch (e) { console.warn("Relational dual-write failed (submission still saved to KV):", e); }
+
       if (trustedSkip) {
         const usrs = (await sG(SK.USERS)) || {};
         const sm = usrs[user.username];
@@ -3337,6 +3379,15 @@ function ReviewScreen({ user }) {
     if (!sub.anonMap[user.username]) sub.anonMap[user.username] = genAnonId("Juror");
     sub.auditTrail.push({ time: now, action: `${sub.anonMap[user.username]} accepted jury seat${ww ? " (Wild West open review)" : ""} (${sub[acceptedKey].length}/${ww ? "open" : seats} filled)` });
     allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
+    // ── Dual-write: accept jury seat in relational table ──
+    try {
+      const juryRes = await fetch("/api/jury");
+      if (juryRes.ok) {
+        const juryData = await juryRes.json();
+        const assignment = (juryData.assignments || []).find(a => a.submission_id === subId && !a.accepted);
+        if (assignment) await fetch(`/api/jury/${assignment.id}/accept`, { method: "POST", headers: { "Content-Type": "application/json" } });
+      }
+    } catch (e) { console.warn("Relational dual-write failed (seat acceptance still saved to KV):", e); }
     setReviewingId(subId); load();
   };
 
@@ -3579,6 +3630,18 @@ function ReviewScreen({ user }) {
       }
     }
     allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
+    // ── Dual-write: also record vote in relational table ──
+    try {
+      await fetch(`/api/submissions/${subId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approve, note: voteNote.trim(), deliberateLie: lieChecked,
+          newsworthy: newsRating, interesting: funRating,
+          role: isCross ? "cross_group" : "in_group",
+        }),
+      });
+    } catch (e) { console.warn("Relational dual-write failed (vote still saved to KV):", e); }
     clearDraft(`ta_draft_vote_${subId}`); voteInitSkip.current = true; lastRestoredId.current = null;
     setReviewingId(null); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false); setEditVotes({}); setVaultVotes({}); load();
   };
@@ -4967,6 +5030,8 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
     const id = gid(); const now = new Date().toISOString();
     const org = { id, name: newOrg.name.trim(), description: newOrg.description.trim(), charter: newOrg.charter.trim(), createdBy: user.username, founders: [user.username], createdAt: now, members: [user.username] };
     const up = { ...orgs, [id]: org }; await sS(SK.ORGS, up);
+    // ── Dual-write: also create assembly in relational table ──
+    try { await fetch("/api/orgs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newOrg.name.trim(), description: newOrg.description.trim(), charter: newOrg.charter.trim() }) }); } catch (e) { console.warn("Relational dual-write failed (org still saved to KV):", e); }
     const newIds = [...myOrgIds, id];
     await updateUser({ orgId: id, orgIds: newIds });
     setOrgs(up); setCreating(false); setNewOrg({ name: "", description: "", charter: "" });
@@ -4998,6 +5063,8 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
       status: "pending", createdAt: new Date().toISOString()
     };
     allApps[app.id] = app; await sS(SK.APPS, allApps); setApps(allApps);
+    // ── Dual-write: also submit application in relational table ──
+    try { await fetch(`/api/orgs/${oid}/applications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: joinReason.trim(), link: joinLink.trim() || null }) }); } catch (e) { console.warn("Relational dual-write failed (application still saved to KV):", e); }
     setApplyingTo(null); setJoinReason(""); setJoinLink("");
     if (enr.mode === "tribal") {
       setSuccess(`Application submitted to ${o.name}. The founder must approve your request.`);
@@ -5021,6 +5088,8 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
     // Open enrollment — join directly
     const up = { ...orgs }; if (!up[oid].members.includes(user.username)) up[oid].members.push(user.username); await sS(SK.ORGS, up);
+    // ── Dual-write: also join assembly in relational table ──
+    try { await fetch(`/api/orgs/${oid}/join`, { method: "POST", headers: { "Content-Type": "application/json" } }); } catch (e) { console.warn("Relational dual-write failed (join still saved to KV):", e); }
     const newIds = [...myOrgIds, oid];
     await updateUser({ orgId: oid, orgIds: newIds });
     setOrgs(up);
@@ -5058,6 +5127,8 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
     const up = { ...orgs };
     if (up[oid]) { up[oid].members = up[oid].members.filter(m => m !== user.username); if (!up[oid].members.length && !up[oid].isGeneralPublic) delete up[oid]; }
     await sS(SK.ORGS, up);
+    // ── Dual-write: also leave assembly in relational table ──
+    try { await fetch(`/api/orgs/${oid}/leave`, { method: "POST", headers: { "Content-Type": "application/json" } }); } catch (e) { console.warn("Relational dual-write failed (leave still saved to KV):", e); }
     const newIds = myOrgIds.filter(id => id !== oid);
     const newActive = user.orgId === oid ? (gpId || newIds[0]) : user.orgId;
     await updateUser({ orgId: newActive, orgIds: newIds });
