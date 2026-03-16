@@ -188,7 +188,7 @@ BEGIN
           COALESCE((v_sub->>'trustedSkip')::boolean, false),
           COALESCE((v_sub->>'isDI')::boolean, false),
           v_di_partner_id,
-          (v_sub->>'jurySeed')::integer,
+          (v_sub->>'jurySeed')::bigint,
           (v_sub->>'jurySeats')::integer,
           (v_sub->>'crossGroupSeed')::integer,
           COALESCE((v_sub->>'deliberateLieFinding')::boolean, false),

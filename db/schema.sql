@@ -218,7 +218,7 @@ CREATE TABLE submissions (
   di_partner_id     UUID REFERENCES users(id),
 
   -- Jury metadata
-  jury_seed         INTEGER,
+  jury_seed         BIGINT,
   jury_seats        INTEGER,
   internal_jury_size INTEGER,
 
