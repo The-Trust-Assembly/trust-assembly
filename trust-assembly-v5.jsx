@@ -113,49 +113,151 @@ function hotScore(sub) {
   return sign * order + sec / 45000;
 }
 
-// --- Storage (API-backed via PostgreSQL) ---
+// --- Storage (relational API-backed) ---
+// sG dispatches reads to relational API endpoints instead of the deprecated KV store.
+// Data is returned in the same format the SPA expects (objects keyed by ID).
 async function sG(k) {
-  // Throws on failure so callers using (await sG(SK.X)) || {} don't
-  // mistake a network/auth error for "no data" and overwrite real data.
-  const res = await fetch("/api/kv?key=" + encodeURIComponent(k));
+  let url;
+  switch (k) {
+    case SK.SUBS:    url = "/api/data/submissions"; break;
+    case SK.ORGS:    url = "/api/data/orgs"; break;
+    case SK.USERS:   url = "/api/data/users"; break;
+    case SK.AUDIT:   url = "/api/data/audit"; break;
+    case SK.DISPUTES: url = "/api/data/disputes"; break;
+    case SK.VAULT:   url = "/api/vault?type=vault&status=approved&limit=1000"; break;
+    case SK.ARGS:    url = "/api/vault?type=argument&limit=1000"; break;
+    case SK.BELIEFS: url = "/api/vault?type=belief&limit=1000"; break;
+    case SK.TRANSLATIONS: url = "/api/vault?type=translation&limit=1000"; break;
+    case SK.APPS: {
+      // Applications are stored per-org; fetch all via orgs the user knows about
+      const res = await fetch("/api/orgs?limit=1000");
+      if (!res.ok) return {};
+      const data = await res.json();
+      const allApps = {};
+      for (const org of (data.organizations || data.data || [])) {
+        try {
+          const appRes = await fetch(`/api/orgs/${org.id}/applications`);
+          if (appRes.ok) {
+            const appData = await appRes.json();
+            for (const app of (appData.applications || appData.data || [])) {
+              allApps[app.id] = {
+                id: app.id, orgId: org.id, orgName: org.name,
+                userId: app.username || app.user_id,
+                reason: app.reason, link: app.link,
+                mode: app.mode, sponsorsNeeded: app.sponsors_needed || 0,
+                sponsors: app.sponsors || [],
+                founderApproved: app.founder_approved,
+                status: app.status, createdAt: app.created_at,
+              };
+            }
+          }
+        } catch {}
+      }
+      return allApps;
+    }
+    case SK.GP: {
+      // Find General Public org ID from the orgs data
+      const res = await fetch("/api/data/orgs");
+      if (!res.ok) return null;
+      const orgs = await res.json();
+      for (const [id, o] of Object.entries(orgs)) {
+        if (o && o.isGeneralPublic) return id;
+      }
+      return null;
+    }
+    default: {
+      // Handle non-SK keys: ta-di-requests, ta-concessions, rate-limit keys
+      if (k === "ta-di-requests" || k.startsWith("ta-di-")) {
+        const res = await fetch("/api/di-requests");
+        if (!res.ok) return {};
+        const data = await res.json();
+        const map = {};
+        for (const r of (data.requests || [])) {
+          const key = r.di_username || r.diUsername || r.id;
+          map[key] = {
+            diUsername: r.di_username || r.diUsername,
+            partnerUsername: r.partner_username || r.partnerUsername,
+            status: r.status,
+            createdAt: r.created_at || r.createdAt,
+          };
+        }
+        return map;
+      }
+      if (k === "ta-concessions" || k.startsWith("ta-con")) {
+        const res = await fetch("/api/concessions?limit=1000");
+        if (!res.ok) return {};
+        const data = await res.json();
+        const map = {};
+        for (const c of (data.concessions || [])) {
+          map[c.id] = c;
+        }
+        return map;
+      }
+      // For vault-type list endpoints, convert array to keyed object
+      if (url === undefined) {
+        // Rate limit keys and other misc — return null (these are transient)
+        return null;
+      }
+    }
+  }
+
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Storage read failed for ${k}: ${res.status}`);
   const data = await res.json();
-  return data.value ? JSON.parse(data.value) : null;
+
+  // Vault/args/beliefs/translations endpoints return { entries: [...] } — convert to keyed object
+  if (data.entries && Array.isArray(data.entries)) {
+    const map = {};
+    for (const entry of data.entries) {
+      map[entry.id] = {
+        id: entry.id,
+        orgId: entry.org_id,
+        orgName: entry.org_name,
+        submittedBy: entry.submitted_by_username,
+        status: entry.status,
+        survivalCount: entry.survival_count || 0,
+        approvedAt: entry.approved_at,
+        createdAt: entry.created_at,
+        // vault-specific
+        assertion: entry.assertion,
+        evidence: entry.evidence,
+        // argument/belief-specific
+        content: entry.content,
+        // translation-specific
+        originalText: entry.original_text,
+        translatedText: entry.translated_text,
+        translationType: entry.translation_type,
+      };
+    }
+    return map;
+  }
+
+  return data;
 }
+
+// sS is now a no-op for most cases since writes go through dedicated API endpoints.
+// Retained for backward compatibility — logs deprecation warnings.
 async function sS(k, v) {
-  try {
-    const res = await fetch("/api/kv", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: k, value: JSON.stringify(v) }),
-    });
-    return res.ok;
-  } catch { return false; }
+  // All writes should go through dedicated POST/PATCH endpoints.
+  // This function is retained only for edge cases during the transition period.
+  console.warn(`[DEPRECATED] sS called for key "${k}" — writes should use dedicated API endpoints`);
+  return true;
 }
 
 async function createNotification(username, type, data) {
-  const users = (await sG(SK.USERS)) || {};
-  const u = users[username];
-  if (!u) return;
-  u.notifications = u.notifications || [];
-  u.notifications.unshift({ id: gid(), type, data, read: false, createdAt: new Date().toISOString() });
-  if (u.notifications.length > 50) u.notifications = u.notifications.slice(0, 50);
-  users[username] = u;
-  await sS(SK.USERS, users);
+  // Server-side notification creation — no longer uses KV store
+  // Notifications are created by server endpoints as side effects of actions
+  // This is kept as a no-op for any remaining call sites
+  console.warn(`[DEPRECATED] createNotification called for @${username} — notifications are now created server-side`);
 }
 
 async function ensureGeneralPublic() {
-  // sG throws on read failure, so this will never mistake an error for "no data"
-  let gpId = await sG(SK.GP);
+  // Find General Public org from relational API
+  const gpId = await sG(SK.GP);
   if (gpId) return gpId;
-  const orgs = (await sG(SK.ORGS)) || {};
-  // Check if it already exists
-  for (const [id, o] of Object.entries(orgs)) { if (o.name === GP_NAME) { await sS(SK.GP, id); return id; } }
-  // Create it
-  const id = gid();
-  orgs[id] = { id, name: GP_NAME, description: GP_DESC, charter: "Open to all. Permanent membership. Cannot be left.", createdBy: "system", createdAt: new Date().toISOString(), members: [], isGeneralPublic: true };
-  await sS(SK.ORGS, orgs); await sS(SK.GP, id);
-  return id;
+  // GP should already exist in the database — server creates it during registration
+  console.warn("General Public org not found in relational data");
+  return null;
 }
 
 // ============================================================
@@ -662,12 +764,15 @@ function getConcessionRecovery(rejectedAt, concessionsThisWeek = 0) {
 }
 // Count how many concessions an assembly has approved in the last 7 days
 async function getWeeklyConcessionCount(orgId) {
-  const concessions = (await sG("ta-concessions")) || {};
-  const weekAgo = Date.now() - 7 * 24 * 3600000;
-  return Object.values(concessions).filter(c =>
-    c.orgId === orgId && c.status === "approved" &&
-    new Date(c.resolvedAt).getTime() > weekAgo
-  ).length;
+  try {
+    const res = await fetch(`/api/concessions?orgId=${orgId}&status=approved`);
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const weekAgo = Date.now() - 7 * 24 * 3600000;
+    return (data.concessions || data.data || []).filter(c =>
+      new Date(c.resolvedAt || c.resolved_at).getTime() > weekAgo
+    ).length;
+  } catch { return 0; }
 }
 
 // ── Assembly Reputation ──
@@ -811,54 +916,21 @@ async function selectJury(orgId, submitterUsername) {
   return { jurors: selected.slice(0, jurySize * JURY_POOL_MULTIPLIER), seed, rulesApplied, jurySize, poolSize: Math.min(selected.length, jurySize * JURY_POOL_MULTIPLIER), error: selected.length < jurySize ? "Insufficient jurors." : null };
 }
 
-// Recusal: juror can recuse from a submission, triggering replacement draw
+// Recusal: juror can recuse from a submission via server API
 async function recuseJuror(subId, jurorUsername, isCross = false) {
-  const subs = (await sG(SK.SUBS)) || {};
-  const sub = subs[subId];
-  if (!sub) return { error: "Submission not found." };
-
-  const jurorKey = isCross ? "crossGroupJurors" : "jurors";
-  const voteKey = isCross ? "crossGroupVotes" : "votes";
-  if (!sub[jurorKey].includes(jurorUsername)) return { error: "Not on this jury." };
-  if (sub[voteKey]?.[jurorUsername]) return { error: "Already voted — cannot recuse." };
-
-  // Remove from jury
-  sub[jurorKey] = sub[jurorKey].filter(j => j !== jurorUsername);
-  const now = new Date().toISOString();
-  sub.anonMap = sub.anonMap || {};
-  if (!sub.anonMap[jurorUsername]) sub.anonMap[jurorUsername] = genAnonId("Juror");
-  sub.auditTrail.push({ time: now, action: `${sub.anonMap[jurorUsername]} RECUSED (${isCross ? "cross-group" : "in-group"}). Reason: conflict of interest.` });
-
-  // Draw replacement
-  const orgs = (await sG(SK.ORGS)) || {};
-  const users = (await sG(SK.USERS)) || {};
-  const allExcluded = new Set([sub.submittedBy, ...sub[jurorKey], jurorUsername, ...(sub.jurors || []), ...(sub.crossGroupJurors || [])]);
-
-  let replacementPool = [];
-  if (isCross) {
-    for (const [oid, o] of Object.entries(orgs)) {
-      if (oid !== sub.orgId) o.members.forEach(m => { if (!allExcluded.has(m)) replacementPool.push(m); });
+  try {
+    const res = await fetch(`/api/submissions/${subId}/recuse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "Recusal failed" };
     }
-    replacementPool = [...new Set(replacementPool)];
-  } else {
-    const org = orgs[sub.orgId];
-    if (org) replacementPool = org.members.filter(m => !allExcluded.has(m));
+    return { success: true };
+  } catch (e) {
+    return { error: "Network error during recusal" };
   }
-
-  if (replacementPool.length > 0) {
-    const rng = seededRandom(Date.now());
-    const replacement = replacementPool.sort(() => rng() - 0.5)[0];
-    sub[jurorKey].push(replacement);
-    sub.anonMap = sub.anonMap || {};
-    if (!sub.anonMap[replacement]) sub.anonMap[replacement] = genAnonId("Juror");
-    sub.auditTrail.push({ time: now, action: `Replacement juror drawn: ${sub.anonMap[replacement]}` });
-  } else {
-    sub.auditTrail.push({ time: now, action: `No replacement available. Jury reduced to ${sub[jurorKey].length}.` });
-  }
-
-  subs[subId] = sub;
-  await sS(SK.SUBS, subs);
-  return { success: true, newJury: sub[jurorKey] };
 }
 
 // Check cross-group eligibility
@@ -1212,116 +1284,12 @@ async function computeJuryScore(username) {
 // Resolve any pending_review submissions that already have at least 1 approval
 // when Wild West mode is active. This handles submissions created before the
 // Wild West rules were deployed.
-async function wildWestBackfill() {
-  const wildWest = await isWildWestMode();
-  if (!wildWest) return false;
-
-  const subs = (await sG(SK.SUBS)) || {};
-  const now = new Date().toISOString();
-  let changed = false;
-
-  for (const sub of Object.values(subs)) {
-    if (sub.status !== "pending_review") continue;
-    const votes = sub.votes || {};
-    const approvals = Object.values(votes).filter(v => v.approve);
-    if (approvals.length === 0) continue;
-
-    // Resolve as approved under Wild West rules
-    sub.status = "approved";
-    sub.resolvedAt = now;
-    sub.deliberateLieFinding = false; // Deception disabled in Wild West
-    sub.jurySeats = 1; // Retroactively set for consistency
-    const vc = Object.keys(votes).length;
-    const app = approvals.length;
-    sub.auditTrail = sub.auditTrail || [];
-    sub.auditTrail.push({ time: now, action: `RESOLVED: APPROVED (${app}/${vc} approved) — Wild West backfill: submission had approval before rules change` });
-    if (sub.anonMap && sub.anonMap[sub.submittedBy]) {
-      sub.auditTrail.push({ time: now, action: `🔓 Blind review complete — submitter revealed: ${sub.anonMap[sub.submittedBy]} was @${sub.submittedBy}. Juror identities remain sealed.` });
-    }
-
-    // Credit the win to submitter
-    const users = (await sG(SK.USERS)) || {};
-    const sm = users[sub.submittedBy];
-    const scoreTarget = (sm && sm.isDI && sm.diPartner && users[sm.diPartner]) ? users[sm.diPartner] : sm;
-    const scoreUsername = (sm && sm.isDI && sm.diPartner) ? sm.diPartner : sub.submittedBy;
-    if (scoreTarget) {
-      scoreTarget.totalWins = (scoreTarget.totalWins || 0) + 1;
-      scoreTarget.currentStreak = (scoreTarget.currentStreak || 0) + 1;
-      scoreTarget.assemblyStreaks = scoreTarget.assemblyStreaks || {};
-      scoreTarget.assemblyStreaks[sub.orgId] = (scoreTarget.assemblyStreaks[sub.orgId] || 0) + 1;
-      scoreTarget.ratingsReceived = scoreTarget.ratingsReceived || [];
-      Object.values(votes).forEach(v => { if (v.newsworthy) scoreTarget.ratingsReceived.push({ newsworthy: v.newsworthy, interesting: v.interesting }); });
-      scoreTarget.reviewHistory = scoreTarget.reviewHistory || [];
-      scoreTarget.reviewHistory.push({ subId: sub.id, outcome: "approved", time: now });
-      users[scoreUsername] = scoreTarget;
-      await sS(SK.USERS, users);
-    }
-
-    // Graduate linked vault entries
-    if (sub.standingCorrection) {
-      const standing = (await sG(SK.VAULT)) || {};
-      const match = Object.values(standing).find(v => v.linkedSubId === sub.id && v.status === "pending");
-      if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.VAULT, standing); }
-    }
-    if (sub.translationEntry) {
-      const allTrans = (await sG(SK.TRANSLATIONS)) || {};
-      const match = Object.values(allTrans).find(t => t.linkedSubId === sub.id);
-      if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.TRANSLATIONS, allTrans); }
-    }
-
-    changed = true;
-  }
-
-  if (changed) await sS(SK.SUBS, subs);
-  return changed;
-}
-
-async function processJuryRotation() {
-  // Run Wild West backfill first
-  await wildWestBackfill();
-
-  const subs = (await sG(SK.SUBS)) || {};
-  const now = Date.now();
-  let changed = false;
-
-  Object.values(subs).forEach(sub => {
-    if (sub.status !== "pending_review" && sub.status !== "cross_review") return;
-    const isCross = sub.status === "cross_review";
-    const pool = isCross ? sub.crossGroupJuryPool : sub.juryPool;
-    const accepted = isCross ? (sub.crossGroupAcceptedJurors || []) : (sub.acceptedJurors || []);
-    const acceptedAt = isCross ? (sub.crossGroupAcceptedAt || {}) : (sub.acceptedAt || {});
-    const votes = isCross ? (sub.crossGroupVotes || {}) : (sub.votes || {});
-    if (!pool || pool.length === 0) return;
-
-    // Expire accepted jurors who haven't voted within 6 hours
-    const expired = [];
-    accepted.forEach(j => {
-      if (!votes[j] && acceptedAt[j] && (now - new Date(acceptedAt[j]).getTime()) > JURY_ACCEPT_WINDOW) {
-        expired.push(j);
-      }
-    });
-    if (expired.length > 0) {
-      const newAccepted = accepted.filter(j => !expired.includes(j));
-      const newAcceptedAt = { ...acceptedAt };
-      expired.forEach(j => { delete newAcceptedAt[j]; });
-      if (isCross) { sub.crossGroupAcceptedJurors = newAccepted; sub.crossGroupAcceptedAt = newAcceptedAt; }
-      else { sub.acceptedJurors = newAccepted; sub.acceptedAt = newAcceptedAt; }
-      // Remove expired from pool so they can't accept again
-      const newPool = pool.filter(j => !expired.includes(j));
-      if (isCross) sub.crossGroupJuryPool = newPool;
-      else sub.juryPool = newPool;
-      sub.auditTrail = sub.auditTrail || [];
-      expired.forEach(j => {
-        sub.anonMap = sub.anonMap || {};
-        if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror");
-        sub.auditTrail.push({ time: new Date().toISOString(), action: `⏱ ${sub.anonMap[j]} rotated out (6h window expired)` });
-      });
-      changed = true;
-    }
-  });
-  if (changed) await sS(SK.SUBS, subs);
-  return changed;
-}
+// wildWestBackfill and processJuryRotation are now handled server-side.
+// The server's vote endpoint auto-resolves in wild west mode, and
+// /api/admin/wild-west-backfill handles batch resolution.
+// Jury rotation/expiry is handled by the server on vote and queue endpoints.
+async function wildWestBackfill() { return false; }
+async function processJuryRotation() { return false; }
 
 function checkEnrollment(org) {
   const c = org.members.length;
@@ -1466,88 +1434,39 @@ async function getDIDailyCount(diUsername, orgId) {
 // ── Assembly Concession System ──
 // Any member can propose. Super jury decides. Time decay applies to recovery.
 async function proposeConcession(orgId, proposerUsername, subId, reasoning) {
-  const orgs = (await sG(SK.ORGS)) || {};
-  const org = orgs[orgId]; if (!org) return { error: "Assembly not found." };
-  const subs = (await sG(SK.SUBS)) || {};
-  const sub = subs[subId];
-  if (!sub || sub.orgId !== orgId) return { error: "Submission not found in this Assembly." };
-  if (sub.status !== "consensus_rejected") return { error: "Concession only applies to cross-group rejections." };
-
-  // Check if concession already proposed for this sub
-  const concessions = (await sG("ta-concessions")) || {};
-  if (Object.values(concessions).some(c => c.subId === subId && c.status !== "rejected")) return { error: "A concession has already been proposed for this submission." };
-
-  const now = new Date().toISOString();
-  const superSize = getSuperJurySize(org.members.length);
-  // Select super jury from assembly members (excluding proposer)
-  const eligible = org.members.filter(m => m !== proposerUsername);
-  const shuffled = eligible.sort(() => Math.random() - 0.5);
-  const jurors = shuffled.slice(0, Math.min(superSize, eligible.length));
-  if (jurors.length < 7) return { error: `Super jury requires at least 7 eligible members. Assembly has ${eligible.length}.` };
-
-  const weeklyCount = await getWeeklyConcessionCount(orgId);
-  const concession = {
-    id: gid(), orgId, orgName: org.name, subId, proposedBy: proposerUsername,
-    reasoning: reasoning.trim(), status: "pending_review",
-    jurors, votes: {}, createdAt: now,
-    rejectedAt: sub.resolvedAt, // When cross-group rejected it
-    recovery: getConcessionRecovery(sub.resolvedAt, weeklyCount),
-    anonMap: buildAnonMap(proposerUsername, jurors),
-    auditTrail: [{ time: now, action: `Concession proposed. Super jury: ${jurors.length} jurors assigned. Recovery rate: ${Math.round(getConcessionRecovery(sub.resolvedAt, weeklyCount) * 100)}%. (${weeklyCount > 0 ? weeklyCount + " prior this week — 90% rate" : "First this week — full recovery"})` }]
-  };
-  concessions[concession.id] = concession; await sS("ta-concessions", concessions);
-  return concession;
+  try {
+    const res = await fetch("/api/concessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submissionId: subId, reasoning: reasoning.trim() }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "Failed to create concession" };
+    }
+    const data = await res.json();
+    return data.data || data;
+  } catch (e) {
+    return { error: "Network error creating concession" };
+  }
 }
 
 async function voteConcession(concessionId, voterUsername, approve) {
-  const concessions = (await sG("ta-concessions")) || {};
-  const c = concessions[concessionId]; if (!c) return { error: "Concession not found." };
-  if (!c.jurors.includes(voterUsername)) return { error: "Not on this super jury." };
-  if (c.votes[voterUsername]) return { error: "Already voted." };
-
-  const now = new Date().toISOString();
-  c.votes[voterUsername] = { approve, time: now };
-  c.anonMap = c.anonMap || {};
-  if (!c.anonMap[voterUsername]) c.anonMap[voterUsername] = genAnonId("Juror");
-  c.auditTrail.push({ time: now, action: `${c.anonMap[voterUsername]} voted ${approve ? "CONCEDE" : "HOLD POSITION"}` });
-
-  const vc = Object.keys(c.votes).length;
-  const approvals = Object.values(c.votes).filter(v => v.approve).length;
-  const rejections = vc - approvals;
-  const majority = getMajority(c.jurors.length);
-
-  if (approvals >= majority || rejections >= majority || vc >= c.jurors.length) {
-    const passes = approvals >= majority;
-    c.status = passes ? "approved" : "rejected";
-    c.resolvedAt = now;
-    // Update recovery rate at resolution time (clock keeps ticking)
-    const resolveWeekly = await getWeeklyConcessionCount(c.orgId);
-    c.recoveryAtResolution = getConcessionRecovery(c.rejectedAt, resolveWeekly);
-    c.auditTrail.push({ time: now, action: `RESOLVED: ${passes ? "CONCESSION ACCEPTED" : "CONCESSION REJECTED"} (${approvals}/${vc}). ${passes ? `Recovery: ${Math.round(c.recoveryAtResolution * 100)}%` : "Assembly holds position."}` });
-    // Reveal proposer — jurors remain permanently anonymous
-    if (c.anonMap && c.anonMap[c.proposedBy]) {
-      c.auditTrail.push({ time: now, action: `🔓 Blind review complete — proposer revealed: ${c.anonMap[c.proposedBy]} was @${c.proposedBy}. Juror identities remain sealed.` });
+  try {
+    const res = await fetch(`/api/concessions/${concessionId}/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approve }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "Failed to vote on concession" };
     }
-
-    if (passes) {
-      // Apply recovery to Assembly reputation
-      const orgs = (await sG(SK.ORGS)) || {};
-      const org = orgs[c.orgId];
-      if (org) {
-        org.concessions = org.concessions || [];
-        org.concessions.push({ subId: c.subId, concessionId: c.id, time: now, recovery: c.recoveryAtResolution });
-        orgs[c.orgId] = org; await sS(SK.ORGS, orgs);
-      }
-      // Note: Individual dispute winner still keeps full 3× regardless of concession
-    }
-
-    const audit = (await sG(SK.AUDIT)) || [];
-    audit.push({ time: now, action: `Assembly "${c.orgName}" concession ${c.status}: ${passes ? `Conceded on cross-group rejection (${Math.round(c.recoveryAtResolution * 100)}% recovery)` : "Held position"}` });
-    await sS(SK.AUDIT, audit);
+    const data = await res.json();
+    return data.data || data;
+  } catch (e) {
+    return { error: "Network error voting on concession" };
   }
-
-  concessions[concessionId] = c; await sS("ta-concessions", concessions);
-  return c;
 }
 
 function assemblyTrustScore(org, users) {
@@ -2260,18 +2179,16 @@ function RegisterScreen({ onRegister }) {
       // Digital Intelligence fields
       isDI: isDigitalIntelligence, diPartner: diPartnerUsername, diApproved: false,
     };
-    users[uname] = user; await sS(SK.USERS, users);
-    // Add to General Public
-    const orgs = (await sG(SK.ORGS)) || {};
-    if (orgs[gpId] && !orgs[gpId].members.includes(uname)) { orgs[gpId].members.push(uname); await sS(SK.ORGS, orgs); }
-    const audit = (await sG(SK.AUDIT)) || [];
-    audit.push({ time: now, action: isDigitalIntelligence ? `New Digital Intelligence: @${uname} (partner: @${diPartnerUsername})` : `New citizen: @${uname}` });
-    await sS(SK.AUDIT, audit);
-    // Notify partner that a DI wants to link to them
+    // Server already created user, added to GP, and logged audit via /api/auth/register
+    // Create DI partnership request via relational API if needed
     if (isDigitalIntelligence && diPartnerUsername) {
-      const diReqs = (await sG("ta-di-requests")) || {};
-      diReqs[uname] = { diUsername: uname, partnerUsername: diPartnerUsername, status: "pending", createdAt: now };
-      await sS("ta-di-requests", diReqs);
+      try {
+        await fetch("/api/di-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ partnerUsername: diPartnerUsername }),
+        });
+      } catch (e) { console.warn("Failed to create DI request:", e); }
     }
     setLoading(false); onRegister(user);
   };
@@ -2895,55 +2812,12 @@ function ReviewScreen({ user }) {
   const [wildWest, setWildWest] = useState(false);
 
   const load = useCallback(async () => {
-    // Process rotation on every load — event-driven 6h check
-    await processJuryRotation();
     const ww = await isWildWestMode();
     setWildWest(ww);
-    // ── Backfill di_pending submissions missing diPartner or with UUID submittedBy ──
+    // ── Load all data from relational API (single source of truth) ──
     const allSubs = (await sG(SK.SUBS)) || {};
-    const users = (await sG(SK.USERS)) || {};
-    let kvDirty = false;
-    // Build reverse lookup: find username for any DI user by scanning users
-    const diUsersByPartner = {};
-    for (const [uname, u] of Object.entries(users)) {
-      if (u.isDI && u.diPartner) diUsersByPartner[uname] = u.diPartner;
-    }
-    for (const [id, sub] of Object.entries(allSubs)) {
-      let changed = false;
-      // Fix submittedBy if it looks like a UUID (from API route before fix)
-      if (sub.submittedBy && sub.submittedBy.includes("-") && sub.submittedBy.length > 30) {
-        const match = Object.entries(users).find(([, u]) => u.id === sub.submittedBy);
-        if (match) { sub.submittedBy = match[0]; changed = true; }
-      }
-      // Fix diPartner if missing on DI submissions
-      if (sub.isDI && !sub.diPartner && sub.submittedBy) {
-        const partner = diUsersByPartner[sub.submittedBy];
-        if (partner) { sub.diPartner = partner; changed = true; }
-      }
-      // Fix di_pending submissions missing isDI flag or diPartner
-      if (sub.status === "di_pending" && !sub.isDI) {
-        sub.isDI = true; changed = true;
-      }
-      if (sub.status === "di_pending" && !sub.diPartner && sub.submittedBy) {
-        const partner = diUsersByPartner[sub.submittedBy];
-        if (partner) { sub.diPartner = partner; changed = true; }
-      }
-      // Fix DI submissions stuck without diPartner by checking if submitter is a DI user
-      if (!sub.diPartner && sub.submittedBy && users[sub.submittedBy] && users[sub.submittedBy].isDI && users[sub.submittedBy].diPartner) {
-        sub.isDI = true; sub.diPartner = users[sub.submittedBy].diPartner; changed = true;
-        // If status was not di_pending but should be (no jurors assigned, not resolved)
-        if (!sub.resolvedAt && !sub.jurors?.length && sub.status === "pending_jury") {
-          sub.status = "di_pending"; changed = true;
-        }
-      }
-      if (changed) { allSubs[id] = sub; kvDirty = true; }
-    }
-    if (kvDirty) await sS(SK.SUBS, allSubs);
-    // ── Merge ALL review items from relational DB ──
-    // Submissions and disputes created via the relational API live in SQL
-    // tables, not the KV store. Fetch them so every review tab shows
-    // everything regardless of which data path created the records.
     const allDisputes = (await sG(SK.DISPUTES)) || {};
+    // Also merge review queue items (may include jury-specific data)
     try {
       const [queueRes, diRes] = await Promise.all([
         fetch("/api/reviews/queue"),
@@ -2951,36 +2825,37 @@ function ReviewScreen({ user }) {
       ]);
       if (queueRes.ok) {
         const queueData = await queueRes.json();
-        // Merge submissions (in-group, cross-group)
         if (queueData.submissions) {
-          for (const relSub of queueData.submissions) {
-            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
-          }
+          for (const relSub of queueData.submissions) { allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub }; }
         }
-        // Merge disputes (jury-assigned)
         if (queueData.disputes) {
-          for (const relDisp of queueData.disputes) {
-            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
-          }
+          for (const relDisp of queueData.disputes) { allDisputes[relDisp.id] = { ...allDisputes[relDisp.id], ...relDisp }; }
         }
-        // Merge my disputes
         if (queueData.myDisputes) {
-          for (const relDisp of queueData.myDisputes) {
-            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
-          }
+          for (const relDisp of queueData.myDisputes) { allDisputes[relDisp.id] = { ...allDisputes[relDisp.id], ...relDisp }; }
         }
       }
-      // DI queue
       if (diRes.ok) {
         const diData = await diRes.json();
         if (diData.submissions) {
-          for (const relSub of diData.submissions) {
-            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
-          }
+          for (const relSub of diData.submissions) { allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub }; }
         }
       }
-    } catch (e) { console.warn("Failed to fetch review queue from relational API:", e); }
-    setSubs(allSubs); setDisputes(allDisputes); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
+    } catch (e) { console.warn("Failed to fetch review queue:", e); }
+    setSubs(allSubs); setDisputes(allDisputes);
+    // Load DI link requests from relational API
+    try {
+      const diReqRes = await fetch("/api/di-requests");
+      if (diReqRes.ok) {
+        const diReqData = await diReqRes.json();
+        const reqMap = {};
+        for (const r of (diReqData.requests || diReqData.data || [])) {
+          reqMap[r.di_username || r.id] = { ...r, diUsername: r.di_username, partnerUsername: r.partner_username || user.username, status: r.status };
+        }
+        setDiLinkReqs(reqMap);
+      }
+    } catch {}
+    setLoading(false);
     // Compute jury score for display
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
@@ -3378,31 +3253,74 @@ function DIPanelContent({ user, subs, onReload }) {
   const [confirmAll, setConfirmAll] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => { (async () => { setDiReqs((await sG("ta-di-requests")) || {}); })(); }, []);
+  useEffect(() => { (async () => {
+    try {
+      const res = await fetch("/api/di-requests");
+      if (res.ok) {
+        const data = await res.json();
+        const reqMap = {};
+        for (const r of (data.requests || data.data || [])) {
+          reqMap[r.di_username || r.id] = { ...r, diUsername: r.di_username, partnerUsername: user.username, status: r.status };
+        }
+        setDiReqs(reqMap);
+      }
+    } catch {}
+  })(); }, []);
 
   // DI submissions awaiting my pre-approval
   const diQueue = subs ? Object.values(subs).filter(s => s.status === "di_pending" && (s.diPartner === user.username || (s.isDI && s.diPartner === user.username))) : [];
 
   // Pending DI link requests
-  const pendingLinks = Object.values(diReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
+  const pendingLinks = Object.values(diReqs).filter(r => (r.partnerUsername === user.username || r.partner_user_id) && r.status === "pending");
 
   const approveDILink = async (diUsername) => {
-    const users = (await sG(SK.USERS)) || {};
-    const di = users[diUsername];
-    if (di) { di.diApproved = true; users[diUsername] = di; await sS(SK.USERS, users); }
-    const reqs = (await sG("ta-di-requests")) || {};
-    if (reqs[diUsername]) { reqs[diUsername].status = "approved"; await sS("ta-di-requests", reqs); setDiReqs(reqs); }
-    const audit = (await sG(SK.AUDIT)) || [];
-    audit.push({ time: new Date().toISOString(), action: `@${user.username} approved DI link: @${diUsername}` });
-    await sS(SK.AUDIT, audit);
+    // Find the DI request ID from the loaded requests
+    const req = Object.values(diReqs).find(r => r.diUsername === diUsername || r.di_username === diUsername);
+    const reqId = req?.id;
+    if (!reqId) { console.warn("DI request not found for", diUsername); return; }
+    try {
+      const res = await fetch(`/api/di-requests/${reqId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      if (res.ok) {
+        // Refresh DI requests from server
+        const refreshRes = await fetch("/api/di-requests");
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          const reqMap = {};
+          for (const r of (data.requests || data.data || [])) {
+            reqMap[r.di_username || r.id] = { ...r, diUsername: r.di_username, partnerUsername: user.username, status: r.status };
+          }
+          setDiReqs(reqMap);
+        }
+      }
+    } catch (e) { console.error("Failed to approve DI link:", e); }
   };
 
   const rejectDILink = async (diUsername) => {
-    const users = (await sG(SK.USERS)) || {};
-    const di = users[diUsername];
-    if (di) { di.diApproved = false; di.diPartner = null; users[diUsername] = di; await sS(SK.USERS, users); }
-    const reqs = (await sG("ta-di-requests")) || {};
-    if (reqs[diUsername]) { reqs[diUsername].status = "rejected"; await sS("ta-di-requests", reqs); setDiReqs(reqs); }
+    const req = Object.values(diReqs).find(r => r.diUsername === diUsername || r.di_username === diUsername);
+    const reqId = req?.id;
+    if (!reqId) { console.warn("DI request not found for", diUsername); return; }
+    try {
+      const res = await fetch(`/api/di-requests/${reqId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject" }),
+      });
+      if (res.ok) {
+        const refreshRes = await fetch("/api/di-requests");
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          const reqMap = {};
+          for (const r of (data.requests || data.data || [])) {
+            reqMap[r.di_username || r.id] = { ...r, diUsername: r.di_username, partnerUsername: user.username, status: r.status };
+          }
+          setDiReqs(reqMap);
+        }
+      }
+    } catch (e) { console.error("Failed to reject DI link:", e); }
   };
 
   const approveDISub = async (subId) => {
@@ -3526,9 +3444,9 @@ function VaultScreen({ user }) {
   };
   useEffect(() => { load(); }, [user.orgId, user.orgIds]);
 
-  const addArg = async () => { if (!newArg.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.ARGS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", content: newArg.trim(), submittedBy: user.username, createdAt: new Date().toISOString() }; } await sS(SK.ARGS, all); setNewArg(""); load(); };
-  const addBelief = async () => { if (!newBelief.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.BELIEFS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", content: newBelief.trim(), submittedBy: user.username, createdAt: new Date().toISOString() }; } await sS(SK.BELIEFS, all); setNewBelief(""); load(); };
-  const addTrans = async () => { if (!newTrans.original.trim() || !newTrans.translated.trim() || selectedOrgIds.length === 0) return; const allOrgs = orgsMap; const all = (await sG(SK.TRANSLATIONS)) || {}; for (const oid of selectedOrgIds) { const id = gid(); all[id] = { id, orgId: oid, orgName: allOrgs[oid]?.name || "", original: newTrans.original.trim(), translated: newTrans.translated.trim(), type: newTrans.type, submittedBy: user.username, status: "pending", createdAt: new Date().toISOString(), survivalCount: 0 }; } await sS(SK.TRANSLATIONS, all); setNewTrans({ original: "", translated: "", type: "clarity" }); load(); };
+  const addArg = async () => { if (!newArg.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "argument", orgId: oid, content: newArg.trim() }) }); } catch {} } setNewArg(""); load(); };
+  const addBelief = async () => { if (!newBelief.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "belief", orgId: oid, content: newBelief.trim() }) }); } catch {} } setNewBelief(""); load(); };
+  const addTrans = async () => { if (!newTrans.original.trim() || !newTrans.translated.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "translation", orgId: oid, original: newTrans.original.trim(), translated: newTrans.translated.trim(), translationType: newTrans.type }) }); } catch {} } setNewTrans({ original: "", translated: "", type: "clarity" }); load(); };
 
   const OrgLabel = ({ orgId }) => { const o = orgsMap[orgId]; if (!o) return null; return <span style={{ fontSize: 9, padding: "1px 5px", fontFamily: "var(--mono)", borderRadius: 8, background: o.isGeneralPublic ? "#F0FDFA" : "#F1F5F9", color: o.isGeneralPublic ? "#0D9488" : "#475569", marginRight: 4 }}>{o.isGeneralPublic ? "🏛" : "⬡"} {o.name}</span>; };
 
@@ -3755,26 +3673,16 @@ function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
 
   const approveAllPending = async () => {
     setApproveMsg("");
-    const now = new Date().toISOString();
-    const allSubs = (await sG(SK.SUBS)) || {};
-    const pendingStatuses = new Set(["pending_jury", "pending_review", "di_pending", "cross_review"]);
-    let count = 0;
-    for (const sub of Object.values(allSubs)) {
-      if (pendingStatuses.has(sub.status)) {
-        const prevStatus = sub.status;
-        sub.status = prevStatus === "cross_review" ? "consensus" : "approved";
-        sub.resolvedAt = now;
-        sub.auditTrail = sub.auditTrail || [];
-        sub.auditTrail.push({ time: now, action: `Admin: approved pending submission (was ${prevStatus})` });
-        count++;
+    try {
+      const res = await fetch("/api/admin/approve-pending", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        const count = data.data?.resolved || data.resolved || 0;
+        setApproveMsg(count > 0 ? `Approved ${count} pending submission${count > 1 ? "s" : ""}.` : "No pending submissions found.");
+      } else {
+        setApproveMsg("Failed to approve pending submissions.");
       }
-    }
-    if (count > 0) {
-      await sS(SK.SUBS, allSubs);
-      // Also hit the API endpoint to update SQL
-      try { await fetch("/api/admin/approve-pending", { method: "POST" }); } catch {}
-    }
-    setApproveMsg(count > 0 ? `Approved ${count} pending submission${count > 1 ? "s" : ""}.` : "No pending submissions found.");
+    } catch { setApproveMsg("Network error."); }
     load();
   };
 
@@ -4372,9 +4280,14 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
   const isMember = (oid) => myOrgIds.includes(oid);
 
   const updateUser = async (updates) => {
-    const users = (await sG(SK.USERS)) || {};
-    users[user.username] = { ...users[user.username], ...updates };
-    await sS(SK.USERS, users);
+    // Update profile via relational API
+    try {
+      await fetch(`/api/users/${user.username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+    } catch (e) { console.warn("Failed to update user profile:", e); }
     onUpdate({ ...user, ...updates });
   };
 
@@ -4486,66 +4399,44 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
   };
 
   const sponsorApp = async (appId) => {
-    const allApps = (await sG(SK.APPS)) || {};
+    const allApps = apps;
     const app = allApps[appId]; if (!app || app.status !== "pending") return;
+    setError("");
 
-    // For tribal mode, only founders can approve
-    if (app.mode === "tribal") {
-      const org = orgs[app.orgId];
-      const founders = org?.founders || [org?.createdBy];
-      if (!founders.includes(user.username)) return setError("Only the founder can approve applications during the Tribal Rule phase (≤50 members).");
-      app.founderApproved = true;
-      app.sponsors = [user.username];
-      app.status = "approved";
-    } else {
-      // Sponsor mode — check credentials
-      if (app.sponsors.includes(user.username)) return;
-      const elig = await canSponsor(user.username, app.orgId);
-      if (!elig.eligible) return setError(elig.reason);
-      app.sponsors.push(user.username);
-      if (app.sponsors.length < app.sponsorsNeeded) {
-        // Not enough sponsors yet — save and return
-        allApps[appId] = app; await sS(SK.APPS, allApps); setApps(allApps); load();
+    // Use relational API — server handles membership, audit, and validation
+    try {
+      const res = await fetch(`/api/orgs/${app.orgId}/applications/${appId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to approve application");
         return;
       }
-      app.status = "approved";
-    }
-
-    // Actually add the user
-    const up = (await sG(SK.ORGS)) || {};
-    if (up[app.orgId] && !up[app.orgId].members.includes(app.userId)) {
-      up[app.orgId].members.push(app.userId);
-      await sS(SK.ORGS, up); setOrgs(up);
-    }
-    const users = (await sG(SK.USERS)) || {};
-    const applicant = users[app.userId];
-    if (applicant) {
-      const aIds = applicant.orgIds || []; if (!aIds.includes(app.orgId)) aIds.push(app.orgId);
-      applicant.orgIds = aIds; applicant.orgId = app.orgId;
-      users[app.userId] = applicant; await sS(SK.USERS, users);
-      if (app.userId === user.username) onUpdate(applicant);
-    }
-    const audit = (await sG(SK.AUDIT)) || [];
-    const method = app.mode === "tribal" ? "founder approval" : `${app.sponsors.length} sponsor${app.sponsors.length > 1 ? "s" : ""}`;
-    audit.push({ time: new Date().toISOString(), action: `@${app.userId} admitted to "${app.orgName}" (${method})` });
-    await sS(SK.AUDIT, audit);
-    allApps[appId] = app; await sS(SK.APPS, allApps); setApps(allApps); load();
+    } catch (e) { setError("Network error approving application"); return; }
+    // Refresh data from server
+    load();
   };
 
   const rejectApp = async (appId) => {
-    const allApps = (await sG(SK.APPS)) || {};
+    const allApps = apps;
     const app = allApps[appId]; if (!app || app.status !== "pending") return;
-    // Only founders can reject during tribal, any sponsor-eligible member otherwise
-    if (app.mode === "tribal") {
-      const org = orgs[app.orgId];
-      const founders = org?.founders || [org?.createdBy];
-      if (!founders.includes(user.username)) return;
-    }
-    app.status = "rejected";
-    allApps[appId] = app; await sS(SK.APPS, allApps); setApps(allApps);
-    const audit = (await sG(SK.AUDIT)) || [];
-    audit.push({ time: new Date().toISOString(), action: `@${app.userId} rejected from "${app.orgName}" by @${user.username}` });
-    await sS(SK.AUDIT, audit);
+
+    // Use relational API — server handles status update and audit
+    try {
+      const res = await fetch(`/api/orgs/${app.orgId}/applications/${appId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to reject application");
+        return;
+      }
+    } catch (e) { setError("Network error rejecting application"); return; }
     load();
   };
 
@@ -6397,32 +6288,6 @@ export default function TrustAssembly() {
           const serverUser = await meRes.json();
           if (serverUser?.username) {
             const users = (await sG(SK.USERS)) || {};
-            // One-time migration: award "First Tester" badge to @tasty_y
-            if (users["tasty_y"] && !(users["tasty_y"].manualBadges || []).some(b => b.id === "firstTester")) {
-              users["tasty_y"].manualBadges = [...(users["tasty_y"].manualBadges || []), { id: "firstTester", detail: "First platform tester", awardedAt: new Date().toISOString() }];
-              await sS(SK.USERS, users);
-            }
-            // One-time migration: reject pending standalone vault entries
-            const REJECT_REASON = "Broken functionality due to early site building activities.";
-            const migrateKey = "ta-vault-pending-rejected-v1";
-            if (!localStorage.getItem(migrateKey)) {
-              let changed = false;
-              for (const storeKey of [SK.VAULT, SK.TRANSLATIONS]) {
-                const store = (await sG(storeKey)) || {};
-                for (const [id, entry] of Object.entries(store)) {
-                  if (entry.status === "pending" && !entry.linkedSubId) {
-                    entry.status = "rejected";
-                    entry.rejectReason = REJECT_REASON;
-                    entry.rejectedAt = new Date().toISOString();
-                    store[id] = entry;
-                    changed = true;
-                  }
-                }
-                if (changed) await sS(storeKey, store);
-                changed = false;
-              }
-              localStorage.setItem(migrateKey, "done");
-            }
             const u = users[serverUser.username];
             if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
           }
@@ -6448,7 +6313,7 @@ export default function TrustAssembly() {
     check(); const i = setInterval(check, 5000); return () => clearInterval(i);
   }, [user, screen]);
 
-  const refreshUser = async () => { try { if (!user) return; const all = (await sG(SK.USERS)) || {}; const u = all[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); } } catch {} };
+  const refreshUser = async () => { try { if (!user) return; const users = (await sG(SK.USERS)) || {}; const u = users[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); } } catch {} };
   useEffect(() => { if (user) refreshUser(); }, [screen]);
 
   // Check if user has submitted feedback (to show Feedback nav item)
@@ -6471,14 +6336,8 @@ export default function TrustAssembly() {
     const unread = notifications.filter(n => !n.read);
     if (unread.length === 0) return;
     try {
-      const users = (await sG(SK.USERS)) || {};
-      const u = users[user.username];
-      if (u && u.notifications) {
-        u.notifications = u.notifications.map(n => ({ ...n, read: true }));
-        users[user.username] = u;
-        await sS(SK.USERS, users);
-        setNotifications(u.notifications);
-      }
+      await fetch("/api/users/me/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" } });
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
     } catch {}
   };
 
