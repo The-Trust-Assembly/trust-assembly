@@ -18,7 +18,7 @@ export async function GET(
       u.username AS created_by,
       u.display_name AS created_by_display_name
     FROM organizations o
-    JOIN users u ON u.id = o.created_by
+    LEFT JOIN users u ON u.id = o.created_by
     WHERE o.id = ${id}
   `;
 
@@ -35,13 +35,19 @@ export async function GET(
   const founders = await sql`
     SELECT u.username, u.display_name
     FROM organization_members om
-    JOIN users u ON u.id = om.user_id
+    LEFT JOIN users u ON u.id = om.user_id
     WHERE om.org_id = ${id} AND om.is_founder = TRUE AND om.is_active = TRUE
   `;
 
   return ok({
     ...org,
+    created_by: org.created_by || "unknown",
+    created_by_display_name: org.created_by_display_name || "",
     memberCount: parseInt(members.rows[0].count),
-    founders: founders.rows,
+    founders: founders.rows.map((f: Record<string, unknown>) => ({
+      ...f,
+      username: f.username || "unknown",
+      display_name: f.display_name || "",
+    })),
   });
 }

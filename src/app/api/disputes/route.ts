@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       d.deliberate_lie_finding, d.created_at, d.resolved_at,
       u.username AS disputed_by_username, u.display_name AS disputed_by_display_name
     FROM disputes d
-    JOIN users u ON u.id = d.disputed_by
+    LEFT JOIN users u ON u.id = d.disputed_by
     WHERE 1=1
   `;
   const params: unknown[] = [];
@@ -43,8 +43,14 @@ export async function GET(request: NextRequest) {
 
   const result = await sql.query(query, params);
 
+  const disputes = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    disputed_by_username: row.disputed_by_username || "unknown",
+    disputed_by_display_name: row.disputed_by_display_name || "",
+  }));
+
   return ok({
-    disputes: result.rows,
+    disputes,
     limit,
     offset,
   });

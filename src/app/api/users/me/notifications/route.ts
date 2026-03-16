@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
       u.username, u.display_name,
       o.id AS org_id, o.name AS org_name
     FROM membership_applications ma
-    JOIN users u ON u.id = ma.user_id
-    JOIN organizations o ON o.id = ma.org_id
-    JOIN organization_members om ON om.org_id = ma.org_id
+    LEFT JOIN users u ON u.id = ma.user_id
+    LEFT JOIN organizations o ON o.id = ma.org_id
+    LEFT JOIN organization_members om ON om.org_id = ma.org_id
       AND om.user_id = ${session.sub}
       AND om.is_founder = TRUE
       AND om.is_active = TRUE
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       s.url, s.resolved_at,
       o.name AS org_name
     FROM submissions s
-    JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN organizations o ON o.id = s.org_id
     WHERE s.submitted_by = ${session.sub}
       AND s.status IN ('approved', 'consensus', 'rejected', 'consensus_rejected')
       AND s.resolved_at > NOW() - INTERVAL '7 days'
@@ -81,24 +81,35 @@ export async function GET(request: NextRequest) {
     LIMIT 10
   `;
 
-  const juryCount = juryResult.rows.length;
-  const applicationCount = applicationsResult.rows.length;
-  const updateCount = submissionUpdates.rows.length;
+  const juryItems = juryResult.rows.map((r: Record<string, unknown>) => ({
+    ...r,
+    org_name: r.org_name || "Unknown Org",
+  }));
+  const appItems = applicationsResult.rows.map((r: Record<string, unknown>) => ({
+    ...r,
+    username: r.username || "unknown",
+    display_name: r.display_name || "",
+    org_name: r.org_name || "Unknown Org",
+  }));
+  const updateItems = submissionUpdates.rows.map((r: Record<string, unknown>) => ({
+    ...r,
+    org_name: r.org_name || "Unknown Org",
+  }));
 
   return ok({
-    totalPending: juryCount + applicationCount,
+    totalPending: juryItems.length + appItems.length,
     notifications: notifResult.rows,
     jury: {
-      count: juryCount,
-      items: juryResult.rows,
+      count: juryItems.length,
+      items: juryItems,
     },
     applications: {
-      count: applicationCount,
-      items: applicationsResult.rows,
+      count: appItems.length,
+      items: appItems,
     },
     updates: {
-      count: updateCount,
-      items: submissionUpdates.rows,
+      count: updateItems.length,
+      items: updateItems,
     },
   });
 }

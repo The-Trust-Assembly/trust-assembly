@@ -13,12 +13,18 @@ export async function GET(request: NextRequest) {
       dr.id, dr.di_user_id, dr.partner_user_id, dr.status, dr.created_at,
       u.username AS di_username, u.display_name AS di_display_name
     FROM di_requests dr
-    JOIN users u ON u.id = dr.di_user_id
+    LEFT JOIN users u ON u.id = dr.di_user_id
     WHERE dr.partner_user_id = ${session.sub}
     ORDER BY dr.created_at DESC
   `;
 
-  return ok({ requests: result.rows });
+  const requests = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    di_username: row.di_username || "unknown",
+    di_display_name: row.di_display_name || "",
+  }));
+
+  return ok({ requests });
 }
 
 // POST /api/di-requests — create DI partnership request

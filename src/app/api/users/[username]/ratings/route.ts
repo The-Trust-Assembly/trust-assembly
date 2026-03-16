@@ -27,15 +27,21 @@ export async function GET(
       ru.username AS rated_by_username, ru.display_name AS rated_by_display_name,
       s.original_headline, s.url
     FROM user_ratings ur
-    JOIN users ru ON ru.id = ur.rated_by
+    LEFT JOIN users ru ON ru.id = ur.rated_by
     LEFT JOIN submissions s ON s.id = ur.submission_id
     WHERE ur.user_id = ${user.rows[0].id}
     ORDER BY ur.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
 
+  const ratings = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    rated_by_username: row.rated_by_username || "unknown",
+    rated_by_display_name: row.rated_by_display_name || "",
+  }));
+
   return ok({
-    ratings: result.rows,
+    ratings,
     limit,
     offset,
   });

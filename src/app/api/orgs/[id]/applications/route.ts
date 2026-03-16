@@ -29,12 +29,18 @@ export async function GET(
       ma.sponsors_needed, ma.founder_approved, ma.status, ma.created_at,
       u.username, u.display_name
     FROM membership_applications ma
-    JOIN users u ON u.id = ma.user_id
+    LEFT JOIN users u ON u.id = ma.user_id
     WHERE ma.org_id = ${id}
     ORDER BY ma.created_at DESC
   `;
 
-  return ok({ applications: result.rows });
+  const applications = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    username: row.username || "unknown",
+    display_name: row.display_name || "",
+  }));
+
+  return ok({ applications });
 }
 
 // POST /api/orgs/[id]/applications — apply to join an org

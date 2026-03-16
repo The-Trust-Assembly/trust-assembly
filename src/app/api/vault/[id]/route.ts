@@ -20,7 +20,7 @@ export async function GET(
                a.survival_count, a.approved_at, a.created_at,
                u.username AS submitted_by_username, u.display_name AS submitted_by_display_name
         FROM arguments a
-        JOIN users u ON u.id = a.submitted_by
+        LEFT JOIN users u ON u.id = a.submitted_by
         WHERE a.id = ${id}
       `;
       break;
@@ -30,7 +30,7 @@ export async function GET(
                b.survival_count, b.approved_at, b.created_at,
                u.username AS submitted_by_username, u.display_name AS submitted_by_display_name
         FROM beliefs b
-        JOIN users u ON u.id = b.submitted_by
+        LEFT JOIN users u ON u.id = b.submitted_by
         WHERE b.id = ${id}
       `;
       break;
@@ -40,7 +40,7 @@ export async function GET(
                t.translation_type, t.status, t.survival_count, t.approved_at, t.created_at,
                u.username AS submitted_by_username, u.display_name AS submitted_by_display_name
         FROM translations t
-        JOIN users u ON u.id = t.submitted_by
+        LEFT JOIN users u ON u.id = t.submitted_by
         WHERE t.id = ${id}
       `;
       break;
@@ -50,7 +50,7 @@ export async function GET(
                v.survival_count, v.approved_at, v.created_at,
                u.username AS submitted_by_username, u.display_name AS submitted_by_display_name
         FROM vault_entries v
-        JOIN users u ON u.id = v.submitted_by
+        LEFT JOIN users u ON u.id = v.submitted_by
         WHERE v.id = ${id}
       `;
       break;
@@ -60,5 +60,10 @@ export async function GET(
     return err("Entry not found", 404);
   }
 
-  return ok(result.rows[0]);
+  const entry = result.rows[0];
+  return ok({
+    ...entry,
+    submitted_by_username: entry.submitted_by_username || "unknown",
+    submitted_by_display_name: entry.submitted_by_display_name || "",
+  });
 }

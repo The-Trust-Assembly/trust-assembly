@@ -15,8 +15,7 @@ export async function GET() {
       o.created_at,
       creator.username AS created_by
     FROM organizations o
-    JOIN users u ON u.id = o.created_by
-    JOIN users creator ON creator.id = o.created_by
+    LEFT JOIN users creator ON creator.id = o.created_by
     ORDER BY o.created_at ASC
   `;
 
@@ -27,7 +26,7 @@ export async function GET() {
   const members = await sql.query(
     `SELECT om.org_id, u.username, om.is_founder
      FROM organization_members om
-     JOIN users u ON u.id = om.user_id
+     LEFT JOIN users u ON u.id = om.user_id
      WHERE om.org_id = ANY($1) AND om.is_active = TRUE
      ORDER BY om.joined_at ASC`,
     [orgIds]
@@ -56,7 +55,7 @@ export async function GET() {
       sponsorsRequired: row.sponsors_required,
       crossGroupDeceptionFindings: row.cross_group_deception_findings,
       cassandraWins: row.cassandra_wins,
-      createdBy: row.created_by,
+      createdBy: row.created_by || "unknown",
       createdAt: row.created_at,
       members: membersMap[id] || [],
       founders: foundersMap[id] || [],

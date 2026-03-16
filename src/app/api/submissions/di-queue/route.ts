@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
       o.name AS org_name,
       partner.username AS di_partner_username
     FROM submissions s
-    JOIN users u ON u.id = s.submitted_by
-    JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN users u ON u.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = s.org_id
     LEFT JOIN users partner ON partner.id = s.di_partner_id
     WHERE s.status = 'di_pending'
       AND s.di_partner_id = ${session.sub}
@@ -86,10 +86,10 @@ export async function GET(request: NextRequest) {
     survivalCount: row.survival_count,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
-    submittedBy: row.submitted_by,
-    submittedByDisplayName: row.submitted_by_display_name,
+    submittedBy: row.submitted_by || "unknown",
+    submittedByDisplayName: row.submitted_by_display_name || "",
     orgId: row.org_id,
-    orgName: row.org_name,
+    orgName: row.org_name || "Unknown Org",
     evidence: (evidenceMap[row.id as string] || []).map((e) => ({
       url: e.url,
       explanation: e.explanation,

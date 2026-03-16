@@ -26,7 +26,7 @@ export async function GET() {
   const memberships = await sql`
     SELECT om.user_id, o.id AS org_id, om.is_founder, om.assembly_streak
     FROM organization_members om
-    JOIN organizations o ON o.id = om.org_id
+    LEFT JOIN organizations o ON o.id = om.org_id
     WHERE om.is_active = TRUE
     ORDER BY om.joined_at ASC
   `;

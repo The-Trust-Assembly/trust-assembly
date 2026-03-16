@@ -26,7 +26,7 @@ export async function POST(
   const subResult = await sql`
     SELECT s.*, u.username AS submitted_by_username
     FROM submissions s
-    JOIN users u ON u.id = s.submitted_by
+    LEFT JOIN users u ON u.id = s.submitted_by
     WHERE s.id = ${id}
   `;
   if (subResult.rows.length === 0) return notFound("Submission not found");

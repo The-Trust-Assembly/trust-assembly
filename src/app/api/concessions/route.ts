@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       c.recovery, c.recovery_at_resolution, c.created_at, c.rejected_at,
       u.username AS proposed_by_username, u.display_name AS proposed_by_display_name
     FROM concessions c
-    JOIN users u ON u.id = c.proposed_by
+    LEFT JOIN users u ON u.id = c.proposed_by
     WHERE 1=1
   `;
   const params: unknown[] = [];
@@ -43,8 +43,14 @@ export async function GET(request: NextRequest) {
 
   const result = await sql.query(query, params);
 
+  const concessions = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    proposed_by_username: row.proposed_by_username || "unknown",
+    proposed_by_display_name: row.proposed_by_display_name || "",
+  }));
+
   return ok({
-    concessions: result.rows,
+    concessions,
     limit,
     offset,
   });

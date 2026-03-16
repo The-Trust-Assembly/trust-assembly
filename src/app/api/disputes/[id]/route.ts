@@ -17,8 +17,8 @@ export async function GET(
       u.username AS disputed_by_username, u.display_name AS disputed_by_display_name,
       ou.username AS original_submitter_username
     FROM disputes d
-    JOIN users u ON u.id = d.disputed_by
-    JOIN users ou ON ou.id = d.original_submitter
+    LEFT JOIN users u ON u.id = d.disputed_by
+    LEFT JOIN users ou ON ou.id = d.original_submitter
     WHERE d.id = ${id}
   `;
 
@@ -41,7 +41,7 @@ export async function GET(
     SELECT ja.id, ja.user_id, ja.role, ja.in_pool, ja.accepted, ja.accepted_at, ja.assigned_at,
            u.username, u.display_name
     FROM jury_assignments ja
-    JOIN users u ON u.id = ja.user_id
+    LEFT JOIN users u ON u.id = ja.user_id
     WHERE ja.dispute_id = ${id}
     ORDER BY ja.assigned_at ASC
   `;
@@ -51,15 +51,25 @@ export async function GET(
     SELECT jv.id, jv.user_id, jv.role, jv.approve, jv.note, jv.deliberate_lie, jv.voted_at,
            u.username, u.display_name
     FROM jury_votes jv
-    JOIN users u ON u.id = jv.user_id
+    LEFT JOIN users u ON u.id = jv.user_id
     WHERE jv.dispute_id = ${id}
     ORDER BY jv.voted_at ASC
   `;
 
   return ok({
     ...dispute,
+    disputed_by_username: dispute.disputed_by_username || "unknown",
+    disputed_by_display_name: dispute.disputed_by_display_name || "",
+    original_submitter_username: dispute.original_submitter_username || "unknown",
     evidence: evidence.rows,
-    juryAssignments: juryAssignments.rows,
-    votes: votes.rows,
+    juryAssignments: juryAssignments.rows.map((j: Record<string, unknown>) => ({
+      ...j,
+      username: j.username || "unknown",
+      display_name: j.display_name || "",
+    })),
+    votes: votes.rows.map((v: Record<string, unknown>) => ({
+      ...v,
+      username: v.username || "unknown",
+    })),
   });
 }

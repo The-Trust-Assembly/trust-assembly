@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
         u.total_wins, u.total_losses,
         o.name AS org_name
       FROM submissions s
-      JOIN users u ON u.id = s.submitted_by
-      JOIN organizations o ON o.id = s.org_id
+      LEFT JOIN users u ON u.id = s.submitted_by
+      LEFT JOIN organizations o ON o.id = s.org_id
       WHERE s.status IN ('approved', 'consensus')
         AND s.normalized_url = ${normalizedUrl}
       ORDER BY s.created_at DESC
@@ -121,13 +121,13 @@ export async function GET(request: NextRequest) {
           replacement: safeStr(e.replacement_text),
           reasoning: safeStr(e.reasoning),
         })),
-        submittedBy: sub.submitted_by,
+        submittedBy: sub.submitted_by || "unknown",
         orgId: sub.org_id || "",
-        orgName: safeStr(sub.org_name) || "",
+        orgName: safeStr(sub.org_name) || "Unknown Org",
         status: sub.status,
         trustScore,
         profile: {
-          displayName: safeStr(sub.display_name || sub.submitted_by || ""),
+          displayName: safeStr(sub.display_name || sub.submitted_by || "unknown"),
           gender: sub.gender,
           age: sub.age,
           country: sub.country,
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
         t.id, t.original_text, t.translated_text, t.translation_type,
         t.status, o.name AS org_name
       FROM translations t
-      JOIN organizations o ON o.id = t.org_id
+      LEFT JOIN organizations o ON o.id = t.org_id
       WHERE t.status = 'approved'
     `;
 

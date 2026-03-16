@@ -27,11 +27,17 @@ export async function GET(
   const orgs = await sql`
     SELECT o.id, o.name, om.is_founder, om.joined_at
     FROM organization_members om
-    JOIN organizations o ON o.id = om.org_id
+    LEFT JOIN organizations o ON o.id = om.org_id
     WHERE om.user_id = ${user.id} AND om.is_active = TRUE
   `;
 
-  return ok({ ...user, organizations: orgs.rows });
+  return ok({
+    ...user,
+    organizations: orgs.rows.map((o: Record<string, unknown>) => ({
+      ...o,
+      name: o.name || "Unknown Org",
+    })),
+  });
 }
 
 // PATCH /api/users/[username] — update own profile

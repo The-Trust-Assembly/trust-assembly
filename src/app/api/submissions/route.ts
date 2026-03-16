@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
       u.username AS submitted_by, u.display_name AS submitted_by_display_name,
       o.name AS org_name
     FROM submissions s
-    JOIN users u ON u.id = s.submitted_by
-    JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN users u ON u.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = s.org_id
     WHERE 1=1
   `;
   const params: unknown[] = [];
@@ -71,10 +71,13 @@ export async function GET(request: NextRequest) {
   // Anonymize submitter identity for submissions still under review
   const terminalStatuses = ["approved", "consensus", "rejected", "consensus_rejected"];
   const submissions = result.rows.map((row: Record<string, unknown>) => {
-    if (!terminalStatuses.includes(row.status as string)) {
-      return { ...row, submitted_by: null, submitted_by_display_name: null };
-    }
-    return row;
+    const isTerminal = terminalStatuses.includes(row.status as string);
+    return {
+      ...row,
+      submitted_by: isTerminal ? (row.submitted_by || "unknown") : null,
+      submitted_by_display_name: isTerminal ? (row.submitted_by_display_name || "") : null,
+      org_name: row.org_name || "Unknown Org",
+    };
   });
 
   return ok({

@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
       ja.accepted_at AS jury_accepted_at,
       partner.username AS di_partner_username
     FROM jury_assignments ja
-    JOIN submissions s ON s.id = ja.submission_id
-    JOIN users u ON u.id = s.submitted_by
-    JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN submissions s ON s.id = ja.submission_id
+    LEFT JOIN users u ON u.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = s.org_id
     LEFT JOIN users partner ON partner.id = s.di_partner_id
     WHERE ja.user_id = ${session.sub}
       AND s.status IN ('pending_review', 'cross_review')
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     const jurors = await sql.query(
       `SELECT ja.submission_id, ja.role, ja.accepted, ja.accepted_at, u.username
        FROM jury_assignments ja
-       JOIN users u ON u.id = ja.user_id
+       LEFT JOIN users u ON u.id = ja.user_id
        WHERE ja.submission_id = ANY($1)
        ORDER BY ja.assigned_at`,
       [subIds]
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
               jv.deliberate_lie, jv.newsworthy, jv.interesting, jv.voted_at,
               u.username
        FROM jury_votes jv
-       JOIN users u ON u.id = jv.user_id
+       LEFT JOIN users u ON u.id = jv.user_id
        WHERE jv.submission_id = ANY($1)
        ORDER BY jv.voted_at`,
       [subIds]
@@ -177,9 +177,9 @@ export async function GET(request: NextRequest) {
       survivalCount: row.survival_count,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
-      submittedBy: row.submitted_by_username,
+      submittedBy: row.submitted_by_username || "unknown",
       orgId: row.org_id,
-      orgName: row.org_name,
+      orgName: (row.org_name as string) || "Unknown Org",
       evidence: (evidenceMap[id] || []).map(e => ({
         url: e.url, explanation: e.explanation,
       })),
@@ -226,11 +226,11 @@ export async function GET(request: NextRequest) {
       s.url AS submission_url,
       o.name AS org_name
     FROM jury_assignments ja
-    JOIN disputes d ON d.id = ja.dispute_id
-    JOIN submissions s ON s.id = d.submission_id
-    JOIN users disputer ON disputer.id = d.disputed_by
-    JOIN users orig_user ON orig_user.id = s.submitted_by
-    JOIN organizations o ON o.id = d.org_id
+    LEFT JOIN disputes d ON d.id = ja.dispute_id
+    LEFT JOIN submissions s ON s.id = d.submission_id
+    LEFT JOIN users disputer ON disputer.id = d.disputed_by
+    LEFT JOIN users orig_user ON orig_user.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = d.org_id
     WHERE ja.user_id = ${session.sub}
       AND d.status = 'pending_review'
       AND NOT EXISTS (
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
     const dJurors = await sql.query(
       `SELECT ja.dispute_id, u.username
        FROM jury_assignments ja
-       JOIN users u ON u.id = ja.user_id
+       LEFT JOIN users u ON u.id = ja.user_id
        WHERE ja.dispute_id = ANY($1)
        ORDER BY ja.assigned_at`,
       [disputeIds]
@@ -263,7 +263,7 @@ export async function GET(request: NextRequest) {
       `SELECT jv.dispute_id, jv.approve, jv.note, jv.deliberate_lie, jv.voted_at,
               u.username
        FROM jury_votes jv
-       JOIN users u ON u.id = jv.user_id
+       LEFT JOIN users u ON u.id = jv.user_id
        WHERE jv.dispute_id = ANY($1)
        ORDER BY jv.voted_at`,
       [disputeIds]
@@ -298,14 +298,14 @@ export async function GET(request: NextRequest) {
       id,
       subId: row.submission_id,
       orgId: row.org_id,
-      orgName: row.org_name,
+      orgName: (row.org_name as string) || "Unknown Org",
       reasoning: row.reasoning,
       status: row.status,
       deliberateLieFinding: row.deliberate_lie_finding,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
-      disputedBy: row.disputed_by,
-      originalSubmitter: row.original_submitter,
+      disputedBy: row.disputed_by || "unknown",
+      originalSubmitter: row.original_submitter || "unknown",
       submissionHeadline: row.submission_headline,
       submissionReasoning: row.submission_reasoning,
       submissionReplacement: row.submission_replacement,
@@ -337,10 +337,10 @@ export async function GET(request: NextRequest) {
       s.url AS submission_url,
       o.name AS org_name
     FROM disputes d
-    JOIN submissions s ON s.id = d.submission_id
-    JOIN users disputer ON disputer.id = d.disputed_by
-    JOIN users orig_user ON orig_user.id = s.submitted_by
-    JOIN organizations o ON o.id = d.org_id
+    LEFT JOIN submissions s ON s.id = d.submission_id
+    LEFT JOIN users disputer ON disputer.id = d.disputed_by
+    LEFT JOIN users orig_user ON orig_user.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = d.org_id
     WHERE d.disputed_by = ${session.sub}
        OR s.submitted_by = ${session.sub}
     ORDER BY d.created_at DESC
@@ -355,7 +355,7 @@ export async function GET(request: NextRequest) {
     const mdJurors = await sql.query(
       `SELECT ja.dispute_id, u.username
        FROM jury_assignments ja
-       JOIN users u ON u.id = ja.user_id
+       LEFT JOIN users u ON u.id = ja.user_id
        WHERE ja.dispute_id = ANY($1)
        ORDER BY ja.assigned_at`,
       [myDisputeIds]
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
       `SELECT jv.dispute_id, jv.approve, jv.note, jv.deliberate_lie, jv.voted_at,
               u.username
        FROM jury_votes jv
-       JOIN users u ON u.id = jv.user_id
+       LEFT JOIN users u ON u.id = jv.user_id
        WHERE jv.dispute_id = ANY($1)
        ORDER BY jv.voted_at`,
       [myDisputeIds]
@@ -389,14 +389,14 @@ export async function GET(request: NextRequest) {
       id,
       subId: row.submission_id,
       orgId: row.org_id,
-      orgName: row.org_name,
+      orgName: (row.org_name as string) || "Unknown Org",
       reasoning: row.reasoning,
       status: row.status,
       deliberateLieFinding: row.deliberate_lie_finding,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
-      disputedBy: row.disputed_by,
-      originalSubmitter: row.original_submitter,
+      disputedBy: row.disputed_by || "unknown",
+      originalSubmitter: row.original_submitter || "unknown",
       submissionHeadline: row.submission_headline,
       submissionReasoning: row.submission_reasoning,
       submissionReplacement: row.submission_replacement,

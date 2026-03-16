@@ -22,7 +22,7 @@ export async function GET(
       u.total_wins, u.total_losses, u.current_streak,
       om.is_founder, om.joined_at, om.assembly_streak
     FROM organization_members om
-    JOIN users u ON u.id = om.user_id
+    LEFT JOIN users u ON u.id = om.user_id
     WHERE om.org_id = ${id} AND om.is_active = TRUE
     ORDER BY om.joined_at ASC
     LIMIT ${limit} OFFSET ${offset}
@@ -33,8 +33,14 @@ export async function GET(
     WHERE org_id = ${id} AND is_active = TRUE
   `;
 
+  const members_list = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    username: row.username || "unknown",
+    display_name: row.display_name || "",
+  }));
+
   return ok({
-    members: result.rows,
+    members: members_list,
     total: parseInt(total.rows[0].count),
     limit,
     offset,
