@@ -38,13 +38,16 @@ export async function GET(request: NextRequest) {
     SELECT
       s.id, s.submission_type, s.status, s.url, s.original_headline,
       s.replacement, s.reasoning, s.author, s.trusted_skip,
-      s.is_di, s.deliberate_lie_finding, s.survival_count,
+      s.is_di, s.di_partner_id, s.deliberate_lie_finding, s.survival_count,
       s.created_at, s.resolved_at,
+      s.org_id,
       u.username AS submitted_by, u.display_name AS submitted_by_display_name,
-      o.name AS org_name
+      o.name AS org_name,
+      partner.username AS di_partner_username
     FROM submissions s
     JOIN users u ON u.id = s.submitted_by
     JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN users partner ON partner.id = s.di_partner_id
     WHERE 1=1
   `;
   const params: unknown[] = [];
@@ -68,13 +71,68 @@ export async function GET(request: NextRequest) {
 
   const result = await sql.query(query, params);
 
+  // Batch-fetch evidence and inline edits for all submissions
+  const subIds = result.rows.map((r: Record<string, unknown>) => r.id);
+  let evidenceMap: Record<string, Array<Record<string, unknown>>> = {};
+  let editsMap: Record<string, Array<Record<string, unknown>>> = {};
+  if (subIds.length > 0) {
+    const [evidenceRes, editsRes] = await Promise.all([
+      sql.query(
+        `SELECT submission_id, url, explanation, sort_order
+         FROM submission_evidence WHERE submission_id = ANY($1) ORDER BY sort_order`,
+        [subIds]
+      ),
+      sql.query(
+        `SELECT submission_id, original_text, replacement_text, reasoning, sort_order
+         FROM submission_inline_edits WHERE submission_id = ANY($1) ORDER BY sort_order`,
+        [subIds]
+      ),
+    ]);
+    for (const row of evidenceRes.rows) {
+      if (!evidenceMap[row.submission_id]) evidenceMap[row.submission_id] = [];
+      evidenceMap[row.submission_id].push(row);
+    }
+    for (const row of editsRes.rows) {
+      if (!editsMap[row.submission_id]) editsMap[row.submission_id] = [];
+      editsMap[row.submission_id].push(row);
+    }
+  }
+
   // Anonymize submitter identity for submissions still under review
   const terminalStatuses = ["approved", "consensus", "rejected", "consensus_rejected"];
   const submissions = result.rows.map((row: Record<string, unknown>) => {
-    if (!terminalStatuses.includes(row.status as string)) {
-      return { ...row, submitted_by: null, submitted_by_display_name: null };
-    }
-    return row;
+    const anonymous = !terminalStatuses.includes(row.status as string);
+    return {
+      id: row.id,
+      submissionType: row.submission_type,
+      status: row.status,
+      url: row.url,
+      originalHeadline: row.original_headline,
+      replacement: row.replacement,
+      reasoning: row.reasoning,
+      author: row.author,
+      trustedSkip: row.trusted_skip,
+      isDI: row.is_di,
+      diPartner: row.di_partner_username,
+      deliberateLieFinding: row.deliberate_lie_finding,
+      survivalCount: row.survival_count,
+      createdAt: row.created_at,
+      resolvedAt: row.resolved_at,
+      orgId: row.org_id,
+      orgName: row.org_name,
+      submittedBy: anonymous ? null : row.submitted_by,
+      submittedByDisplayName: anonymous ? null : row.submitted_by_display_name,
+      evidence: (evidenceMap[row.id as string] || []).map((e) => ({
+        url: e.url,
+        explanation: e.explanation,
+      })),
+      inlineEdits: (editsMap[row.id as string] || []).map((e) => ({
+        original: e.original_text,
+        replacement: e.replacement_text,
+        reasoning: e.reasoning,
+      })),
+      _fromRelational: true,
+    };
   });
 
   return ok({

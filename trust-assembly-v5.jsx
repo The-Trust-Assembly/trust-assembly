@@ -2133,7 +2133,20 @@ function StandingCorrectionInput({ value, onChange }) {
 function DiscoveryFeed({ onLogin, onRegister }) {
   const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { (async () => { const s = (await sG(SK.SUBS)) || {}; setSubs(Object.values(s).filter(x => x.status !== "pending_jury").sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false); })(); }, []);
+  useEffect(() => { (async () => {
+    const s = (await sG(SK.SUBS)) || {};
+    // Merge relational DB submissions
+    try {
+      const res = await fetch("/api/submissions?limit=100");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.submissions) {
+          for (const relSub of data.submissions) { s[relSub.id] = { ...s[relSub.id], ...relSub }; }
+        }
+      }
+    } catch {}
+    setSubs(Object.values(s).filter(x => x.status !== "pending_jury").sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false);
+  })(); }, []);
   if (loading || subs.length === 0) return null;
   return (
     <div style={{ marginTop: 36 }}>
@@ -2951,31 +2964,31 @@ function ReviewScreen({ user }) {
       ]);
       if (queueRes.ok) {
         const queueData = await queueRes.json();
-        // Merge submissions (in-group, cross-group)
+        // Merge submissions (in-group, cross-group) — relational DB is source of truth
         if (queueData.submissions) {
           for (const relSub of queueData.submissions) {
-            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
+            allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub };
           }
         }
-        // Merge disputes (jury-assigned)
+        // Merge disputes (jury-assigned) — relational DB is source of truth
         if (queueData.disputes) {
           for (const relDisp of queueData.disputes) {
-            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
+            allDisputes[relDisp.id] = { ...allDisputes[relDisp.id], ...relDisp };
           }
         }
         // Merge my disputes
         if (queueData.myDisputes) {
           for (const relDisp of queueData.myDisputes) {
-            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
+            allDisputes[relDisp.id] = { ...allDisputes[relDisp.id], ...relDisp };
           }
         }
       }
-      // DI queue
+      // DI queue — relational DB is source of truth
       if (diRes.ok) {
         const diData = await diRes.json();
         if (diData.submissions) {
           for (const relSub of diData.submissions) {
-            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
+            allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub };
           }
         }
       }
@@ -3575,7 +3588,17 @@ function VaultScreen({ user }) {
 
 function ConsensusScreen({ onViewCitizen }) {
   const [subs, setSubs] = useState([]); const [loading, setLoading] = useState(true);
-  useEffect(() => { (async () => { const s = (await sG(SK.SUBS)) || {}; setSubs(Object.values(s).filter(x => x.status === "consensus").sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false); })(); }, []);
+  useEffect(() => { (async () => {
+    const s = (await sG(SK.SUBS)) || {};
+    try {
+      const res = await fetch("/api/submissions?status=consensus&limit=100");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.submissions) { for (const relSub of data.submissions) { s[relSub.id] = { ...s[relSub.id], ...relSub }; } }
+      }
+    } catch {}
+    setSubs(Object.values(s).filter(x => x.status === "consensus").sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false);
+  })(); }, []);
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">The Consensus</h2>
@@ -3741,7 +3764,25 @@ function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
   const [approveMsg, setApproveMsg] = useState("");
   const isAdmin = user && user.username === ADMIN_USERNAME;
 
-  const load = async () => { setSubs((await sG(SK.SUBS)) || {}); setOrgs((await sG(SK.ORGS)) || {}); setLoading(false); };
+  const load = async () => {
+    const allSubs = (await sG(SK.SUBS)) || {};
+    // Merge submissions from relational DB (source of truth for API-created entries)
+    try {
+      const res = await fetch("/api/submissions?limit=100");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.submissions) {
+          for (const relSub of data.submissions) {
+            // Relational DB is source of truth — always overwrite KV data
+            allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub };
+          }
+        }
+      }
+    } catch (e) { console.warn("Failed to fetch submissions from relational API:", e); }
+    setSubs(allSubs);
+    setOrgs((await sG(SK.ORGS)) || {});
+    setLoading(false);
+  };
   useEffect(() => { load(); }, []);
 
   const canDispute = (sub) => {
@@ -3920,7 +3961,15 @@ function ProfileScreen({ user, onViewCitizen }) {
     const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setU(all[user.username]);
     setAllUsers(all);
     const o = (await sG(SK.ORGS)) || {}; setOrgs(o);
-    setAllSubs((await sG(SK.SUBS)) || {});
+    const subs = (await sG(SK.SUBS)) || {};
+    try {
+      const res = await fetch(`/api/submissions?submittedBy=${encodeURIComponent(user.username)}&limit=100`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.submissions) { for (const relSub of data.submissions) { subs[relSub.id] = { ...subs[relSub.id], ...relSub }; } }
+      }
+    } catch {}
+    setAllSubs(subs);
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
     setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
@@ -4061,7 +4110,16 @@ function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
     setU(target);
     setAllUsers(all);
     setOrgs((await sG(SK.ORGS)) || {});
-    setSubs((await sG(SK.SUBS)) || {});
+    const allSubs = (await sG(SK.SUBS)) || {};
+    // Merge relational DB submissions for this user
+    try {
+      const res = await fetch(`/api/submissions?submittedBy=${encodeURIComponent(username)}&limit=100`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.submissions) { for (const relSub of data.submissions) { allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub }; } }
+      }
+    } catch {}
+    setSubs(allSubs);
     // Find DI agents registered to this user
     const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
     setDiAgents(agents);
