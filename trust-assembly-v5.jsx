@@ -3174,6 +3174,23 @@ function ReviewScreen({ user }) {
       if (changed) { allSubs[id] = sub; kvDirty = true; }
     }
     if (kvDirty) await sS(SK.SUBS, allSubs);
+    // ── Merge di_pending submissions from relational DB ──
+    // Submissions created via the relational API (POST /api/submissions) live
+    // in the SQL submissions table, not the KV store.  Fetch them so the DI
+    // review queue shows everything regardless of which data path created them.
+    try {
+      const diRes = await fetch("/api/submissions/di-queue");
+      if (diRes.ok) {
+        const diData = await diRes.json();
+        if (diData.submissions && Array.isArray(diData.submissions)) {
+          for (const relSub of diData.submissions) {
+            if (!allSubs[relSub.id]) {
+              allSubs[relSub.id] = relSub;
+            }
+          }
+        }
+      }
+    } catch (e) { console.warn("Failed to fetch DI queue from relational API:", e); }
     setSubs(allSubs); setDisputes((await sG(SK.DISPUTES)) || {}); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
     // Compute jury score for display
     const js = await computeJuryScore(user.username);
@@ -3828,6 +3845,23 @@ function DIPanelContent({ user, subs, onReload }) {
   };
 
   const approveDISub = async (subId) => {
+    // Check if this is a relational-only submission (from SQL submissions table)
+    const currentSubs = subs || {};
+    const maybeSub = currentSubs[subId];
+    if (maybeSub && maybeSub._fromRelational) {
+      // Use the relational API endpoint for approve
+      try {
+        const res = await fetch(`/api/submissions/${subId}/di-review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "approve" }),
+        });
+        if (!res.ok) { const data = await res.json(); setError(data.error || "Failed to approve"); return; }
+      } catch (e) { setError("Network error approving submission"); return; }
+      onReload();
+      return;
+    }
+    // Legacy KV path
     const allSubs = (await sG(SK.SUBS)) || {};
     const sub = allSubs[subId]; if (!sub || sub.status !== "di_pending") return;
     const now = new Date().toISOString();
@@ -3862,6 +3896,22 @@ function DIPanelContent({ user, subs, onReload }) {
   };
 
   const rejectDISub = async (subId) => {
+    // Check if this is a relational-only submission
+    const currentSubs = subs || {};
+    const maybeSub = currentSubs[subId];
+    if (maybeSub && maybeSub._fromRelational) {
+      try {
+        const res = await fetch(`/api/submissions/${subId}/di-review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reject" }),
+        });
+        if (!res.ok) { const data = await res.json(); setError(data.error || "Failed to reject"); return; }
+      } catch (e) { setError("Network error rejecting submission"); return; }
+      onReload();
+      return;
+    }
+    // Legacy KV path
     const allSubs = (await sG(SK.SUBS)) || {};
     const sub = allSubs[subId]; if (!sub || sub.status !== "di_pending") return;
     const now = new Date().toISOString();
