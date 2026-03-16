@@ -3174,24 +3174,48 @@ function ReviewScreen({ user }) {
       if (changed) { allSubs[id] = sub; kvDirty = true; }
     }
     if (kvDirty) await sS(SK.SUBS, allSubs);
-    // ── Merge di_pending submissions from relational DB ──
-    // Submissions created via the relational API (POST /api/submissions) live
-    // in the SQL submissions table, not the KV store.  Fetch them so the DI
-    // review queue shows everything regardless of which data path created them.
+    // ── Merge ALL review items from relational DB ──
+    // Submissions and disputes created via the relational API live in SQL
+    // tables, not the KV store. Fetch them so every review tab shows
+    // everything regardless of which data path created the records.
+    const allDisputes = (await sG(SK.DISPUTES)) || {};
     try {
-      const diRes = await fetch("/api/submissions/di-queue");
-      if (diRes.ok) {
-        const diData = await diRes.json();
-        if (diData.submissions && Array.isArray(diData.submissions)) {
-          for (const relSub of diData.submissions) {
-            if (!allSubs[relSub.id]) {
-              allSubs[relSub.id] = relSub;
-            }
+      const [queueRes, diRes] = await Promise.all([
+        fetch("/api/reviews/queue"),
+        fetch("/api/submissions/di-queue"),
+      ]);
+      if (queueRes.ok) {
+        const queueData = await queueRes.json();
+        // Merge submissions (in-group, cross-group)
+        if (queueData.submissions) {
+          for (const relSub of queueData.submissions) {
+            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
+          }
+        }
+        // Merge disputes (jury-assigned)
+        if (queueData.disputes) {
+          for (const relDisp of queueData.disputes) {
+            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
+          }
+        }
+        // Merge my disputes
+        if (queueData.myDisputes) {
+          for (const relDisp of queueData.myDisputes) {
+            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
           }
         }
       }
-    } catch (e) { console.warn("Failed to fetch DI queue from relational API:", e); }
-    setSubs(allSubs); setDisputes((await sG(SK.DISPUTES)) || {}); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
+      // DI queue
+      if (diRes.ok) {
+        const diData = await diRes.json();
+        if (diData.submissions) {
+          for (const relSub of diData.submissions) {
+            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
+          }
+        }
+      }
+    } catch (e) { console.warn("Failed to fetch review queue from relational API:", e); }
+    setSubs(allSubs); setDisputes(allDisputes); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
     // Compute jury score for display
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
@@ -3234,6 +3258,30 @@ function ReviewScreen({ user }) {
 
   // Accept jury seat — first-come-first-seated
   const acceptJurySeat = async (subId, isCross) => {
+    // ── Relational path: accept jury seat via API ──
+    const currentSubs = subs || {};
+    if (currentSubs[subId] && currentSubs[subId]._fromRelational) {
+      // Find the jury assignment for this submission
+      try {
+        const juryRes = await fetch("/api/jury");
+        if (juryRes.ok) {
+          const juryData = await juryRes.json();
+          const assignment = (juryData.assignments || []).find(a =>
+            a.submission_id === subId && !a.accepted
+          );
+          if (assignment) {
+            const acceptRes = await fetch(`/api/jury/${assignment.id}/accept`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+            });
+            if (!acceptRes.ok) { const d = await acceptRes.json(); alert(d.error || "Failed to accept seat"); return; }
+          }
+        }
+      } catch (e) { console.warn("Failed to accept jury seat via API:", e); }
+      setReviewingId(subId); load();
+      return;
+    }
+    // ── Legacy KV path ──
     const allSubs = (await sG(SK.SUBS)) || {};
     const sub = allSubs[subId]; if (!sub) return;
     const now = new Date().toISOString();
@@ -3299,6 +3347,31 @@ function ReviewScreen({ user }) {
     const users = (await sG(SK.USERS)) || {}; const me = users[user.username];
     const vc2 = canVote(me || user);
     if (!vc2.allowed) return alert(vc2.reason);
+    // ── Relational path: if the submission came from the SQL table, vote via API ──
+    const currentSubs = subs || {};
+    if (currentSubs[subId] && currentSubs[subId]._fromRelational) {
+      try {
+        const res = await fetch(`/api/submissions/${subId}/vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            approve,
+            note: voteNote.trim(),
+            deliberateLie: lieChecked,
+            newsworthy: newsRating,
+            interesting: funRating,
+            role: isCross ? "cross_group" : "in_group",
+            editVotes: { ...editVotes },
+            vaultVotes: { ...vaultVotes },
+          }),
+        });
+        if (!res.ok) { const data = await res.json(); alert(data.error || "Vote failed"); return; }
+      } catch (e) { alert("Network error casting vote"); return; }
+      clearDraft(`ta_draft_vote_${subId}`); voteInitSkip.current = true; lastRestoredId.current = null;
+      setReviewingId(null); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false); setEditVotes({}); setVaultVotes({}); load();
+      return;
+    }
+    // ── Legacy KV path ──
     const allSubs = (await sG(SK.SUBS)) || {};
     const sub = allSubs[subId]; if (!sub) return;
     // Block DI partner from voting
@@ -3537,6 +3610,22 @@ function ReviewScreen({ user }) {
     const users = (await sG(SK.USERS)) || {}; const me = users[user.username];
     const vc3 = canVote(me || user);
     if (!vc3.allowed) return alert(vc3.reason);
+    // ── Relational path: if the dispute came from the SQL table, vote via API ──
+    const currentDisputes = disputes || {};
+    if (currentDisputes[disputeId] && currentDisputes[disputeId]._fromRelational) {
+      try {
+        const res = await fetch(`/api/disputes/${disputeId}/vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approve: upheld, note: voteNote.trim(), deliberateLie: lieChecked }),
+        });
+        if (!res.ok) { const data = await res.json(); alert(data.error || "Dispute vote failed"); return; }
+      } catch (e) { alert("Network error casting dispute vote"); return; }
+      clearDraft(`ta_draft_vote_${disputeId}`); voteInitSkip.current = true; lastRestoredId.current = null;
+      setReviewingId(null); setVoteNote(""); setLieChecked(false); load();
+      return;
+    }
+    // ── Legacy KV path ──
     const result = await resolveDispute(disputeId, user.username, upheld, voteNote, lieChecked);
     if (result.error) return;
     clearDraft(`ta_draft_vote_${disputeId}`); voteInitSkip.current = true; lastRestoredId.current = null;
