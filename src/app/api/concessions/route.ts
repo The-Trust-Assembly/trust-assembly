@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       c.recovery, c.recovery_at_resolution, c.created_at, c.rejected_at,
       u.username AS proposed_by_username, u.display_name AS proposed_by_display_name
     FROM concessions c
-    JOIN users u ON u.id = c.proposed_by
+    LEFT JOIN users u ON u.id = c.proposed_by
     WHERE 1=1
   `;
   const params: unknown[] = [];

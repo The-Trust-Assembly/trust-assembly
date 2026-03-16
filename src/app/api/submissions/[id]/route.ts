@@ -21,8 +21,8 @@ export async function GET(
       u.display_name AS submitted_by_display_name,
       o.name AS org_name
     FROM submissions s
-    JOIN users u ON u.id = s.submitted_by
-    JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN users u ON u.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = s.org_id
     WHERE s.id = ${id}
   `;
 
@@ -70,7 +70,7 @@ export async function GET(
       ja.role, ja.accepted, ja.accepted_at,
       u.username, u.display_name
     FROM jury_assignments ja
-    JOIN users u ON u.id = ja.user_id
+    LEFT JOIN users u ON u.id = ja.user_id
     WHERE ja.submission_id = ${id} AND ja.accepted = TRUE
     ORDER BY ja.assigned_at
   `;

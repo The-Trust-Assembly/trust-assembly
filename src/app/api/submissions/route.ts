@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
       u.username AS submitted_by, u.display_name AS submitted_by_display_name,
       o.name AS org_name
     FROM submissions s
-    JOIN users u ON u.id = s.submitted_by
-    JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN users u ON u.id = s.submitted_by
+    LEFT JOIN organizations o ON o.id = s.org_id
     WHERE 1=1
   `;
   const params: unknown[] = [];

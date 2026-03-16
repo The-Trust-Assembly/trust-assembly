@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
         u.total_wins, u.total_losses,
         o.name AS org_name
       FROM submissions s
-      JOIN users u ON u.id = s.submitted_by
-      JOIN organizations o ON o.id = s.org_id
+      LEFT JOIN users u ON u.id = s.submitted_by
+      LEFT JOIN organizations o ON o.id = s.org_id
       WHERE s.status IN ('approved', 'consensus')
         AND s.normalized_url = ${normalizedUrl}
       ORDER BY s.created_at DESC
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
         t.id, t.original_text, t.translated_text, t.translation_type,
         t.status, o.name AS org_name
       FROM translations t
-      JOIN organizations o ON o.id = t.org_id
+      LEFT JOIN organizations o ON o.id = t.org_id
       WHERE t.status = 'approved'
     `;
 

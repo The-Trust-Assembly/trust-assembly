@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
                u.username AS submitted_by_username,
                o.name AS org_name
         FROM arguments a
-        JOIN users u ON u.id = a.submitted_by
-        JOIN organizations o ON o.id = a.org_id
+        LEFT JOIN users u ON u.id = a.submitted_by
+        LEFT JOIN organizations o ON o.id = a.org_id
         WHERE 1=1
       `;
       break;
@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
                u.username AS submitted_by_username,
                o.name AS org_name
         FROM beliefs b
-        JOIN users u ON u.id = b.submitted_by
-        JOIN organizations o ON o.id = b.org_id
+        LEFT JOIN users u ON u.id = b.submitted_by
+        LEFT JOIN organizations o ON o.id = b.org_id
         WHERE 1=1
       `;
       break;
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
                u.username AS submitted_by_username,
                o.name AS org_name
         FROM translations t
-        JOIN users u ON u.id = t.submitted_by
-        JOIN organizations o ON o.id = t.org_id
+        LEFT JOIN users u ON u.id = t.submitted_by
+        LEFT JOIN organizations o ON o.id = t.org_id
         WHERE 1=1
       `;
       break;
@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
                u.username AS submitted_by_username,
                o.name AS org_name
         FROM vault_entries v
-        JOIN users u ON u.id = v.submitted_by
-        JOIN organizations o ON o.id = v.org_id
+        LEFT JOIN users u ON u.id = v.submitted_by
+        LEFT JOIN organizations o ON o.id = v.org_id
         WHERE 1=1
       `;
       break;

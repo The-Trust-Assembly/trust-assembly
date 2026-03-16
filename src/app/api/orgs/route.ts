@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       u.username AS created_by,
       (SELECT COUNT(*) FROM organization_members om WHERE om.org_id = o.id AND om.is_active = TRUE) AS member_count
     FROM organizations o
-    JOIN users u ON u.id = o.created_by
+    LEFT JOIN users u ON u.id = o.created_by
     ORDER BY o.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;

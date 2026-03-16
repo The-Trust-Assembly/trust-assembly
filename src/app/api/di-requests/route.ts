@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       dr.id, dr.di_user_id, dr.partner_user_id, dr.status, dr.created_at,
       u.username AS di_username, u.display_name AS di_display_name
     FROM di_requests dr
-    JOIN users u ON u.id = dr.di_user_id
+    LEFT JOIN users u ON u.id = dr.di_user_id
     WHERE dr.partner_user_id = ${session.sub}
     ORDER BY dr.created_at DESC
   `;

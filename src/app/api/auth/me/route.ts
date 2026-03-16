@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   const orgs = await sql`
     SELECT o.id, o.name, om.is_founder, om.joined_at
     FROM organization_members om
-    JOIN organizations o ON o.id = om.org_id
+    LEFT JOIN organizations o ON o.id = om.org_id
     WHERE om.user_id = ${session.sub} AND om.is_active = TRUE
   `;
 

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const joinedResult = await sql`
     SELECT o.id, o.name
     FROM organization_members om
-    JOIN organizations o ON o.id = om.org_id
+    LEFT JOIN organizations o ON o.id = om.org_id
     WHERE om.user_id = ${session.sub} AND om.is_active = TRUE
     ORDER BY o.name
   `;
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const followedResult = await sql`
     SELECT o.id, o.name
     FROM organization_follows f
-    JOIN organizations o ON o.id = f.org_id
+    LEFT JOIN organizations o ON o.id = f.org_id
     WHERE f.user_id = ${session.sub}
     ORDER BY o.name
   `;

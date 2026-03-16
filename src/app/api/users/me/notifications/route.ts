@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
       u.username, u.display_name,
       o.id AS org_id, o.name AS org_name
     FROM membership_applications ma
-    JOIN users u ON u.id = ma.user_id
-    JOIN organizations o ON o.id = ma.org_id
-    JOIN organization_members om ON om.org_id = ma.org_id
+    LEFT JOIN users u ON u.id = ma.user_id
+    LEFT JOIN organizations o ON o.id = ma.org_id
+    LEFT JOIN organization_members om ON om.org_id = ma.org_id
       AND om.user_id = ${session.sub}
       AND om.is_founder = TRUE
       AND om.is_active = TRUE
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       s.url, s.resolved_at,
       o.name AS org_name
     FROM submissions s
-    JOIN organizations o ON o.id = s.org_id
+    LEFT JOIN organizations o ON o.id = s.org_id
     WHERE s.submitted_by = ${session.sub}
       AND s.status IN ('approved', 'consensus', 'rejected', 'consensus_rejected')
       AND s.resolved_at > NOW() - INTERVAL '7 days'

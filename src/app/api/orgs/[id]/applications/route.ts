@@ -29,7 +29,7 @@ export async function GET(
       ma.sponsors_needed, ma.founder_approved, ma.status, ma.created_at,
       u.username, u.display_name
     FROM membership_applications ma
-    JOIN users u ON u.id = ma.user_id
+    LEFT JOIN users u ON u.id = ma.user_id
     WHERE ma.org_id = ${id}
     ORDER BY ma.created_at DESC
   `;
