@@ -117,6 +117,18 @@ export function middleware(request: NextRequest) {
   if (origin && shouldAllowOrigin(origin, request.method, pathname)) {
     addCorsHeaders(response, origin, extOrSame);
   }
+
+  // Content Security Policy — mitigates XSS by restricting script sources.
+  // 'self' allows scripts from the same origin; 'unsafe-inline' is needed
+  // for Next.js inline styles. Adjust as the frontend evolves.
+  response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'",
+  );
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
   return response;
 }
 

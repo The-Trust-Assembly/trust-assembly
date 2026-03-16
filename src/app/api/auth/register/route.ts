@@ -1,14 +1,32 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 
 // Email is intentionally NOT unique in the schema — DIs may share their
 // partner's email. Uniqueness for non-DI accounts is enforced in
 // application logic below (the registration query checks for existing
 // email on non-DI registrations).
 
+// 3 registrations per hour per IP
+const REGISTER_RATE_LIMIT = 3;
+const REGISTER_WINDOW_MS = 60 * 60 * 1000;
+
 export async function POST(request: NextRequest) {
+  // Rate limit by IP
+  const ip = getClientIP(request);
+  const limit = checkRateLimit(`register:${ip}`, REGISTER_RATE_LIMIT, REGISTER_WINDOW_MS);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many registration attempts. Please try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSeconds) },
+      },
+    );
+  }
+
   const body = await request.json();
 
   const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation } = body;

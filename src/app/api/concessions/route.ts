@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 // GET /api/concessions — list concessions (filterable)
 export async function GET(request: NextRequest) {
@@ -60,6 +61,11 @@ export async function POST(request: NextRequest) {
   if (!submissionId || !reasoning) {
     return err("submissionId and reasoning are required");
   }
+
+  const lengthError = validateFields([
+    ["reasoning", reasoning, MAX_LENGTHS.reasoning],
+  ]);
+  if (lengthError) return err(lengthError);
 
   // Look up submission for org_id
   const sub = await sql`

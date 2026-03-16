@@ -202,6 +202,7 @@ CREATE TABLE submissions (
 
   -- Content
   url               TEXT NOT NULL,
+  normalized_url    TEXT,  -- URL after normalization (strip www, tracking params, etc.)
   original_headline VARCHAR(500) NOT NULL,
   replacement       VARCHAR(500),  -- null for affirmations
   reasoning         TEXT NOT NULL,
@@ -584,11 +585,81 @@ CREATE INDEX idx_audit_user ON audit_log(user_id) WHERE user_id IS NOT NULL;
 -- ============================================================
 
 CREATE TABLE feedback (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES users(id),
-  username    VARCHAR(100) NOT NULL,
-  message     TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id              UUID NOT NULL REFERENCES users(id),
+  username             VARCHAR(100) NOT NULL,
+  message              TEXT NOT NULL,
+  status               VARCHAR(20) DEFAULT NULL,
+  admin_reply          TEXT DEFAULT NULL,
+  admin_reply_at       TIMESTAMPTZ DEFAULT NULL,
+  user_resolution      VARCHAR(20) DEFAULT NULL,
+  user_resolution_note TEXT DEFAULT NULL,
+  user_resolution_at   TIMESTAMPTZ DEFAULT NULL,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_feedback_created ON feedback(created_at DESC);
+
+-- ============================================================
+-- ORGANIZATION FOLLOWS
+-- ============================================================
+
+CREATE TABLE organization_follows (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  followed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(org_id, user_id)
+);
+
+CREATE INDEX idx_org_follows_user ON organization_follows(user_id);
+CREATE INDEX idx_org_follows_org ON organization_follows(org_id);
+
+-- ============================================================
+-- NOTIFICATIONS
+-- ============================================================
+
+CREATE TABLE notifications (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type        VARCHAR(50) NOT NULL,
+  title       TEXT NOT NULL,
+  body        TEXT,
+  entity_type VARCHAR(50),
+  entity_id   UUID,
+  read        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_notifications_user_unread
+  ON notifications(user_id, created_at DESC) WHERE read = FALSE;
+
+-- ============================================================
+-- USER BADGES
+-- ============================================================
+
+CREATE TABLE user_badges (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  badge_id   VARCHAR(100) NOT NULL,
+  detail     TEXT,
+  awarded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, badge_id)
+);
+
+-- ============================================================
+-- KV STORE (legacy — deprecated, retained for migration period)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS kv_store (
+  key        TEXT PRIMARY KEY,
+  value      TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================================
+-- INDEXES for KV elimination
+-- ============================================================
+
+CREATE INDEX idx_submissions_normalized_url
+  ON submissions(normalized_url) WHERE normalized_url IS NOT NULL;

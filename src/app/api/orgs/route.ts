@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 // GET /api/orgs — list all assemblies
 export async function GET(request: NextRequest) {
@@ -42,6 +43,13 @@ export async function POST(request: NextRequest) {
   if (!name || name.trim().length < 3) {
     return err("Assembly name must be at least 3 characters");
   }
+
+  const lengthError = validateFields([
+    ["name", name, MAX_LENGTHS.org_name],
+    ["description", description, MAX_LENGTHS.org_description],
+    ["charter", charter, MAX_LENGTHS.org_charter],
+  ]);
+  if (lengthError) return err(lengthError);
 
   // Check org limit (max 12 per user)
   const orgCount = await sql`

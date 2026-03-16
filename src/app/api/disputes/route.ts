@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 // GET /api/disputes — list disputes (filterable)
 export async function GET(request: NextRequest) {
@@ -59,6 +60,21 @@ export async function POST(request: NextRequest) {
 
   if (!submissionId || !reasoning) {
     return err("submissionId and reasoning are required");
+  }
+
+  const lengthError = validateFields([
+    ["reasoning", reasoning, MAX_LENGTHS.reasoning],
+  ]);
+  if (lengthError) return err(lengthError);
+
+  if (evidence && Array.isArray(evidence)) {
+    for (const e of evidence) {
+      const evError = validateFields([
+        ["evidence url", e.url, MAX_LENGTHS.evidence_url],
+        ["evidence explanation", e.explanation, MAX_LENGTHS.evidence_explanation],
+      ]);
+      if (evError) return err(evError);
+    }
   }
 
   // Look up submission to get org_id and original submitter

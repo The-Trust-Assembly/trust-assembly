@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 // GET /api/vault — list vault entries (filterable by type)
 export async function GET(request: NextRequest) {
@@ -133,6 +134,8 @@ export async function POST(request: NextRequest) {
       case "argument": {
         const { content } = body;
         if (!content) return err("content is required for arguments");
+        const argError = validateFields([["content", content, MAX_LENGTHS.vault_content]]);
+        if (argError) return err(argError);
         const result = await sql`
           INSERT INTO arguments (org_id, submitted_by, content, submission_id)
           VALUES (${targetOrgId}, ${session.sub}, ${content}, ${submissionId || null})
@@ -144,6 +147,8 @@ export async function POST(request: NextRequest) {
       case "belief": {
         const { content } = body;
         if (!content) return err("content is required for beliefs");
+        const beliefError = validateFields([["content", content, MAX_LENGTHS.vault_content]]);
+        if (beliefError) return err(beliefError);
         const result = await sql`
           INSERT INTO beliefs (org_id, submitted_by, content, submission_id)
           VALUES (${targetOrgId}, ${session.sub}, ${content}, ${submissionId || null})
@@ -157,6 +162,11 @@ export async function POST(request: NextRequest) {
         if (!original || !translated || !translationType) {
           return err("original, translated, and translationType are required for translations");
         }
+        const transError = validateFields([
+          ["original", original, MAX_LENGTHS.translation_text],
+          ["translated", translated, MAX_LENGTHS.translation_text],
+        ]);
+        if (transError) return err(transError);
         const result = await sql`
           INSERT INTO translations (org_id, submitted_by, original_text, translated_text, translation_type, submission_id)
           VALUES (${targetOrgId}, ${session.sub}, ${original}, ${translated}, ${translationType}, ${submissionId || null})
@@ -170,6 +180,11 @@ export async function POST(request: NextRequest) {
         if (!assertion || !evidence) {
           return err("assertion and evidence are required for vault entries");
         }
+        const vaultError = validateFields([
+          ["assertion", assertion, MAX_LENGTHS.vault_assertion],
+          ["evidence", evidence, MAX_LENGTHS.vault_evidence],
+        ]);
+        if (vaultError) return err(vaultError);
         const result = await sql`
           INSERT INTO vault_entries (org_id, submitted_by, assertion, evidence, submission_id)
           VALUES (${targetOrgId}, ${session.sub}, ${assertion}, ${evidence}, ${submissionId || null})

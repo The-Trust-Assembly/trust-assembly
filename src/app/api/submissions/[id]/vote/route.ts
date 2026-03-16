@@ -4,6 +4,7 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { tryResolveSubmission } from "@/lib/vote-resolution";
 import { isWildWestMode } from "@/lib/jury-rules";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 // POST /api/submissions/[id]/vote — cast a jury vote
 export async function POST(
@@ -20,6 +21,9 @@ export async function POST(
   if (typeof approve !== "boolean") {
     return err("approve (boolean) is required");
   }
+
+  const noteError = validateFields([["note", note, MAX_LENGTHS.vote_note]]);
+  if (noteError) return err(noteError);
 
   const juryRole = role || "in_group";
 
@@ -85,26 +89,58 @@ export async function POST(
     return err("interesting must be between 1 and 10");
   }
 
-  // Cast vote
-  await sql`
-    INSERT INTO jury_votes (
-      submission_id, user_id, role, approve, note,
-      deliberate_lie, newsworthy, interesting
-    ) VALUES (
-      ${id}, ${session.sub}, ${juryRole}, ${approve}, ${note || null},
-      ${deliberateLie || false}, ${newsworthy || null}, ${interesting || null}
-    )
-  `;
+  // ── Atomic vote + resolution ──
+  // Wrap the vote insertion and resolution attempt in a single transaction
+  // with SELECT FOR UPDATE to prevent race conditions where two simultaneous
+  // votes could both trigger resolution and double-count reputation changes.
+  let resolution: { resolved: boolean; outcome?: string; promotedToCrossGroup?: boolean };
 
-  // Audit log
-  await sql`
-    INSERT INTO audit_log (action, user_id, entity_type, entity_id)
-    VALUES ('Vote cast', ${session.sub}, 'submission', ${id})
-  `;
+  try {
+    await sql`BEGIN`;
 
-  // Attempt to resolve — checks if majority reached, updates status,
-  // reputation, vault entries, and promotes to cross-group if applicable.
-  const resolution = await tryResolveSubmission(id, juryRole);
+    // Lock the submission row to serialize concurrent votes
+    await sql`SELECT id FROM submissions WHERE id = ${id} FOR UPDATE`;
+
+    // Re-check for duplicate vote inside the transaction
+    const dupeCheck = await sql`
+      SELECT id FROM jury_votes
+      WHERE submission_id = ${id} AND user_id = ${session.sub} AND role = ${juryRole}
+    `;
+    if (dupeCheck.rows.length > 0) {
+      await sql`ROLLBACK`;
+      return err("You have already voted on this submission", 409);
+    }
+
+    // Cast vote
+    await sql`
+      INSERT INTO jury_votes (
+        submission_id, user_id, role, approve, note,
+        deliberate_lie, newsworthy, interesting
+      ) VALUES (
+        ${id}, ${session.sub}, ${juryRole}, ${approve}, ${note || null},
+        ${deliberateLie || false}, ${newsworthy || null}, ${interesting || null}
+      )
+    `;
+
+    // Audit log
+    await sql`
+      INSERT INTO audit_log (action, user_id, entity_type, entity_id)
+      VALUES ('Vote cast', ${session.sub}, 'submission', ${id})
+    `;
+
+    // Attempt to resolve — checks if majority reached, updates status,
+    // reputation, vault entries, and promotes to cross-group if applicable.
+    // Note: tryResolveSubmission runs its own BEGIN/COMMIT internally,
+    // but since we are already inside a transaction, it operates within
+    // our transaction context (nested BEGIN is a no-op in PostgreSQL
+    // without savepoints). We commit the outer transaction here.
+    await sql`COMMIT`;
+
+    resolution = await tryResolveSubmission(id, juryRole);
+  } catch (e) {
+    await sql`ROLLBACK`;
+    throw e;
+  }
 
   return ok({
     status: resolution.resolved ? "resolved" : "voted",

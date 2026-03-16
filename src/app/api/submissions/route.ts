@@ -3,6 +3,26 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+
+function normalizeUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw);
+    parsed.hostname = parsed.hostname.replace(/^www\./, "");
+    parsed.hash = "";
+    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
+      parsed.pathname = parsed.pathname.slice(0, -1);
+    }
+    const trackingParams = [
+      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+      "fbclid", "gclid", "ref", "source",
+    ];
+    trackingParams.forEach((p) => parsed.searchParams.delete(p));
+    return parsed.toString();
+  } catch {
+    return raw;
+  }
+}
 
 // GET /api/submissions — list submissions (filterable)
 export async function GET(request: NextRequest) {
@@ -86,6 +106,36 @@ export async function POST(request: NextRequest) {
     return err("Corrections require a replacement headline");
   }
 
+  // Input length validation
+  const lengthError = validateFields([
+    ["originalHeadline", originalHeadline, MAX_LENGTHS.headline],
+    ["replacement", replacement, MAX_LENGTHS.replacement],
+    ["reasoning", reasoning, MAX_LENGTHS.reasoning],
+    ["author", author, MAX_LENGTHS.author],
+    ["url", url, MAX_LENGTHS.evidence_url],
+  ]);
+  if (lengthError) return err(lengthError);
+
+  if (evidence && Array.isArray(evidence)) {
+    for (const e of evidence) {
+      const evError = validateFields([
+        ["evidence url", e.url, MAX_LENGTHS.evidence_url],
+        ["evidence explanation", e.explanation, MAX_LENGTHS.evidence_explanation],
+      ]);
+      if (evError) return err(evError);
+    }
+  }
+  if (inlineEdits && Array.isArray(inlineEdits)) {
+    for (const edit of inlineEdits) {
+      const editError = validateFields([
+        ["inline edit original", edit.original, MAX_LENGTHS.inline_edit_text],
+        ["inline edit replacement", edit.replacement, MAX_LENGTHS.inline_edit_text],
+        ["inline edit reasoning", edit.reasoning, MAX_LENGTHS.reasoning],
+      ]);
+      if (editError) return err(editError);
+    }
+  }
+
   // Verify user is member of all target orgs
   for (const targetOrg of targetOrgIds) {
     const membership = await sql`
@@ -103,15 +153,6 @@ export async function POST(request: NextRequest) {
   const trustedSkip = !submitterIsDI && !wildWest && user.rows[0].current_streak >= 10;
   const jurySeats = wildWest ? 1 : null;
 
-  // Look up DI partner username if submitter is a DI
-  let diPartnerUsername: string | null = null;
-  if (submitterIsDI && user.rows[0].di_partner_id) {
-    const partner = await sql`SELECT username FROM users WHERE id = ${user.rows[0].di_partner_id}`;
-    if (partner.rows.length > 0) {
-      diPartnerUsername = partner.rows[0].username;
-    }
-  }
-
   const createdSubs: Record<string, unknown>[] = [];
 
   for (const targetOrg of targetOrgIds) {
@@ -124,13 +165,14 @@ export async function POST(request: NextRequest) {
     // DI submissions require partner pre-approval before entering jury review
     const initialStatus = submitterIsDI ? "di_pending" : count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
-    // Create submission
+    // Create submission (with normalized_url for indexed lookups)
+    const normalizedUrl = normalizeUrl(url);
     const result = await sql`
       INSERT INTO submissions (
-        submission_type, status, url, original_headline, replacement,
+        submission_type, status, url, normalized_url, original_headline, replacement,
         reasoning, author, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats
       ) VALUES (
-        ${submissionType}, ${initialStatus}, ${url}, ${originalHeadline},
+        ${submissionType}, ${initialStatus}, ${url}, ${normalizedUrl}, ${originalHeadline},
         ${replacement || null}, ${reasoning}, ${author || null},
         ${session.sub}, ${targetOrg}, ${trustedSkip}, ${submitterIsDI}, ${user.rows[0].di_partner_id || null}, ${jurySeats}
       ) RETURNING id, submission_type, status, created_at
@@ -171,9 +213,52 @@ export async function POST(request: NextRequest) {
     `;
 
     // ── Trusted contributor: auto-approve ──
+    // Route through the same pipeline as jury-resolved submissions to
+    // maintain a complete audit trail, update reputation consistently,
+    // graduate vault entries, and trigger cross-group promotion.
     if (trustedSkip) {
-      await sql`UPDATE submissions SET status = 'approved', resolved_at = NOW() WHERE id = ${sub.id}`;
-      await sql`UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1 WHERE id = ${session.sub}`;
+      const now = new Date().toISOString();
+
+      try {
+        await sql`BEGIN`;
+
+        await sql`UPDATE submissions SET status = 'approved', resolved_at = ${now} WHERE id = ${sub.id}`;
+
+        // Reputation: increment wins and streak (consistent with vote-resolution)
+        await sql`
+          UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1
+          WHERE id = ${session.sub}
+        `;
+        await sql`
+          UPDATE organization_members SET assembly_streak = assembly_streak + 1
+          WHERE org_id = ${targetOrg} AND user_id = ${session.sub} AND is_active = TRUE
+        `;
+
+        // Graduate linked vault entries if any
+        const vaultTables = ["vault_entries", "arguments", "beliefs", "translations"];
+        for (const table of vaultTables) {
+          await sql.query(
+            `UPDATE ${table} SET status = 'approved', approved_at = $1 WHERE submission_id = $2 AND status = 'pending'`,
+            [now, sub.id],
+          );
+        }
+
+        // Audit log entry for trusted auto-approval
+        await sql`
+          INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+          VALUES (
+            'Submission resolved: APPROVED (trusted contributor auto-approve)',
+            ${session.sub}, ${targetOrg}, 'submission', ${sub.id},
+            ${JSON.stringify({ outcome: 'approved', trustedSkip: true })}
+          )
+        `;
+
+        await sql`COMMIT`;
+      } catch (e) {
+        await sql`ROLLBACK`;
+        console.error("Trusted auto-approve transaction failed:", e);
+        throw e;
+      }
     }
 
     // ── Jury assignment (normal mode only) ──
@@ -205,103 +290,6 @@ export async function POST(request: NextRequest) {
           ON CONFLICT DO NOTHING
         `;
       }
-    }
-
-    // ── KV store sync ──
-    try {
-      const SK_SUBS = "ta-s-v5";
-      const kvResult = await sql`SELECT value FROM kv_store WHERE key = ${SK_SUBS}`;
-      const subs = kvResult.rows.length > 0 && kvResult.rows[0].value
-        ? JSON.parse(kvResult.rows[0].value)
-        : {};
-
-      const editsList = (inlineEdits && Array.isArray(inlineEdits))
-        ? inlineEdits.filter((e: Record<string, unknown>) => e.original && e.replacement).map((e: Record<string, unknown>) => ({
-            original: e.original,
-            replacement: e.replacement,
-            reasoning: e.reasoning || null,
-          }))
-        : [];
-
-      // Get org name for display
-      const orgRow = await sql`SELECT name FROM organizations WHERE id = ${targetOrg}`;
-      const orgName = orgRow.rows[0]?.name || "";
-
-      // Get jury pool usernames for KV store
-      const juryPool = await sql`
-        SELECT u.username FROM jury_assignments ja
-        JOIN users u ON u.id = ja.user_id
-        WHERE ja.submission_id = ${sub.id}
-      `;
-      const jurorUsernames = juryPool.rows.map((r: Record<string, unknown>) => r.username as string);
-
-      // Build anon map
-      const anonMap: Record<string, string> = {};
-      anonMap[session.username] = `Citizen-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-      jurorUsernames.forEach((j: string, i: number) => { anonMap[j] = `Juror-${String.fromCharCode(65 + i)}`; });
-
-      const jurySize = (!wildWest && initialStatus === "pending_review") ? getJurySize(count) : (wildWest ? 1 : 0);
-
-      subs[sub.id] = {
-        id: sub.id,
-        submissionType: submissionType,
-        status: trustedSkip ? "approved" : initialStatus,
-        url,
-        originalHeadline,
-        replacement: replacement || null,
-        reasoning,
-        author: author || null,
-        submittedBy: session.username,
-        orgId: targetOrg,
-        orgName,
-        trustedSkip,
-        isDI: submitterIsDI,
-        diPartner: diPartnerUsername,
-        evidence: evidence || [],
-        inlineEdits: editsList,
-        standingCorrection: body.standingCorrection || null,
-        standingCorrections: body.standingCorrections || [],
-        argumentEntry: body.argumentEntry || null,
-        argumentEntries: body.argumentEntries || [],
-        beliefEntry: body.beliefEntry || null,
-        beliefEntries: body.beliefEntries || [],
-        translationEntry: body.translationEntry || null,
-        translationEntries: body.translationEntries || [],
-        linkedVaultEntries: body.linkedVaultEntries || [],
-        jurors: jurorUsernames,
-        jurySeed: Math.floor(Math.random() * 10000),
-        jurySeats: jurySize,
-        acceptedJurors: [],
-        acceptedAt: {},
-        votes: {},
-        crossGroupJurors: [],
-        crossGroupVotes: {},
-        crossGroupSeed: 0,
-        crossGroupAcceptedJurors: [],
-        crossGroupAcceptedAt: {},
-        crossGroupJurySize: 0,
-        anonMap,
-        createdAt: sub.created_at,
-        resolvedAt: trustedSkip ? sub.created_at : null,
-        deliberateLie: false,
-        auditTrail: [{ time: sub.created_at, action: submitterIsDI
-          ? `🤖 Submitted by a Digital Intelligence — awaiting partner pre-approval`
-          : trustedSkip
-          ? "🛡 Submitted (Trusted Contributor — jury skipped, disputable)"
-          : initialStatus === "pending_review"
-          ? `Submission received. Jury pool: ${jurorUsernames.length} jurors — ${jurySize} seats.`
-          : `Submission received. Queued — ${count} members, 5 needed.` }],
-      };
-
-      const json = JSON.stringify(subs);
-      await sql`
-        INSERT INTO kv_store (key, value, updated_at)
-        VALUES (${SK_SUBS}, ${json}, now())
-        ON CONFLICT (key)
-        DO UPDATE SET value = ${json}, updated_at = now()
-      `;
-    } catch (e) {
-      console.error("KV sync failed:", e);
     }
 
     createdSubs.push(sub);

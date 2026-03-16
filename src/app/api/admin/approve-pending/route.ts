@@ -1,26 +1,7 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
-
-const VER = "v5";
-const SK_SUBS = `ta-s-${VER}`;
-
-async function kvGet(key: string): Promise<unknown> {
-  const result = await sql`SELECT value FROM kv_store WHERE key = ${key}`;
-  if (result.rows.length === 0 || !result.rows[0].value) return null;
-  return JSON.parse(result.rows[0].value);
-}
-
-async function kvSet(key: string, value: unknown): Promise<void> {
-  const json = JSON.stringify(value);
-  await sql`
-    INSERT INTO kv_store (key, value, updated_at)
-    VALUES (${key}, ${json}, now())
-    ON CONFLICT (key)
-    DO UPDATE SET value = ${json}, updated_at = now()
-  `;
-}
+import { ok, forbidden } from "@/lib/api-utils";
 
 // All non-terminal statuses that should be flushed to approved
 const PENDING_STATUSES = [
@@ -31,19 +12,15 @@ const PENDING_STATUSES = [
 ];
 
 // POST /api/admin/approve-pending
-// Approves ALL currently non-resolved submissions in BOTH the SQL
-// submissions table AND the KV store. Catches legacy bugs where
-// submissions got stuck in intermediate states.
-// REQUIRES admin authentication.
+// Approves ALL currently non-resolved submissions in the SQL
+// submissions table. REQUIRES admin authentication.
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin) return forbidden("Admin access required");
   const now = new Date().toISOString();
-  let sqlResolved = 0;
-  let kvResolved = 0;
+  let resolved = 0;
 
-  // ── 1. Approve pending submissions in SQL database ──
-
+  // Approve pending submissions in SQL database
   const pending = await sql`
     SELECT s.id, s.submitted_by, s.org_id, s.is_di, s.di_partner_id, s.status AS prev_status
     FROM submissions s
@@ -94,39 +71,11 @@ export async function POST(request: NextRequest) {
       )
     `;
 
-    sqlResolved++;
-  }
-
-  // ── 2. Approve pending submissions in KV store ──
-  // The browser extension reads from here, so this is critical.
-
-  const subs = (await kvGet(SK_SUBS)) as Record<string, Record<string, unknown>> | null;
-
-  if (subs) {
-    const kvPendingStatuses = new Set(["pending_jury", "pending_review", "di_pending", "cross_review"]);
-
-    for (const [, sub] of Object.entries(subs)) {
-      if (kvPendingStatuses.has(sub.status as string)) {
-        const prevStatus = sub.status;
-        // cross_review was already in-group approved — give it consensus
-        sub.status = prevStatus === "cross_review" ? "consensus" : "approved";
-        sub.resolvedAt = now;
-        sub.deliberateLie = false;
-
-        const trail = (sub.auditTrail as Array<Record<string, string>>) || [];
-        trail.push({ time: now, action: `Admin: approved pending submission (was ${prevStatus})` });
-        sub.auditTrail = trail;
-
-        kvResolved++;
-      }
-    }
-
-    await kvSet(SK_SUBS, subs);
+    resolved++;
   }
 
   return ok({
-    message: `Approved all pending corrections. SQL: ${sqlResolved}, KV: ${kvResolved}.`,
-    sqlResolved,
-    kvResolved,
+    message: `Approved all pending corrections. ${resolved} submission(s) resolved.`,
+    resolved,
   });
 }

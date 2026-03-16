@@ -877,192 +877,46 @@ async function canDoCrossGroup() {
 // (severe if deliberate deception found).
 
 async function fileDispute(subId, disputerUsername, reasoning, evidence) {
-  const subs = (await sG(SK.SUBS)) || {};
-  const sub = subs[subId];
-  if (!sub) return { error: "Submission not found." };
-  if (sub.submittedBy === disputerUsername) return { error: "Cannot dispute your own submission." };
-
-  const orgs = (await sG(SK.ORGS)) || {};
-  const org = orgs[sub.orgId];
-  if (!org) return { error: "Assembly not found." };
-  if (!org.members.includes(disputerUsername)) return { error: "You must be in the same Assembly." };
-  if (org.members.length < 100) return { error: "Disputes require 100+ members." };
-
-  // Check for existing active dispute on this submission
-  const disputes = (await sG(SK.DISPUTES)) || {};
-  const existing = Object.values(disputes).find(d => d.subId === subId && d.status === "pending_review");
-  if (existing) return { error: "This submission already has an active dispute." };
-  // Prevent re-disputes within 30 days of a resolved dispute
-  const recentDispute = Object.values(disputes).find(d => d.subId === subId && d.resolvedAt && (Date.now() - new Date(d.resolvedAt).getTime()) < 30 * 24 * 60 * 60 * 1000);
-  if (recentDispute) return { error: "This submission was disputed within the last 30 days. Please wait before re-disputing." };
-  // Cap total disputes on a single submission
-  const totalDisputes = Object.values(disputes).filter(d => d.subId === subId).length;
-  if (totalDisputes >= 3) return { error: "This submission has reached the maximum number of disputes (3)." };
-
-  const now = new Date().toISOString();
-  // Select jury: exclude disputer, original submitter, DI partners, and any prior jurors on the submission
-  const users = (await sG(SK.USERS)) || {};
-  const disputerUser = users[disputerUsername]; const submitterUser = users[sub.submittedBy];
-  const diExclude = [
-    ...(disputerUser?.isDI && disputerUser.diPartner ? [disputerUser.diPartner] : []),
-    ...(submitterUser?.isDI && submitterUser.diPartner ? [submitterUser.diPartner] : []),
-    ...Object.values(users).filter(u => u.isDI && (u.diPartner === disputerUsername || u.diPartner === sub.submittedBy)).map(u => u.username),
-  ];
-  const excluded = new Set([disputerUsername, sub.submittedBy, ...diExclude, ...(sub.jurors || []), ...(sub.crossGroupJurors || [])]);
-  const pool = org.members.filter(m => !excluded.has(m));
-  const disputeJurySize = getJurySize(org.members.length);
-  if (pool.length < disputeJurySize) return { error: "Not enough uninvolved members for a jury." };
-
-  // Apply same jury selection rules
-  const juryResult = await selectJury(sub.orgId, sub.submittedBy, false);
-  // Filter out disputer from jury if selected
-  let jurors = juryResult.jurors.filter(j => j !== disputerUsername && j !== sub.submittedBy);
-  if (jurors.length < disputeJurySize) {
-    const extras = pool.filter(m => !jurors.includes(m)).sort(() => Math.random() - 0.5);
-    while (jurors.length < disputeJurySize && extras.length > 0) jurors.push(extras.shift());
+  // ── File dispute via relational API (single source of truth) ──
+  // The server handles validation, jury selection, status updates, and audit logging.
+  try {
+    const res = await fetch("/api/disputes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submissionId: subId,
+        reasoning: reasoning.trim(),
+        evidence: (evidence || []).map(e => ({ url: e.url, explanation: e.explanation })),
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "Failed to file dispute" };
+    }
+    const data = await res.json();
+    return { success: true, disputeId: data.data?.id || data.id };
+  } catch (e) {
+    return { error: "Network error filing dispute" };
   }
-  if (jurors.length < disputeJurySize) return { error: "Insufficient jurors." };
-  jurors = jurors.slice(0, disputeJurySize);
-
-  const disputeAnonMap = buildAnonMap(disputerUsername, jurors);
-  disputeAnonMap[sub.submittedBy] = genAnonId("Citizen");
-  const dispute = {
-    id: gid(), subId, submissionHeadline: sub.replacement, submissionReasoning: sub.reasoning,
-    originalSubmitter: sub.submittedBy, orgId: sub.orgId, orgName: sub.orgName,
-    disputedBy: disputerUsername, reasoning: reasoning.trim(),
-    evidence: evidence || [],
-    status: "pending_review", jurors, votes: {},
-    deliberateLieFinding: false,
-    anonMap: disputeAnonMap,
-    createdAt: now, resolvedAt: null,
-    auditTrail: [{ time: now, action: `Dispute filed. Jury pool: ${jurors.length} jurors assigned.` }],
-  };
-
-  disputes[dispute.id] = dispute;
-  await sS(SK.DISPUTES, disputes);
-
-  // Mark submission as disputed
-  subs[subId].status = "disputed";
-  subs[subId].auditTrail.push({ time: now, action: `⚖ DISPUTED. Dispute ID: ${dispute.id}` });
-  await sS(SK.SUBS, subs);
-
-  const audit = (await sG(SK.AUDIT)) || [];
-  audit.push({ time: now, action: `Dispute filed on "${sub.replacement}"` });
-  await sS(SK.AUDIT, audit);
-
-  // Notify dispute jurors
-  for (const j of jurors) {
-    await createNotification(j, "dispute_jury_assigned", { disputeId: dispute.id, headline: sub.replacement || sub.originalHeadline, orgName: sub.orgName });
-  }
-  // Notify original submitter that their submission is disputed
-  await createNotification(sub.submittedBy, "submission_disputed", { disputeId: dispute.id, subId, headline: sub.replacement || sub.originalHeadline });
-
-  return { success: true, disputeId: dispute.id };
 }
 
 async function resolveDispute(disputeId, voterUsername, approve, note, lieChecked) {
-  const disputes = (await sG(SK.DISPUTES)) || {};
-  const d = disputes[disputeId];
-  if (!d) return { error: "Dispute not found." };
-  if (!d.jurors.includes(voterUsername)) return { error: "Not on this jury." };
-  if (d.votes[voterUsername]) return { error: "Already voted." };
-
-  const now = new Date().toISOString();
-  // approve = true means the disputer is RIGHT (submission was wrong)
-  // approve = false means the original submitter is vindicated
-  d.votes[voterUsername] = { approve, note: note.trim(), time: now, deliberateLie: lieChecked };
-  d.anonMap = d.anonMap || {};
-  if (!d.anonMap[voterUsername]) d.anonMap[voterUsername] = genAnonId("Juror");
-  d.auditTrail.push({ time: now, action: `${d.anonMap[voterUsername]} voted ${approve ? "UPHOLD DISPUTE" : "REJECT DISPUTE"}${lieChecked ? " ⚠LIE-BALLOT" : ""}` });
-
-  const vc = Object.keys(d.votes).length;
-  const upheld = Object.values(d.votes).filter(v => v.approve).length;
-  const rejected = vc - upheld;
-  const disputeJurySize = d.jurors.length;
-  const disputeMajority = getMajority(disputeJurySize);
-
-  if (upheld >= disputeMajority || rejected >= disputeMajority || vc >= disputeJurySize) {
-    const disputerWins = upheld >= disputeMajority;
-    const allVotes = Object.values(d.votes);
-    const lieCount = allVotes.filter(v => v.deliberateLie).length;
-    const wildWestDispute = await isWildWestMode();
-    const wasLie = !wildWestDispute && lieCount > allVotes.length / 2;
-
-    d.status = disputerWins ? "upheld" : "dismissed";
-    d.resolvedAt = now;
-    d.deliberateLieFinding = wasLie;
-    d.auditTrail.push({ time: now, action: `RESOLVED: ${d.status.toUpperCase()} (${upheld}/${vc} upheld)${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
-    // Reveal disputer and original submitter — jurors remain permanently anonymous
-    if (d.anonMap) {
-      const parties = [[d.disputedBy, "disputer"], [d.originalSubmitter, "original submitter"]].filter(([u]) => d.anonMap[u]).map(([u, role]) => `${d.anonMap[u]} was @${u} (${role})`).join(", ");
-      d.auditTrail.push({ time: now, action: `🔓 Blind review complete — parties revealed: ${parties}. Juror identities remain sealed.` });
+  // ── Vote on dispute via relational API (single source of truth) ──
+  // The server handles vote recording, resolution logic, reputation updates, and audit logging.
+  try {
+    const res = await fetch(`/api/disputes/${disputeId}/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approve, note: note.trim(), deliberateLie: lieChecked }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "Failed to cast dispute vote" };
     }
-
-    // Score impacts
-    const users = (await sG(SK.USERS)) || {};
-    const disputer = users[d.disputedBy];
-    const original = users[d.originalSubmitter];
-
-    if (disputerWins) {
-      // Successful dispute: disputer caught an error — 3× reward
-      if (disputer) {
-        disputer.disputeWins = (disputer.disputeWins || 0) + 1;
-        users[d.disputedBy] = disputer;
-      }
-      d.auditTrail.push({ time: now, action: `⚖ DISPUTE UPHELD: @${d.disputedBy} earns ${W.disputeWin}× reputation reward for catching an error` });
-      // Original loses — severity depends on lie finding
-      if (original) {
-        original.disputeLosses = (original.disputeLosses || 0) + 1;
-        original.assemblyStreaks = original.assemblyStreaks || {};
-        const wasTrusted = (original.assemblyStreaks[d.orgId] || 0) >= TRUSTED_STREAK;
-        original.assemblyStreaks[d.orgId] = 0; // Reset per-assembly streak
-        if (wasLie) {
-          original.deliberateLies = (original.deliberateLies || 0) + 1;
-          original.lastDeceptionFinding = new Date().toISOString();
-          original.currentStreak = 0;
-          original.requiredStreak = (original.requiredStreak || 3) + 4; // extra harsh
-        } else {
-          original.totalLosses = (original.totalLosses || 0) + 1;
-          original.currentStreak = 0;
-          original.requiredStreak = (original.requiredStreak || 3) + 1;
-        }
-        if (wasTrusted) {
-          d.auditTrail.push({ time: now, action: `⚠ @${d.originalSubmitter} lost Trusted Contributor status` });
-        }
-        users[d.originalSubmitter] = original;
-      }
-    } else {
-      // Failed dispute: 3× penalty — same as being wrong. Don't be frivolous.
-      if (disputer) { disputer.disputeLosses = (disputer.disputeLosses || 0) + 1; users[d.disputedBy] = disputer; }
-      d.auditTrail.push({ time: now, action: `Failed dispute: @${d.disputedBy} incurs ${W.failedDisputeDrag}× drag penalty` });
-      // Original vindicated
-      if (original) { original.disputeWins = (original.disputeWins || 0) + 1; users[d.originalSubmitter] = original; }
-    }
-    await sS(SK.USERS, users);
-
-    // Update original submission status
-    const subs = (await sG(SK.SUBS)) || {};
-    if (subs[d.subId]) {
-      subs[d.subId].status = disputerWins ? "rejected" : "approved";
-      subs[d.subId].auditTrail.push({ time: now, action: `Dispute ${d.status}: ${disputerWins ? "Submission overturned" : "Submission vindicated"}${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
-      await sS(SK.SUBS, subs);
-    }
-
-    const audit = (await sG(SK.AUDIT)) || [];
-    audit.push({ time: now, action: `Dispute ${d.status}: @${d.disputedBy} vs @${d.originalSubmitter} — ${disputerWins ? "Disputer wins" : "Original vindicated"}${wasLie ? " ⚠LIE" : ""}` });
-    await sS(SK.AUDIT, audit);
+    return { success: true };
+  } catch (e) {
+    return { error: "Network error casting dispute vote" };
   }
-
-  // Notify both parties of dispute resolution
-  if (d.resolvedAt) {
-    const disputeOutcome = disputerWins ? "upheld" : "dismissed";
-    await createNotification(d.disputedBy, "dispute_resolved", { disputeId, outcome: disputeOutcome, headline: d.submissionHeadline });
-    await createNotification(d.originalSubmitter, "dispute_resolved", { disputeId, outcome: disputeOutcome, headline: d.submissionHeadline });
-  }
-
-  disputes[disputeId] = d;
-  await sS(SK.DISPUTES, disputes);
-  return { success: true };
 }
 
 const PROFILES = {
@@ -2667,174 +2521,85 @@ function SubmitScreen({ user, onUpdate }) {
       if (!/^https?:\/\/.+\..+/.test(ev.url.trim())) { setError("Evidence URLs must start with http:// or https://"); setLoading(false); return; }
     }
 
-    const allOrgs = (await sG(SK.ORGS)) || {};
-    const now = new Date().toISOString();
-    const allUsers = (await sG(SK.USERS)) || {};
-    const submitter = allUsers[user.username] || user;
-    const submitterIsDI = isDIUser(submitter);
-
-    if (submitterIsDI) {
-      const susp = isDISuspended(submitter, allUsers);
-      if (susp.suspended) { setError(`🤖 ${susp.reason}`); setLoading(false); return; }
-    }
-
-    const subs = (await sG(SK.SUBS)) || {};
-    const audit = (await sG(SK.AUDIT)) || [];
+    const authorStr = authors.length > 0 ? authors.join(", ") : (form.author ? form.author.trim() : null);
     const submittedNames = [];
 
-    for (const orgId of targetOrgIds) {
-      const org = allOrgs[orgId];
-      if (!org) continue;
+    // ── Submit via relational API (single source of truth) ──
+    // The server handles status determination, jury assignment, trusted skip,
+    // evidence/inline-edit insertion, and audit logging.
+    const res = await fetch("/api/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submissionType: form.submissionType,
+        url: form.url.trim(),
+        originalHeadline: form.originalHeadline.trim(),
+        replacement: form.replacement.trim() || null,
+        reasoning: form.reasoning.trim(),
+        author: authorStr || null,
+        orgIds: targetOrgIds,
+        evidence: validEvidence.map(e => ({ url: e.url.trim(), explanation: e.explanation?.trim() || "" })),
+        inlineEdits: validEdits.map(e => ({ original: e.original.trim(), replacement: e.replacement.trim(), reasoning: e.reasoning?.trim() || null })),
+      }),
+    });
 
-      // DI daily limit per assembly
-      if (submitterIsDI) {
-        const limit = getDISubmissionLimit(org);
-        const todayCount = await getDIDailyCount(user.username, orgId);
-        if (todayCount >= limit) continue;
-      }
-
-      const wildWest = await isWildWestMode();
-      const hasEnough = wildWest ? org.members.length >= 2 : org.members.length >= 5;
-      const trusted = !submitterIsDI && !wildWest && isTrustedContributor(submitter, orgId);
-      let jurors = [], jurySeed = 0, rulesApplied = [], status = submitterIsDI ? "di_pending" : "pending_jury";
-      let trustedSkip = false;
-      if (submitterIsDI) {
-        status = "di_pending";
-      } else if (trusted) {
-        status = "approved"; trustedSkip = true;
-      } else if (hasEnough) {
-        if (wildWest) {
-          // Wild West: pick 1 random reviewer (not self, not DI partner)
-          const eligible = org.members.filter(m => m !== user.username && m !== (submitter.diPartner || ""));
-          if (eligible.length > 0) {
-            const pick = eligible[Math.floor(Math.random() * eligible.length)];
-            jurors = [pick]; jurySeed = Math.floor(Math.random() * 10000);
-            rulesApplied = ["Wild West: 1 reviewer"];
-            status = "pending_review";
-          }
-        } else {
-          const result = await selectJury(orgId, user.username);
-          if (!result.error) { jurors = result.jurors; jurySeed = result.seed; rulesApplied = result.rulesApplied; status = "pending_review"; }
-        }
-      }
-      const jurySeats = wildWest ? 1 : getJurySize(org.members.length);
-      const authorStr = authors.length > 0 ? authors.join(", ") : (form.author ? form.author.trim() : null);
-      const sub = {
-        id: gid(), url: form.url.trim(), originalHeadline: form.originalHeadline.trim(),
-        replacement: form.replacement.trim(), reasoning: form.reasoning.trim(),
-        author: authorStr, submissionType: form.submissionType,
-        evidence: validEvidence, inlineEdits: validEdits.length > 0 ? validEdits : [],
-        standingCorrection: standingCorrections.find(sc => sc.assertion.trim()) || null,
-        standingCorrections: standingCorrections.filter(sc => sc.assertion.trim()),
-        argumentEntry: submitArgs.find(a => a.trim()) ? { content: submitArgs.find(a => a.trim()) } : null,
-        argumentEntries: submitArgs.filter(a => a.trim()).map(a => ({ content: a.trim() })),
-        beliefEntry: submitBeliefs.find(b => b.trim()) ? { content: submitBeliefs.find(b => b.trim()) } : null,
-        beliefEntries: submitBeliefs.filter(b => b.trim()).map(b => ({ content: b.trim() })),
-        translationEntry: submitTranslations.find(t => t.original.trim() && t.translated.trim()) || null,
-        translationEntries: submitTranslations.filter(t => t.original.trim() && t.translated.trim()),
-        linkedVaultEntries: linkedEntries.length > 0 ? linkedEntries.map(e => ({ id: e.id, type: e.type, label: e.label, detail: e.detail || null })) : [],
-        submittedBy: user.username, orgId, orgName: org.name,
-        status, jurors, jurySeed, jurySeats, acceptedJurors: [], acceptedAt: {}, votes: {}, trustedSkip,
-        isDI: submitterIsDI, diPartner: submitterIsDI ? submitter.diPartner : null,
-        crossGroupJurors: [], crossGroupVotes: {}, crossGroupSeed: 0,
-        crossGroupAcceptedJurors: [], crossGroupAcceptedAt: {},
-        anonMap: buildAnonMap(user.username, jurors),
-        createdAt: now, resolvedAt: trustedSkip ? now : null,
-        auditTrail: [{ time: now, action: submitterIsDI
-          ? `🤖 Submitted by a Digital Intelligence — awaiting partner pre-approval`
-          : trustedSkip
-          ? `🛡 Submitted (Trusted Contributor — jury skipped, disputable)`
-          : `Submission received. ${status === "pending_review" ? `Jury pool: ${jurors.length} jurors — ${jurySeats} seats. (seed:${jurySeed}). Rules: ${rulesApplied.join(", ") || "none"}` : `Queued — ${org.members.length} members, 5 needed.`}` }],
-      };
-      subs[sub.id] = sub;
-
-      if (trustedSkip) {
-        const usrs = (await sG(SK.USERS)) || {};
-        const sm = usrs[user.username];
-        if (sm) {
-          sm.totalWins = (sm.totalWins || 0) + 1; sm.currentStreak = (sm.currentStreak || 0) + 1;
-          sm.assemblyStreaks = sm.assemblyStreaks || {};
-          sm.assemblyStreaks[orgId] = (sm.assemblyStreaks[orgId] || 0) + 1;
-          usrs[user.username] = sm; await sS(SK.USERS, usrs);
-        }
-        const crossResult = await selectCrossGroupJury(sub.orgId, sub.submittedBy);
-        if (!crossResult.error && crossResult.jurors.length >= 3) {
-          sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
-          sub.status = "cross_review"; sub.resolvedAt = null;
-          // Add cross-group jurors to anon map
-          crossResult.jurors.forEach(j => { if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror"); });
-          sub.auditTrail.push({ time: now, action: `Auto-promoted to cross-group review (Trusted Contributor). ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}.` });
-        }
-      }
-
-      // Save vault entries for each org (each gets its own linked entry)
-      {
-        // Standing Corrections — multiple
-        const validSCs = standingCorrections.filter(sc => sc.assertion.trim());
-        if (validSCs.length > 0) {
-          const standing = (await sG(SK.VAULT)) || {};
-          for (const sc of validSCs) {
-            const scId = gid();
-            standing[scId] = { id: scId, orgId, orgName: org.name, assertion: sc.assertion.trim(), evidence: sc.evidence.trim(), submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, votes: {} };
-          }
-          await sS(SK.VAULT, standing);
-        }
-        // Arguments — multiple
-        const validArgs = submitArgs.filter(a => a.trim());
-        if (validArgs.length > 0) {
-          const allArgs = (await sG(SK.ARGS)) || {};
-          for (const arg of validArgs) {
-            const argId = gid();
-            allArgs[argId] = { id: argId, orgId, orgName: org.name, content: arg.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
-          }
-          await sS(SK.ARGS, allArgs);
-        }
-        // Beliefs — multiple
-        const validBeliefs = submitBeliefs.filter(b => b.trim());
-        if (validBeliefs.length > 0) {
-          const allBeliefs = (await sG(SK.BELIEFS)) || {};
-          for (const belief of validBeliefs) {
-            const bId = gid();
-            allBeliefs[bId] = { id: bId, orgId, orgName: org.name, content: belief.trim(), submittedBy: user.username, linkedSubId: sub.id, createdAt: now };
-          }
-          await sS(SK.BELIEFS, allBeliefs);
-        }
-        // Translations — multiple
-        const validTrans = submitTranslations.filter(t => t.original.trim() && t.translated.trim());
-        if (validTrans.length > 0) {
-          const allTrans = (await sG(SK.TRANSLATIONS)) || {};
-          for (const tr of validTrans) {
-            const tId = gid();
-            allTrans[tId] = { id: tId, orgId, orgName: org.name, original: tr.original.trim(), translated: tr.translated.trim(), type: tr.type, submittedBy: user.username, linkedSubId: sub.id, status: "pending", createdAt: now, survivalCount: 0 };
-          }
-          await sS(SK.TRANSLATIONS, allTrans);
-        }
-      }
-
-      // Notify jurors of assignment
-      if (status === "pending_review" && jurors.length > 0) {
-        for (const j of jurors) {
-          await createNotification(j, "jury_assigned", { subId: sub.id, headline: sub.replacement || sub.originalHeadline, orgName: org.name });
-        }
-      }
-      // Notify DI partner
-      if (submitterIsDI && submitter.diPartner) {
-        await createNotification(submitter.diPartner, "di_needs_approval", { subId: sub.id, headline: sub.replacement || sub.originalHeadline, submittedBy: user.username });
-      }
-      // Notify cross-group jurors if trusted skip promoted
-      if (trustedSkip && sub.crossGroupJurors.length > 0) {
-        for (const j of sub.crossGroupJurors) {
-          await createNotification(j, "jury_assigned", { subId: sub.id, headline: sub.replacement || sub.originalHeadline, orgName: org.name, crossGroup: true });
-        }
-      }
-
-      const typeLabel = form.submissionType === "affirmation" ? "Affirmation" : "Correction";
-      audit.push({ time: now, action: `${typeLabel} by @${user.username}: "${form.submissionType === "affirmation" ? form.originalHeadline : form.replacement}" → ${org.name} [${status}]${trustedSkip ? " (Trusted)" : ""}` });
-      submittedNames.push(org.name);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      setError(errData.error || "Submission failed"); setLoading(false); return;
     }
 
-    await sS(SK.SUBS, subs);
-    await sS(SK.AUDIT, audit);
+    const resData = await res.json();
+    // The API returns a single submission or { submissions, count } for multi-org
+    const createdSubs = resData.submissions ? resData.submissions : [resData];
+
+    for (const created of createdSubs) {
+      const orgId = created.org_id || targetOrgIds[0];
+      const subId = created.id;
+
+      // Save vault entries via relational API
+      const validSCs = standingCorrections.filter(sc => sc.assertion.trim());
+      for (const sc of validSCs) {
+        try {
+          await fetch("/api/vault", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orgId, type: "vault", submissionId: subId, assertion: sc.assertion.trim(), evidence: sc.evidence.trim() }),
+          });
+        } catch (e) { console.warn("Vault entry creation failed:", e); }
+      }
+      const validArgs = submitArgs.filter(a => a.trim());
+      for (const arg of validArgs) {
+        try {
+          await fetch("/api/vault", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orgId, type: "argument", submissionId: subId, content: arg.trim() }),
+          });
+        } catch (e) { console.warn("Argument creation failed:", e); }
+      }
+      const validBeliefs = submitBeliefs.filter(b => b.trim());
+      for (const belief of validBeliefs) {
+        try {
+          await fetch("/api/vault", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orgId, type: "belief", submissionId: subId, content: belief.trim() }),
+          });
+        } catch (e) { console.warn("Belief creation failed:", e); }
+      }
+      const validTrans = submitTranslations.filter(t => t.original.trim() && t.translated.trim());
+      for (const tr of validTrans) {
+        try {
+          await fetch("/api/vault", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orgId, type: "translation", submissionId: subId, original: tr.original.trim(), translated: tr.translated.trim(), translationType: tr.type }),
+          });
+        } catch (e) { console.warn("Translation creation failed:", e); }
+      }
+
+      submittedNames.push(created.org_name || created.submission_type || "assembly");
+    }
     setLoading(false);
     if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
@@ -3145,20 +2910,77 @@ function ReviewScreen({ user }) {
     }
     for (const [id, sub] of Object.entries(allSubs)) {
       let changed = false;
-      // Fix diPartner if missing on DI submissions
-      if (sub.isDI && !sub.diPartner && sub.submittedBy) {
-        const partner = diUsersByPartner[sub.submittedBy];
-        if (partner) { sub.diPartner = partner; changed = true; }
-      }
       // Fix submittedBy if it looks like a UUID (from API route before fix)
       if (sub.submittedBy && sub.submittedBy.includes("-") && sub.submittedBy.length > 30) {
         const match = Object.entries(users).find(([, u]) => u.id === sub.submittedBy);
         if (match) { sub.submittedBy = match[0]; changed = true; }
       }
+      // Fix diPartner if missing on DI submissions
+      if (sub.isDI && !sub.diPartner && sub.submittedBy) {
+        const partner = diUsersByPartner[sub.submittedBy];
+        if (partner) { sub.diPartner = partner; changed = true; }
+      }
+      // Fix di_pending submissions missing isDI flag or diPartner
+      if (sub.status === "di_pending" && !sub.isDI) {
+        sub.isDI = true; changed = true;
+      }
+      if (sub.status === "di_pending" && !sub.diPartner && sub.submittedBy) {
+        const partner = diUsersByPartner[sub.submittedBy];
+        if (partner) { sub.diPartner = partner; changed = true; }
+      }
+      // Fix DI submissions stuck without diPartner by checking if submitter is a DI user
+      if (!sub.diPartner && sub.submittedBy && users[sub.submittedBy] && users[sub.submittedBy].isDI && users[sub.submittedBy].diPartner) {
+        sub.isDI = true; sub.diPartner = users[sub.submittedBy].diPartner; changed = true;
+        // If status was not di_pending but should be (no jurors assigned, not resolved)
+        if (!sub.resolvedAt && !sub.jurors?.length && sub.status === "pending_jury") {
+          sub.status = "di_pending"; changed = true;
+        }
+      }
       if (changed) { allSubs[id] = sub; kvDirty = true; }
     }
     if (kvDirty) await sS(SK.SUBS, allSubs);
-    setSubs(allSubs); setDisputes((await sG(SK.DISPUTES)) || {}); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
+    // ── Merge ALL review items from relational DB ──
+    // Submissions and disputes created via the relational API live in SQL
+    // tables, not the KV store. Fetch them so every review tab shows
+    // everything regardless of which data path created the records.
+    const allDisputes = (await sG(SK.DISPUTES)) || {};
+    try {
+      const [queueRes, diRes] = await Promise.all([
+        fetch("/api/reviews/queue"),
+        fetch("/api/submissions/di-queue"),
+      ]);
+      if (queueRes.ok) {
+        const queueData = await queueRes.json();
+        // Merge submissions (in-group, cross-group)
+        if (queueData.submissions) {
+          for (const relSub of queueData.submissions) {
+            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
+          }
+        }
+        // Merge disputes (jury-assigned)
+        if (queueData.disputes) {
+          for (const relDisp of queueData.disputes) {
+            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
+          }
+        }
+        // Merge my disputes
+        if (queueData.myDisputes) {
+          for (const relDisp of queueData.myDisputes) {
+            if (!allDisputes[relDisp.id]) allDisputes[relDisp.id] = relDisp;
+          }
+        }
+      }
+      // DI queue
+      if (diRes.ok) {
+        const diData = await diRes.json();
+        if (diData.submissions) {
+          for (const relSub of diData.submissions) {
+            if (!allSubs[relSub.id]) allSubs[relSub.id] = relSub;
+          }
+        }
+      }
+    } catch (e) { console.warn("Failed to fetch review queue from relational API:", e); }
+    setSubs(allSubs); setDisputes(allDisputes); setDiLinkReqs((await sG("ta-di-requests")) || {}); setLoading(false);
     // Compute jury score for display
     const js = await computeJuryScore(user.username);
     setJuryScore(js);
@@ -3201,278 +3023,46 @@ function ReviewScreen({ user }) {
 
   // Accept jury seat — first-come-first-seated
   const acceptJurySeat = async (subId, isCross) => {
-    const allSubs = (await sG(SK.SUBS)) || {};
-    const sub = allSubs[subId]; if (!sub) return;
-    const now = new Date().toISOString();
-    const seatsKey = isCross ? "crossGroupJurySize" : "jurySeats";
-    const acceptedKey = isCross ? "crossGroupAcceptedJurors" : "acceptedJurors";
-    const acceptedAtKey = isCross ? "crossGroupAcceptedAt" : "acceptedAt";
-    const seats = sub[seatsKey] || (isCross ? sub.crossGroupJurors.length : sub.jurors.length);
-    sub[acceptedKey] = sub[acceptedKey] || [];
-    sub[acceptedAtKey] = sub[acceptedAtKey] || {};
-    // Check if already accepted
-    if (sub[acceptedKey].includes(user.username)) { setReviewingId(subId); return; }
-    // Block DI partner from serving on jury
-    if (sub.diPartner === user.username || sub.submittedBy === user.username) {
-      alert("You cannot serve on this jury — you have a relationship with the submitter."); load(); return;
-    }
-    const allUsers = (await sG(SK.USERS)) || {};
-    const submitterUser = allUsers[sub.submittedBy];
-    if (submitterUser && !submitterUser.isDI && submitterUser.username !== user.username) {
-      // Check if current user is a DI registered to the submitter
-      const me = allUsers[user.username];
-      if (me && me.isDI && me.diPartner === sub.submittedBy) {
-        alert("You cannot serve on this jury — you are registered to the submitter."); load(); return;
+    // ── Accept jury seat via relational API (single source of truth) ──
+    try {
+      const juryRes = await fetch("/api/jury");
+      if (!juryRes.ok) { alert("Failed to load jury assignments"); return; }
+      const juryData = await juryRes.json();
+      const assignment = (juryData.assignments || []).find(a =>
+        a.submission_id === subId && !a.accepted
+      );
+      if (assignment) {
+        const acceptRes = await fetch(`/api/jury/${assignment.id}/accept`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!acceptRes.ok) { const d = await acceptRes.json().catch(() => ({})); alert(d.error || "Failed to accept seat"); return; }
       }
-    }
-    // Wild West: anyone in the org can review — auto-add to jurors and expand seats (capped)
-    const ww = await isWildWestMode();
-    if (ww && !isCross) {
-      if (!sub.jurors.includes(user.username)) {
-        sub.jurors.push(user.username);
-      }
-      // Expand seats to accommodate open review, but cap at getJurySize for the org
-      const orgs = (await sG(SK.ORGS)) || {};
-      const org = orgs[sub.orgId];
-      const maxSeats = org ? getJurySize((org.members || []).length) : 3;
-      sub.jurySeats = Math.min(Math.max(sub.jurySeats || 1, sub[acceptedKey].length + 1), maxSeats);
-      if (sub[acceptedKey].length >= maxSeats) {
-        alert("This jury has been filled — thank you for your willingness to serve.");
-        load(); return;
-      }
-    } else {
-      // Normal mode: check if jury is full
-      if (sub[acceptedKey].length >= seats) {
-        alert("This jury has been filled — thank you for your willingness to serve.");
-        load(); return;
-      }
-    }
-    // Seat the juror
-    sub[acceptedKey].push(user.username);
-    sub[acceptedAtKey][user.username] = now;
-    sub.auditTrail = sub.auditTrail || [];
-    // Add juror to anonMap if not already present
-    sub.anonMap = sub.anonMap || {};
-    if (!sub.anonMap[user.username]) sub.anonMap[user.username] = genAnonId("Juror");
-    sub.auditTrail.push({ time: now, action: `${sub.anonMap[user.username]} accepted jury seat${ww ? " (Wild West open review)" : ""} (${sub[acceptedKey].length}/${ww ? "open" : seats} filled)` });
-    allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
+    } catch (e) { alert("Network error accepting jury seat"); return; }
     setReviewingId(subId); load();
   };
 
   const castVote = async (subId, approve, isCross) => {
     // Rejection requires a meaningful note (50+ characters) so the submitter understands why
     if (!approve && voteNote.trim().length < 50) return alert("Rejection requires a review note of at least 50 characters explaining your reasoning. This ensures the submitter has grounds to understand — and potentially dispute — the decision.");
-    // Deception penalty blocks all voting
-    const users = (await sG(SK.USERS)) || {}; const me = users[user.username];
-    const vc2 = canVote(me || user);
-    if (!vc2.allowed) return alert(vc2.reason);
-    const allSubs = (await sG(SK.SUBS)) || {};
-    const sub = allSubs[subId]; if (!sub) return;
-    // Block DI partner from voting
-    if (sub.diPartner === user.username) return alert("You cannot vote on this submission — it was submitted by your registered Digital Intelligence.");
-    if (me && me.isDI && me.diPartner === sub.submittedBy) return alert("You cannot vote on submissions from your partner.");
-    const now = new Date().toISOString();
-    const vk = isCross ? "crossGroupVotes" : "votes";
-    sub[vk] = sub[vk] || {};
-    sub[vk][user.username] = { approve, note: voteNote.trim(), time: now, newsworthy: newsRating, interesting: funRating, deliberateLie: lieChecked, editVotes: { ...editVotes }, vaultVotes: { ...vaultVotes } };
-    sub.anonMap = sub.anonMap || {};
-    if (!sub.anonMap[user.username]) sub.anonMap[user.username] = genAnonId("Juror");
-    sub.auditTrail.push({ time: now, action: `${sub.anonMap[user.username]} voted ${approve ? "APPROVE" : "REJECT"} (${isCross ? "cross" : "in-group"})${lieChecked ? " ⚠LIE-BALLOT" : ""}${Object.keys(editVotes).length > 0 ? ` Edits: ${Object.values(editVotes).filter(v => v).length}/${Object.keys(editVotes).length} approved` : ""}` });
-
-    const vc = Object.keys(sub[vk]).length;
-    const app = Object.values(sub[vk]).filter(v => v.approve).length;
-    const rej = vc - app;
-    // Use jurySeats (actual seats needed) — fall back to pool length for legacy data
-    const expectedJurors = isCross ? (sub.crossGroupJurySize || sub.crossGroupJurors.length) : (sub.jurySeats || sub.jurors.length);
-    const majority = getMajority(expectedJurors);
-    let resolved = false, outcome = null;
-
-    if (app >= majority) { resolved = true; outcome = isCross ? "consensus" : "approved"; }
-    else if (rej >= majority) { resolved = true; outcome = isCross ? "consensus_rejected" : "rejected"; }
-    else if (vc >= expectedJurors) { resolved = true; outcome = app >= majority ? (isCross ? "consensus" : "approved") : (isCross ? "consensus_rejected" : "rejected"); }
-
-    if (resolved) {
-      sub.status = outcome; sub.resolvedAt = now;
-      // Deliberate lie: secret majority (disabled in Wild West mode)
-      const wildWestNow = await isWildWestMode();
-      const allVotes = Object.values(sub[vk]);
-      const lieCount = allVotes.filter(v => v.deliberateLie).length;
-      const wasLie = !wildWestNow && lieCount > allVotes.length / 2;
-      sub.deliberateLieFinding = wasLie;
-      sub.auditTrail.push({ time: now, action: `RESOLVED: ${outcome.toUpperCase()} (${app}/${vc} approved)${wasLie ? " ⚠ DELIBERATE DECEPTION FINDING" : ""}` });
-      // Reveal submitter identity now that voting is complete — jurors remain permanently anonymous
-      if (sub.anonMap && sub.anonMap[sub.submittedBy]) {
-        sub.auditTrail.push({ time: now, action: `🔓 Blind review complete — submitter revealed: ${sub.anonMap[sub.submittedBy]} was @${sub.submittedBy}. Juror identities remain sealed.` });
-      }
-      // Resolve each inline edit independently
-      if (sub.inlineEdits && sub.inlineEdits.length > 0) {
-        const voters = Object.values(sub[vk]);
-        sub.inlineEdits.forEach((edit, idx) => {
-          const editApprovals = voters.filter(v => v.editVotes && v.editVotes[idx] === true).length;
-          edit.approved = editApprovals >= Math.ceil(voters.length / 2);
-        });
-        const editSummary = sub.inlineEdits.map((e, i) => `Edit#${i + 1}:${e.approved ? "✓" : "✗"}`).join(" ");
-        sub.auditTrail.push({ time: now, action: `Edit verdicts: ${editSummary}` });
-      }
-      // Resolve linked vault entry survival votes
-      if (sub.linkedVaultEntries && sub.linkedVaultEntries.length > 0 && (outcome === "approved" || outcome === "consensus")) {
-        const allVoters = Object.values(sub[vk]);
-        const vaultStores = { correction: SK.VAULT, argument: SK.ARGS, belief: SK.BELIEFS };
-        for (const entry of sub.linkedVaultEntries) {
-          const stillApplies = allVoters.filter(v => v.vaultVotes && v.vaultVotes[entry.id] === true).length;
-          entry.stillApplies = stillApplies >= Math.ceil(allVoters.length / 2);
-          if (entry.stillApplies) {
-            const storeKey = vaultStores[entry.type];
-            if (storeKey) {
-              const store = (await sG(storeKey)) || {};
-              if (store[entry.id]) {
-                store[entry.id].survivalCount = (store[entry.id].survivalCount || 0) + 1;
-                store[entry.id].lastSurvived = now;
-                await sS(storeKey, store);
-              }
-            }
-          }
-        }
-        const vaultSummary = sub.linkedVaultEntries.map(e => `${e.type}:${e.stillApplies ? "✓" : "✗"}`).join(" ");
-        sub.auditTrail.push({ time: now, action: `Vault verdicts: ${vaultSummary}` });
-      }
-      // Graduate proposed vault entries to approved when submission is approved
-      if (outcome === "approved" || outcome === "consensus") {
-        if (sub.standingCorrection) {
-          const standing = (await sG(SK.VAULT)) || {};
-          const match = Object.values(standing).find(v => v.linkedSubId === sub.id && v.status === "pending");
-          if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.VAULT, standing); sub.auditTrail.push({ time: now, action: `🏛 Standing Correction graduated to approved` }); }
-        }
-        if (sub.argumentEntry) {
-          const allArgs = (await sG(SK.ARGS)) || {};
-          const match = Object.values(allArgs).find(a => a.linkedSubId === sub.id);
-          if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.ARGS, allArgs); sub.auditTrail.push({ time: now, action: `⚔️ Argument graduated to approved` }); }
-        }
-        if (sub.beliefEntry) {
-          const allBeliefs = (await sG(SK.BELIEFS)) || {};
-          const match = Object.values(allBeliefs).find(b => b.linkedSubId === sub.id);
-          if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.BELIEFS, allBeliefs); sub.auditTrail.push({ time: now, action: `🧭 Foundational Belief graduated to approved` }); }
-        }
-        if (sub.translationEntry) {
-          const allTrans = (await sG(SK.TRANSLATIONS)) || {};
-          const match = Object.values(allTrans).find(t => t.linkedSubId === sub.id);
-          if (match) { match.status = "approved"; match.approvedAt = now; await sS(SK.TRANSLATIONS, allTrans); sub.auditTrail.push({ time: now, action: `🔄 Translation graduated to approved: "${match.original}" → "${match.translated}"` }); }
-        }
-      }
-      if (!isCross) {
-        const users = (await sG(SK.USERS)) || {}; const sm = users[sub.submittedBy];
-        // For DI submissions, scoring goes to the human partner
-        const scoreTarget = (sm && sm.isDI && sm.diPartner && users[sm.diPartner]) ? users[sm.diPartner] : sm;
-        const scoreUsername = (sm && sm.isDI && sm.diPartner) ? sm.diPartner : sub.submittedBy;
-        if (scoreTarget) {
-          scoreTarget.assemblyStreaks = scoreTarget.assemblyStreaks || {};
-          if (outcome === "approved") {
-            scoreTarget.totalWins = (scoreTarget.totalWins || 0) + 1; scoreTarget.currentStreak = (scoreTarget.currentStreak || 0) + 1;
-            scoreTarget.assemblyStreaks[sub.orgId] = (scoreTarget.assemblyStreaks[sub.orgId] || 0) + 1;
-            if (scoreTarget.assemblyStreaks[sub.orgId] === TRUSTED_STREAK) {
-              sub.auditTrail.push({ time: now, action: `🛡 @${scoreUsername} earned Trusted Contributor status in this Assembly (${TRUSTED_STREAK} consecutive approvals)` });
-            }
-            if (sm && sm.isDI) sub.auditTrail.push({ time: now, action: `📊 Win credited to partner @${scoreUsername}` });
-          } else {
-            scoreTarget.totalLosses = (scoreTarget.totalLosses || 0) + 1; scoreTarget.currentStreak = 0; scoreTarget.requiredStreak = (scoreTarget.requiredStreak || 3) + 2;
-            const wasTrusted = (scoreTarget.assemblyStreaks[sub.orgId] || 0) >= TRUSTED_STREAK;
-            scoreTarget.assemblyStreaks[sub.orgId] = 0;
-            if (wasTrusted) {
-              sub.auditTrail.push({ time: now, action: `⚠ @${scoreUsername} lost Trusted Contributor status in this Assembly` });
-              await createNotification(scoreUsername, "trusted_lost", { orgName: sub.orgName });
-            }
-            if (wasLie) { scoreTarget.deliberateLies = (scoreTarget.deliberateLies || 0) + 1; scoreTarget.lastDeceptionFinding = now; }
-            if (sm && sm.isDI) sub.auditTrail.push({ time: now, action: `📊 Loss credited to partner @${scoreUsername}${wasLie ? " ⚠ DECEPTION PENALTY APPLIED TO PARTNER" : ""}` });
-          }
-          scoreTarget.ratingsReceived = scoreTarget.ratingsReceived || [];
-          Object.values(sub[vk]).forEach(v => { if (v.newsworthy) scoreTarget.ratingsReceived.push({ newsworthy: v.newsworthy, interesting: v.interesting }); });
-          scoreTarget.reviewHistory = scoreTarget.reviewHistory || []; scoreTarget.reviewHistory.push({ subId, outcome, time: now, fromDI: sm && sm.isDI ? sub.submittedBy : undefined });
-          users[scoreUsername] = scoreTarget; await sS(SK.USERS, users);
-        }
-      }
-      // Auto-promote to cross-group if approved in-group
-      if (!isCross && outcome === "approved") {
-        const crossResult = await selectCrossGroupJury(sub.orgId, sub.submittedBy);
-        if (!crossResult.error && crossResult.jurors.length >= 3) {
-          sub.crossGroupJurors = crossResult.jurors; sub.crossGroupSeed = crossResult.seed; sub.crossGroupVotes = {}; sub.crossGroupJurySize = crossResult.jurySize;
-          sub.status = "cross_review"; sub.resolvedAt = null;
-          // Add cross-group jurors to anon map
-          sub.anonMap = sub.anonMap || {};
-          crossResult.jurors.forEach(j => { if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror"); });
-          sub.auditTrail.push({ time: now, action: `Promoted to cross-group. ${crossResult.qualifyingCount} qualifying assemblies → ${crossResult.jurySize}-person jury. ${crossResult.rulesApplied.join(", ")}.` });
-        }
-      }
-      // Track cross-group outcomes on the originating Assembly
-      if (isCross) {
-        const orgs2 = (await sG(SK.ORGS)) || {};
-        const originOrg = orgs2[sub.orgId];
-        if (originOrg) {
-          originOrg.crossGroupResults = originOrg.crossGroupResults || [];
-          originOrg.crossGroupResults.push({ subId, outcome, jurySize: sub.crossGroupJurySize || sub.crossGroupJurors.length, internalJurySize: getJurySize(originOrg.members.length), wasLie, time: now });
-          if (wasLie) {
-            // Cross-group deception finding: 9× Assembly-level damage
-            originOrg.crossGroupDeceptionFindings = (originOrg.crossGroupDeceptionFindings || 0) + 1;
-            sub.auditTrail.push({ time: now, action: `🏛 CROSS-GROUP DECEPTION FINDING on ${originOrg.name} — ${CROSS_GROUP_DECEPTION_MULT}× Assembly penalty (finding #${originOrg.crossGroupDeceptionFindings})` });
-          }
-          orgs2[sub.orgId] = originOrg; await sS(SK.ORGS, orgs2);
-        }
-        // Cross-group scoring for the submitter
-        const users = (await sG(SK.USERS)) || {}; const sm = users[sub.submittedBy];
-        const scoreTarget = (sm && sm.isDI && sm.diPartner && users[sm.diPartner]) ? users[sm.diPartner] : sm;
-        const scoreUsername = (sm && sm.isDI && sm.diPartner) ? sm.diPartner : sub.submittedBy;
-        if (scoreTarget) {
-          if (outcome === "approved") {
-            // Cross-group consensus is harder to achieve — award bonus win
-            scoreTarget.totalWins = (scoreTarget.totalWins || 0) + 1;
-            scoreTarget.crossGroupWins = (scoreTarget.crossGroupWins || 0) + 1;
-            sub.auditTrail.push({ time: now, action: `📊 Cross-group consensus win credited to @${scoreUsername}` });
-          } else {
-            scoreTarget.totalLosses = (scoreTarget.totalLosses || 0) + 1;
-            scoreTarget.crossGroupLosses = (scoreTarget.crossGroupLosses || 0) + 1;
-            // Cross-group rejection resets streak
-            scoreTarget.currentStreak = 0;
-            scoreTarget.assemblyStreaks = scoreTarget.assemblyStreaks || {};
-            const wasTrusted = (scoreTarget.assemblyStreaks[sub.orgId] || 0) >= TRUSTED_STREAK;
-            scoreTarget.assemblyStreaks[sub.orgId] = 0;
-            if (wasTrusted) {
-              sub.auditTrail.push({ time: now, action: `⚠ @${scoreUsername} lost Trusted Contributor status after cross-group rejection` });
-              await createNotification(scoreUsername, "trusted_lost", { orgName: sub.orgName });
-            }
-            if (wasLie) { scoreTarget.deliberateLies = (scoreTarget.deliberateLies || 0) + 1; scoreTarget.lastDeceptionFinding = now; }
-            sub.auditTrail.push({ time: now, action: `📊 Cross-group ${wasLie ? "deception" : "rejection"} loss credited to @${scoreUsername}` });
-          }
-          scoreTarget.ratingsReceived = scoreTarget.ratingsReceived || [];
-          Object.values(sub[vk]).forEach(v => { if (v.newsworthy) scoreTarget.ratingsReceived.push({ newsworthy: v.newsworthy, interesting: v.interesting }); });
-          scoreTarget.reviewHistory = scoreTarget.reviewHistory || [];
-          scoreTarget.reviewHistory.push({ subId, outcome, time: now, crossGroup: true, fromDI: sm && sm.isDI ? sub.submittedBy : undefined });
-          users[scoreUsername] = scoreTarget; await sS(SK.USERS, users);
-        }
-      }
-
-      // Notify submitter of outcome
-      await createNotification(sub.submittedBy, "submission_resolved", { subId, outcome, headline: sub.replacement || sub.originalHeadline, isCross });
-      // Notify submitter of cross-group promotion
-      if (!isCross && outcome === "approved" && sub.status === "cross_review") {
-        await createNotification(sub.submittedBy, "cross_group_started", { subId, headline: sub.replacement || sub.originalHeadline });
-        // Notify cross-group jurors
-        for (const j of sub.crossGroupJurors) {
-          await createNotification(j, "jury_assigned", { subId, headline: sub.replacement || sub.originalHeadline, orgName: sub.orgName, crossGroup: true });
-        }
-      }
-      // Notify trusted contributor status changes
-      if (!isCross) {
-        const scoreUsername2 = (sub.isDI && sub.diPartner) ? sub.diPartner : sub.submittedBy;
-        const usrs2 = (await sG(SK.USERS)) || {};
-        const st2 = usrs2[scoreUsername2];
-        if (st2) {
-          const streak = (st2.assemblyStreaks || {})[sub.orgId] || 0;
-          if (outcome === "approved" && streak === TRUSTED_STREAK) {
-            await createNotification(scoreUsername2, "trusted_earned", { orgName: sub.orgName });
-          }
-        }
-      }
-    }
-    allSubs[subId] = sub; await sS(SK.SUBS, allSubs);
+    // ── Vote via relational API (single source of truth) ──
+    // The server handles vote recording, resolution logic, reputation updates,
+    // vault graduation, cross-group promotion, and deception findings.
+    try {
+      const res = await fetch(`/api/submissions/${subId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approve,
+          note: voteNote.trim(),
+          deliberateLie: lieChecked,
+          newsworthy: newsRating,
+          interesting: funRating,
+          role: isCross ? "cross_group" : "in_group",
+        }),
+      });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.error || "Vote failed"); return; }
+    } catch (e) { alert("Network error casting vote"); return; }
     clearDraft(`ta_draft_vote_${subId}`); voteInitSkip.current = true; lastRestoredId.current = null;
     setReviewingId(null); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false); setEditVotes({}); setVaultVotes({}); load();
   };
@@ -3495,17 +3085,21 @@ function ReviewScreen({ user }) {
   const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && d.jurors.includes(user.username) && !d.votes[user.username]);
   // All disputes involving the current user (filed by them or against their submissions)
   const myDisputes = Object.values(disputes || {}).filter(d => d.disputedBy === user.username || d.originalSubmitter === user.username);
-  const diQ = all.filter(s => s.isDI && s.diPartner === user.username && s.status === "di_pending");
+  const diQ = all.filter(s => s.status === "di_pending" && (s.diPartner === user.username || (s.isDI && s.diPartner === user.username)));
   // Show DI tab if partner of any DI sub, has pending items, or has pending link requests
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
   const hasDIPartnership = all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
 
   const castDisputeVote = async (disputeId, upheld) => {
-    const users = (await sG(SK.USERS)) || {}; const me = users[user.username];
-    const vc3 = canVote(me || user);
-    if (!vc3.allowed) return alert(vc3.reason);
-    const result = await resolveDispute(disputeId, user.username, upheld, voteNote, lieChecked);
-    if (result.error) return;
+    // ── Vote on dispute via relational API (single source of truth) ──
+    try {
+      const res = await fetch(`/api/disputes/${disputeId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approve: upheld, note: voteNote.trim(), deliberateLie: lieChecked }),
+      });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.error || "Dispute vote failed"); return; }
+    } catch (e) { alert("Network error casting dispute vote"); return; }
     clearDraft(`ta_draft_vote_${disputeId}`); voteInitSkip.current = true; lastRestoredId.current = null;
     setReviewingId(null); setVoteNote(""); setLieChecked(false); load();
   };
@@ -3787,7 +3381,7 @@ function DIPanelContent({ user, subs, onReload }) {
   useEffect(() => { (async () => { setDiReqs((await sG("ta-di-requests")) || {}); })(); }, []);
 
   // DI submissions awaiting my pre-approval
-  const diQueue = subs ? Object.values(subs).filter(s => s.isDI && s.diPartner === user.username && s.status === "di_pending") : [];
+  const diQueue = subs ? Object.values(subs).filter(s => s.status === "di_pending" && (s.diPartner === user.username || (s.isDI && s.diPartner === user.username))) : [];
 
   // Pending DI link requests
   const pendingLinks = Object.values(diReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
@@ -3812,47 +3406,29 @@ function DIPanelContent({ user, subs, onReload }) {
   };
 
   const approveDISub = async (subId) => {
-    const allSubs = (await sG(SK.SUBS)) || {};
-    const sub = allSubs[subId]; if (!sub || sub.status !== "di_pending") return;
-    const now = new Date().toISOString();
-    const orgs = (await sG(SK.ORGS)) || {};
-    const org = orgs[sub.orgId];
-    const hasEnough = org && org.members.length >= 5;
-    if (hasEnough) {
-      const result = await selectJury(sub.orgId, sub.submittedBy);
-      if (!result.error) {
-        sub.jurors = result.jurors; sub.jurySeed = result.seed; sub.status = "pending_review";
-        // Add jurors to anon map
-        sub.anonMap = sub.anonMap || {};
-        result.jurors.forEach(j => { if (!sub.anonMap[j]) sub.anonMap[j] = genAnonId("Juror"); });
-        sub.auditTrail.push({ time: now, action: `👤 Partner approved. Jury pool: ${result.jurors.length} jurors assigned.` });
-      } else {
-        sub.status = "pending_jury";
-        sub.auditTrail.push({ time: now, action: `👤 Partner @${user.username} approved. Queued for jury assignment.` });
-      }
-    } else {
-      sub.status = "pending_jury";
-      sub.auditTrail.push({ time: now, action: `👤 Partner @${user.username} approved. Queued — ${org ? org.members.length : 0} members, 5 needed.` });
-    }
-    // Notify DI submitter that partner approved
-    await createNotification(sub.submittedBy, "di_approved", { subId, headline: sub.replacement || sub.originalHeadline, approvedBy: user.username });
-    // Notify jurors if assigned
-    if (sub.status === "pending_review" && sub.jurors && sub.jurors.length > 0) {
-      for (const j of sub.jurors) {
-        await createNotification(j, "jury_assigned", { subId, headline: sub.replacement || sub.originalHeadline, orgName: sub.orgName });
-      }
-    }
-    allSubs[subId] = sub; await sS(SK.SUBS, allSubs); onReload();
+    // ── Approve DI submission via relational API (single source of truth) ──
+    try {
+      const res = await fetch(`/api/submissions/${subId}/di-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to approve"); return; }
+    } catch (e) { setError("Network error approving submission"); return; }
+    onReload();
   };
 
   const rejectDISub = async (subId) => {
-    const allSubs = (await sG(SK.SUBS)) || {};
-    const sub = allSubs[subId]; if (!sub || sub.status !== "di_pending") return;
-    const now = new Date().toISOString();
-    sub.status = "rejected";
-    sub.resolvedAt = now;
-    sub.auditTrail.push({ time: now, action: `👤 Partner @${user.username} rejected DI submission (pre-review).` });
-    allSubs[subId] = sub; await sS(SK.SUBS, allSubs); onReload();
+    // ── Reject DI submission via relational API (single source of truth) ──
+    try {
+      const res = await fetch(`/api/submissions/${subId}/di-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject" }),
+      });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to reject"); return; }
+    } catch (e) { setError("Network error rejecting submission"); return; }
+    onReload();
   };
 
   const approveAllDI = async () => {
@@ -3941,10 +3517,11 @@ function VaultScreen({ user }) {
     if (selectedOrgIds.length === 0 && user.orgId) setSelectedOrgIds([user.orgId]);
     const myOrgSet = new Set(ids);
     const v = (await sG(SK.VAULT)) || {}; const a = (await sG(SK.ARGS)) || {}; const b = (await sG(SK.BELIEFS)) || {}; const t = (await sG(SK.TRANSLATIONS)) || {};
-    setVault(Object.values(v).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    setArgs(Object.values(a).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    setBeliefs(Object.values(b).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    setTranslations(Object.values(t).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    const approvedOrg = (x) => myOrgSet.has(x.orgId) && x.status === "approved";
+    setVault(Object.values(v).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setArgs(Object.values(a).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setBeliefs(Object.values(b).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setTranslations(Object.values(t).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     setLoading(false);
   };
   useEffect(() => { load(); }, [user.orgId, user.orgIds]);
@@ -3969,7 +3546,7 @@ function VaultScreen({ user }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Vaults</h2>
-      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. You see entries from all your assemblies below. To add new entries, include them when submitting a correction through the Submit tab — all vault entries must be tied to an actual piece of media.</p>
+      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. Only approved entries that have survived jury review are shown. To add new entries, include them when submitting a correction through the Submit tab — all vault entries must be tied to an actual piece of media.</p>
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
         {tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>{l}</button>)}
       </div>
@@ -4804,16 +4381,18 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
   const createOrg = async () => {
     setError(""); if (!newOrg.name.trim()) return setError("Name required."); if (!newOrg.description.trim()) return setError("Description required.");
     if (myOrgIds.length >= MAX_ORGS) return setError(`You can join up to ${MAX_ORGS} assemblies.`);
-    // Deception penalty blocks assembly creation
-    const users = (await sG(SK.USERS)) || {}; const me = users[user.username];
-    const cc = canCreateAssembly(me || user);
-    if (!cc.allowed) return setError(cc.reason);
-    const id = gid(); const now = new Date().toISOString();
-    const org = { id, name: newOrg.name.trim(), description: newOrg.description.trim(), charter: newOrg.charter.trim(), createdBy: user.username, founders: [user.username], createdAt: now, members: [user.username] };
-    const up = { ...orgs, [id]: org }; await sS(SK.ORGS, up);
-    const newIds = [...myOrgIds, id];
-    await updateUser({ orgId: id, orgIds: newIds });
-    setOrgs(up); setCreating(false); setNewOrg({ name: "", description: "", charter: "" });
+    // ── Create assembly via relational API (single source of truth) ──
+    try {
+      const res = await fetch("/api/orgs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newOrg.name.trim(), description: newOrg.description.trim(), charter: newOrg.charter.trim() }) });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to create assembly"); return; }
+      const data = await res.json();
+      const id = data.data?.id || data.id;
+      const newIds = [...myOrgIds, id];
+      await updateUser({ orgId: id, orgIds: newIds });
+      // Refresh org list from server
+      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
+    } catch (e) { setError("Network error creating assembly"); return; }
+    setCreating(false); setNewOrg({ name: "", description: "", charter: "" });
   };
 
   const [joinReason, setJoinReason] = useState(""); const [joinLink, setJoinLink] = useState("");
@@ -4827,21 +4406,12 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
     if (!joinReason.trim()) return setError("Please explain why you want to join.");
     if (joinLink.trim() && !/^https?:\/\/.+\..+/.test(joinLink.trim())) return setError("Link must start with http:// or https://");
 
-    const allApps = (await sG(SK.APPS)) || {};
-    const existing = Object.values(allApps).find(a => a.userId === user.username && a.orgId === oid && a.status === "pending");
-    if (existing) return setError("You already have a pending application to this assembly.");
-
+    // ── Submit application via relational API (single source of truth) ──
     const enr = checkEnrollment(o);
-    const app = {
-      id: gid(), userId: user.username, displayName: user.displayName || user.username,
-      orgId: oid, orgName: o.name,
-      reason: joinReason.trim(), link: joinLink.trim() || null,
-      mode: enr.mode, // "tribal" or "sponsor"
-      sponsorsNeeded: enr.mode === "tribal" ? 1 : enr.sponsors,
-      sponsors: [], founderApproved: false,
-      status: "pending", createdAt: new Date().toISOString()
-    };
-    allApps[app.id] = app; await sS(SK.APPS, allApps); setApps(allApps);
+    try {
+      const res = await fetch(`/api/orgs/${oid}/applications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: joinReason.trim(), link: joinLink.trim() || null }) });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to submit application"); return; }
+    } catch (e) { setError("Network error submitting application"); return; }
     setApplyingTo(null); setJoinReason(""); setJoinLink("");
     if (enr.mode === "tribal") {
       setSuccess(`Application submitted to ${o.name}. The founder must approve your request.`);
@@ -4863,49 +4433,34 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
       return;
     }
 
-    // Open enrollment — join directly
-    const up = { ...orgs }; if (!up[oid].members.includes(user.username)) up[oid].members.push(user.username); await sS(SK.ORGS, up);
+    // ── Open enrollment — join via relational API (single source of truth) ──
+    // The server handles membership, jury assignment for pending_jury submissions, and audit logging.
+    try {
+      const res = await fetch(`/api/orgs/${oid}/join`, { method: "POST", headers: { "Content-Type": "application/json" } });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to join assembly"); return; }
+    } catch (e) { setError("Network error joining assembly"); return; }
     const newIds = [...myOrgIds, oid];
     await updateUser({ orgId: oid, orgIds: newIds });
-    setOrgs(up);
-    const ww = await isWildWestMode();
-    const juryThreshold = ww ? 2 : 5;
-    if (up[oid].members.length >= juryThreshold) {
-      const allSubs = (await sG(SK.SUBS)) || {}; let ch = false;
-      for (const sub of Object.values(allSubs)) {
-        if (sub.orgId === oid && sub.status === "pending_jury") {
-          if (ww) {
-            // Wild West: pick 1 random reviewer (not submitter, not DI partner)
-            const submitterUser = ((await sG(SK.USERS)) || {})[sub.submittedBy];
-            const excluded = new Set([sub.submittedBy, ...(submitterUser?.diPartner ? [submitterUser.diPartner] : [])]);
-            const eligible = up[oid].members.filter(m => !excluded.has(m));
-            if (eligible.length > 0) {
-              const pick = eligible[Math.floor(Math.random() * eligible.length)];
-              sub.jurors = [pick]; sub.jurySeed = Math.floor(Math.random() * 10000); sub.jurySeats = 1;
-              sub.status = "pending_review"; sub.anonMap = buildAnonMap(sub.submittedBy, [pick]);
-              sub.auditTrail.push({ time: new Date().toISOString(), action: `Wild West jury assigned: @${pick}` }); ch = true;
-            }
-          } else {
-            const r = await selectJury(oid, sub.submittedBy); if (!r.error) { sub.jurors = r.jurors; sub.jurySeed = r.seed; sub.status = "pending_review"; sub.auditTrail.push({ time: new Date().toISOString(), action: `Jury assigned: ${r.jurors.map(j => "@" + j).join(", ")}` }); ch = true; }
-          }
-        }
-      }
-      if (ch) await sS(SK.SUBS, allSubs);
-    }
+    // Refresh org list from server
+    try {
+      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
+    } catch (e) { /* will refresh on next load */ }
   };
 
   const leaveOrg = async (oid) => {
     setError("");
-    const gpId = await sG(SK.GP);
-    if (oid === gpId) return setError("You can't leave The General Public.");
-    if (!isMember(oid)) return;
-    const up = { ...orgs };
-    if (up[oid]) { up[oid].members = up[oid].members.filter(m => m !== user.username); if (!up[oid].members.length && !up[oid].isGeneralPublic) delete up[oid]; }
-    await sS(SK.ORGS, up);
+    // ── Leave assembly via relational API (single source of truth) ──
+    try {
+      const res = await fetch(`/api/orgs/${oid}/leave`, { method: "POST", headers: { "Content-Type": "application/json" } });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to leave assembly"); return; }
+    } catch (e) { setError("Network error leaving assembly"); return; }
     const newIds = myOrgIds.filter(id => id !== oid);
-    const newActive = user.orgId === oid ? (gpId || newIds[0]) : user.orgId;
+    const newActive = user.orgId === oid ? newIds[0] : user.orgId;
     await updateUser({ orgId: newActive, orgIds: newIds });
-    setOrgs(up);
+    // Refresh org list from server
+    try {
+      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
+    } catch (e) { /* will refresh on next load */ }
   };
 
   const followedOrgIds = user.followedOrgIds || [];
@@ -6709,18 +6264,19 @@ const NAV_BOT = [
 function formatNotification(n) {
   const d = n.data || {};
   switch (n.type) {
-    case "jury_assigned": return `You've been selected as a juror for a ${d.submissionType || "submission"}.`;
-    case "submission_resolved": return `Your submission was ${d.outcome === "approved" ? "approved" : d.outcome === "rejected" ? "rejected" : d.outcome || "resolved"}.`;
-    case "cross_group_started": return "Your submission has been promoted to cross-group review!";
-    case "consensus_reached": return "Your submission achieved cross-group consensus!";
-    case "consensus_rejected": return "Your submission was rejected in cross-group review.";
-    case "dispute_jury_assigned": return "You've been assigned to a dispute jury.";
-    case "submission_disputed": return "Your approved submission has been disputed.";
-    case "dispute_resolved": return `A dispute was resolved: ${d.outcome || "see details"}.`;
-    case "di_approved": return "Your DI submission was approved by your human partner.";
-    case "trusted_earned": return "You've earned Trusted Contributor status! Your submissions now skip jury review.";
-    case "trusted_lost": return "Your Trusted Contributor status was revoked after a rejection.";
-    default: return d.message || "New notification";
+    case "jury_assigned": return { text: `You've been selected as a juror for a ${d.submissionType || "submission"}.`, screen: "review" };
+    case "submission_resolved": return { text: `Your submission was ${d.outcome === "approved" ? "approved" : d.outcome === "rejected" ? "rejected" : d.outcome || "resolved"}.`, screen: null };
+    case "cross_group_started": return { text: "Your submission has been promoted to cross-group review!", screen: null };
+    case "consensus_reached": return { text: "Your submission achieved cross-group consensus!", screen: null };
+    case "consensus_rejected": return { text: "Your submission was rejected in cross-group review.", screen: null };
+    case "dispute_jury_assigned": return { text: "You've been assigned to a dispute jury.", screen: "review" };
+    case "submission_disputed": return { text: "Your approved submission has been disputed.", screen: "review" };
+    case "dispute_resolved": return { text: `A dispute was resolved: ${d.outcome || "see details"}.`, screen: null };
+    case "di_needs_approval": return { text: `Your DI @${d.submittedBy || "agent"} submitted a correction for review.`, screen: "review" };
+    case "di_approved": return { text: "Your DI submission was approved by your human partner.", screen: null };
+    case "trusted_earned": return { text: "You've earned Trusted Contributor status! Your submissions now skip jury review.", screen: null };
+    case "trusted_lost": return { text: "Your Trusted Contributor status was revoked after a rejection.", screen: null };
+    default: return { text: d.message || "New notification", screen: null };
   }
 }
 
@@ -7282,12 +6838,15 @@ export default function TrustAssembly() {
                       <div className="ta-notif-empty">No notifications yet</div>
                     ) : (
                       <div className="ta-notif-list">
-                        {notifications.slice(0, 20).map(n => (
-                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`}>
-                            <div className="ta-notif-text">{formatNotification(n)}</div>
+                        {notifications.slice(0, 20).map(n => {
+                          const info = formatNotification(n);
+                          return (
+                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} onClick={() => { if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }} style={info.screen ? { cursor: "pointer" } : {}}>
+                            <div className="ta-notif-text">{info.text}{info.screen && <span style={{ fontSize: 10, color: "#2563EB", marginLeft: 4 }}>→ Go</span>}</div>
                             <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
