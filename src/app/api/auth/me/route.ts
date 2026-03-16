@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
 
   return ok({
     ...u,
-    organizations: orgs.rows,
+    organizations: orgs.rows.map((o: Record<string, unknown>) => ({
+      ...o,
+      name: o.name || "Unknown Org",
+    })),
   });
 }

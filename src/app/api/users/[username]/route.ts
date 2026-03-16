@@ -31,7 +31,13 @@ export async function GET(
     WHERE om.user_id = ${user.id} AND om.is_active = TRUE
   `;
 
-  return ok({ ...user, organizations: orgs.rows });
+  return ok({
+    ...user,
+    organizations: orgs.rows.map((o: Record<string, unknown>) => ({
+      ...o,
+      name: o.name || "Unknown Org",
+    })),
+  });
 }
 
 // PATCH /api/users/[username] — update own profile

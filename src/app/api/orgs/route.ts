@@ -24,8 +24,13 @@ export async function GET(request: NextRequest) {
 
   const total = await sql`SELECT COUNT(*) as count FROM organizations`;
 
+  const organizations = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    created_by: row.created_by || "unknown",
+  }));
+
   return ok({
-    organizations: result.rows,
+    organizations,
     total: parseInt(total.rows[0].count),
     limit,
     offset,

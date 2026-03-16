@@ -43,8 +43,14 @@ export async function GET(request: NextRequest) {
 
   const result = await sql.query(query, params);
 
+  const concessions = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    proposed_by_username: row.proposed_by_username || "unknown",
+    proposed_by_display_name: row.proposed_by_display_name || "",
+  }));
+
   return ok({
-    concessions: result.rows,
+    concessions,
     limit,
     offset,
   });

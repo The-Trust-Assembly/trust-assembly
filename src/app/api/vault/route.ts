@@ -91,8 +91,14 @@ export async function GET(request: NextRequest) {
 
   const result = await sql.query(query, params);
 
+  const entries = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    submitted_by_username: row.submitted_by_username || "unknown",
+    org_name: row.org_name || "Unknown Org",
+  }));
+
   return ok({
-    entries: result.rows,
+    entries,
     type,
     limit,
     offset,

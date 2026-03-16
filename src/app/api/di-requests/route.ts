@@ -18,7 +18,13 @@ export async function GET(request: NextRequest) {
     ORDER BY dr.created_at DESC
   `;
 
-  return ok({ requests: result.rows });
+  const requests = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    di_username: row.di_username || "unknown",
+    di_display_name: row.di_display_name || "",
+  }));
+
+  return ok({ requests });
 }
 
 // POST /api/di-requests — create DI partnership request

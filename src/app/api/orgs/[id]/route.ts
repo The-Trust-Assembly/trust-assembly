@@ -41,7 +41,13 @@ export async function GET(
 
   return ok({
     ...org,
+    created_by: org.created_by || "unknown",
+    created_by_display_name: org.created_by_display_name || "",
     memberCount: parseInt(members.rows[0].count),
-    founders: founders.rows,
+    founders: founders.rows.map((f: Record<string, unknown>) => ({
+      ...f,
+      username: f.username || "unknown",
+      display_name: f.display_name || "",
+    })),
   });
 }

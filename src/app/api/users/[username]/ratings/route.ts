@@ -34,8 +34,14 @@ export async function GET(
     LIMIT ${limit} OFFSET ${offset}
   `;
 
+  const ratings = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    rated_by_username: row.rated_by_username || "unknown",
+    rated_by_display_name: row.rated_by_display_name || "",
+  }));
+
   return ok({
-    ratings: result.rows,
+    ratings,
     limit,
     offset,
   });

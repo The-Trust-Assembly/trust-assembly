@@ -33,8 +33,14 @@ export async function GET(
     WHERE org_id = ${id} AND is_active = TRUE
   `;
 
+  const members_list = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    username: row.username || "unknown",
+    display_name: row.display_name || "",
+  }));
+
   return ok({
-    members: result.rows,
+    members: members_list,
     total: parseInt(total.rows[0].count),
     limit,
     offset,

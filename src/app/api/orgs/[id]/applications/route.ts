@@ -34,7 +34,13 @@ export async function GET(
     ORDER BY ma.created_at DESC
   `;
 
-  return ok({ applications: result.rows });
+  const applications = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    username: row.username || "unknown",
+    display_name: row.display_name || "",
+  }));
+
+  return ok({ applications });
 }
 
 // POST /api/orgs/[id]/applications — apply to join an org

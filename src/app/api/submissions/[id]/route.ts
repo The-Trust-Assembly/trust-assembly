@@ -84,10 +84,17 @@ export async function GET(
 
   return ok({
     ...sub,
+    submitted_by_username: sub.submitted_by_username || "unknown",
+    submitted_by_display_name: sub.submitted_by_display_name || "",
+    org_name: sub.org_name || "Unknown Org",
     evidence: evidence.rows,
     inlineEdits: inlineEdits.rows,
     votes: votes.rows,
-    jurors: jurors.rows,
+    jurors: jurors.rows.map((j: Record<string, unknown>) => ({
+      ...j,
+      username: j.username || "unknown",
+      display_name: j.display_name || "",
+    })),
     linkedEntries: linkedEntries.rows,
   });
 }

@@ -60,5 +60,10 @@ export async function GET(
     return err("Entry not found", 404);
   }
 
-  return ok(result.rows[0]);
+  const entry = result.rows[0];
+  return ok({
+    ...entry,
+    submitted_by_username: entry.submitted_by_username || "unknown",
+    submitted_by_display_name: entry.submitted_by_display_name || "",
+  });
 }

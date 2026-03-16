@@ -71,10 +71,17 @@ export async function GET(request: NextRequest) {
   // Anonymize submitter identity for submissions still under review
   const terminalStatuses = ["approved", "consensus", "rejected", "consensus_rejected"];
   const submissions = result.rows.map((row: Record<string, unknown>) => {
+    const r = {
+      ...row,
+      submitted_by: row.submitted_by || "unknown",
+      submitted_by_display_name: row.submitted_by_display_name || "",
+      org_name: row.org_name || "Unknown Org",
+    };
     if (!terminalStatuses.includes(row.status as string)) {
-      return { ...row, submitted_by: null, submitted_by_display_name: null };
+      r.submitted_by = null;
+      r.submitted_by_display_name = null;
     }
-    return row;
+    return r;
   });
 
   return ok({

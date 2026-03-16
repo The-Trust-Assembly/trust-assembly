@@ -43,8 +43,14 @@ export async function GET(request: NextRequest) {
 
   const result = await sql.query(query, params);
 
+  const disputes = result.rows.map((row: Record<string, unknown>) => ({
+    ...row,
+    disputed_by_username: row.disputed_by_username || "unknown",
+    disputed_by_display_name: row.disputed_by_display_name || "",
+  }));
+
   return ok({
-    disputes: result.rows,
+    disputes,
     limit,
     offset,
   });

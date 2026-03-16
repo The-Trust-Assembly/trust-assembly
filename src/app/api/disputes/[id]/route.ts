@@ -58,8 +58,18 @@ export async function GET(
 
   return ok({
     ...dispute,
+    disputed_by_username: dispute.disputed_by_username || "unknown",
+    disputed_by_display_name: dispute.disputed_by_display_name || "",
+    original_submitter_username: dispute.original_submitter_username || "unknown",
     evidence: evidence.rows,
-    juryAssignments: juryAssignments.rows,
-    votes: votes.rows,
+    juryAssignments: juryAssignments.rows.map((j: Record<string, unknown>) => ({
+      ...j,
+      username: j.username || "unknown",
+      display_name: j.display_name || "",
+    })),
+    votes: votes.rows.map((v: Record<string, unknown>) => ({
+      ...v,
+      username: v.username || "unknown",
+    })),
   });
 }

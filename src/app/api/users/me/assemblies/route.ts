@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   `;
 
   return ok({
-    joined: joinedResult.rows.map(r => ({ id: r.id, name: r.name })),
-    followed: followedResult.rows.map(r => ({ id: r.id, name: r.name })),
+    joined: joinedResult.rows.map(r => ({ id: r.id, name: r.name || "Unknown Org" })),
+    followed: followedResult.rows.map(r => ({ id: r.id, name: r.name || "Unknown Org" })),
   });
 }
