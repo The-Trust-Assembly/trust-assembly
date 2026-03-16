@@ -3145,15 +3145,31 @@ function ReviewScreen({ user }) {
     }
     for (const [id, sub] of Object.entries(allSubs)) {
       let changed = false;
+      // Fix submittedBy if it looks like a UUID (from API route before fix)
+      if (sub.submittedBy && sub.submittedBy.includes("-") && sub.submittedBy.length > 30) {
+        const match = Object.entries(users).find(([, u]) => u.id === sub.submittedBy);
+        if (match) { sub.submittedBy = match[0]; changed = true; }
+      }
       // Fix diPartner if missing on DI submissions
       if (sub.isDI && !sub.diPartner && sub.submittedBy) {
         const partner = diUsersByPartner[sub.submittedBy];
         if (partner) { sub.diPartner = partner; changed = true; }
       }
-      // Fix submittedBy if it looks like a UUID (from API route before fix)
-      if (sub.submittedBy && sub.submittedBy.includes("-") && sub.submittedBy.length > 30) {
-        const match = Object.entries(users).find(([, u]) => u.id === sub.submittedBy);
-        if (match) { sub.submittedBy = match[0]; changed = true; }
+      // Fix di_pending submissions missing isDI flag or diPartner
+      if (sub.status === "di_pending" && !sub.isDI) {
+        sub.isDI = true; changed = true;
+      }
+      if (sub.status === "di_pending" && !sub.diPartner && sub.submittedBy) {
+        const partner = diUsersByPartner[sub.submittedBy];
+        if (partner) { sub.diPartner = partner; changed = true; }
+      }
+      // Fix DI submissions stuck without diPartner by checking if submitter is a DI user
+      if (!sub.diPartner && sub.submittedBy && users[sub.submittedBy] && users[sub.submittedBy].isDI && users[sub.submittedBy].diPartner) {
+        sub.isDI = true; sub.diPartner = users[sub.submittedBy].diPartner; changed = true;
+        // If status was not di_pending but should be (no jurors assigned, not resolved)
+        if (!sub.resolvedAt && !sub.jurors?.length && sub.status === "pending_jury") {
+          sub.status = "di_pending"; changed = true;
+        }
       }
       if (changed) { allSubs[id] = sub; kvDirty = true; }
     }
@@ -3495,7 +3511,7 @@ function ReviewScreen({ user }) {
   const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && d.jurors.includes(user.username) && !d.votes[user.username]);
   // All disputes involving the current user (filed by them or against their submissions)
   const myDisputes = Object.values(disputes || {}).filter(d => d.disputedBy === user.username || d.originalSubmitter === user.username);
-  const diQ = all.filter(s => s.isDI && s.diPartner === user.username && s.status === "di_pending");
+  const diQ = all.filter(s => s.status === "di_pending" && (s.diPartner === user.username || (s.isDI && s.diPartner === user.username)));
   // Show DI tab if partner of any DI sub, has pending items, or has pending link requests
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
   const hasDIPartnership = all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
@@ -3787,7 +3803,7 @@ function DIPanelContent({ user, subs, onReload }) {
   useEffect(() => { (async () => { setDiReqs((await sG("ta-di-requests")) || {}); })(); }, []);
 
   // DI submissions awaiting my pre-approval
-  const diQueue = subs ? Object.values(subs).filter(s => s.isDI && s.diPartner === user.username && s.status === "di_pending") : [];
+  const diQueue = subs ? Object.values(subs).filter(s => s.status === "di_pending" && (s.diPartner === user.username || (s.isDI && s.diPartner === user.username))) : [];
 
   // Pending DI link requests
   const pendingLinks = Object.values(diReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
@@ -3941,10 +3957,11 @@ function VaultScreen({ user }) {
     if (selectedOrgIds.length === 0 && user.orgId) setSelectedOrgIds([user.orgId]);
     const myOrgSet = new Set(ids);
     const v = (await sG(SK.VAULT)) || {}; const a = (await sG(SK.ARGS)) || {}; const b = (await sG(SK.BELIEFS)) || {}; const t = (await sG(SK.TRANSLATIONS)) || {};
-    setVault(Object.values(v).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    setArgs(Object.values(a).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    setBeliefs(Object.values(b).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    setTranslations(Object.values(t).filter(x => myOrgSet.has(x.orgId)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    const approvedOrg = (x) => myOrgSet.has(x.orgId) && x.status === "approved";
+    setVault(Object.values(v).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setArgs(Object.values(a).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setBeliefs(Object.values(b).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    setTranslations(Object.values(t).filter(approvedOrg).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     setLoading(false);
   };
   useEffect(() => { load(); }, [user.orgId, user.orgIds]);
@@ -3969,7 +3986,7 @@ function VaultScreen({ user }) {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Vaults</h2>
-      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. You see entries from all your assemblies below. To add new entries, include them when submitting a correction through the Submit tab — all vault entries must be tied to an actual piece of media.</p>
+      <p style={{ color: "#475569", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>Vaults are per-assembly. Only approved entries that have survived jury review are shown. To add new entries, include them when submitting a correction through the Submit tab — all vault entries must be tied to an actual piece of media.</p>
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
         {tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>{l}</button>)}
       </div>
@@ -6709,18 +6726,19 @@ const NAV_BOT = [
 function formatNotification(n) {
   const d = n.data || {};
   switch (n.type) {
-    case "jury_assigned": return `You've been selected as a juror for a ${d.submissionType || "submission"}.`;
-    case "submission_resolved": return `Your submission was ${d.outcome === "approved" ? "approved" : d.outcome === "rejected" ? "rejected" : d.outcome || "resolved"}.`;
-    case "cross_group_started": return "Your submission has been promoted to cross-group review!";
-    case "consensus_reached": return "Your submission achieved cross-group consensus!";
-    case "consensus_rejected": return "Your submission was rejected in cross-group review.";
-    case "dispute_jury_assigned": return "You've been assigned to a dispute jury.";
-    case "submission_disputed": return "Your approved submission has been disputed.";
-    case "dispute_resolved": return `A dispute was resolved: ${d.outcome || "see details"}.`;
-    case "di_approved": return "Your DI submission was approved by your human partner.";
-    case "trusted_earned": return "You've earned Trusted Contributor status! Your submissions now skip jury review.";
-    case "trusted_lost": return "Your Trusted Contributor status was revoked after a rejection.";
-    default: return d.message || "New notification";
+    case "jury_assigned": return { text: `You've been selected as a juror for a ${d.submissionType || "submission"}.`, screen: "review" };
+    case "submission_resolved": return { text: `Your submission was ${d.outcome === "approved" ? "approved" : d.outcome === "rejected" ? "rejected" : d.outcome || "resolved"}.`, screen: null };
+    case "cross_group_started": return { text: "Your submission has been promoted to cross-group review!", screen: null };
+    case "consensus_reached": return { text: "Your submission achieved cross-group consensus!", screen: null };
+    case "consensus_rejected": return { text: "Your submission was rejected in cross-group review.", screen: null };
+    case "dispute_jury_assigned": return { text: "You've been assigned to a dispute jury.", screen: "review" };
+    case "submission_disputed": return { text: "Your approved submission has been disputed.", screen: "review" };
+    case "dispute_resolved": return { text: `A dispute was resolved: ${d.outcome || "see details"}.`, screen: null };
+    case "di_needs_approval": return { text: `Your DI @${d.submittedBy || "agent"} submitted a correction for review.`, screen: "review" };
+    case "di_approved": return { text: "Your DI submission was approved by your human partner.", screen: null };
+    case "trusted_earned": return { text: "You've earned Trusted Contributor status! Your submissions now skip jury review.", screen: null };
+    case "trusted_lost": return { text: "Your Trusted Contributor status was revoked after a rejection.", screen: null };
+    default: return { text: d.message || "New notification", screen: null };
   }
 }
 
@@ -7282,12 +7300,15 @@ export default function TrustAssembly() {
                       <div className="ta-notif-empty">No notifications yet</div>
                     ) : (
                       <div className="ta-notif-list">
-                        {notifications.slice(0, 20).map(n => (
-                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`}>
-                            <div className="ta-notif-text">{formatNotification(n)}</div>
+                        {notifications.slice(0, 20).map(n => {
+                          const info = formatNotification(n);
+                          return (
+                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} onClick={() => { if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }} style={info.screen ? { cursor: "pointer" } : {}}>
+                            <div className="ta-notif-text">{info.text}{info.screen && <span style={{ fontSize: 10, color: "#2563EB", marginLeft: 4 }}>→ Go</span>}</div>
                             <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
