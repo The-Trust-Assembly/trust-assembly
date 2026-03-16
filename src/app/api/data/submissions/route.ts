@@ -1,6 +1,8 @@
 import { sql } from "@/lib/db";
 import { ok } from "@/lib/api-utils";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/data/submissions — returns ALL submissions keyed by ID
 // in the format the v5 SPA expects (camelCase, nested votes/jurors/evidence).
 // This replaces sG(SK.SUBS) reads from the deprecated KV store.

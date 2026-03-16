@@ -1,6 +1,8 @@
 import { sql } from "@/lib/db";
 import { ok } from "@/lib/api-utils";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/data/users — returns ALL users keyed by username
 // in the format the v5 SPA expects. Excludes password hashes.
 // This replaces sG(SK.USERS) reads from the deprecated KV store.
