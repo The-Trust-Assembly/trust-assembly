@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 function normalizeUrl(raw: string): string {
   try {
@@ -105,6 +106,36 @@ export async function POST(request: NextRequest) {
     return err("Corrections require a replacement headline");
   }
 
+  // Input length validation
+  const lengthError = validateFields([
+    ["originalHeadline", originalHeadline, MAX_LENGTHS.headline],
+    ["replacement", replacement, MAX_LENGTHS.replacement],
+    ["reasoning", reasoning, MAX_LENGTHS.reasoning],
+    ["author", author, MAX_LENGTHS.author],
+    ["url", url, MAX_LENGTHS.evidence_url],
+  ]);
+  if (lengthError) return err(lengthError);
+
+  if (evidence && Array.isArray(evidence)) {
+    for (const e of evidence) {
+      const evError = validateFields([
+        ["evidence url", e.url, MAX_LENGTHS.evidence_url],
+        ["evidence explanation", e.explanation, MAX_LENGTHS.evidence_explanation],
+      ]);
+      if (evError) return err(evError);
+    }
+  }
+  if (inlineEdits && Array.isArray(inlineEdits)) {
+    for (const edit of inlineEdits) {
+      const editError = validateFields([
+        ["inline edit original", edit.original, MAX_LENGTHS.inline_edit_text],
+        ["inline edit replacement", edit.replacement, MAX_LENGTHS.inline_edit_text],
+        ["inline edit reasoning", edit.reasoning, MAX_LENGTHS.reasoning],
+      ]);
+      if (editError) return err(editError);
+    }
+  }
+
   // Verify user is member of all target orgs
   for (const targetOrg of targetOrgIds) {
     const membership = await sql`
@@ -182,9 +213,52 @@ export async function POST(request: NextRequest) {
     `;
 
     // ── Trusted contributor: auto-approve ──
+    // Route through the same pipeline as jury-resolved submissions to
+    // maintain a complete audit trail, update reputation consistently,
+    // graduate vault entries, and trigger cross-group promotion.
     if (trustedSkip) {
-      await sql`UPDATE submissions SET status = 'approved', resolved_at = NOW() WHERE id = ${sub.id}`;
-      await sql`UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1 WHERE id = ${session.sub}`;
+      const now = new Date().toISOString();
+
+      try {
+        await sql`BEGIN`;
+
+        await sql`UPDATE submissions SET status = 'approved', resolved_at = ${now} WHERE id = ${sub.id}`;
+
+        // Reputation: increment wins and streak (consistent with vote-resolution)
+        await sql`
+          UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1
+          WHERE id = ${session.sub}
+        `;
+        await sql`
+          UPDATE organization_members SET assembly_streak = assembly_streak + 1
+          WHERE org_id = ${targetOrg} AND user_id = ${session.sub} AND is_active = TRUE
+        `;
+
+        // Graduate linked vault entries if any
+        const vaultTables = ["vault_entries", "arguments", "beliefs", "translations"];
+        for (const table of vaultTables) {
+          await sql.query(
+            `UPDATE ${table} SET status = 'approved', approved_at = $1 WHERE submission_id = $2 AND status = 'pending'`,
+            [now, sub.id],
+          );
+        }
+
+        // Audit log entry for trusted auto-approval
+        await sql`
+          INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+          VALUES (
+            'Submission resolved: APPROVED (trusted contributor auto-approve)',
+            ${session.sub}, ${targetOrg}, 'submission', ${sub.id},
+            ${JSON.stringify({ outcome: 'approved', trustedSkip: true })}
+          )
+        `;
+
+        await sql`COMMIT`;
+      } catch (e) {
+        await sql`ROLLBACK`;
+        console.error("Trusted auto-approve transaction failed:", e);
+        throw e;
+      }
     }
 
     // ── Jury assignment (normal mode only) ──

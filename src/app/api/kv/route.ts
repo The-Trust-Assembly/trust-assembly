@@ -75,15 +75,6 @@ export async function POST(request: NextRequest) {
   });
 }
 
-let tableChecked = false;
-async function ensureTable() {
-  if (tableChecked) return;
-  await sql`
-    CREATE TABLE IF NOT EXISTS kv_store (
-      key TEXT PRIMARY KEY,
-      value TEXT,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `;
-  tableChecked = true;
-}
+// Table is created by db/schema.sql — no runtime DDL needed.
+// Retained as a no-op for existing call sites until this route is removed.
+async function ensureTable() {}

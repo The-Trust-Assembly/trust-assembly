@@ -1,48 +1,13 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUserFromRequest } from "@/lib/auth";
+import { getCurrentUserFromRequest, requireAdmin } from "@/lib/auth";
 import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
 
-const ADMIN_USERNAME = "thekingofamerica";
 const MAX_LENGTH = 1000;
 const VALID_STATUSES = ["accepted", "roadmapped", "pending", "completed"];
 const VALID_RESOLUTIONS = ["resolved", "needs_work"];
 
-// Ensure table exists
-let tableChecked = false;
-async function ensureTable() {
-  if (tableChecked) return;
-  await sql`
-    CREATE TABLE IF NOT EXISTS feedback (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id),
-      username VARCHAR(100) NOT NULL,
-      message TEXT NOT NULL,
-      status VARCHAR(20) DEFAULT NULL,
-      admin_reply TEXT DEFAULT NULL,
-      admin_reply_at TIMESTAMPTZ DEFAULT NULL,
-      user_resolution VARCHAR(20) DEFAULT NULL,
-      user_resolution_note TEXT DEFAULT NULL,
-      user_resolution_at TIMESTAMPTZ DEFAULT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `;
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC)
-  `;
-  // Add new columns if they don't exist (for existing tables)
-  await sql`
-    DO $$ BEGIN
-      ALTER TABLE feedback ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT NULL;
-      ALTER TABLE feedback ADD COLUMN IF NOT EXISTS admin_reply TEXT DEFAULT NULL;
-      ALTER TABLE feedback ADD COLUMN IF NOT EXISTS admin_reply_at TIMESTAMPTZ DEFAULT NULL;
-      ALTER TABLE feedback ADD COLUMN IF NOT EXISTS user_resolution VARCHAR(20) DEFAULT NULL;
-      ALTER TABLE feedback ADD COLUMN IF NOT EXISTS user_resolution_note TEXT DEFAULT NULL;
-      ALTER TABLE feedback ADD COLUMN IF NOT EXISTS user_resolution_at TIMESTAMPTZ DEFAULT NULL;
-    END $$;
-  `;
-  tableChecked = true;
-}
+// Table is created by db/schema.sql — no runtime DDL needed.
 
 // POST /api/feedback — submit feedback (any authenticated user)
 export async function POST(request: NextRequest) {
@@ -60,7 +25,6 @@ export async function POST(request: NextRequest) {
     return err(`Message must be ${MAX_LENGTH} characters or fewer`);
   }
 
-  await ensureTable();
 
   const result = await sql`
     INSERT INTO feedback (user_id, username, message)
@@ -77,9 +41,9 @@ export async function GET(request: NextRequest) {
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
-  await ensureTable();
 
-  if (session.username === ADMIN_USERNAME) {
+  const isAdmin = await requireAdmin(request);
+  if (isAdmin) {
     const result = await sql`
       SELECT id, username, message, status, admin_reply, admin_reply_at,
              user_resolution, user_resolution_note, user_resolution_at, created_at
@@ -112,11 +76,11 @@ export async function PATCH(request: NextRequest) {
 
   if (!feedbackId) return err("feedbackId is required");
 
-  await ensureTable();
 
   if (action === "admin_reply") {
     // Admin replying with status
-    if (session.username !== ADMIN_USERNAME) return forbidden("Admin access only");
+    const admin = await requireAdmin(request);
+    if (!admin) return forbidden("Admin access only");
 
     const { reply, status } = body;
     if (!reply || typeof reply !== "string" || reply.trim().length === 0) {

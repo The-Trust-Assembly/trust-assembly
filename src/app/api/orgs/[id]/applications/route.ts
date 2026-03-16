@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 // GET /api/orgs/[id]/applications — list applications for an org (founder only)
 export async function GET(
@@ -47,6 +48,12 @@ export async function POST(
   const { id } = await params;
   const body = await request.json();
   const { reason, link } = body;
+
+  const lengthError = validateFields([
+    ["reason", reason, MAX_LENGTHS.application_reason],
+    ["link", link, MAX_LENGTHS.application_link],
+  ]);
+  if (lengthError) return err(lengthError);
 
   // Get org enrollment mode
   const org = await sql`

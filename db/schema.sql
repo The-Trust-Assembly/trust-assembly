@@ -585,11 +585,17 @@ CREATE INDEX idx_audit_user ON audit_log(user_id) WHERE user_id IS NOT NULL;
 -- ============================================================
 
 CREATE TABLE feedback (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES users(id),
-  username    VARCHAR(100) NOT NULL,
-  message     TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id              UUID NOT NULL REFERENCES users(id),
+  username             VARCHAR(100) NOT NULL,
+  message              TEXT NOT NULL,
+  status               VARCHAR(20) DEFAULT NULL,
+  admin_reply          TEXT DEFAULT NULL,
+  admin_reply_at       TIMESTAMPTZ DEFAULT NULL,
+  user_resolution      VARCHAR(20) DEFAULT NULL,
+  user_resolution_note TEXT DEFAULT NULL,
+  user_resolution_at   TIMESTAMPTZ DEFAULT NULL,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_feedback_created ON feedback(created_at DESC);
