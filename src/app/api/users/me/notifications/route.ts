@@ -3,17 +3,9 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, unauthorized } from "@/lib/api-utils";
 
-const SK_USERS = "ta-u-v5";
-
-async function kvGet(key: string): Promise<unknown> {
-  const result = await sql`SELECT value FROM kv_store WHERE key = ${key}`;
-  if (result.rows.length === 0 || !result.rows[0].value) return null;
-  return JSON.parse(result.rows[0].value);
-}
-
 // GET /api/users/me/notifications — pending items for the current user
 // Returns counts and summaries of:
-//   - KV store notifications (lifecycle events from the webapp)
+//   - Lifecycle notifications (from notifications table)
 //   - Jury assignments awaiting vote
 //   - Membership applications awaiting founder approval
 //   - User's own submissions with status updates
@@ -21,24 +13,14 @@ export async function GET(request: NextRequest) {
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
-  // 0. KV store notifications (created by createNotification in the webapp)
-  let kvNotifications: Record<string, unknown>[] = [];
-  try {
-    const users = (await kvGet(SK_USERS)) as Record<string, Record<string, unknown>> | null;
-    if (users) {
-      // Find user by session sub (user ID) — need to look up username first
-      const userRow = await sql`SELECT username FROM users WHERE id = ${session.sub}`;
-      if (userRow.rows.length > 0) {
-        const username = userRow.rows[0].username;
-        const u = users[username];
-        if (u && Array.isArray(u.notifications)) {
-          kvNotifications = u.notifications as Record<string, unknown>[];
-        }
-      }
-    }
-  } catch (e) {
-    console.error("KV notification read failed:", e);
-  }
+  // 0. Lifecycle notifications from the notifications table
+  const notifResult = await sql`
+    SELECT id, type, title, body, entity_type, entity_id, read, created_at
+    FROM notifications
+    WHERE user_id = ${session.sub}
+    ORDER BY created_at DESC
+    LIMIT 50
+  `;
 
   // 1. Pending jury assignments (submissions needing vote)
   const juryResult = await sql`
@@ -56,7 +38,9 @@ export async function GET(request: NextRequest) {
       AND ja.accepted = TRUE
       AND NOT EXISTS (
         SELECT 1 FROM jury_votes jv
-        WHERE jv.assignment_id = ja.id
+        WHERE jv.submission_id = ja.submission_id
+          AND jv.user_id = ja.user_id
+          AND jv.role = ja.role
       )
       AND (s.status IN ('pending_review', 'cross_review') OR ja.dispute_id IS NOT NULL OR ja.concession_id IS NOT NULL)
     ORDER BY ja.assigned_at DESC
@@ -103,7 +87,7 @@ export async function GET(request: NextRequest) {
 
   return ok({
     totalPending: juryCount + applicationCount,
-    notifications: kvNotifications,
+    notifications: notifResult.rows,
     jury: {
       count: juryCount,
       items: juryResult.rows,
