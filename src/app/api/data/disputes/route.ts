@@ -33,7 +33,7 @@ export async function GET() {
   const jurors = await sql.query(
     `SELECT ja.dispute_id, u.username
      FROM jury_assignments ja
-     JOIN users u ON u.id = ja.user_id
+     LEFT JOIN users u ON u.id = ja.user_id
      WHERE ja.dispute_id = ANY($1)
      ORDER BY ja.assigned_at`,
     [disputeIds]
@@ -49,7 +49,7 @@ export async function GET() {
     `SELECT jv.dispute_id, jv.approve, jv.note, jv.deliberate_lie, jv.voted_at,
             u.username
      FROM jury_votes jv
-     JOIN users u ON u.id = jv.user_id
+     LEFT JOIN users u ON u.id = jv.user_id
      WHERE jv.dispute_id = ANY($1)
      ORDER BY jv.voted_at`,
     [disputeIds]
