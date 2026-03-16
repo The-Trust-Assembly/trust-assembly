@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS kv_store (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 6. Backfill normalized_url from existing submissions
+-- 6. Ensure is_admin column exists on users
+-- (Present in schema.sql but may be missing from databases created before it was added)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 7. Backfill normalized_url from existing submissions
 -- Uses the raw url as a starting point; the application normalizes on write going forward.
 UPDATE submissions SET normalized_url = url WHERE normalized_url IS NULL;

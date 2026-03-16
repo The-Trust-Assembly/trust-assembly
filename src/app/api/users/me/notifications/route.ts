@@ -102,3 +102,16 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
+// PATCH /api/users/me/notifications — mark all notifications as read
+export async function PATCH(request: NextRequest) {
+  const session = await getCurrentUserFromRequest(request);
+  if (!session) return unauthorized();
+
+  await sql`
+    UPDATE notifications SET read = TRUE
+    WHERE user_id = ${session.sub} AND read = FALSE
+  `;
+
+  return ok({ success: true });
+}
