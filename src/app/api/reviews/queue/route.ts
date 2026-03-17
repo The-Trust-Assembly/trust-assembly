@@ -291,6 +291,7 @@ export async function GET(request: NextRequest) {
         action: `Submission received. Jury assigned.`,
       }],
       _fromRelational: true,
+      _inMyQueue: true,
     };
   });
 
@@ -493,5 +494,5 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  return ok({ submissions, disputes, myDisputes });
+  return ok({ submissions, disputes, myDisputes, wildWest });
 }

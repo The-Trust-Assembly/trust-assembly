@@ -199,7 +199,16 @@ export default function TrustAssembly() {
 
   useEffect(() => {
     if (!user) return;
-    const check = async () => { try { const s = (await sG(SK.SUBS)) || {}; const v = Object.values(s); setReviewCount(v.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]).length); setCrossCount(v.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]).length); const d = (await sG(SK.DISPUTES)) || {}; setDisputeCount(Object.values(d).filter(x => x.status === "pending_review" && x.jurors.includes(user.username) && !x.votes[user.username]).length); } catch {} };
+    const check = async () => { try {
+      const qRes = await fetch("/api/reviews/queue"); if (!qRes.ok) return;
+      const q = await qRes.json();
+      const ww = q.wildWest;
+      const myOrgs = new Set(user.orgIds || (user.orgId ? [user.orgId] : []));
+      const isEligible = (s) => s.submittedBy !== user.username && s.diPartner !== user.username;
+      setReviewCount((q.submissions || []).filter(s => s.status !== "cross_review" && isEligible(s)).length);
+      setCrossCount((q.submissions || []).filter(s => s.status === "cross_review").length);
+      setDisputeCount((q.disputes || []).length);
+    } catch {} };
     check(); const i = setInterval(check, 5000); return () => clearInterval(i);
   }, [user, screen]);
 

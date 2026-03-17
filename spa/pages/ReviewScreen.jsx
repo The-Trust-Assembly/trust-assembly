@@ -37,6 +37,8 @@ export default function ReviewScreen({ user }) {
       ]);
       if (queueRes.ok) {
         const queueData = await queueRes.json();
+        // Trust server-side Wild West detection over client-side
+        if (queueData.wildWest !== undefined) setWildWest(queueData.wildWest);
         if (queueData.submissions) {
           for (const relSub of queueData.submissions) { allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub }; }
         }
@@ -166,14 +168,21 @@ export default function ReviewScreen({ user }) {
     return true;
   };
   const reviewStatuses = wildWest ? new Set(["pending_review", "pending_jury"]) : new Set(["pending_review"]);
-  const igQ = wildWest
-    ? all.filter(s => reviewStatuses.has(s.status) && myOrgs.has(s.orgId) && isEligibleReviewer(s) && !s.votes[user.username])
-    : all.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]);
-  const cgQ = all.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]);
-  const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && d.jurors.includes(user.username) && !d.votes[user.username]);
+  const igQ = all.filter(s => {
+    // Always exclude items the user already voted on
+    if ((s.votes || {})[user.username]) return false;
+    // Trust server-side queue: if the queue endpoint returned this item, show it
+    if (s._inMyQueue && reviewStatuses.has(s.status) && s.status !== "cross_review" && isEligibleReviewer(s)) return true;
+    // Wild West: any eligible org member can review
+    if (wildWest) return reviewStatuses.has(s.status) && myOrgs.has(s.orgId) && isEligibleReviewer(s);
+    // Normal: only assigned jurors
+    return s.status === "pending_review" && (s.jurors || []).includes(user.username);
+  });
+  const cgQ = all.filter(s => s.status === "cross_review" && (s.crossGroupJurors || []).includes(user.username) && !(s.crossGroupVotes || {})[user.username]);
+  const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && (d.jurors || []).includes(user.username) && !(d.votes || {})[user.username]);
   // All disputes involving the current user (filed by them or against their submissions)
   const myDisputes = Object.values(disputes || {}).filter(d => d.disputedBy === user.username || d.originalSubmitter === user.username);
-  const diQ = all.filter(s => s.status === "di_pending" && (s.diPartner === user.username || (s.isDI && s.diPartner === user.username)));
+  const diQ = all.filter(s => s.status === "di_pending" && s.diPartner === user.username);
   // Show DI tab if user has any DI relationship, pending items, or pending link requests
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
   const hasDIPartnership = !!user.diPartner || all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
