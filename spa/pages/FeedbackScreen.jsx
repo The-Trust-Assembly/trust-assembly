@@ -19,6 +19,12 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [diLinkResult, setDiLinkResult] = useState(null);
   const [recomputeRunning, setRecomputeRunning] = useState(false);
   const [recomputeResult, setRecomputeResult] = useState(null);
+  const [adminFlagRunning, setAdminFlagRunning] = useState(false);
+  const [adminFlagResult, setAdminFlagResult] = useState(null);
+  const [migrateKvRunning, setMigrateKvRunning] = useState(false);
+  const [migrateKvResult, setMigrateKvResult] = useState(null);
+  const [purgeKvRunning, setPurgeKvRunning] = useState(false);
+  const [purgeKvResult, setPurgeKvResult] = useState(null);
 
   const load = async () => {
     try {
@@ -83,15 +89,84 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
     setDiLinkRunning(false);
   };
 
+  const runSetAdminFlag = async () => {
+    setAdminFlagRunning(true); setAdminFlagResult(null);
+    try {
+      const res = await fetch("/api/admin/set-admin-flag", { method: "POST" });
+      const data = await res.json();
+      setAdminFlagResult(data);
+    } catch (e) {
+      setAdminFlagResult({ success: false, error: e.message });
+    }
+    setAdminFlagRunning(false);
+  };
+
+  const runMigrateKv = async () => {
+    setMigrateKvRunning(true); setMigrateKvResult(null);
+    try {
+      const res = await fetch("/api/reconcile", { method: "POST" });
+      const data = await res.json();
+      setMigrateKvResult(data);
+    } catch (e) {
+      setMigrateKvResult({ success: false, report: [`Error: ${e.message}`] });
+    }
+    setMigrateKvRunning(false);
+  };
+
+  const runPurgeKv = async () => {
+    if (!confirm("This will DELETE all KV store records after migration. Continue?")) return;
+    setPurgeKvRunning(true); setPurgeKvResult(null);
+    try {
+      const res = await fetch("/api/reconcile?purge=true", { method: "POST" });
+      const data = await res.json();
+      setPurgeKvResult(data);
+    } catch (e) {
+      setPurgeKvResult({ success: false, report: [`Error: ${e.message}`] });
+    }
+    setPurgeKvRunning(false);
+  };
+
   if (loading) return <div style={{ textAlign: "center", padding: 40, color: "var(--stone)" }}>Loading feedback...</div>;
   if (error) return <div className="ta-error">{error}</div>;
 
   return (
     <div>
+      {/* Bootstrap Admin Flag — visible to @thekingofamerica even without is_admin */}
+      {!isAdmin && currentUsername === ADMIN_USERNAME && (
+        <div className="ta-card" style={{ borderLeft: "4px solid #DC2626", marginBottom: 20 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#DC2626", marginBottom: 10, fontWeight: 700 }}>Admin Bootstrap</div>
+          <div style={{ fontSize: 12, color: "var(--stone)", marginBottom: 10 }}>Your admin flag is not set in the database. Click below to fix it.</div>
+          <button className="ta-btn-primary" onClick={runSetAdminFlag} disabled={adminFlagRunning} style={{ background: "#DC2626", fontSize: 12 }}>
+            {adminFlagRunning ? "Setting..." : "Set Admin Flag in Database"}
+          </button>
+          {adminFlagResult && (
+            <div style={{ marginTop: 8, padding: 10, background: adminFlagResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)" }}>
+              {adminFlagResult.success ? adminFlagResult.message : (adminFlagResult.error || "Failed")}
+              {adminFlagResult.success && <div style={{ marginTop: 4, color: "var(--stone)" }}>Reload the page to see admin tools.</div>}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Admin Tools Panel */}
       {isAdmin && (
         <div className="ta-card" style={{ borderLeft: "4px solid var(--sienna)", marginBottom: 20 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--sienna)", marginBottom: 10, fontWeight: 700 }}>Admin Tools</div>
+
+          {/* Set Admin Flag (already admin but can re-confirm) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+            <button className="ta-btn-primary" onClick={runSetAdminFlag} disabled={adminFlagRunning} style={{ background: "#6B21A8", fontSize: 12 }}>
+              {adminFlagRunning ? "Setting..." : "Set Admin Flag in DB"}
+            </button>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Ensures is_admin=TRUE in the relational database</span>
+          </div>
+          {adminFlagResult && (
+            <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: adminFlagResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)" }}>
+              {adminFlagResult.success ? adminFlagResult.message : (adminFlagResult.error || "Failed")}
+            </div>
+          )}
+
+          {/* Recompute Stats */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
             <button className="ta-btn-primary" onClick={runRecomputeStats} disabled={recomputeRunning} style={{ background: "#B45309", fontSize: 12 }}>
               {recomputeRunning ? "Running..." : "Recompute User Stats"}
@@ -104,16 +179,48 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
               {!recomputeResult.success && recomputeResult.error && <div style={{ color: "var(--fired-clay)" }}>{recomputeResult.error}</div>}
             </div>
           )}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+
+          {/* Force DI Link */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
             <button className="ta-btn-primary" onClick={runForceDILink} disabled={diLinkRunning} style={{ background: "var(--sienna)", fontSize: 12 }}>
               {diLinkRunning ? "Running..." : "Force-Link All DI Partners"}
             </button>
             <span style={{ fontSize: 11, color: "var(--stone)" }}>Links all DI users to @thekingofamerica and backfills submissions</span>
           </div>
           {diLinkResult && (
-            <div style={{ marginTop: 12, padding: 10, background: diLinkResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
+            <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: diLinkResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
               {(diLinkResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
               {!diLinkResult.success && diLinkResult.error && <div style={{ color: "var(--fired-clay)" }}>{diLinkResult.error}</div>}
+            </div>
+          )}
+
+          {/* Migrate KV → Relational */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+            <button className="ta-btn-primary" onClick={runMigrateKv} disabled={migrateKvRunning} style={{ background: "#0369A1", fontSize: 12 }}>
+              {migrateKvRunning ? "Migrating..." : "Migrate KV → Relational"}
+            </button>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Copies all KV store records into relational tables (non-destructive)</span>
+          </div>
+          {migrateKvResult && (
+            <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: migrateKvResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Migrated: {migrateKvResult.migratedCount || 0} records</div>
+              {(migrateKvResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+              {!migrateKvResult.success && migrateKvResult.error && <div style={{ color: "var(--fired-clay)" }}>{migrateKvResult.error}</div>}
+            </div>
+          )}
+
+          {/* Purge KV Store */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <button className="ta-btn-primary" onClick={runPurgeKv} disabled={purgeKvRunning} style={{ background: "#DC2626", fontSize: 12 }}>
+              {purgeKvRunning ? "Purging..." : "Migrate + Purge KV Store"}
+            </button>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Migrates then DELETES all KV rows (irreversible)</span>
+          </div>
+          {purgeKvResult && (
+            <div style={{ marginTop: 12, padding: 10, background: purgeKvResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Migrated: {purgeKvResult.migratedCount || 0} records | Purged: {purgeKvResult.purged ? "Yes" : "No"}</div>
+              {(purgeKvResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+              {!purgeKvResult.success && purgeKvResult.error && <div style={{ color: "var(--fired-clay)" }}>{purgeKvResult.error}</div>}
             </div>
           )}
         </div>
