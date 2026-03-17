@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     SELECT
       ma.id, ma.user_id, ma.status, ma.created_at,
       u.username, u.display_name,
-      o.id AS org_id, o.name AS org_name
+      ma.org_id, o.name AS org_name
     FROM membership_applications ma
     LEFT JOIN users u ON u.id = ma.user_id
     LEFT JOIN organizations o ON o.id = ma.org_id

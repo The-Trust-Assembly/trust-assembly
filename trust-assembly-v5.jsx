@@ -2052,7 +2052,7 @@ function StandingCorrectionInput({ value, onChange }) {
 function DiscoveryFeed({ onLogin, onRegister }) {
   const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { (async () => { const s = (await sG(SK.SUBS)) || {}; setSubs(Object.values(s).filter(x => x.status !== "pending_jury").sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false); })(); }, []);
+  useEffect(() => { (async () => { const s = (await sG(SK.SUBS)) || {}; setSubs(Object.values(s).sort((a, b) => hotScore(b) - hotScore(a))); setLoading(false); })(); }, []);
   if (loading || subs.length === 0) return null;
   return (
     <div style={{ marginTop: 36 }}>
@@ -2953,8 +2953,9 @@ function ReviewScreen({ user }) {
     if (s.isDI && s.submittedBy && user.isDI && user.diPartner === s.submittedBy) return false;
     return true;
   };
+  const reviewStatuses = wildWest ? new Set(["pending_review", "pending_jury"]) : new Set(["pending_review"]);
   const igQ = wildWest
-    ? all.filter(s => s.status === "pending_review" && myOrgs.has(s.orgId) && isEligibleReviewer(s) && !s.votes[user.username])
+    ? all.filter(s => reviewStatuses.has(s.status) && myOrgs.has(s.orgId) && isEligibleReviewer(s) && !s.votes[user.username])
     : all.filter(s => s.status === "pending_review" && s.jurors.includes(user.username) && !s.votes[user.username]);
   const cgQ = all.filter(s => s.status === "cross_review" && s.crossGroupJurors.includes(user.username) && !s.crossGroupVotes[user.username]);
   const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && d.jurors.includes(user.username) && !d.votes[user.username]);

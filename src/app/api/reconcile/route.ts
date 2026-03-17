@@ -222,6 +222,88 @@ export async function POST(request: NextRequest) {
       report.push(`Processed ${auditEntries.length} audit entries from KV key ${kvRow.key} (migrated ${auditMigrated})`);
     }
 
+    // ── Reconcile DI partnerships on user records ──
+    // KV migration may not have carried di_partner_id to user records.
+    // Infer from: (1) submissions with is_di + di_partner_id, (2) KV user data, (3) di_requests table.
+    report.push(`\n--- DI Partnership Reconciliation ---`);
+
+    // Strategy 1: Infer from submissions
+    const diSubs = await sql`
+      SELECT DISTINCT s.submitted_by, s.di_partner_id
+      FROM submissions s
+      WHERE s.is_di = TRUE AND s.di_partner_id IS NOT NULL
+    `;
+    for (const row of diSubs.rows) {
+      const diUserId = row.submitted_by as string;
+      const partnerId = row.di_partner_id as string;
+      // Set di_partner_id on the DI user (the submitter) if missing
+      const diUser = await sql`SELECT id, username, di_partner_id FROM users WHERE id = ${diUserId}`;
+      if (diUser.rows.length > 0 && !diUser.rows[0].di_partner_id) {
+        await sql`UPDATE users SET di_partner_id = ${partnerId}, is_di = TRUE, di_approved = TRUE WHERE id = ${diUserId}`;
+        report.push(`OK: Set di_partner_id on DI user @${diUser.rows[0].username} (inferred from submissions)`);
+        migratedCount++;
+      }
+      // Set di_partner_id on the human partner if missing
+      const partnerUser = await sql`SELECT id, username, di_partner_id FROM users WHERE id = ${partnerId}`;
+      if (partnerUser.rows.length > 0 && !partnerUser.rows[0].di_partner_id) {
+        await sql`UPDATE users SET di_partner_id = ${diUserId} WHERE id = ${partnerId}`;
+        report.push(`OK: Set di_partner_id on partner @${partnerUser.rows[0].username} (inferred from submissions)`);
+        migratedCount++;
+      }
+    }
+
+    // Strategy 2: Infer from KV store user data (ta-u-* keys)
+    const kvUsers = await sql`SELECT key, value FROM kv_store WHERE key LIKE 'ta-u-%'`;
+    for (const kvRow of kvUsers.rows) {
+      if (!kvRow.value) continue;
+      let usersObj: Record<string, Record<string, unknown>>;
+      try { usersObj = typeof kvRow.value === "string" ? JSON.parse(kvRow.value) : kvRow.value; } catch { continue; }
+
+      for (const [uname, udata] of Object.entries(usersObj)) {
+        if (!udata.diPartner) continue;
+        const diPartnerUsername = udata.diPartner as string;
+        const userId = await resolveUserId(uname);
+        const partnerId = await resolveUserId(diPartnerUsername);
+        if (!userId || !partnerId) {
+          report.push(`WARN: KV user @${uname} has diPartner @${diPartnerUsername} but one/both not found in users table`);
+          continue;
+        }
+        // Update the user's di_partner_id if missing
+        const userRec = await sql`SELECT di_partner_id FROM users WHERE id = ${userId}`;
+        if (userRec.rows.length > 0 && !userRec.rows[0].di_partner_id) {
+          const isDI = udata.isDI === true;
+          if (isDI) {
+            await sql`UPDATE users SET di_partner_id = ${partnerId}, is_di = TRUE, di_approved = TRUE WHERE id = ${userId}`;
+          } else {
+            await sql`UPDATE users SET di_partner_id = ${partnerId} WHERE id = ${userId}`;
+          }
+          report.push(`OK: Set di_partner_id on @${uname} → @${diPartnerUsername} (from KV user data)`);
+          migratedCount++;
+        }
+      }
+    }
+
+    // Strategy 3: Infer from approved di_requests
+    const approvedReqs = await sql`
+      SELECT di_user_id, partner_user_id FROM di_requests WHERE status = 'approved'
+    `;
+    for (const row of approvedReqs.rows) {
+      const diUserId = row.di_user_id as string;
+      const partnerId = row.partner_user_id as string;
+      const diUser = await sql`SELECT id, username, di_partner_id FROM users WHERE id = ${diUserId}`;
+      if (diUser.rows.length > 0 && !diUser.rows[0].di_partner_id) {
+        await sql`UPDATE users SET di_partner_id = ${partnerId}, is_di = TRUE, di_approved = TRUE WHERE id = ${diUserId}`;
+        report.push(`OK: Set di_partner_id on @${diUser.rows[0].username} (from approved di_request)`);
+        migratedCount++;
+      }
+      const partnerUser = await sql`SELECT id, username, di_partner_id FROM users WHERE id = ${partnerId}`;
+      if (partnerUser.rows.length > 0 && !partnerUser.rows[0].di_partner_id) {
+        await sql`UPDATE users SET di_partner_id = ${diUserId} WHERE id = ${partnerId}`;
+        report.push(`OK: Set di_partner_id on @${partnerUser.rows[0].username} (from approved di_request)`);
+        migratedCount++;
+      }
+    }
+
     // ── Report on all KV keys ──
     const allKeys = await sql`SELECT key, LENGTH(value::text) AS size FROM kv_store ORDER BY key`;
     report.push(`\n--- KV Store Contents (${allKeys.rows.length} keys) ---`);

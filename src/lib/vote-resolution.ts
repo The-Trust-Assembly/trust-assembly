@@ -125,7 +125,7 @@ export async function tryResolveSubmission(
 
     // Reputation updates (in-group only — cross-group affects the org)
     if (!isCross) {
-      await updateSubmitterReputation(sub, outcome, wasLie, votes, now);
+      await updateSubmitterReputation(submissionId, sub, outcome, wasLie, votes, now);
 
       // Auto-promote to cross-group if in-group approved
       if (outcome === "approved") {
@@ -246,6 +246,7 @@ async function graduateLinkedVaultEntries(
 // ---- Submitter Reputation ----
 
 async function updateSubmitterReputation(
+  submissionId: string,
   sub: { submitted_by: string; org_id: string; is_di: boolean; di_partner_id: string | null },
   outcome: string,
   wasLie: boolean,
@@ -325,7 +326,7 @@ async function updateSubmitterReputation(
     if (vote.newsworthy && vote.interesting) {
       await sql`
         INSERT INTO user_ratings (user_id, submission_id, rated_by, newsworthy, interesting)
-        VALUES (${targetUserId}, ${sub.submitted_by}, ${vote.user_id}, ${vote.newsworthy}, ${vote.interesting})
+        VALUES (${targetUserId}, ${submissionId}, ${vote.user_id}, ${vote.newsworthy}, ${vote.interesting})
       `;
     }
   }
@@ -333,7 +334,7 @@ async function updateSubmitterReputation(
   // Record in review history
   await sql`
     INSERT INTO user_review_history (user_id, submission_id, outcome, from_di)
-    VALUES (${targetUserId}, ${sub.submitted_by}, ${outcome}, ${sub.is_di})
+    VALUES (${targetUserId}, ${submissionId}, ${outcome}, ${sub.is_di})
   `;
 }
 
