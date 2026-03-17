@@ -177,8 +177,33 @@ export default function TrustAssembly() {
         if (meRes.ok) {
           const serverUser = await meRes.json();
           if (serverUser?.username) {
-            const users = (await sG(SK.USERS)) || {};
-            const u = users[serverUser.username];
+            // Try to load full profile from bulk users endpoint
+            let u;
+            try {
+              const users = (await sG(SK.USERS)) || {};
+              u = users[serverUser.username];
+            } catch (e) { console.error("Init: sG(USERS) failed, using /api/auth/me data:", e); }
+            // Fallback: build user object from /api/auth/me response
+            if (!u) {
+              u = {
+                id: serverUser.id, username: serverUser.username,
+                displayName: serverUser.display_name || serverUser.username,
+                realName: serverUser.real_name, email: serverUser.email,
+                gender: serverUser.gender, age: serverUser.age,
+                country: serverUser.country, state: serverUser.state,
+                politicalAffiliation: serverUser.political_affiliation,
+                bio: serverUser.bio, isDI: serverUser.is_di, diApproved: serverUser.di_approved,
+                signupDate: serverUser.created_at,
+                signupTimestamp: serverUser.created_at ? new Date(serverUser.created_at).getTime() : 0,
+                orgId: serverUser.primary_org_id || (serverUser.organizations?.[0]?.id) || null,
+                orgIds: (serverUser.organizations || []).map(o => o.id),
+                totalWins: serverUser.total_wins || 0, totalLosses: serverUser.total_losses || 0,
+                currentStreak: serverUser.current_streak || 0, requiredStreak: 3,
+                disputeWins: serverUser.dispute_wins || 0, disputeLosses: serverUser.dispute_losses || 0,
+                deliberateLies: serverUser.deliberate_lies || 0,
+                ratingsReceived: [], reviewHistory: [], retractions: [], notifications: [],
+              };
+            }
             if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
           }
         }
