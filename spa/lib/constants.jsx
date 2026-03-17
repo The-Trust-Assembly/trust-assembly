@@ -2,6 +2,8 @@
 // constants.js — Extracted from trust-assembly-v5.jsx
 // ============================================================
 
+import { LighthouseIcon, AttrLine } from "../components/ui";
+
 export const VER = "v5";
 
 export const SK = { USERS: `ta-u-${VER}`, ORGS: `ta-o-${VER}`, SUBS: `ta-s-${VER}`, SESSION: `ta-ss-${VER}`, AUDIT: `ta-a-${VER}`, VAULT: `ta-vault-${VER}`, ARGS: `ta-args-${VER}`, BELIEFS: `ta-beliefs-${VER}`, TRANSLATIONS: `ta-trans-${VER}`, DISPUTES: `ta-disp-${VER}`, SYNTH: `ta-synth-${VER}`, GP: `ta-gp-${VER}`, APPS: `ta-apps-${VER}` };
