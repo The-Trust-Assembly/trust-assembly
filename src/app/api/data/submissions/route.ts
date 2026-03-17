@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { ok } from "@/lib/api-utils";
+import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,65 @@ export const dynamic = "force-dynamic";
 // in the format the v5 SPA expects (camelCase, nested votes/jurors/evidence).
 // This replaces sG(SK.SUBS) reads from the deprecated KV store.
 export async function GET() {
+  // ── Auto-promote pending_jury → pending_review ──
+  // Submissions stuck in pending_jury because the org was too small at creation
+  // time should be promoted when the org now has enough members.
+  const wildWest = await isWildWestMode();
+  const threshold = wildWest ? 2 : 5;
+
+  const stuckSubs = await sql`
+    SELECT s.id, s.org_id, s.submitted_by, s.di_partner_id
+    FROM submissions s
+    WHERE s.status = 'pending_jury'
+  `;
+
+  for (const sub of stuckSubs.rows) {
+    const memberCount = await sql`
+      SELECT COUNT(*) as count FROM organization_members
+      WHERE org_id = ${sub.org_id} AND is_active = TRUE
+    `;
+    const count = parseInt(memberCount.rows[0].count);
+    if (count >= threshold) {
+      // Org now has enough members — promote and assign jury
+      const jurySize = wildWest ? 1 : getJurySize(count);
+      const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+
+      // Build exclusion list: submitter + DI partner
+      const excluded = [sub.submitted_by];
+      if (sub.di_partner_id) excluded.push(sub.di_partner_id);
+
+      const pool = await sql.query(
+        `SELECT om.user_id
+         FROM organization_members om
+         WHERE om.org_id = $1
+           AND om.is_active = TRUE
+           AND om.user_id != ALL($2::uuid[])
+         ORDER BY RANDOM()
+         LIMIT $3`,
+        [sub.org_id, excluded, poolSize]
+      );
+
+      for (const juror of pool.rows) {
+        await sql`
+          INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+          VALUES (${sub.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
+          ON CONFLICT DO NOTHING
+        `;
+      }
+
+      await sql`
+        UPDATE submissions SET status = 'pending_review', jury_seats = ${jurySize}
+        WHERE id = ${sub.id}
+      `;
+
+      await sql`
+        INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
+        VALUES ('Submission promoted from pending_jury to pending_review (auto)', ${sub.org_id}, 'submission', ${sub.id},
+                ${JSON.stringify({ memberCount: count, jurySize, wildWest })})
+      `;
+    }
+  }
+
   const result = await sql`
     SELECT
       s.id, s.submission_type, s.status, s.url, s.normalized_url,
@@ -18,11 +78,12 @@ export async function GET() {
       u.username AS submitted_by_username,
       o.id AS org_id,
       o.name AS org_name,
-      partner.username AS di_partner_username
+      COALESCE(partner.username, current_partner.username) AS di_partner_username
     FROM submissions s
     LEFT JOIN users u ON u.id = s.submitted_by
     LEFT JOIN organizations o ON o.id = s.org_id
     LEFT JOIN users partner ON partner.id = s.di_partner_id
+    LEFT JOIN users current_partner ON current_partner.id = u.di_partner_id AND s.is_di = TRUE
     ORDER BY s.created_at DESC
   `;
 

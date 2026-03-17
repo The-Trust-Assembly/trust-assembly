@@ -12,7 +12,10 @@ export async function GET(request: NextRequest) {
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
-  // Find all di_pending submissions where the current user is the DI partner
+  // Find all di_pending submissions where the current user is the DI partner.
+  // Match on s.di_partner_id directly, OR look up the submitter's current
+  // di_partner_id (handles submissions created before DI partnership was migrated
+  // to the relational DB, where s.di_partner_id might be NULL).
   const result = await sql`
     SELECT
       s.id, s.submission_type, s.status, s.url, s.original_headline,
@@ -24,15 +27,24 @@ export async function GET(request: NextRequest) {
       u.display_name AS submitted_by_display_name,
       o.id AS org_id,
       o.name AS org_name,
-      partner.username AS di_partner_username
+      COALESCE(partner.username, current_partner.username) AS di_partner_username
     FROM submissions s
     LEFT JOIN users u ON u.id = s.submitted_by
     LEFT JOIN organizations o ON o.id = s.org_id
     LEFT JOIN users partner ON partner.id = s.di_partner_id
+    LEFT JOIN users current_partner ON current_partner.id = u.di_partner_id
     WHERE s.status = 'di_pending'
-      AND s.di_partner_id = ${session.sub}
+      AND (s.di_partner_id = ${session.sub}
+           OR (s.is_di = TRUE AND u.di_partner_id = ${session.sub}))
     ORDER BY s.created_at DESC
   `;
+
+  // Backfill: if any submissions have NULL di_partner_id but we matched via user record, fix them
+  for (const row of result.rows) {
+    if (!row.di_partner_id && row.is_di) {
+      await sql`UPDATE submissions SET di_partner_id = ${session.sub} WHERE id = ${row.id} AND di_partner_id IS NULL`;
+    }
+  }
 
   // Also fetch evidence for each submission
   const subIds = result.rows.map((r: Record<string, unknown>) => r.id);
