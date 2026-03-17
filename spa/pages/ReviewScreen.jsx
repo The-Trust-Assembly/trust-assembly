@@ -24,7 +24,8 @@ export default function ReviewScreen({ user }) {
   const [wildWest, setWildWest] = useState(false);
 
   const load = useCallback(async () => {
-    const ww = await isWildWestMode();
+    let ww = false;
+    try { ww = await isWildWestMode(); } catch { ww = true; }
     setWildWest(ww);
     // ── Load all data from relational API (single source of truth) ──
     const allSubs = (await sG(SK.SUBS)) || {};
@@ -48,12 +49,16 @@ export default function ReviewScreen({ user }) {
         if (queueData.myDisputes) {
           for (const relDisp of queueData.myDisputes) { allDisputes[relDisp.id] = { ...allDisputes[relDisp.id], ...relDisp }; }
         }
+      } else {
+        console.warn("[ReviewScreen] /api/reviews/queue returned", queueRes.status);
       }
       if (diRes.ok) {
         const diData = await diRes.json();
         if (diData.submissions) {
           for (const relSub of diData.submissions) { allSubs[relSub.id] = { ...allSubs[relSub.id], ...relSub }; }
         }
+      } else {
+        console.warn("[ReviewScreen] /api/submissions/di-queue returned", diRes.status);
       }
     } catch (e) { console.warn("Failed to fetch review queue:", e); }
     setSubs(allSubs); setDisputes(allDisputes);
@@ -182,7 +187,10 @@ export default function ReviewScreen({ user }) {
   const dQ = Object.values(disputes || {}).filter(d => d.status === "pending_review" && (d.jurors || []).includes(user.username) && !(d.votes || {})[user.username]);
   // All disputes involving the current user (filed by them or against their submissions)
   const myDisputes = Object.values(disputes || {}).filter(d => d.disputedBy === user.username || d.originalSubmitter === user.username);
-  const diQ = all.filter(s => s.status === "di_pending" && s.diPartner === user.username);
+  const diQ = all.filter(s => s.status === "di_pending" && (
+    s.diPartner === user.username ||
+    (s.isDI && user.diPartner && s.submittedBy === user.diPartner)
+  ));
   // Show DI tab if user has any DI relationship, pending items, or pending link requests
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
   const hasDIPartnership = !!user.diPartner || all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
