@@ -17,6 +17,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [resolveSending, setResolveSending] = useState(false);
   const [diLinkRunning, setDiLinkRunning] = useState(false);
   const [diLinkResult, setDiLinkResult] = useState(null);
+  const [recomputeRunning, setRecomputeRunning] = useState(false);
+  const [recomputeResult, setRecomputeResult] = useState(null);
 
   const load = async () => {
     try {
@@ -57,6 +59,18 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
     setResolveSending(false);
   };
 
+  const runRecomputeStats = async () => {
+    setRecomputeRunning(true); setRecomputeResult(null);
+    try {
+      const res = await fetch("/api/admin/recompute-stats", { method: "POST" });
+      const data = await res.json();
+      setRecomputeResult(data);
+    } catch (e) {
+      setRecomputeResult({ success: false, report: [`Error: ${e.message}`] });
+    }
+    setRecomputeRunning(false);
+  };
+
   const runForceDILink = async () => {
     setDiLinkRunning(true); setDiLinkResult(null);
     try {
@@ -78,6 +92,18 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
       {isAdmin && (
         <div className="ta-card" style={{ borderLeft: "4px solid var(--sienna)", marginBottom: 20 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--sienna)", marginBottom: 10, fontWeight: 700 }}>Admin Tools</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+            <button className="ta-btn-primary" onClick={runRecomputeStats} disabled={recomputeRunning} style={{ background: "#B45309", fontSize: 12 }}>
+              {recomputeRunning ? "Running..." : "Recompute User Stats"}
+            </button>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Recalculates wins/losses/streak from submissions + KV store</span>
+          </div>
+          {recomputeResult && (
+            <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: recomputeResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
+              {(recomputeResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+              {!recomputeResult.success && recomputeResult.error && <div style={{ color: "var(--fired-clay)" }}>{recomputeResult.error}</div>}
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <button className="ta-btn-primary" onClick={runForceDILink} disabled={diLinkRunning} style={{ background: "var(--sienna)", fontSize: 12 }}>
               {diLinkRunning ? "Running..." : "Force-Link All DI Partners"}
