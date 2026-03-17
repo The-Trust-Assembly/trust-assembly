@@ -25,6 +25,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [migrateKvResult, setMigrateKvResult] = useState(null);
   const [purgeKvRunning, setPurgeKvRunning] = useState(false);
   const [purgeKvResult, setPurgeKvResult] = useState(null);
+  const [diagRunning, setDiagRunning] = useState(false);
+  const [diagResult, setDiagResult] = useState(null);
 
   const load = async () => {
     try {
@@ -126,6 +128,18 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
     setPurgeKvRunning(false);
   };
 
+  const runDiagTransactions = async () => {
+    setDiagRunning(true); setDiagResult(null);
+    try {
+      const res = await fetch("/api/admin/diag-transactions", { method: "POST" });
+      const data = await res.json();
+      setDiagResult(data);
+    } catch (e) {
+      setDiagResult({ success: false, error: e.message });
+    }
+    setDiagRunning(false);
+  };
+
   if (loading) return <div style={{ textAlign: "center", padding: 40, color: "var(--stone)" }}>Loading feedback...</div>;
   if (error) return <div className="ta-error">{error}</div>;
 
@@ -221,6 +235,93 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Migrated: {purgeKvResult.migratedCount || 0} records | Purged: {purgeKvResult.purged ? "Yes" : "No"}</div>
               {(purgeKvResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
               {!purgeKvResult.success && purgeKvResult.error && <div style={{ color: "var(--fired-clay)" }}>{purgeKvResult.error}</div>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Transaction Diagnostics Panel */}
+      {isAdmin && (
+        <div className="ta-card" style={{ borderLeft: "4px solid var(--teal)", marginBottom: 20 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--teal)", marginBottom: 6, fontWeight: 700 }}>Database Diagnostics</div>
+          <div style={{ fontSize: 12, color: "var(--stone)", marginBottom: 12, lineHeight: 1.5 }}>
+            Tests whether database transactions actually work. Checks connection behavior, data integrity, and identifies inconsistencies caused by broken transactions.
+          </div>
+          <button className="ta-btn-primary" onClick={runDiagTransactions} disabled={diagRunning} style={{ background: "var(--teal)", fontSize: 12 }}>
+            {diagRunning ? "Running diagnostics..." : "Run Transaction Diagnostics"}
+          </button>
+
+          {diagResult && (
+            <div style={{ marginTop: 14 }}>
+              {/* Summary banner */}
+              {diagResult.summary && (
+                <div style={{
+                  padding: "12px 16px",
+                  borderRadius: 8,
+                  marginBottom: 14,
+                  background: diagResult.summary.fail > 0 ? "#FEF2F2" : diagResult.summary.error > 0 ? "#FFFBEB" : "#ECFDF5",
+                  border: `1px solid ${diagResult.summary.fail > 0 ? "#FECACA" : diagResult.summary.error > 0 ? "#FDE68A" : "#A7F3D0"}`,
+                }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, color: diagResult.summary.fail > 0 ? "#DC2626" : "#059669" }}>
+                      {diagResult.summary.fail > 0 ? "ISSUES DETECTED" : "ALL CLEAR"}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--stone)" }}>{diagResult.summary.durationMs}ms</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    {diagResult.summary.pass > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#059669", background: "#ECFDF5", padding: "2px 8px", borderRadius: 4 }}>PASS: {diagResult.summary.pass}</span>}
+                    {diagResult.summary.fail > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#DC2626", background: "#FEF2F2", padding: "2px 8px", borderRadius: 4 }}>FAIL: {diagResult.summary.fail}</span>}
+                    {diagResult.summary.error > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#D97706", background: "#FFFBEB", padding: "2px 8px", borderRadius: 4 }}>ERROR: {diagResult.summary.error}</span>}
+                    {diagResult.summary.info > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#2563EB", background: "#EFF6FF", padding: "2px 8px", borderRadius: 4 }}>INFO: {diagResult.summary.info}</span>}
+                  </div>
+                  {diagResult.summary.verdict && (
+                    <div style={{ marginTop: 10, fontSize: 12, fontWeight: 500, color: "var(--charcoal)", lineHeight: 1.5 }}>
+                      {diagResult.summary.verdict}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Individual test results */}
+              {(diagResult.tests || []).map((test, i) => {
+                const statusColors = { PASS: "#059669", FAIL: "#DC2626", ERROR: "#D97706", INFO: "#2563EB" };
+                const statusBgs = { PASS: "#ECFDF5", FAIL: "#FEF2F2", ERROR: "#FFFBEB", INFO: "#EFF6FF" };
+                const statusBorders = { PASS: "#A7F3D0", FAIL: "#FECACA", ERROR: "#FDE68A", INFO: "#BFDBFE" };
+                return (
+                  <div key={i} style={{
+                    padding: "10px 14px",
+                    borderRadius: 6,
+                    marginBottom: 8,
+                    background: statusBgs[test.status] || "#F8FAFC",
+                    border: `1px solid ${statusBorders[test.status] || "#E2E8F0"}`,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, color: "#fff",
+                        background: statusColors[test.status] || "#64748B",
+                        padding: "1px 6px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.05em",
+                      }}>{test.status}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--charcoal)" }}>{test.name}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--charcoal)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{test.description}</div>
+                    {test.details && (
+                      <details style={{ marginTop: 6 }}>
+                        <summary style={{ fontSize: 10, color: "var(--stone)", cursor: "pointer", fontFamily: "var(--mono)" }}>Raw details</summary>
+                        <pre style={{ fontSize: 10, color: "var(--stone)", marginTop: 4, overflow: "auto", maxHeight: 200, background: "rgba(0,0,0,0.03)", padding: 8, borderRadius: 4 }}>
+                          {JSON.stringify(test.details, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Error fallback */}
+              {diagResult.error && !diagResult.tests && (
+                <div style={{ padding: 10, background: "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", color: "var(--fired-clay)" }}>
+                  Error: {diagResult.error}
+                </div>
+              )}
             </div>
           )}
         </div>
