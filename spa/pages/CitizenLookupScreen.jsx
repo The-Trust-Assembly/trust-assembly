@@ -15,19 +15,25 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
   const [diAgents, setDiAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  useEffect(() => { (async () => {
-    const all = (await sG(SK.USERS)) || {};
-    const target = all[username];
-    if (!target) { setNotFound(true); setLoading(false); return; }
-    setU(target);
-    setAllUsers(all);
-    setOrgs((await sG(SK.ORGS)) || {});
-    setSubs((await sG(SK.SUBS)) || {});
-    // Find DI agents registered to this user
-    const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
-    setDiAgents(agents);
+  const loadData = async () => {
+    try {
+      const all = (await sG(SK.USERS)) || {};
+      const target = all[username];
+      if (!target) { setNotFound(true); setLoading(false); return; }
+      setU(target);
+      setAllUsers(all);
+      setOrgs((await sG(SK.ORGS)) || {});
+      setSubs((await sG(SK.SUBS)) || {});
+      // Find DI agents registered to this user
+      const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
+      setDiAgents(agents);
+      setNotFound(false);
+    } catch (e) {
+      console.warn("[CitizenLookup] data load failed:", e);
+    }
     setLoading(false);
-  })(); }, [username]);
+  };
+  useEffect(() => { loadData(); }, [username]);
   if (loading) return <Loader />;
   if (notFound) return <div><div className="ta-section-rule" /><button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button><Empty text={`Citizen @${username} not found.`} /></div>;
   const p = computeProfile(u, { allUsers, allOrgs: orgs, allSubs: subs });

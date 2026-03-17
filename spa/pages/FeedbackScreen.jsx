@@ -15,6 +15,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [resolvingId, setResolvingId] = useState(null);
   const [resolutionNote, setResolutionNote] = useState("");
   const [resolveSending, setResolveSending] = useState(false);
+  const [diLinkRunning, setDiLinkRunning] = useState(false);
+  const [diLinkResult, setDiLinkResult] = useState(null);
 
   const load = async () => {
     try {
@@ -55,11 +57,42 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
     setResolveSending(false);
   };
 
+  const runForceDILink = async () => {
+    setDiLinkRunning(true); setDiLinkResult(null);
+    try {
+      const res = await fetch("/api/admin/force-di-partner", { method: "POST" });
+      const data = await res.json();
+      setDiLinkResult(data);
+    } catch (e) {
+      setDiLinkResult({ success: false, report: [`Error: ${e.message}`] });
+    }
+    setDiLinkRunning(false);
+  };
+
   if (loading) return <div style={{ textAlign: "center", padding: 40, color: "var(--stone)" }}>Loading feedback...</div>;
   if (error) return <div className="ta-error">{error}</div>;
 
   return (
     <div>
+      {/* Admin Tools Panel */}
+      {isAdmin && (
+        <div className="ta-card" style={{ borderLeft: "4px solid var(--sienna)", marginBottom: 20 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--sienna)", marginBottom: 10, fontWeight: 700 }}>Admin Tools</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <button className="ta-btn-primary" onClick={runForceDILink} disabled={diLinkRunning} style={{ background: "var(--sienna)", fontSize: 12 }}>
+              {diLinkRunning ? "Running..." : "Force-Link All DI Partners"}
+            </button>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Links all DI users to @thekingofamerica and backfills submissions</span>
+          </div>
+          {diLinkResult && (
+            <div style={{ marginTop: 12, padding: 10, background: diLinkResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
+              {(diLinkResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+              {!diLinkResult.success && diLinkResult.error && <div style={{ color: "var(--fired-clay)" }}>{diLinkResult.error}</div>}
+            </div>
+          )}
+        </div>
+      )}
+
       <h2 className="ta-section-head">{isAdmin ? "Feedback & Feature Requests" : "My Feedback"}</h2>
       <p style={{ fontSize: 13, color: "var(--stone)", marginBottom: 20 }}>
         {isAdmin ? `${items.length} submission${items.length !== 1 ? "s" : ""} from beta users` : `${items.length} submission${items.length !== 1 ? "s" : ""} you've sent`}
