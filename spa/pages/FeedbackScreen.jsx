@@ -25,6 +25,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [migrateKvResult, setMigrateKvResult] = useState(null);
   const [purgeKvRunning, setPurgeKvRunning] = useState(false);
   const [purgeKvResult, setPurgeKvResult] = useState(null);
+  const [diagRunning, setDiagRunning] = useState(false);
+  const [diagResult, setDiagResult] = useState(null);
 
   const load = async () => {
     try {
@@ -126,6 +128,18 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
     setPurgeKvRunning(false);
   };
 
+  const runDiagTransactions = async () => {
+    setDiagRunning(true); setDiagResult(null);
+    try {
+      const res = await fetch("/api/admin/diag-transactions", { method: "POST" });
+      const data = await res.json();
+      setDiagResult(data);
+    } catch (e) {
+      setDiagResult({ success: false, error: e.message });
+    }
+    setDiagRunning(false);
+  };
+
   if (loading) return <div style={{ textAlign: "center", padding: 40, color: "var(--stone)" }}>Loading feedback...</div>;
   if (error) return <div className="ta-error">{error}</div>;
 
@@ -221,6 +235,190 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Migrated: {purgeKvResult.migratedCount || 0} records | Purged: {purgeKvResult.purged ? "Yes" : "No"}</div>
               {(purgeKvResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
               {!purgeKvResult.success && purgeKvResult.error && <div style={{ color: "var(--fired-clay)" }}>{purgeKvResult.error}</div>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Transaction Diagnostics Panel */}
+      {isAdmin && (
+        <div className="ta-card" style={{ borderLeft: "4px solid var(--teal)", marginBottom: 20 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--teal)", marginBottom: 6, fontWeight: 700 }}>Database Diagnostics</div>
+          <div style={{ fontSize: 12, color: "var(--stone)", marginBottom: 12, lineHeight: 1.5 }}>
+            Tests whether database transactions actually work. Checks connection behavior, data integrity, and identifies inconsistencies caused by broken transactions.
+          </div>
+          <button className="ta-btn-primary" onClick={runDiagTransactions} disabled={diagRunning} style={{ background: "var(--teal)", fontSize: 12 }}>
+            {diagRunning ? "Running diagnostics..." : "Run Transaction Diagnostics"}
+          </button>
+
+          {diagResult && (
+            <div style={{ marginTop: 14 }}>
+              {/* Summary banner */}
+              {diagResult.summary && (
+                <div style={{
+                  padding: "12px 16px",
+                  borderRadius: 8,
+                  marginBottom: 14,
+                  background: diagResult.summary.fail > 0 ? "#FEF2F2" : diagResult.summary.error > 0 ? "#FFFBEB" : "#ECFDF5",
+                  border: `1px solid ${diagResult.summary.fail > 0 ? "#FECACA" : diagResult.summary.error > 0 ? "#FDE68A" : "#A7F3D0"}`,
+                }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, color: diagResult.summary.fail > 0 ? "#DC2626" : "#059669" }}>
+                      {diagResult.summary.fail > 0 ? "ISSUES DETECTED" : "ALL CLEAR"}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--stone)" }}>{diagResult.summary.durationMs}ms</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    {diagResult.summary.pass > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#059669", background: "#ECFDF5", padding: "2px 8px", borderRadius: 4 }}>PASS: {diagResult.summary.pass}</span>}
+                    {diagResult.summary.fail > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#DC2626", background: "#FEF2F2", padding: "2px 8px", borderRadius: 4 }}>FAIL: {diagResult.summary.fail}</span>}
+                    {diagResult.summary.error > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#D97706", background: "#FFFBEB", padding: "2px 8px", borderRadius: 4 }}>ERROR: {diagResult.summary.error}</span>}
+                    {diagResult.summary.warn > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#D97706", background: "#FFFBEB", padding: "2px 8px", borderRadius: 4 }}>WARN: {diagResult.summary.warn}</span>}
+                    {diagResult.summary.info > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#2563EB", background: "#EFF6FF", padding: "2px 8px", borderRadius: 4 }}>INFO: {diagResult.summary.info}</span>}
+                  </div>
+                  {diagResult.summary.verdict && (
+                    <div style={{ marginTop: 10, fontSize: 12, fontWeight: 500, color: "var(--charcoal)", lineHeight: 1.5 }}>
+                      {diagResult.summary.verdict}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Individual test results */}
+              {(diagResult.tests || []).map((test, i) => {
+                const statusColors = { PASS: "#059669", FAIL: "#DC2626", ERROR: "#D97706", INFO: "#2563EB", WARN: "#D97706" };
+                const statusBgs = { PASS: "#ECFDF5", FAIL: "#FEF2F2", ERROR: "#FFFBEB", INFO: "#EFF6FF", WARN: "#FFFBEB" };
+                const statusBorders = { PASS: "#A7F3D0", FAIL: "#FECACA", ERROR: "#FDE68A", INFO: "#BFDBFE", WARN: "#FDE68A" };
+                const hasSubmissions = test.details?.submissions && Array.isArray(test.details.submissions);
+                const stepStatusColors = { OK: "#059669", MISSING: "#DC2626", WARN: "#D97706", SKIPPED: "#64748B", "N/A": "#94A3B8" };
+                return (
+                  <div key={i} style={{
+                    padding: "10px 14px",
+                    borderRadius: 6,
+                    marginBottom: 8,
+                    background: statusBgs[test.status] || "#F8FAFC",
+                    border: `1px solid ${statusBorders[test.status] || "#E2E8F0"}`,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, color: "#fff",
+                        background: statusColors[test.status] || "#64748B",
+                        padding: "1px 6px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.05em",
+                      }}>{test.status}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--charcoal)" }}>{test.name}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--charcoal)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{test.description}</div>
+
+                    {/* Per-submission pipeline audit — rich rendering */}
+                    {hasSubmissions && (
+                      <div style={{ marginTop: 8 }}>
+                        {test.details.submissions.map((sub, si) => (
+                          <details key={si} style={{ marginBottom: 4 }} open={sub.issueCount > 0}>
+                            <summary style={{
+                              fontSize: 11, cursor: "pointer", padding: "6px 8px", borderRadius: 4,
+                              background: sub.issueCount > 0 ? "rgba(220,38,38,0.08)" : "rgba(5,150,105,0.06)",
+                              display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+                            }}>
+                              <span style={{
+                                fontSize: 9, fontWeight: 700, color: "#fff", padding: "1px 5px", borderRadius: 3,
+                                background: sub.issueCount > 0 ? "#DC2626" : "#059669",
+                              }}>{sub.issueCount > 0 ? `${sub.issueCount} ISSUE${sub.issueCount > 1 ? "S" : ""}` : "CLEAN"}</span>
+                              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--stone)" }}>{sub.id.slice(0, 8)}</span>
+                              <span style={{
+                                fontSize: 9, fontWeight: 600, color: "#fff", padding: "1px 5px", borderRadius: 3,
+                                background: sub.status === "approved" ? "#059669" : sub.status === "rejected" ? "#DC2626" : sub.status === "cross_review" ? "#7C3AED" : sub.status === "consensus" ? "#0D9488" : "#D97706",
+                              }}>{sub.status.toUpperCase()}</span>
+                              <span style={{ fontSize: 10, color: "var(--charcoal)" }}>{sub.submitter}</span>
+                              <span style={{ fontSize: 10, color: "var(--stone)" }}>{sub.org}</span>
+                            </summary>
+                            <div style={{ padding: "8px 8px 4px 12px", borderLeft: "2px solid #E2E8F0", marginLeft: 8, marginTop: 4 }}>
+                              {/* Issues list */}
+                              {sub.issues.length > 0 && (
+                                <div style={{ marginBottom: 8, padding: "6px 8px", background: "#FEF2F2", borderRadius: 4, border: "1px solid #FECACA" }}>
+                                  {sub.issues.map((issue, ii) => (
+                                    <div key={ii} style={{ fontSize: 10, color: "#DC2626", lineHeight: 1.5 }}>• {issue}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {/* Pipeline steps table */}
+                              <table style={{ width: "100%", fontSize: 10, borderCollapse: "collapse" }}>
+                                <tbody>
+                                  {sub.pipelineSteps.map((step, pi) => (
+                                    <tr key={pi} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                                      <td style={{ padding: "3px 6px", width: 50 }}>
+                                        <span style={{
+                                          fontSize: 8, fontWeight: 700, color: "#fff", padding: "0px 4px", borderRadius: 2,
+                                          background: stepStatusColors[step.status] || "#64748B",
+                                        }}>{step.status}</span>
+                                      </td>
+                                      <td style={{ padding: "3px 6px", fontWeight: 500, color: "var(--charcoal)", whiteSpace: "nowrap" }}>{step.step}</td>
+                                      <td style={{ padding: "3px 6px", color: "var(--stone)" }}>{step.actual}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Ghost votes / forensics — rich rendering */}
+                    {test.details?.ghostVotes && test.details.ghostVotes.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#DC2626", marginBottom: 4 }}>Ghost Votes (saved to DB, user got 500 error):</div>
+                        {test.details.ghostVotes.map((gv, gi) => (
+                          <div key={gi} style={{ fontSize: 10, padding: "4px 8px", background: "rgba(220,38,38,0.05)", borderRadius: 4, marginBottom: 2, fontFamily: "var(--mono)" }}>
+                            {gv.user} voted {gv.approve ? "APPROVE" : "REJECT"} on {gv.submission?.slice(0,8)} ({gv.role}) at {gv.votedAt} — sub is now {gv.subStatus}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {test.details?.duplicateVotes && test.details.duplicateVotes.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#DC2626", marginBottom: 4 }}>Duplicate Votes (race condition — broken FOR UPDATE lock):</div>
+                        {test.details.duplicateVotes.map((dv, di) => (
+                          <div key={di} style={{ fontSize: 10, padding: "4px 8px", background: "rgba(220,38,38,0.05)", borderRadius: 4, marginBottom: 2, fontFamily: "var(--mono)" }}>
+                            user {dv.user_id?.slice(0,8)} voted {dv.vote_count}x on {dv.submission_id?.slice(0,8)} ({dv.role})
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Reputation mismatches — rich rendering */}
+                    {test.details?.mismatches && test.details.mismatches.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#DC2626", marginBottom: 4 }}>Reputation Drift:</div>
+                        {test.details.mismatches.map((mm, mi) => (
+                          <div key={mi} style={{ fontSize: 10, padding: "4px 8px", background: "rgba(220,38,38,0.05)", borderRadius: 4, marginBottom: 2 }}>
+                            <span style={{ fontWeight: 600 }}>{mm.user}</span>
+                            {mm.wins.delta !== 0 && <span style={{ marginLeft: 8 }}>wins: {mm.wins.actual} (expected {mm.wins.expected}, delta {mm.wins.delta > 0 ? "+" : ""}{mm.wins.delta})</span>}
+                            {mm.losses.delta !== 0 && <span style={{ marginLeft: 8 }}>losses: {mm.losses.actual} (expected {mm.losses.expected}, delta {mm.losses.delta > 0 ? "+" : ""}{mm.losses.delta})</span>}
+                            {mm.lies.delta !== 0 && <span style={{ marginLeft: 8 }}>lies: {mm.lies.actual} (expected {mm.lies.expected})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Fallback raw details for tests without rich rendering */}
+                    {test.details && !hasSubmissions && !test.details.ghostVotes && !test.details.mismatches && (
+                      <details style={{ marginTop: 6 }}>
+                        <summary style={{ fontSize: 10, color: "var(--stone)", cursor: "pointer", fontFamily: "var(--mono)" }}>Raw details</summary>
+                        <pre style={{ fontSize: 10, color: "var(--stone)", marginTop: 4, overflow: "auto", maxHeight: 200, background: "rgba(0,0,0,0.03)", padding: 8, borderRadius: 4 }}>
+                          {JSON.stringify(test.details, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Error fallback */}
+              {diagResult.error && !diagResult.tests && (
+                <div style={{ padding: 10, background: "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", color: "var(--fired-clay)" }}>
+                  Error: {diagResult.error}
+                </div>
+              )}
             </div>
           )}
         </div>
