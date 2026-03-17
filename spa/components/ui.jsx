@@ -266,8 +266,9 @@ export function CitizenCounter() {
         <div style={{ margin: "0 auto 12px", maxWidth: 520, padding: "12px 16px", background: "#FEF3C7", border: "2px solid #D97706", borderRadius: 10, textAlign: "left", lineHeight: 1.7 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: "#92400E", fontWeight: 700, marginBottom: 6, textAlign: "center" }}>Wild West Rules in Effect Until the System Has 100 Users</div>
           <div style={{ fontSize: 12, color: "#78350F" }}>
-            <div style={{ marginBottom: 3 }}>1. Your submissions only require one random reviewer</div>
-            <div>2. Findings of deliberate deception are disabled</div>
+            <div style={{ marginBottom: 3 }}>1. Any assembly with at least two members can have jurors assigned</div>
+            <div style={{ marginBottom: 3 }}>2. Your submissions only require one random reviewer</div>
+            <div>3. Findings of deliberate deception are disabled</div>
           </div>
         </div>
       )}

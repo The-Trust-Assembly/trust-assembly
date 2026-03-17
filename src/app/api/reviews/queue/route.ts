@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, unauthorized } from "@/lib/api-utils";
+import { isWildWestMode } from "@/lib/jury-rules";
 
 // GET /api/reviews/queue — returns all review items for the current user
 // from the relational DB.  The v5 SPA merges these into its KV-loaded state
@@ -15,6 +16,8 @@ import { ok, unauthorized } from "@/lib/api-utils";
 export async function GET(request: NextRequest) {
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
+
+  const wildWest = await isWildWestMode();
 
   // ── In-group & cross-group submissions assigned to user ──
   const subsResult = await sql`
@@ -48,8 +51,86 @@ export async function GET(request: NextRequest) {
     ORDER BY s.created_at DESC
   `;
 
+  // ── Wild West fallback: also fetch pending submissions by org membership ──
+  // Catches submissions created before jury assignments were added in Wild West mode
+  let wwFallbackRows: Record<string, unknown>[] = [];
+  if (wildWest) {
+    const existingIds = subsResult.rows.map((r: Record<string, unknown>) => r.id as string);
+    const wwQuery = existingIds.length > 0
+      ? `SELECT
+          s.id, s.submission_type, s.status, s.url, s.original_headline,
+          s.replacement, s.reasoning, s.author, s.trusted_skip,
+          s.is_di, s.di_partner_id, s.jury_seats, s.jury_seed,
+          s.cross_group_jury_size, s.cross_group_seed,
+          s.deliberate_lie_finding, s.survival_count,
+          s.created_at, s.resolved_at,
+          u.username AS submitted_by_username,
+          s.org_id,
+          o.name AS org_name,
+          'in_group' AS jury_role,
+          FALSE AS jury_accepted,
+          NULL::timestamptz AS jury_accepted_at,
+          partner.username AS di_partner_username
+        FROM submissions s
+        LEFT JOIN users u ON u.id = s.submitted_by
+        LEFT JOIN organizations o ON o.id = s.org_id
+        LEFT JOIN users partner ON partner.id = s.di_partner_id
+        WHERE s.status IN ('pending_review', 'pending_jury')
+          AND s.submitted_by != $1
+          AND (s.di_partner_id IS NULL OR s.di_partner_id != $1)
+          AND EXISTS (
+            SELECT 1 FROM organization_members om
+            WHERE om.org_id = s.org_id AND om.user_id = $1 AND om.is_active = TRUE
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM jury_votes jv
+            WHERE jv.submission_id = s.id AND jv.user_id = $1
+          )
+          AND s.id != ALL($2::uuid[])
+        ORDER BY s.created_at DESC`
+      : `SELECT
+          s.id, s.submission_type, s.status, s.url, s.original_headline,
+          s.replacement, s.reasoning, s.author, s.trusted_skip,
+          s.is_di, s.di_partner_id, s.jury_seats, s.jury_seed,
+          s.cross_group_jury_size, s.cross_group_seed,
+          s.deliberate_lie_finding, s.survival_count,
+          s.created_at, s.resolved_at,
+          u.username AS submitted_by_username,
+          s.org_id,
+          o.name AS org_name,
+          'in_group' AS jury_role,
+          FALSE AS jury_accepted,
+          NULL::timestamptz AS jury_accepted_at,
+          partner.username AS di_partner_username
+        FROM submissions s
+        LEFT JOIN users u ON u.id = s.submitted_by
+        LEFT JOIN organizations o ON o.id = s.org_id
+        LEFT JOIN users partner ON partner.id = s.di_partner_id
+        WHERE s.status IN ('pending_review', 'pending_jury')
+          AND s.submitted_by != $1
+          AND (s.di_partner_id IS NULL OR s.di_partner_id != $1)
+          AND EXISTS (
+            SELECT 1 FROM organization_members om
+            WHERE om.org_id = s.org_id AND om.user_id = $1 AND om.is_active = TRUE
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM jury_votes jv
+            WHERE jv.submission_id = s.id AND jv.user_id = $1
+          )
+        ORDER BY s.created_at DESC`;
+
+    const wwParams = existingIds.length > 0
+      ? [session.sub, existingIds]
+      : [session.sub];
+    const wwResult = await sql.query(wwQuery, wwParams);
+    wwFallbackRows = wwResult.rows;
+  }
+
+  // Merge jury-assigned and Wild West fallback submissions
+  const allSubRows = [...subsResult.rows, ...wwFallbackRows] as Record<string, unknown>[];
+
   // Collect submission IDs for batch-loading evidence, edits, jurors, votes
-  const subIds = subsResult.rows.map((r: Record<string, unknown>) => r.id as string);
+  const subIds = allSubRows.map((r: Record<string, unknown>) => r.id as string);
 
   // ── Batch load evidence ──
   let evidenceMap: Record<string, Array<Record<string, unknown>>> = {};
@@ -132,7 +213,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Transform to the shape the v5 front-end expects
-  const submissions = subsResult.rows.map((row: Record<string, unknown>) => {
+  const submissions = allSubRows.map((row: Record<string, unknown>) => {
     const id = row.id as string;
     const allJurors = jurorsMap[id] || [];
     const inGroupJurors = allJurors.filter(j => j.role === "in_group").map(j => j.username as string);

@@ -264,10 +264,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── Jury assignment (normal mode only) ──
-    if (!trustedSkip && !wildWest && initialStatus === "pending_review") {
-      const jurySize = getJurySize(count);
-      const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+    // ── Jury assignment ──
+    if (!trustedSkip && initialStatus === "pending_review") {
+      const jurySize = wildWest ? 1 : getJurySize(count);
+      // Wild West: add all eligible org members to pool so they can review
+      const poolSize = wildWest ? count : jurySize * JURY_POOL_MULTIPLIER;
 
       await sql`
         UPDATE submissions SET jury_seats = ${jurySize} WHERE id = ${sub.id}
