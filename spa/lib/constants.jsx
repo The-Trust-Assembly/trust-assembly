@@ -2,7 +2,7 @@
 // constants.js — Extracted from trust-assembly-v5.jsx
 // ============================================================
 
-import { LighthouseIcon, AttrLine } from "../components/ui";
+import { LighthouseIcon, AttrLine, TABadge } from "../components/ui";
 
 export const VER = "v5";
 
