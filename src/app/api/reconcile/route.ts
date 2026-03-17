@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { createHash } from "crypto";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, err } from "@/lib/api-utils";
@@ -16,6 +17,22 @@ export async function POST(request: NextRequest) {
   const report: string[] = [];
   let migratedCount = 0;
 
+  // Helper: check if a string is a valid UUID
+  function isValidUuid(s: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+  }
+
+  // Helper: convert a legacy non-UUID ID to a deterministic UUID.
+  // Uses MD5 hash of the ID to produce a stable UUID — same input always gives same output.
+  function toUuid(legacyId: string): string {
+    if (isValidUuid(legacyId)) return legacyId;
+    const hash = createHash("md5").update(`ta-kv-migration:${legacyId}`).digest("hex");
+    return `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`;
+  }
+
+  // Tracks legacy submission ID → UUID for dispute cross-references
+  const subIdMap: Record<string, string> = {};
+
   // Helper: resolve username → user ID (cached)
   const userIdCache: Record<string, string | null> = {};
   async function resolveUserId(username: string): Promise<string | null> {
@@ -24,6 +41,43 @@ export async function POST(request: NextRequest) {
     const result = await sql`SELECT id FROM users WHERE username = ${key}`;
     userIdCache[key] = result.rows.length > 0 ? (result.rows[0].id as string) : null;
     return userIdCache[key];
+  }
+
+  // Helper: resolve an org ID from KV (may be non-UUID). Try by UUID first, then by name.
+  const orgIdCache: Record<string, string | null> = {};
+  async function resolveOrgId(kvOrgId: string, orgName?: string): Promise<string | null> {
+    if (kvOrgId in orgIdCache) return orgIdCache[kvOrgId];
+    // Try direct lookup if it's a valid UUID
+    if (isValidUuid(kvOrgId)) {
+      const result = await sql`SELECT id FROM organizations WHERE id = ${kvOrgId}`;
+      if (result.rows.length > 0) {
+        orgIdCache[kvOrgId] = result.rows[0].id as string;
+        return orgIdCache[kvOrgId];
+      }
+    }
+    // Try deterministic UUID from legacy ID
+    const mappedUuid = toUuid(kvOrgId);
+    const result2 = await sql`SELECT id FROM organizations WHERE id = ${mappedUuid}`;
+    if (result2.rows.length > 0) {
+      orgIdCache[kvOrgId] = result2.rows[0].id as string;
+      return orgIdCache[kvOrgId];
+    }
+    // Fallback: look up by name if provided
+    if (orgName) {
+      const result3 = await sql`SELECT id FROM organizations WHERE name = ${orgName}`;
+      if (result3.rows.length > 0) {
+        orgIdCache[kvOrgId] = result3.rows[0].id as string;
+        return orgIdCache[kvOrgId];
+      }
+    }
+    // Last resort: try to find the General Public org
+    const gp = await sql`SELECT id FROM organizations WHERE is_general_public = TRUE LIMIT 1`;
+    if (gp.rows.length > 0) {
+      orgIdCache[kvOrgId] = gp.rows[0].id as string;
+      return orgIdCache[kvOrgId];
+    }
+    orgIdCache[kvOrgId] = null;
+    return null;
   }
 
   try {
@@ -35,33 +89,35 @@ export async function POST(request: NextRequest) {
       try { subsObj = typeof kvRow.value === "string" ? JSON.parse(kvRow.value) : kvRow.value; }
       catch { report.push(`ERR: Could not parse KV key ${kvRow.key}`); continue; }
 
-      for (const [subId, sub] of Object.entries(subsObj)) {
+      for (const [kvSubId, sub] of Object.entries(subsObj)) {
+        const newSubId = toUuid(kvSubId);
+        subIdMap[kvSubId] = newSubId;
+
         // Check if submission already exists in relational table
-        const existing = await sql`SELECT id FROM submissions WHERE id = ${subId}`;
+        const existing = await sql`SELECT id FROM submissions WHERE id = ${newSubId}`;
         if (existing.rows.length > 0) {
-          report.push(`SKIP submission ${subId}: already in relational table`);
-          // Even if submission exists, migrate child records that may be missing
-          await migrateChildRecords(subId, sub, report);
+          report.push(`SKIP submission ${kvSubId}: already in relational table (as ${newSubId.slice(0,8)}…)`);
+          await migrateChildRecords(newSubId, sub, report);
           continue;
         }
 
         // Look up user ID by username
         const submitter = sub.submittedBy as string;
-        if (!submitter) { report.push(`SKIP submission ${subId}: no submittedBy`); continue; }
+        if (!submitter) { report.push(`SKIP submission ${kvSubId}: no submittedBy`); continue; }
         const userId = await resolveUserId(submitter);
-        if (!userId) { report.push(`SKIP submission ${subId}: submitter @${submitter} not found in users table`); continue; }
+        if (!userId) { report.push(`SKIP submission ${kvSubId}: submitter @${submitter} not found in users table`); continue; }
 
-        // Look up org
-        const orgId = sub.orgId as string;
-        if (!orgId) { report.push(`SKIP submission ${subId}: no orgId`); continue; }
-        const orgResult = await sql`SELECT id FROM organizations WHERE id = ${orgId}`;
-        if (orgResult.rows.length === 0) { report.push(`SKIP submission ${subId}: org ${orgId} not found`); continue; }
+        // Look up org — try UUID, then by name, then fallback to GP
+        const kvOrgId = sub.orgId as string;
+        if (!kvOrgId) { report.push(`SKIP submission ${kvSubId}: no orgId`); continue; }
+        const resolvedOrgId = await resolveOrgId(kvOrgId, sub.orgName as string | undefined);
+        if (!resolvedOrgId) { report.push(`SKIP submission ${kvSubId}: org ${kvOrgId} (${sub.orgName || 'unnamed'}) not found`); continue; }
 
         // Resolve DI partner
         let diPartnerId: string | null = null;
         if (sub.diPartner) {
           diPartnerId = await resolveUserId(sub.diPartner as string);
-          if (!diPartnerId) report.push(`WARN submission ${subId}: DI partner @${sub.diPartner} not found, setting to null`);
+          if (!diPartnerId) report.push(`WARN submission ${kvSubId}: DI partner @${sub.diPartner} not found, setting to null`);
         }
 
         try {
@@ -74,7 +130,7 @@ export async function POST(request: NextRequest) {
               deliberate_lie_finding, survival_count,
               created_at, resolved_at
             ) VALUES (
-              ${subId},
+              ${newSubId},
               ${(sub.submissionType as string) || 'correction'},
               ${(sub.status as string) || 'pending_review'},
               ${(sub.url as string) || ''},
@@ -83,7 +139,7 @@ export async function POST(request: NextRequest) {
               ${(sub.reasoning as string) || ''},
               ${(sub.author as string) || null},
               ${userId},
-              ${orgId},
+              ${resolvedOrgId},
               ${(sub.trustedSkip as boolean) || false},
               ${(sub.isDI as boolean) || false},
               ${diPartnerId},
@@ -99,14 +155,14 @@ export async function POST(request: NextRequest) {
             ON CONFLICT (id) DO NOTHING
           `;
           migratedCount++;
-          report.push(`OK submission ${subId} (@${submitter} → ${sub.orgName || orgId}): status=${sub.status}`);
+          report.push(`OK submission ${kvSubId} → ${newSubId.slice(0,8)}… (@${submitter} → ${sub.orgName || resolvedOrgId}): status=${sub.status}`);
         } catch (e) {
-          report.push(`ERR submission ${subId}: ${(e as Error).message}`);
+          report.push(`ERR submission ${kvSubId}: ${(e as Error).message}`);
           continue;
         }
 
         // Migrate child records
-        await migrateChildRecords(subId, sub, report);
+        await migrateChildRecords(newSubId, sub, report);
       }
     }
 
@@ -118,29 +174,46 @@ export async function POST(request: NextRequest) {
       try { dispObj = typeof kvRow.value === "string" ? JSON.parse(kvRow.value) : kvRow.value; }
       catch { report.push(`ERR: Could not parse KV key ${kvRow.key}`); continue; }
 
-      for (const [dispId, disp] of Object.entries(dispObj)) {
-        const existing = await sql`SELECT id FROM disputes WHERE id = ${dispId}`;
-        if (existing.rows.length > 0) { report.push(`SKIP dispute ${dispId}: already in relational table`); continue; }
+      for (const [kvDispId, disp] of Object.entries(dispObj)) {
+        const newDispId = toUuid(kvDispId);
+
+        const existing = await sql`SELECT id FROM disputes WHERE id = ${newDispId}`;
+        if (existing.rows.length > 0) { report.push(`SKIP dispute ${kvDispId}: already in relational table`); continue; }
 
         const disputedBy = disp.disputedBy as string;
         if (!disputedBy) continue;
         const disputerId = await resolveUserId(disputedBy);
-        if (!disputerId) { report.push(`SKIP dispute ${dispId}: disputer @${disputedBy} not found`); continue; }
+        if (!disputerId) { report.push(`SKIP dispute ${kvDispId}: disputer @${disputedBy} not found`); continue; }
 
-        const subIdRef = disp.subId as string;
-        const orgId = disp.orgId as string;
-        if (!subIdRef || !orgId) { report.push(`SKIP dispute ${dispId}: missing subId or orgId`); continue; }
+        const kvSubIdRef = disp.subId as string;
+        const kvOrgId = disp.orgId as string;
+        if (!kvSubIdRef || !kvOrgId) { report.push(`SKIP dispute ${kvDispId}: missing subId or orgId`); continue; }
+
+        // Resolve submission ID (may have been remapped)
+        const resolvedSubId = subIdMap[kvSubIdRef] || toUuid(kvSubIdRef);
+        const resolvedOrgId = await resolveOrgId(kvOrgId);
+        if (!resolvedOrgId) { report.push(`SKIP dispute ${kvDispId}: org ${kvOrgId} not found`); continue; }
+
+        // Resolve original submitter for the required FK
+        const origSubmitter = disp.originalSubmitter as string || disp.submittedBy as string || "";
+        let origSubmitterId = origSubmitter ? await resolveUserId(origSubmitter) : null;
+        if (!origSubmitterId) {
+          // Try to look it up from the submission itself
+          const subRow = await sql`SELECT submitted_by FROM submissions WHERE id = ${resolvedSubId}`;
+          origSubmitterId = subRow.rows.length > 0 ? (subRow.rows[0].submitted_by as string) : disputerId;
+        }
 
         try {
           await sql`
             INSERT INTO disputes (
-              id, submission_id, org_id, disputed_by, reasoning, status,
+              id, submission_id, org_id, disputed_by, original_submitter, reasoning, status,
               deliberate_lie_finding, created_at, resolved_at
             ) VALUES (
-              ${dispId},
-              ${subIdRef},
-              ${orgId},
+              ${newDispId},
+              ${resolvedSubId},
+              ${resolvedOrgId},
               ${disputerId},
+              ${origSubmitterId},
               ${(disp.reasoning as string) || ''},
               ${(disp.status as string) || 'pending_review'},
               ${(disp.deliberateLieFinding as boolean) || false},
@@ -150,7 +223,7 @@ export async function POST(request: NextRequest) {
             ON CONFLICT (id) DO NOTHING
           `;
           migratedCount++;
-          report.push(`OK dispute ${dispId}: migrated`);
+          report.push(`OK dispute ${kvDispId} → ${newDispId.slice(0,8)}…: migrated`);
 
           // Migrate dispute jurors and votes
           const dispJurors = (disp.jurors || []) as string[];
@@ -159,7 +232,7 @@ export async function POST(request: NextRequest) {
             if (!jurorId) continue;
             await sql`
               INSERT INTO jury_assignments (dispute_id, user_id, role, in_pool, accepted, accepted_at)
-              VALUES (${dispId}, ${jurorId}, 'dispute', TRUE, TRUE, now())
+              VALUES (${newDispId}, ${jurorId}, 'dispute', TRUE, TRUE, now())
               ON CONFLICT DO NOTHING
             `;
           }
@@ -171,7 +244,7 @@ export async function POST(request: NextRequest) {
             await sql`
               INSERT INTO jury_votes (dispute_id, user_id, role, approve, note, deliberate_lie, voted_at)
               VALUES (
-                ${dispId}, ${voterId}, 'dispute',
+                ${newDispId}, ${voterId}, 'dispute',
                 ${(vote.approve as boolean) || false},
                 ${(vote.note as string) || null},
                 ${(vote.deliberateLie as boolean) || false},
@@ -181,7 +254,7 @@ export async function POST(request: NextRequest) {
             `;
           }
         } catch (e) {
-          report.push(`ERR dispute ${dispId}: ${(e as Error).message}`);
+          report.push(`ERR dispute ${kvDispId}: ${(e as Error).message}`);
         }
       }
     }
