@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { sDate } from "../lib/utils";
-import { SubHeadline, StatusPill, AuditTrail, Empty } from "../components/ui";
+import { SubHeadline, StatusPill, AuditTrail, Empty } from "./ui";
 
 export default function DIPanelContent({ user, subs, onReload }) {
   const [diReqs, setDiReqs] = useState({});
