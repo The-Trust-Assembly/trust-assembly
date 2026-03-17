@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { SK, COUNTRIES, STATES_BY_COUNTRY, PARTIES_BY_COUNTRY } from "../lib/constants";
 import { sG, checkSignupRate, ensureGeneralPublic } from "../lib/storage";
-import { gid, genSalt, hashPw } from "../lib/utils";
+// utils import removed — server generates IDs now
 import { valPw, sanitizeUsername, valUsername, valEmail, normalizeEmail, valDisplayName, valRealName } from "../lib/validation";
 import { LegalDisclaimer } from "../components/ui";
 
@@ -63,11 +63,12 @@ export default function RegisterScreen({ onRegister }) {
       diPartnerUsername = partnerName;
     }
 
-    const now = new Date().toISOString(); const salt = genSalt(); const ph = await hashPw(form.password, salt);
+    const now = new Date().toISOString();
     const gpId = await ensureGeneralPublic();
     const displayName = form.username.trim().replace(/\s+/g, " ");
 
     // Register via server API (sets HTTP-only session cookie, stores in users table)
+    let serverUser;
     try {
       const regRes = await fetch("/api/auth/register", {
         method: "POST",
@@ -83,25 +84,9 @@ export default function RegisterScreen({ onRegister }) {
         }),
       });
       if (!regRes.ok) { const data = await regRes.json().catch(() => ({})); setError(data.error || "Registration failed."); setLoading(false); return; }
+      serverUser = await regRes.json();
     } catch (e) { setError("Network error. Please try again."); setLoading(false); return; }
 
-    const user = {
-      id: gid(), username: uname, displayName, realName: form.realName.trim().replace(/\s+/g, " "),
-      email: rawEmail, emailNormalized: normEmail, passwordHash: ph, salt,
-      gender: isDigitalIntelligence ? "di" : form.gender, age: isDigitalIntelligence ? "N/A" : (form.age || "Undisclosed"),
-      country: form.country || "", state: form.region || "", location: form.region ? `${form.region}, ${form.country}` : (form.country || "Undisclosed"),
-      politicalAffiliation: form.politicalAffiliation || "",
-      bio: (form.bio || "").substring(0, 500),
-      signupDate: now, signupTimestamp: Date.now(), ipHash,
-      orgId: gpId, orgIds: [gpId],
-      totalWins: 0, totalLosses: 0, deliberateLies: 0, lastDeceptionFinding: null,
-      currentStreak: 0, requiredStreak: 3, assemblyStreaks: {},
-      reviewHistory: [], ratingsReceived: [], retractions: [],
-      disputeWins: 0, disputeLosses: 0,
-      // Digital Intelligence fields
-      isDI: isDigitalIntelligence, diPartner: diPartnerUsername, diApproved: false,
-    };
-    // Server already created user, added to GP, and logged audit via /api/auth/register
     // Create DI partnership request via relational API if needed
     if (isDigitalIntelligence && diPartnerUsername) {
       try {
@@ -111,6 +96,32 @@ export default function RegisterScreen({ onRegister }) {
           body: JSON.stringify({ partnerUsername: diPartnerUsername }),
         });
       } catch (e) { console.warn("Failed to create DI request:", e); }
+    }
+
+    // Fetch the full user profile from the server (has correct UUID, org memberships, etc.)
+    let user;
+    try {
+      const allUsers = (await sG(SK.USERS)) || {};
+      user = allUsers[uname];
+    } catch (e) { console.warn("Failed to fetch user profile after registration:", e); }
+
+    // Fallback: build user object from server response + form data if fetch failed
+    if (!user) {
+      user = {
+        id: serverUser.id, username: uname, displayName, realName: form.realName.trim().replace(/\s+/g, " "),
+        email: rawEmail,
+        gender: isDigitalIntelligence ? "di" : form.gender, age: isDigitalIntelligence ? "N/A" : (form.age || "Undisclosed"),
+        country: form.country || "", state: form.region || "", location: form.region ? `${form.region}, ${form.country}` : (form.country || "Undisclosed"),
+        politicalAffiliation: form.politicalAffiliation || "",
+        bio: (form.bio || "").substring(0, 500),
+        signupDate: serverUser.createdAt || now, signupTimestamp: Date.now(), ipHash,
+        orgId: gpId, orgIds: gpId ? [gpId] : [],
+        totalWins: 0, totalLosses: 0, deliberateLies: 0, lastDeceptionFinding: null,
+        currentStreak: 0, requiredStreak: 3, assemblyStreaks: {},
+        reviewHistory: [], ratingsReceived: [], retractions: [],
+        disputeWins: 0, disputeLosses: 0,
+        isDI: isDigitalIntelligence, diPartner: diPartnerUsername, diApproved: false,
+      };
     }
     setLoading(false); onRegister(user);
   };
