@@ -71,7 +71,7 @@ export async function GET() {
 
   // Get notifications (last 50 per user)
   const notifications = await sql`
-    SELECT user_id, id, type, title, body, entity_type, entity_id, read, created_at
+    SELECT user_id, id, type, title, body, entity_type, entity_id, "read", created_at
     FROM notifications
     ORDER BY created_at DESC
   `;
@@ -90,9 +90,11 @@ export async function GET() {
   }
 
   const users: Record<string, unknown> = {};
+  const _debug = { queryRowCount: result.rows.length, duplicates: [] as string[] };
   for (const row of result.rows) {
     const uid = row.id as string;
     const username = row.username as string;
+    if (users[username]) _debug.duplicates.push(`${username} (id=${uid} overwrites existing)`);
     const userOrgIds = orgMap[uid] || [];
 
     users[username] = {
@@ -133,6 +135,14 @@ export async function GET() {
       notifications: notifsMap[uid] || [],
     };
   }
+
+  // Attach debug info directly to response (key starts with _ to avoid collision with usernames)
+  (users as Record<string, unknown>).__debug = {
+    queryRowCount: _debug.queryRowCount,
+    keyCount: Object.keys(users).length,
+    duplicates: _debug.duplicates,
+    allUsernamesFromQuery: result.rows.map((r: Record<string, unknown>) => r.username),
+  };
 
   return ok(users);
 }

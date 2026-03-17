@@ -98,6 +98,38 @@ export async function GET() {
     checks.recent_submissions = `ERROR: ${(e as Error).message}`;
   }
 
+  // 7. List all usernames for cross-referencing with /api/data/users
+  try {
+    const allUsers = await sql`
+      SELECT id, username, is_di, di_approved, created_at,
+        (SELECT COUNT(*) FROM organization_members om WHERE om.user_id = users.id AND om.is_active = TRUE) AS org_count
+      FROM users
+      ORDER BY created_at ASC
+    `;
+    checks.all_usernames = allUsers.rows.map(r => ({
+      id: r.id,
+      username: r.username,
+      isDI: r.is_di,
+      orgCount: parseInt(r.org_count),
+      createdAt: r.created_at,
+    }));
+  } catch (e) {
+    checks.all_usernames = `ERROR: ${(e as Error).message}`;
+  }
+
+  // 8. Check KV store for legacy user data
+  try {
+    const kvUsers = await sql`
+      SELECT key, LENGTH(value::text) AS value_length
+      FROM kv_store
+      WHERE key LIKE '%user%' OR key LIKE '%User%'
+      ORDER BY key
+    `;
+    checks.kv_user_keys = kvUsers.rows.map(r => ({ key: r.key, valueLength: parseInt(r.value_length) }));
+  } catch (e) {
+    checks.kv_user_keys = `ERROR: ${(e as Error).message}`;
+  }
+
   return ok({
     healthy: errors.length === 0,
     errors,

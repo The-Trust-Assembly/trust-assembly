@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   // 0. Lifecycle notifications from the notifications table
   const notifResult = await sql`
-    SELECT id, type, title, body, entity_type, entity_id, read, created_at
+    SELECT id, type, title, body, entity_type, entity_id, "read", created_at
     FROM notifications
     WHERE user_id = ${session.sub}
     ORDER BY created_at DESC
@@ -120,8 +120,8 @@ export async function PATCH(request: NextRequest) {
   if (!session) return unauthorized();
 
   await sql`
-    UPDATE notifications SET read = TRUE
-    WHERE user_id = ${session.sub} AND read = FALSE
+    UPDATE notifications SET "read" = TRUE
+    WHERE user_id = ${session.sub} AND "read" = FALSE
   `;
 
   return ok({ success: true });
