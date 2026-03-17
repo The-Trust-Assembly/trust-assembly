@@ -99,8 +99,16 @@ export async function GET() {
   const sqlRowCount = result.rows.length;
   const dbTotal = parseInt(rawCount.rows[0].total);
 
+  // If counts don't match, find which submissions are missing from the JOIN query
+  let missingIds: Array<Record<string, unknown>> = [];
+  if (sqlRowCount !== dbTotal) {
+    const allDbIds = await sql`SELECT id, status, created_at, submitted_by, org_id, is_di, di_partner_id FROM submissions ORDER BY created_at DESC`;
+    const returnedIdSet = new Set(result.rows.map((r: Record<string, unknown>) => r.id));
+    missingIds = allDbIds.rows.filter((r: Record<string, unknown>) => !returnedIdSet.has(r.id));
+  }
+
   const subIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  if (subIds.length === 0) return ok({ __debug: { sqlRowCount, dbTotal, note: "No submissions found" } });
+  if (subIds.length === 0) return ok({ __debug: { sqlRowCount, dbTotal, missingIds, note: "No submissions found" } });
 
   // Batch load evidence
   const ev = await sql.query(
@@ -267,6 +275,7 @@ export async function GET() {
       // If counts don't match, find which IDs are in DB but not returned
       ...(dbTotal !== Object.keys(subs).length ? {
         note: `SQL query returned ${sqlRowCount} rows but DB has ${dbTotal} submissions`,
+        missingIds,
       } : {}),
     },
   };
