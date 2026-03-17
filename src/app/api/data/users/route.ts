@@ -71,7 +71,7 @@ export async function GET() {
 
   // Get notifications (last 50 per user)
   const notifications = await sql`
-    SELECT user_id, id, type, title, body, entity_type, entity_id, read, created_at
+    SELECT user_id, id, type, title, body, entity_type, entity_id, "read", created_at
     FROM notifications
     ORDER BY created_at DESC
   `;
