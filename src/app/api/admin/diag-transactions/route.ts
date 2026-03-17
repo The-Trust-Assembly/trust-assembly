@@ -152,13 +152,11 @@ export async function POST(request: NextRequest) {
       ORDER BY s.created_at ASC
     `;
 
-    const resolvedStatuses = ["approved", "rejected", "consensus", "consensus_rejected", "cross_review"];
     const terminalStatuses = ["approved", "rejected", "consensus", "consensus_rejected"];
 
     // Batch-load all related data for efficiency
     // Use sql.query() with $1 params because sql`` tagged template doesn't accept arrays
     const subIds = allSubs.rows.map((s: Record<string, unknown>) => s.id) as string[];
-    const subIdStrs = subIds.map(String);
 
     const [
       allVotes, allAuditLogs, allReviewHistory, allRatings,
@@ -166,8 +164,8 @@ export async function POST(request: NextRequest) {
     ] = await Promise.all([
       sql.query(`SELECT submission_id, user_id, role, approve, deliberate_lie, newsworthy, interesting, voted_at
           FROM jury_votes WHERE submission_id = ANY($1)`, [subIds]),
-      sql.query(`SELECT entity_id, action, user_id, metadata, created_at
-          FROM audit_log WHERE entity_type = 'submission' AND entity_id = ANY($1)`, [subIdStrs]),
+      sql.query(`SELECT entity_id::text AS entity_id, action, user_id, metadata, created_at
+          FROM audit_log WHERE entity_type = 'submission' AND entity_id = ANY($1)`, [subIds]),
       sql.query(`SELECT submission_id, user_id, outcome, from_di
           FROM user_review_history WHERE submission_id = ANY($1)`, [subIds]),
       sql.query(`SELECT submission_id, user_id, rated_by, newsworthy, interesting
@@ -493,7 +491,7 @@ export async function POST(request: NextRequest) {
       WHERE NOT EXISTS (
         SELECT 1 FROM audit_log al
         WHERE al.entity_type = 'submission'
-          AND al.entity_id = jv.submission_id::text
+          AND al.entity_id = jv.submission_id
           AND al.action = 'Vote cast'
           AND al.user_id = jv.user_id
       )
@@ -716,14 +714,14 @@ export async function POST(request: NextRequest) {
 
     // DI requests that are approved but users not linked
     const approvedNotLinked = await sql`
-      SELECT dr.id, dr.di_user_id, dr.partner_id, dr.status,
+      SELECT dr.id, dr.di_user_id, dr.partner_user_id, dr.status,
         u1.username AS di_user, u1.di_partner_id AS di_actual_partner,
         u2.username AS partner_user, u2.di_partner_id AS partner_actual_partner
       FROM di_requests dr
       JOIN users u1 ON u1.id = dr.di_user_id
-      JOIN users u2 ON u2.id = dr.partner_id
+      JOIN users u2 ON u2.id = dr.partner_user_id
       WHERE dr.status = 'approved'
-        AND (u1.di_partner_id != dr.partner_id OR u2.di_partner_id != dr.di_user_id
+        AND (u1.di_partner_id != dr.partner_user_id OR u2.di_partner_id != dr.di_user_id
              OR u1.is_di != TRUE OR u1.di_approved != TRUE)
     `;
 
@@ -801,7 +799,7 @@ export async function POST(request: NextRequest) {
       JOIN users u ON u.id = s.submitted_by
       WHERE NOT EXISTS (
         SELECT 1 FROM audit_log al
-        WHERE al.entity_type = 'submission' AND al.entity_id = s.id::text
+        WHERE al.entity_type = 'submission' AND al.entity_id = s.id
           AND (al.action LIKE 'Submission created%' OR al.action LIKE 'New submission%' OR al.action = 'Submitted correction')
       )
     `;
@@ -873,7 +871,7 @@ export async function POST(request: NextRequest) {
       JOIN users u ON u.id = d.disputed_by
       WHERE NOT EXISTS (
         SELECT 1 FROM audit_log al
-        WHERE al.entity_type = 'dispute' AND al.entity_id = d.id::text
+        WHERE al.entity_type = 'dispute' AND al.entity_id = d.id
       )
     `;
 
@@ -888,8 +886,8 @@ export async function POST(request: NextRequest) {
           WHERE al.user_id = jv.user_id
             AND al.action = 'Vote cast'
             AND (
-              (jv.dispute_id IS NOT NULL AND al.entity_type = 'dispute' AND al.entity_id = jv.dispute_id::text)
-              OR (jv.concession_id IS NOT NULL AND al.entity_type = 'concession' AND al.entity_id = jv.concession_id::text)
+              (jv.dispute_id IS NOT NULL AND al.entity_type = 'dispute' AND al.entity_id = jv.dispute_id)
+              OR (jv.concession_id IS NOT NULL AND al.entity_type = 'concession' AND al.entity_id = jv.concession_id)
             )
         )
     `;
