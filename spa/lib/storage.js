@@ -103,7 +103,11 @@ export async function sG(k) {
   }
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Storage read failed for ${k}: ${res.status}`);
+  if (!res.ok) {
+    console.error(`[sG] Storage read failed for ${k}: ${res.status} ${res.statusText}`);
+    try { const errBody = await res.text(); console.error(`[sG] Response body:`, errBody.slice(0, 500)); } catch {}
+    return k === SK.AUDIT ? [] : {};
+  }
   const data = await res.json();
 
   // Vault/args/beliefs/translations endpoints return { entries: [...] } — convert to keyed object

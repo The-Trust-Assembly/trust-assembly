@@ -16,7 +16,18 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   const [approveMsg, setApproveMsg] = useState("");
   const isAdmin = user && user.username === ADMIN_USERNAME;
 
-  const load = async () => { setSubs((await sG(SK.SUBS)) || {}); setOrgs((await sG(SK.ORGS)) || {}); setLoading(false); };
+  const [loadError, setLoadError] = useState("");
+  const load = async () => {
+    try {
+      const [subsData, orgsData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS)]);
+      setSubs(subsData || {}); setOrgs(orgsData || {}); setLoadError("");
+    } catch (e) {
+      console.error("FeedScreen load error:", e);
+      setLoadError("Failed to load data. Please refresh the page.");
+      setSubs({}); setOrgs({});
+    }
+    setLoading(false);
+  };
   useEffect(() => { load(); }, []);
 
   const canDispute = (sub) => {
@@ -58,6 +69,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   };
 
   if (loading) return <Loader />;
+  if (loadError) return <div className="ta-error" style={{ margin: 20 }}>{loadError} <button className="ta-link-btn" onClick={load}>Retry</button></div>;
   const all = Object.values(subs || {}).sort((a, b) => hotScore(b) - hotScore(a));
   return (
     <div>
