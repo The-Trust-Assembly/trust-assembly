@@ -93,10 +93,47 @@ export async function POST(request: NextRequest) {
         const newSubId = toUuid(kvSubId);
         subIdMap[kvSubId] = newSubId;
 
-        // Check if submission already exists in relational table
-        const existing = await sql`SELECT id FROM submissions WHERE id = ${newSubId}`;
+        // Check if submission already exists in relational table — REPAIR if needed
+        const existing = await sql`SELECT id, is_di, di_partner_id, status, org_id FROM submissions WHERE id = ${newSubId}`;
         if (existing.rows.length > 0) {
-          report.push(`SKIP submission ${kvSubId}: already in relational table (as ${newSubId.slice(0,8)}…)`);
+          // Repair pass: update fields that may be missing or wrong
+          const ex = existing.rows[0];
+          const repairs: string[] = [];
+
+          // Repair di_partner_id
+          const kvDiPartner = sub.diPartner as string;
+          if (kvDiPartner && !ex.di_partner_id) {
+            const partnerId = await resolveUserId(kvDiPartner);
+            if (partnerId) {
+              await sql`UPDATE submissions SET di_partner_id = ${partnerId} WHERE id = ${newSubId}`;
+              repairs.push(`di_partner_id→${partnerId.slice(0,8)}…`);
+              migratedCount++;
+            }
+          }
+
+          // Repair is_di flag
+          if ((sub.isDI === true || sub.isDI === "true") && !ex.is_di) {
+            await sql`UPDATE submissions SET is_di = TRUE WHERE id = ${newSubId}`;
+            repairs.push("is_di→true");
+            migratedCount++;
+          }
+
+          // Repair org_id if it's the GP but should be a specific org
+          const kvOrgId = sub.orgId as string;
+          if (kvOrgId) {
+            const resolvedOrg = await resolveOrgId(kvOrgId, sub.orgName as string | undefined);
+            if (resolvedOrg && resolvedOrg !== ex.org_id) {
+              await sql`UPDATE submissions SET org_id = ${resolvedOrg} WHERE id = ${newSubId}`;
+              repairs.push(`org_id→${resolvedOrg.slice(0,8)}…`);
+              migratedCount++;
+            }
+          }
+
+          if (repairs.length > 0) {
+            report.push(`REPAIR submission ${kvSubId}: ${repairs.join(", ")}`);
+          } else {
+            report.push(`SKIP submission ${kvSubId}: already in relational table (as ${newSubId.slice(0,8)}…)`);
+          }
           await migrateChildRecords(newSubId, sub, report);
           continue;
         }
@@ -293,6 +330,184 @@ export async function POST(request: NextRequest) {
         }
       }
       report.push(`Processed ${auditEntries.length} audit entries from KV key ${kvRow.key} (migrated ${auditMigrated})`);
+    }
+
+    // ── Migrate vault entries from KV (ta-vault-v5) ──
+    report.push(`\n--- Vault / Args / Beliefs / Translations ---`);
+    const vaultTypes = [
+      { kvKey: "ta-vault-v5", table: "vault_entries", fields: ["assertion", "evidence"] },
+      { kvKey: "ta-args-v5", table: "arguments", fields: ["content"] },
+      { kvKey: "ta-beliefs-v5", table: "beliefs", fields: ["content"] },
+      { kvKey: "ta-trans-v5", table: "translations", fields: ["originalText", "translatedText", "translationType"] },
+    ];
+    for (const vt of vaultTypes) {
+      const kvRows = await sql`SELECT key, value FROM kv_store WHERE key = ${vt.kvKey}`;
+      for (const kvRow of kvRows.rows) {
+        if (!kvRow.value) continue;
+        let entries: Record<string, Record<string, unknown>>;
+        try { entries = typeof kvRow.value === "string" ? JSON.parse(kvRow.value) : kvRow.value; } catch { continue; }
+
+        let vaultMigrated = 0;
+        for (const [kvId, entry] of Object.entries(entries)) {
+          const newId = toUuid(kvId);
+          const submitter = entry.submittedBy as string;
+          if (!submitter) continue;
+          const userId = await resolveUserId(submitter);
+          if (!userId) { report.push(`WARN ${vt.table} ${kvId}: submitter @${submitter} not found`); continue; }
+
+          const kvOrgId = entry.orgId as string;
+          const resolvedOrgId = kvOrgId ? await resolveOrgId(kvOrgId, entry.orgName as string | undefined) : null;
+
+          // Check for linked submission
+          const kvSubId = entry.submissionId as string;
+          const resolvedSubId = kvSubId ? (subIdMap[kvSubId] || toUuid(kvSubId)) : null;
+
+          try {
+            if (vt.table === "vault_entries") {
+              await sql`
+                INSERT INTO vault_entries (id, org_id, submission_id, submitted_by, assertion, evidence, status, survival_count, approved_at, created_at)
+                VALUES (${newId}, ${resolvedOrgId}, ${resolvedSubId}, ${userId},
+                  ${(entry.assertion as string) || ''}, ${(entry.evidence as string) || ''},
+                  ${(entry.status as string) || 'pending'}, ${(entry.survivalCount as number) || 0},
+                  ${(entry.approvedAt as string) || null}, ${(entry.createdAt as string) || new Date().toISOString()})
+                ON CONFLICT (id) DO NOTHING
+              `;
+            } else if (vt.table === "arguments") {
+              await sql`
+                INSERT INTO arguments (id, org_id, submission_id, submitted_by, content, status, survival_count, approved_at, created_at)
+                VALUES (${newId}, ${resolvedOrgId}, ${resolvedSubId}, ${userId},
+                  ${(entry.content as string) || ''}, ${(entry.status as string) || 'pending'},
+                  ${(entry.survivalCount as number) || 0}, ${(entry.approvedAt as string) || null},
+                  ${(entry.createdAt as string) || new Date().toISOString()})
+                ON CONFLICT (id) DO NOTHING
+              `;
+            } else if (vt.table === "beliefs") {
+              await sql`
+                INSERT INTO beliefs (id, org_id, submission_id, submitted_by, content, status, survival_count, approved_at, created_at)
+                VALUES (${newId}, ${resolvedOrgId}, ${resolvedSubId}, ${userId},
+                  ${(entry.content as string) || ''}, ${(entry.status as string) || 'pending'},
+                  ${(entry.survivalCount as number) || 0}, ${(entry.approvedAt as string) || null},
+                  ${(entry.createdAt as string) || new Date().toISOString()})
+                ON CONFLICT (id) DO NOTHING
+              `;
+            } else if (vt.table === "translations") {
+              await sql`
+                INSERT INTO translations (id, org_id, submission_id, submitted_by, original_text, translated_text, translation_type, status, survival_count, approved_at, created_at)
+                VALUES (${newId}, ${resolvedOrgId}, ${resolvedSubId}, ${userId},
+                  ${(entry.originalText as string) || ''}, ${(entry.translatedText as string) || ''},
+                  ${(entry.translationType as string) || 'clarity'}, ${(entry.status as string) || 'pending'},
+                  ${(entry.survivalCount as number) || 0}, ${(entry.approvedAt as string) || null},
+                  ${(entry.createdAt as string) || new Date().toISOString()})
+                ON CONFLICT (id) DO NOTHING
+              `;
+            }
+            vaultMigrated++;
+            migratedCount++;
+          } catch (e) {
+            report.push(`ERR ${vt.table} ${kvId}: ${(e as Error).message}`);
+          }
+        }
+        report.push(`${vt.table}: processed ${Object.keys(entries).length} entries (migrated ${vaultMigrated})`);
+      }
+    }
+
+    // ── Migrate membership applications from KV (ta-apps-v5) ──
+    report.push(`\n--- Membership Applications ---`);
+    const kvApps = await sql`SELECT key, value FROM kv_store WHERE key = 'ta-apps-v5'`;
+    for (const kvRow of kvApps.rows) {
+      if (!kvRow.value) continue;
+      let appsObj: Record<string, Record<string, unknown>>;
+      try { appsObj = typeof kvRow.value === "string" ? JSON.parse(kvRow.value) : kvRow.value; } catch { continue; }
+
+      let appsMigrated = 0;
+      for (const [kvAppId, app] of Object.entries(appsObj)) {
+        const newAppId = toUuid(kvAppId);
+        const applicantUsername = app.userId as string;
+        if (!applicantUsername) continue;
+        const applicantId = await resolveUserId(applicantUsername);
+        if (!applicantId) { report.push(`WARN app ${kvAppId}: applicant @${applicantUsername} not found`); continue; }
+
+        const kvOrgId = app.orgId as string;
+        const resolvedOrgId = kvOrgId ? await resolveOrgId(kvOrgId, app.orgName as string | undefined) : null;
+        if (!resolvedOrgId) { report.push(`WARN app ${kvAppId}: org ${kvOrgId} not found`); continue; }
+
+        try {
+          await sql`
+            INSERT INTO membership_applications (id, user_id, org_id, reason, link, mode, sponsors_needed, founder_approved, status, created_at)
+            VALUES (${newAppId}, ${applicantId}, ${resolvedOrgId},
+              ${(app.reason as string) || null}, ${(app.link as string) || null},
+              ${(app.mode as string) || 'open'}, ${(app.sponsorsNeeded as number) || 0},
+              ${(app.founderApproved as boolean) || null}, ${(app.status as string) || 'pending'},
+              ${(app.createdAt as string) || new Date().toISOString()})
+            ON CONFLICT (id) DO NOTHING
+          `;
+          // Migrate sponsors
+          const sponsors = (app.sponsors || []) as string[];
+          for (const sponsorUsername of sponsors) {
+            const sponsorId = await resolveUserId(sponsorUsername);
+            if (!sponsorId) continue;
+            await sql`
+              INSERT INTO application_sponsors (id, application_id, sponsor_id, sponsored_at)
+              VALUES (gen_random_uuid(), ${newAppId}, ${sponsorId}, ${(app.createdAt as string) || new Date().toISOString()})
+              ON CONFLICT (application_id, sponsor_id) DO NOTHING
+            `;
+          }
+          appsMigrated++;
+          migratedCount++;
+        } catch (e) {
+          report.push(`ERR app ${kvAppId}: ${(e as Error).message}`);
+        }
+      }
+      report.push(`Applications: processed ${Object.keys(appsObj).length} entries (migrated ${appsMigrated})`);
+    }
+
+    // ── Migrate DI requests from KV (ta-di-requests) ──
+    report.push(`\n--- DI Requests ---`);
+    const kvDiReqs = await sql`SELECT key, value FROM kv_store WHERE key = 'ta-di-requests'`;
+    for (const kvRow of kvDiReqs.rows) {
+      if (!kvRow.value) continue;
+      let diReqsObj: Record<string, Record<string, unknown>>;
+      try { diReqsObj = typeof kvRow.value === "string" ? JSON.parse(kvRow.value) : kvRow.value; } catch { continue; }
+
+      let diReqsMigrated = 0;
+      for (const [kvReqKey, req] of Object.entries(diReqsObj)) {
+        const diUsername = (req.diUsername as string) || kvReqKey;
+        const partnerUsername = req.partnerUsername as string;
+        if (!diUsername || !partnerUsername) continue;
+
+        const diUserId = await resolveUserId(diUsername);
+        const partnerUserId = await resolveUserId(partnerUsername);
+        if (!diUserId || !partnerUserId) {
+          report.push(`WARN DI request ${kvReqKey}: @${diUsername} or @${partnerUsername} not found`);
+          continue;
+        }
+
+        const existing = await sql`
+          SELECT id FROM di_requests WHERE di_user_id = ${diUserId} AND partner_user_id = ${partnerUserId}
+        `;
+        if (existing.rows.length > 0) continue;
+
+        try {
+          await sql`
+            INSERT INTO di_requests (id, di_user_id, partner_user_id, status, created_at)
+            VALUES (gen_random_uuid(), ${diUserId}, ${partnerUserId},
+              ${(req.status as string) || 'pending'},
+              ${(req.createdAt as string) || new Date().toISOString()})
+          `;
+          diReqsMigrated++;
+          migratedCount++;
+
+          // If status is approved, also set the DI partnership on user records
+          if (req.status === "approved") {
+            await sql`UPDATE users SET di_partner_id = ${partnerUserId}, is_di = TRUE, di_approved = TRUE WHERE id = ${diUserId} AND di_partner_id IS NULL`;
+            await sql`UPDATE users SET di_partner_id = ${diUserId} WHERE id = ${partnerUserId} AND di_partner_id IS NULL`;
+            report.push(`OK: DI partnership @${diUsername} ↔ @${partnerUsername} (from approved KV request)`);
+          }
+        } catch (e) {
+          report.push(`ERR DI request ${kvReqKey}: ${(e as Error).message}`);
+        }
+      }
+      report.push(`DI Requests: processed ${Object.keys(diReqsObj).length} entries (migrated ${diReqsMigrated})`);
     }
 
     // ── Reconcile DI partnerships on user records ──
