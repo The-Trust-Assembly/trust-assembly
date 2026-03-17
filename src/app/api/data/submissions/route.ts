@@ -94,8 +94,13 @@ export async function GET() {
     ORDER BY s.created_at DESC
   `;
 
+  // Debug: compare raw SQL count vs joined query count
+  const rawCount = await sql`SELECT COUNT(*) as total FROM submissions`;
+  const sqlRowCount = result.rows.length;
+  const dbTotal = parseInt(rawCount.rows[0].total);
+
   const subIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  if (subIds.length === 0) return ok({});
+  if (subIds.length === 0) return ok({ __debug: { sqlRowCount, dbTotal, note: "No submissions found" } });
 
   // Batch load evidence
   const ev = await sql.query(
@@ -251,5 +256,20 @@ export async function GET() {
     };
   }
 
-  return ok(subs);
+  // Include debug info to diagnose missing submissions
+  const subsWithDebug = {
+    ...subs,
+    __debug: {
+      dbTotal,
+      sqlRowCount,
+      returnedCount: Object.keys(subs).length,
+      missingCount: dbTotal - Object.keys(subs).length,
+      // If counts don't match, find which IDs are in DB but not returned
+      ...(dbTotal !== Object.keys(subs).length ? {
+        note: `SQL query returned ${sqlRowCount} rows but DB has ${dbTotal} submissions`,
+      } : {}),
+    },
+  };
+
+  return ok(subsWithDebug);
 }
