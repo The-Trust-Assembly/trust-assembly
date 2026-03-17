@@ -14,19 +14,27 @@ export default function ProfileScreen({ user, onViewCitizen }) {
   const [allSubs, setAllSubs] = useState({});
   const [juryScore, setJuryScore] = useState(null);
   const [diAgents, setDiAgents] = useState([]);
+  const [loadError, setLoadError] = useState("");
   useEffect(() => { (async () => {
-    const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setU(all[user.username]);
-    setAllUsers(all);
-    const o = (await sG(SK.ORGS)) || {}; setOrgs(o);
-    setAllSubs((await sG(SK.SUBS)) || {});
-    const js = await computeJuryScore(user.username);
-    setJuryScore(js);
-    setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
+    try {
+      const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setU(all[user.username]);
+      setAllUsers(all);
+      const o = (await sG(SK.ORGS)) || {}; setOrgs(o);
+      setAllSubs((await sG(SK.SUBS)) || {});
+      const js = await computeJuryScore(user.username);
+      setJuryScore(js);
+      setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
+      setLoadError("");
+    } catch (e) {
+      console.error("ProfileScreen load error:", e);
+      setLoadError("Failed to load profile data. Please refresh.");
+    }
   })(); }, [user.username]);
   const p = computeProfile(u, { allUsers, allOrgs: orgs, allSubs });
   const pi = PROFILES[p.profile];
   const myOrgIds = u.orgIds || (u.orgId ? [u.orgId] : []);
   const myOrgs = myOrgIds.map(id => orgs[id]).filter(Boolean);
+  if (loadError) return <div className="ta-error" style={{ margin: 20 }}>{loadError}</div>;
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Citizen Record</h2>
