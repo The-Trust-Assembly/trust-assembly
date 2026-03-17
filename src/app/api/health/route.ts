@@ -11,11 +11,30 @@ export async function GET() {
   const checks: Record<string, unknown> = {};
   const errors: string[] = [];
 
+  // 0. Database identity — which DB is this environment connected to?
+  try {
+    const pgUrl = process.env.POSTGRES_URL || "";
+    const parsed = pgUrl ? new URL(pgUrl) : null;
+    checks.dbIdentity = {
+      host: parsed?.hostname || "unknown",
+      database: parsed?.pathname?.replace("/", "") || "unknown",
+      user: parsed?.username || "unknown",
+      // Never expose password or full connection string
+    };
+  } catch {
+    checks.dbIdentity = { host: "parse-error", database: "parse-error" };
+  }
+
   // 1. Database connectivity
   try {
     const start = Date.now();
-    const result = await sql`SELECT 1 as ok, NOW() as server_time`;
-    checks.db = { ok: true, latency_ms: Date.now() - start, server_time: result.rows[0].server_time };
+    const result = await sql`SELECT 1 as ok, NOW() as server_time, current_database() as db_name`;
+    checks.db = {
+      ok: true,
+      latency_ms: Date.now() - start,
+      server_time: result.rows[0].server_time,
+      current_database: result.rows[0].db_name,
+    };
   } catch (e) {
     checks.db = { ok: false, error: (e as Error).message };
     errors.push(`DB: ${(e as Error).message}`);
