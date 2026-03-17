@@ -247,9 +247,27 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
           <div style={{ fontSize: 12, color: "var(--stone)", marginBottom: 12, lineHeight: 1.5 }}>
             Tests whether database transactions actually work. Checks connection behavior, data integrity, and identifies inconsistencies caused by broken transactions.
           </div>
-          <button className="ta-btn-primary" onClick={runDiagTransactions} disabled={diagRunning} style={{ background: "var(--teal)", fontSize: 12 }}>
-            {diagRunning ? "Running diagnostics..." : "Run Transaction Diagnostics"}
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="ta-btn-primary" onClick={runDiagTransactions} disabled={diagRunning} style={{ background: "var(--teal)", fontSize: 12 }}>
+              {diagRunning ? "Running diagnostics..." : "Run Transaction Diagnostics"}
+            </button>
+            {diagResult && (
+              <button
+                className="ta-btn-primary"
+                style={{ background: "var(--charcoal)", fontSize: 12 }}
+                onClick={() => {
+                  const text = JSON.stringify(diagResult, null, 2);
+                  navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.getElementById("diag-copy-btn");
+                    if (btn) { btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = "Copy Full Report"; }, 2000); }
+                  });
+                }}
+                id="diag-copy-btn"
+              >
+                Copy Full Report
+              </button>
+            )}
+          </div>
 
           {diagResult && (
             <div style={{ marginTop: 14 }}>
