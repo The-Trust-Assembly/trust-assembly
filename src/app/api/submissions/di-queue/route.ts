@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       s.created_at, s.resolved_at,
       u.username AS submitted_by,
       u.display_name AS submitted_by_display_name,
-      o.id AS org_id,
+      s.org_id,
       o.name AS org_name,
       COALESCE(partner.username, current_partner.username) AS di_partner_username
     FROM submissions s

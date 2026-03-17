@@ -76,7 +76,7 @@ export async function GET() {
       s.deliberate_lie_finding, s.survival_count,
       s.created_at, s.resolved_at,
       u.username AS submitted_by_username,
-      o.id AS org_id,
+      s.org_id,
       o.name AS org_name,
       COALESCE(partner.username, current_partner.username) AS di_partner_username
     FROM submissions s
