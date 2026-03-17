@@ -7,7 +7,7 @@ import {
   CROSS_GROUP_QUALIFYING_SIZE,
   CROSS_GROUP_MIN_ASSEMBLIES,
   MAX_SHARED_ASSEMBLIES,
-} from "./constants.js";
+} from "./constants";
 
 export function getJurySize(memberCount) {
   if (memberCount >= 10000) return 13;
