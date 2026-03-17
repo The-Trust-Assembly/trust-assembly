@@ -1,0 +1,171 @@
+import { SK } from "./constants";
+
+const MAX_SIGNUPS_PER_IP_PER_HOUR = 3;
+const WILD_WEST_THRESHOLD = 100;
+
+export async function checkSignupRate(ipHash) {
+  const key = `ta-rate-${ipHash}`;
+  const existing = (await sG(key)) || [];
+  const oneHourAgo = Date.now() - 3600000;
+  const recent = existing.filter(t => t > oneHourAgo);
+  if (recent.length >= MAX_SIGNUPS_PER_IP_PER_HOUR) return "Too many signups from this connection. Please try again later.";
+  recent.push(Date.now());
+  await sS(key, recent);
+  return null;
+}
+
+// --- Storage (relational API-backed) ---
+// sG dispatches reads to relational API endpoints instead of the deprecated KV store.
+// Data is returned in the same format the SPA expects (objects keyed by ID).
+export async function sG(k) {
+  let url;
+  switch (k) {
+    case SK.SUBS:    url = "/api/data/submissions"; break;
+    case SK.ORGS:    url = "/api/data/orgs"; break;
+    case SK.USERS:   url = "/api/data/users"; break;
+    case SK.AUDIT:   url = "/api/data/audit"; break;
+    case SK.DISPUTES: url = "/api/data/disputes"; break;
+    case SK.VAULT:   url = "/api/vault?type=vault&status=approved&limit=1000"; break;
+    case SK.ARGS:    url = "/api/vault?type=argument&limit=1000"; break;
+    case SK.BELIEFS: url = "/api/vault?type=belief&limit=1000"; break;
+    case SK.TRANSLATIONS: url = "/api/vault?type=translation&limit=1000"; break;
+    case SK.APPS: {
+      // Applications are stored per-org; fetch all via orgs the user knows about
+      const res = await fetch("/api/orgs?limit=1000");
+      if (!res.ok) return {};
+      const data = await res.json();
+      const allApps = {};
+      for (const org of (data.organizations || data.data || [])) {
+        try {
+          const appRes = await fetch(`/api/orgs/${org.id}/applications`);
+          if (appRes.ok) {
+            const appData = await appRes.json();
+            for (const app of (appData.applications || appData.data || [])) {
+              allApps[app.id] = {
+                id: app.id, orgId: org.id, orgName: org.name,
+                userId: app.username || app.user_id,
+                reason: app.reason, link: app.link,
+                mode: app.mode, sponsorsNeeded: app.sponsors_needed || 0,
+                sponsors: app.sponsors || [],
+                founderApproved: app.founder_approved,
+                status: app.status, createdAt: app.created_at,
+              };
+            }
+          }
+        } catch {}
+      }
+      return allApps;
+    }
+    case SK.GP: {
+      // Find General Public org ID from the orgs data
+      const res = await fetch("/api/data/orgs");
+      if (!res.ok) return null;
+      const orgs = await res.json();
+      for (const [id, o] of Object.entries(orgs)) {
+        if (o && o.isGeneralPublic) return id;
+      }
+      return null;
+    }
+    default: {
+      // Handle non-SK keys: ta-di-requests, ta-concessions, rate-limit keys
+      if (k === "ta-di-requests" || k.startsWith("ta-di-")) {
+        const res = await fetch("/api/di-requests");
+        if (!res.ok) return {};
+        const data = await res.json();
+        const map = {};
+        for (const r of (data.requests || [])) {
+          const key = r.di_username || r.diUsername || r.id;
+          map[key] = {
+            diUsername: r.di_username || r.diUsername,
+            partnerUsername: r.partner_username || r.partnerUsername,
+            status: r.status,
+            createdAt: r.created_at || r.createdAt,
+          };
+        }
+        return map;
+      }
+      if (k === "ta-concessions" || k.startsWith("ta-con")) {
+        const res = await fetch("/api/concessions?limit=1000");
+        if (!res.ok) return {};
+        const data = await res.json();
+        const map = {};
+        for (const c of (data.concessions || [])) {
+          map[c.id] = c;
+        }
+        return map;
+      }
+      // For vault-type list endpoints, convert array to keyed object
+      if (url === undefined) {
+        // Rate limit keys and other misc — return null (these are transient)
+        return null;
+      }
+    }
+  }
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Storage read failed for ${k}: ${res.status}`);
+  const data = await res.json();
+
+  // Vault/args/beliefs/translations endpoints return { entries: [...] } — convert to keyed object
+  if (data.entries && Array.isArray(data.entries)) {
+    const map = {};
+    for (const entry of data.entries) {
+      map[entry.id] = {
+        id: entry.id,
+        orgId: entry.org_id,
+        orgName: entry.org_name,
+        submittedBy: entry.submitted_by_username,
+        status: entry.status,
+        survivalCount: entry.survival_count || 0,
+        approvedAt: entry.approved_at,
+        createdAt: entry.created_at,
+        // vault-specific
+        assertion: entry.assertion,
+        evidence: entry.evidence,
+        // argument/belief-specific
+        content: entry.content,
+        // translation-specific
+        originalText: entry.original_text,
+        translatedText: entry.translated_text,
+        translationType: entry.translation_type,
+      };
+    }
+    return map;
+  }
+
+  return data;
+}
+
+// sS is now a no-op for most cases since writes go through dedicated API endpoints.
+// Retained for backward compatibility — logs deprecation warnings.
+export async function sS(k, v) {
+  // All writes should go through dedicated POST/PATCH endpoints.
+  // This function is retained only for edge cases during the transition period.
+  console.warn(`[DEPRECATED] sS called for key "${k}" — writes should use dedicated API endpoints`);
+  return true;
+}
+
+export async function createNotification(username, type, data) {
+  // Server-side notification creation — no longer uses KV store
+  // Notifications are created by server endpoints as side effects of actions
+  // This is kept as a no-op for any remaining call sites
+  console.warn(`[DEPRECATED] createNotification called for @${username} — notifications are now created server-side`);
+}
+
+export async function ensureGeneralPublic() {
+  // Find General Public org from relational API
+  const gpId = await sG(SK.GP);
+  if (gpId) return gpId;
+  // GP should already exist in the database — server creates it during registration
+  console.warn("General Public org not found in relational data");
+  return null;
+}
+
+export async function getGPId() {
+  return ensureGeneralPublic();
+}
+
+export async function isWildWestMode() {
+  const users = (await sG(SK.USERS)) || {};
+  return Object.keys(users).length < WILD_WEST_THRESHOLD;
+}

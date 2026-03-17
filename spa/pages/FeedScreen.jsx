@@ -1,0 +1,145 @@
+import React, { useState, useEffect } from "react";
+import { SK, ADMIN_USERNAME } from "../lib/constants";
+import { sG } from "../lib/storage";
+import { anonName, sDate, hotScore } from "../lib/utils";
+import { fileDispute } from "../lib/jury";
+import { Loader, Empty, StatusPill, SubHeadline, UsernameLink, EvidenceFields, LegalDisclaimer } from "../components/ui";
+import RecordDetailView from "../components/RecordDetailView";
+
+export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
+  const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
+  const [orgs, setOrgs] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
+  const [disputingId, setDisputingId] = useState(null);
+  const [disputeForm, setDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
+  const [disputeError, setDisputeError] = useState(""); const [disputeSuccess, setDisputeSuccess] = useState("");
+  const [approveMsg, setApproveMsg] = useState("");
+  const isAdmin = user && user.username === ADMIN_USERNAME;
+
+  const load = async () => { setSubs((await sG(SK.SUBS)) || {}); setOrgs((await sG(SK.ORGS)) || {}); setLoading(false); };
+  useEffect(() => { load(); }, []);
+
+  const canDispute = (sub) => {
+    if (!user || sub.submittedBy === user.username) return false;
+    const userOrgs = user.orgIds || (user.orgId ? [user.orgId] : []);
+    if (!userOrgs.includes(sub.orgId)) return false;
+    if (!["approved", "consensus"].includes(sub.status)) return false;
+    const org = orgs[sub.orgId];
+    return org && org.members.length >= 100;
+  };
+
+  const approveAllPending = async () => {
+    setApproveMsg("");
+    try {
+      const res = await fetch("/api/admin/approve-pending", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        const count = data.data?.resolved || data.resolved || 0;
+        setApproveMsg(count > 0 ? `Approved ${count} pending submission${count > 1 ? "s" : ""}.` : "No pending submissions found.");
+      } else {
+        setApproveMsg("Failed to approve pending submissions.");
+      }
+    } catch { setApproveMsg("Network error."); }
+    load();
+  };
+
+  const submitDispute = async (subId) => {
+    setDisputeError(""); setDisputeSuccess("");
+    if (!disputeForm.reasoning.trim()) return setDisputeError("Reasoning required.");
+    const validEvidence = disputeForm.evidence.filter(e => e.url.trim());
+    for (const ev of validEvidence) {
+      if (!/^https?:\/\/.+\..+/.test(ev.url.trim())) return setDisputeError("Evidence URLs must start with http:// or https://");
+    }
+    const result = await fileDispute(subId, user.username, disputeForm.reasoning, validEvidence);
+    if (result.error) return setDisputeError(result.error);
+    setDisputeSuccess("Dispute filed. Jury selected.");
+    setDisputingId(null); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
+    load();
+  };
+
+  if (loading) return <Loader />;
+  const all = Object.values(subs || {}).sort((a, b) => hotScore(b) - hotScore(a));
+  return (
+    <div>
+      <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Record</h2>
+      {isAdmin && (
+        <div style={{ marginBottom: 12, padding: 10, background: "#FFF7ED", border: "1px solid #EA580C", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", fontWeight: 700 }}>ADMIN</span>
+          <button className="ta-btn-primary" style={{ background: "#EA580C", fontSize: 11, padding: "6px 14px" }} onClick={approveAllPending}>Approve All Pending Submissions</button>
+          {approveMsg && <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>{approveMsg}</span>}
+        </div>
+      )}
+      {user && !Object.values(subs || {}).some(s => s.submittedBy === user.username) && (
+        <div style={{ padding: 16, background: "#fff", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 18, marginBottom: 6 }}>⚖</div>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 17, fontWeight: 600, color: "var(--navy)", marginBottom: 6 }}>Read a headline. Think it's wrong?</div>
+          <div style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>Submit a correction and a random jury of your fellow citizens will weigh the evidence.</div>
+          <button className="ta-btn-primary" onClick={() => onNavigate && onNavigate("submit")}>Submit Your First Correction</button>
+        </div>
+      )}
+      {disputeSuccess && <div className="ta-success">{disputeSuccess}</div>}
+      {all.length === 0 ? <Empty text="No corrections yet." /> : all.map(sub => {
+        const isExpanded = expandedId === sub.id;
+        return (
+        <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : sub.status === "rejected" || sub.status === "disputed" ? "#DC2626" : "#D97706"}` }}>
+          {!isExpanded && <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
+              {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
+              <StatusPill status={sub.status} />
+            </div>
+          </div>
+          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8, cursor: "pointer" }} onClick={() => setExpandedId(sub.id)}>
+            <SubHeadline sub={sub} size={13} />
+          </div>
+            <div>
+              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+              {sub.inlineEdits && sub.inlineEdits.length > 0 && <div style={{ fontSize: 10, color: "#475569", marginBottom: 4 }}>+ {sub.inlineEdits.length} in-line edit{sub.inlineEdits.length > 1 ? "s" : ""}{sub.inlineEdits.some(e => e.approved !== undefined) && <span> ({sub.inlineEdits.filter(e => e.approved).length} approved, {sub.inlineEdits.filter(e => e.approved === false).length} rejected)</span>}</div>}
+              {sub.evidence && sub.evidence.length > 0 && <div style={{ fontSize: 10, color: "#0D9488", marginBottom: 4 }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
+              {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#2563EB" }} onClick={() => setExpandedId(sub.id)}>Expand</button>
+                {onViewRecord && <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#0D9488" }} onClick={() => onViewRecord(sub.id)}>Open Full Record</button>}
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
+              </div>
+            </div>
+          </>}
+
+          {isExpanded && (
+            <div>
+              <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
+
+              {canDispute(sub) && disputingId !== sub.id && (
+                <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
+              )}
+
+              {disputingId === sub.id && (
+                <div style={{ marginTop: 10, padding: 14, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
+                  <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
+                  {disputeError && <div className="ta-error">{disputeError}</div>}
+                  <div className="ta-field"><label>Why is this submission wrong? *</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain specifically what is incorrect, misleading, or deceptive..." /></div>
+                  <EvidenceFields evidence={disputeForm.evidence} onChange={ev => setDisputeForm({ ...disputeForm, evidence: ev })} />
+                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                    <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => submitDispute(sub.id)}>File Dispute</button>
+                    <button className="ta-btn-ghost" onClick={() => setDisputingId(null)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => setExpandedId(null)}>Collapse</button>
+                {onViewRecord && <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#0D9488" }} onClick={() => onViewRecord(sub.id)}>Open Full Record</button>}
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
+              </div>
+            </div>
+          )}
+        </div>
+      );})}
+      <LegalDisclaimer short />
+    </div>
+  );
+}
