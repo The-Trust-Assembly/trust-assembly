@@ -305,8 +305,22 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
                         padding: "1px 6px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.05em",
                       }}>{test.status}</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--charcoal)" }}>{test.name}</span>
+                      {test.codeFixed === true && <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "#059669", padding: "1px 5px", borderRadius: 3 }}>CODE FIXED</span>}
+                      {test.codeFixed === false && <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "#D97706", padding: "1px 5px", borderRadius: 3 }}>NEEDS FIX</span>}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--charcoal)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{test.description}</div>
+                    {test.rootCause && (
+                      <details style={{ marginTop: 4 }}>
+                        <summary style={{ fontSize: 10, color: "#7C3AED", cursor: "pointer", fontWeight: 600 }}>Root cause</summary>
+                        <div style={{ fontSize: 10, color: "var(--charcoal)", lineHeight: 1.5, padding: "4px 8px", marginTop: 2, background: "rgba(124,58,237,0.05)", borderRadius: 4 }}>{test.rootCause}</div>
+                      </details>
+                    )}
+                    {test.remediation && (
+                      <details style={{ marginTop: 2 }}>
+                        <summary style={{ fontSize: 10, color: "#2563EB", cursor: "pointer", fontWeight: 600 }}>Remediation</summary>
+                        <div style={{ fontSize: 10, color: "var(--charcoal)", lineHeight: 1.5, padding: "4px 8px", marginTop: 2, background: "rgba(37,99,235,0.05)", borderRadius: 4 }}>{test.remediation}</div>
+                      </details>
+                    )}
 
                     {/* Per-submission pipeline audit — rich rendering */}
                     {hasSubmissions && (

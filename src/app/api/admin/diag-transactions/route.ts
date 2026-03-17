@@ -12,6 +12,9 @@ interface TestResult {
   name: string;
   status: "PASS" | "FAIL" | "ERROR" | "INFO" | "WARN";
   description: string;
+  rootCause?: string;
+  remediation?: string;
+  codeFixed?: boolean;
   details: Record<string, unknown>;
 }
 
@@ -44,6 +47,9 @@ export async function POST(request: NextRequest) {
       description: count === 0
         ? "ROLLBACK correctly undid the INSERT. Transactions work on sql``."
         : "ROLLBACK had NO EFFECT. The INSERT auto-committed immediately. Each sql`` call creates an independent stateless HTTP connection via neon(). All BEGIN/COMMIT/ROLLBACK statements in the codebase using sql`` are complete no-ops.",
+      rootCause: "The sql`` tagged template from @vercel/postgres uses the neon() HTTP driver. Each sql`` call creates an independent stateless HTTP request to the Neon proxy. There is no persistent connection, so BEGIN on one call and ROLLBACK on the next go to different connections.",
+      remediation: "Use sql.connect() to get a dedicated pooled client. Then use client.query() for all SQL within the transaction. Call client.release() in a finally block.",
+      codeFixed: true,
       details: { countAfterRollback: count, expected: 0, transactionsBroken: count !== 0 },
     });
   } catch (e: unknown) {
@@ -455,6 +461,9 @@ export async function POST(request: NextRequest) {
       description: totalIssueCount === 0
         ? `All ${submissionAudits.length} resolved/active submissions have complete pipeline state.`
         : `Found ${totalIssueCount} issue(s) across ${subsWithIssues.length} submission(s). ${submissionAudits.length - subsWithIssues.length} submission(s) are clean.`,
+      rootCause: "tryResolveSubmission (src/lib/vote-resolution.ts) wrapped 15+ SQL writes in sql`` BEGIN/COMMIT which were no-ops. Each write auto-committed independently. When any step threw an error, prior steps were already permanent and ROLLBACK was a no-op. Common failure: status UPDATE succeeded but audit_log INSERT, user_review_history, and user_ratings all failed.",
+      remediation: "CODE FIX APPLIED: vote-resolution.ts now uses sql.connect() for a dedicated client. All resolution steps run within a real BEGIN/COMMIT/ROLLBACK transaction. DATA REPAIR NEEDED: Existing submissions with missing audit_log, user_review_history, and user_ratings rows need backfill. Run this diagnostic after deploying the code fix — new submissions should show 0 issues.",
+      codeFixed: true,
       details: {
         totalAudited: submissionAudits.length,
         withIssues: subsWithIssues.length,
@@ -535,6 +544,9 @@ export async function POST(request: NextRequest) {
       description: voteIssues.length === 0
         ? "All votes have matching audit logs, none are post-resolution, no duplicates."
         : `Found vote-level issues:\n${voteIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "Vote endpoint (src/app/api/submissions/[id]/vote/route.ts) used sql`` for BEGIN/FOR UPDATE/INSERT vote/INSERT audit/COMMIT. Each sql`` call was independent: vote INSERT auto-committed immediately, FOR UPDATE lock was on a different connection (no-op), and if audit INSERT failed the vote was already saved. User received 500 error but their vote persisted.",
+      remediation: "CODE FIX APPLIED: Vote endpoint now uses sql.connect() for a dedicated client. FOR UPDATE lock, dupe check, vote INSERT, and audit INSERT all run on the same connection within a real transaction. Ghost votes (vote saved, no audit) are historical damage. Post-resolution votes indicate race conditions from the broken FOR UPDATE lock. Duplicate votes indicate the dupe check ran on a different connection than the INSERT.",
+      codeFixed: true,
       details: {
         ghostVotes: ghostVotes.rows.map(v => ({
           submission: v.submission_id, user: `@${v.username}`, role: v.role,
@@ -596,6 +608,9 @@ export async function POST(request: NextRequest) {
       description: mismatches.length === 0
         ? `All ${expectedStats.rows.length} user(s) with resolved submissions have correct win/loss/lie stats.`
         : `${mismatches.length} user(s) have reputation drift — stats don't match submission outcomes.`,
+      rootCause: "updateSubmitterReputation in vote-resolution.ts updates users.total_wins/total_losses/deliberate_lies. Without real transactions, these could: (1) auto-commit even if later steps fail, (2) execute multiple times if resolution re-runs, (3) fail silently while submission status already changed.",
+      remediation: "CODE FIX APPLIED: Reputation updates now run inside a real transaction via sql.connect(). If PASS, no data repair needed. If FAIL, compare expected (derived from submission outcomes) vs actual stats and write a backfill script to correct deltas.",
+      codeFixed: true,
       details: {
         totalUsers: expectedStats.rows.length,
         mismatchCount: mismatches.length,
@@ -677,6 +692,9 @@ export async function POST(request: NextRequest) {
       description: enrollIssues.length === 0
         ? "All users have org memberships and consistent primary_org_id."
         : `Found ${enrollIssues.length} enrollment issue(s):\n${enrollIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "POST /auth/register (src/app/api/auth/register/route.ts) does: INSERT user → INSERT organization_members → UPDATE users SET primary_org_id. Three sequential sql`` calls with no transaction. If INSERT user succeeds but later steps fail, user exists without org membership or with NULL primary_org_id.",
+      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction wrapping all 3 operations. DATA REPAIR: For nullPrimaryOrg users, UPDATE users SET primary_org_id = (SELECT org_id FROM organization_members WHERE user_id = users.id AND is_active = TRUE LIMIT 1) for each affected user.",
+      codeFixed: false,
       details: {
         usersWithNoOrg: noOrgUsers.rows.map(u => ({ user: `@${u.username}`, createdAt: u.created_at })),
         orphanedPrimaryOrg: orphanedPrimaryOrg.rows.map(u => ({ user: `@${u.username}`, primaryOrg: u.org_name || u.primary_org_id })),
@@ -745,6 +763,9 @@ export async function POST(request: NextRequest) {
       description: diIssues.length === 0
         ? "All DI partnerships are symmetric and fully linked."
         : `Found ${diIssues.length} DI issue(s):\n${diIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "PATCH /di-requests/[id] (src/app/api/di-requests/[id]/route.ts) does: UPDATE di_requests status → UPDATE users (DI user) SET is_di, di_partner_id, di_approved → UPDATE users (partner) SET di_partner_id. Three sequential sql`` calls. If the first UPDATE succeeds but the second or third fails, partnership is asymmetric.",
+      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction wrapping all 3 UPDATEs. DATA REPAIR: For asymmetric partnerships, identify which side is incomplete and run the missing UPDATE. For approvedNotLinked, re-run the user UPDATE statements from the PATCH endpoint.",
+      codeFixed: false,
       details: {
         diNoPartner: diNoPartner.rows.map(u => ({ user: `@${u.username}` })),
         asymmetric: asymmetricDI.rows.map(r => ({
@@ -836,6 +857,9 @@ export async function POST(request: NextRequest) {
       description: subCreateIssues.length === 0
         ? "All submissions have evidence, jury assignments, and audit logs."
         : `Found ${subCreateIssues.length} creation issue(s):\n${subCreateIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "POST /submissions (src/app/api/submissions/route.ts) does: INSERT submission → INSERT evidence (loop) → INSERT inline_edits (loop) → INSERT audit → UPDATE jury_seats → INSERT jury_assignments (loop). All sequential sql`` calls. The trusted_skip path has its own broken BEGIN/COMMIT wrapping auto-approve logic.",
+      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction. DATA REPAIR: pendingNoJury submissions need jury re-assignment (re-run jury pool selection). noEvidence submissions may need manual review — the submission exists but evidence INSERT loop failed.",
+      codeFixed: false,
       details: {
         noEvidence: noEvidence.rows.map(s => ({ id: s.id, status: s.status, user: `@${s.username}`, url: s.url })),
         pendingNoJury: pendingNoJury.rows.map(s => ({ id: s.id, seats: s.jury_seats, user: `@${s.username}`, createdAt: s.created_at })),
@@ -903,6 +927,9 @@ export async function POST(request: NextRequest) {
       description: disputeIssues.length === 0
         ? "All disputes have evidence, audit logs, and vote audit trails."
         : `Found ${disputeIssues.length} dispute issue(s):\n${disputeIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "POST /disputes does INSERT dispute → INSERT evidence (loop) → INSERT audit. POST /disputes/[id]/vote and /concessions/[id]/vote do INSERT vote → INSERT audit. All use sequential sql`` calls without transactions.",
+      remediation: "CODE NOT YET FIXED. All 3 endpoints need sql.connect() transactions. Lower priority than vote resolution since disputes are less data-critical. Missing audit logs are cosmetic (data exists, just unlogged).",
+      codeFixed: false,
       details: {
         disputeNoEvidence: disputeNoEvidence.rows.map(d => ({ id: d.id, status: d.status, user: `@${d.username}` })),
         disputeNoAudit: disputeNoAudit.rows.length,
@@ -944,6 +971,9 @@ export async function POST(request: NextRequest) {
       description: appIssues.length === 0
         ? "All approved applications have matching active org memberships."
         : `Found ${appIssues.length} application issue(s):\n${appIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "PATCH /orgs/[id]/applications/[appId] does UPDATE application SET status='approved' → INSERT/UPDATE organization_members → INSERT history. If application UPDATE succeeds but org_members INSERT fails, the application shows approved but user was never added to the org.",
+      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction. DATA REPAIR: For each approvedNotMember, manually INSERT into organization_members (org_id, user_id, is_active=TRUE) and INSERT into organization_member_history.",
+      codeFixed: false,
       details: {
         approvedNotMember: approvedNotMember.rows.map(a => ({
           user: `@${a.username}`, org: a.org_name,
@@ -1009,6 +1039,9 @@ export async function POST(request: NextRequest) {
       description: vaultIssues.length === 0
         ? "All vault entries linked to approved submissions have been graduated."
         : `Found ${totalStuck} stuck entry(ies):\n${vaultIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "graduateLinkedVaultEntries in vote-resolution.ts runs UPDATE vault_entries/arguments/beliefs/translations SET status='approved' WHERE submission_id=X AND status='pending'. If this step failed in the broken transaction, entries stay 'pending' forever despite the submission being approved.",
+      remediation: "CODE FIX APPLIED (now inside real transaction). DATA REPAIR: For stuck entries, run: UPDATE vault_entries SET status='approved', approved_at=NOW() WHERE submission_id IN (SELECT id FROM submissions WHERE status IN ('approved','consensus')) AND status='pending'. Same for arguments, beliefs, translations tables.",
+      codeFixed: true,
       details: {
         totalStuck,
         stuckVault: stuckPendingVault.rows,
@@ -1100,8 +1133,35 @@ export async function POST(request: NextRequest) {
   const errorCount = results.filter(r => r.status === "ERROR").length;
   const infoCount = results.filter(r => r.status === "INFO").length;
 
+  const fixedCount = results.filter(r => r.codeFixed === true).length;
+  const unfixedCount = results.filter(r => r.codeFixed === false).length;
+
   return ok({
     success: true,
+    context: {
+      purpose: "This diagnostic audits the entire Trust Assembly system for data inconsistencies caused by broken database transactions. The root cause: the sql`` tagged template from @vercel/postgres uses the neon() HTTP driver, where each call is a stateless HTTP request. BEGIN/COMMIT/ROLLBACK across separate sql`` calls are complete no-ops — they go to different connections.",
+      fixApproach: "Replace sql`` with sql.connect() for any endpoint doing 2+ SQL writes. sql.connect() returns a dedicated pooled client where transactions work. Use client.query() with $1/$2 params instead of template literals.",
+      codeFixStatus: `${fixedCount} section(s) have code fixes applied (vote endpoint + vote-resolution). ${unfixedCount} section(s) still need code fixes (registration, DI partnership, submission creation, disputes, membership applications, org join/leave, admin bulk ops).`,
+      keyFiles: {
+        dbDriver: "src/lib/db.ts — re-exports sql from @vercel/postgres",
+        voteEndpoint: "src/app/api/submissions/[id]/vote/route.ts — FIXED: uses sql.connect()",
+        voteResolution: "src/lib/vote-resolution.ts — FIXED: uses sql.connect(), all helpers accept VercelPoolClient",
+        registration: "src/app/api/auth/register/route.ts — NOT YET FIXED",
+        diPartnership: "src/app/api/di-requests/[id]/route.ts — NOT YET FIXED",
+        submissionCreate: "src/app/api/submissions/route.ts — NOT YET FIXED",
+        orgJoin: "src/app/api/orgs/[id]/join/route.ts — NOT YET FIXED",
+        orgLeave: "src/app/api/orgs/[id]/leave/route.ts — NOT YET FIXED",
+        appApproval: "src/app/api/orgs/[id]/applications/[appId]/route.ts — NOT YET FIXED",
+        disputes: "src/app/api/disputes/route.ts — NOT YET FIXED",
+        disputeVote: "src/app/api/disputes/[id]/vote/route.ts — NOT YET FIXED",
+        concessionVote: "src/app/api/concessions/[id]/vote/route.ts — NOT YET FIXED",
+        adminApprovePending: "src/app/api/admin/approve-pending/route.ts — NOT YET FIXED",
+        adminForceDi: "src/app/api/admin/force-di-partner/route.ts — NOT YET FIXED",
+        adminWildWest: "src/app/api/admin/wild-west-backfill/route.ts — NOT YET FIXED",
+        reconcile: "src/app/api/reconcile/route.ts — NOT YET FIXED",
+      },
+      dataRepairNeeded: "Historical damage from broken transactions cannot be fixed by code changes alone. After deploying code fixes, run this diagnostic again. Any remaining FAILs on Sections B-J represent data that needs backfill scripts. Each section's 'remediation' field describes the specific repair needed.",
+    },
     summary: {
       pass: passCount,
       fail: failCount,
@@ -1109,11 +1169,13 @@ export async function POST(request: NextRequest) {
       error: errorCount,
       info: infoCount,
       totalTests: results.length,
+      codeFixed: fixedCount,
+      codeUnfixed: unfixedCount,
       durationMs: Date.now() - startTime,
       verdict: failCount > 0
-        ? "ISSUES FOUND — See per-submission audit and vote forensics for exact impact of broken transactions."
+        ? "ISSUES FOUND — See per-submission audit and vote forensics for exact impact. Check each test's rootCause and remediation fields for next steps."
         : errorCount > 0
-          ? "Some tests errored — review details."
+          ? "Some tests errored — review details. Fix query errors before drawing conclusions."
           : "All checks passed — no data inconsistencies detected.",
     },
     tests: results,

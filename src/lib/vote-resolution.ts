@@ -8,9 +8,16 @@
 //   - Graduates linked vault entries
 //   - Promotes to cross-group jury if in-group approved
 //   - Tracks cross-group results on the originating org
+//
+// IMPORTANT: Uses sql.connect() for a dedicated client connection.
+// The sql`` tagged template (neon HTTP driver) creates a new
+// stateless connection per call — BEGIN/COMMIT/ROLLBACK are no-ops.
+// sql.connect() returns a persistent pooled client where transactions
+// actually work.
 // ============================================================
 
 import { sql } from "@/lib/db";
+import type { VercelPoolClient } from "@vercel/postgres";
 import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT, isWildWestMode } from "@/lib/jury-rules";
 
 interface VoteRow {
@@ -35,6 +42,8 @@ export async function tryResolveSubmission(
   submissionId: string,
   juryRole: string,
 ): Promise<ResolutionResult> {
+  // ── Pre-transaction reads (stateless is fine) ──
+
   // Get submission with org info
   const subResult = await sql`
     SELECT s.*, o.name AS org_name,
@@ -98,61 +107,63 @@ export async function tryResolveSubmission(
   const lieCount = votes.filter(v => v.deliberate_lie).length;
   const wasLie = !wildWest && lieCount > votes.length / 2;
 
-  // ── TRANSACTION ──
-  // Wrap the entire resolution pipeline in a database transaction.
-  // If any step fails (timeout, constraint violation, connection drop),
-  // all changes roll back and the system stays consistent.
+  // ── TRANSACTION via dedicated client ──
+  // sql.connect() returns a real pooled PostgreSQL client where
+  // BEGIN/COMMIT/ROLLBACK actually work (unlike sql`` which is stateless HTTP).
   let promotedToCrossGroup = false;
+  const client = await sql.connect();
 
   try {
-    await sql`BEGIN`;
+    await client.query("BEGIN");
 
     // Update submission status
-    await sql`
-      UPDATE submissions
-      SET status = ${outcome}, resolved_at = ${now}, deliberate_lie_finding = ${wasLie}
-      WHERE id = ${submissionId}
-    `;
+    await client.query(
+      "UPDATE submissions SET status = $1, resolved_at = $2, deliberate_lie_finding = $3 WHERE id = $4",
+      [outcome, now, wasLie, submissionId]
+    );
 
     // Resolve inline edits independently
-    await resolveInlineEdits(submissionId, votes);
+    await resolveInlineEdits(client, submissionId, votes);
 
     // Resolve linked vault entry survival votes
     if (outcome === "approved" || outcome === "consensus") {
-      await resolveVaultSurvival(submissionId, votes, now);
-      await graduateLinkedVaultEntries(submissionId, now);
+      await resolveVaultSurvival(client, submissionId, votes);
+      await graduateLinkedVaultEntries(client, submissionId, now);
     }
 
     // Reputation updates (in-group only — cross-group affects the org)
     if (!isCross) {
-      await updateSubmitterReputation(submissionId, sub, outcome, wasLie, votes, now);
+      await updateSubmitterReputation(client, submissionId, sub, outcome, wasLie, votes, now);
 
       // Auto-promote to cross-group if in-group approved
       if (outcome === "approved") {
-        promotedToCrossGroup = await promoteToCrossGroup(submissionId, sub.org_id, sub.submitted_by, now);
+        promotedToCrossGroup = await promoteToCrossGroup(client, submissionId, sub.org_id, sub.submitted_by, now);
       }
     }
 
     // Track cross-group results on the originating org
     if (isCross) {
-      await recordCrossGroupResult(sub, outcome, wasLie, now);
+      await recordCrossGroupResult(client, sub, outcome, wasLie, now);
     }
 
     // Audit log
-    await sql`
-      INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-      VALUES (
-        ${`Submission resolved: ${outcome.toUpperCase()}${wasLie ? " (DECEPTION FINDING)" : ""}`},
-        ${sub.submitted_by}, ${sub.org_id}, 'submission', ${submissionId},
-        ${JSON.stringify({ outcome, approveCount, rejectCount, voteCount, expectedJurors, wasLie })}
-      )
-    `;
+    await client.query(
+      `INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+       VALUES ($1, $2, $3, 'submission', $4, $5)`,
+      [
+        `Submission resolved: ${outcome.toUpperCase()}${wasLie ? " (DECEPTION FINDING)" : ""}`,
+        sub.submitted_by, sub.org_id, submissionId,
+        JSON.stringify({ outcome, approveCount, rejectCount, voteCount, expectedJurors, wasLie }),
+      ]
+    );
 
-    await sql`COMMIT`;
+    await client.query("COMMIT");
   } catch (e) {
-    await sql`ROLLBACK`;
+    await client.query("ROLLBACK");
     console.error("Vote resolution transaction failed, rolled back:", e);
     throw e;
+  } finally {
+    client.release();
   }
 
   return { resolved: true, outcome, promotedToCrossGroup };
@@ -161,67 +172,51 @@ export async function tryResolveSubmission(
 // ---- Inline Edit Resolution ----
 
 async function resolveInlineEdits(
+  client: VercelPoolClient,
   submissionId: string,
   votes: VoteRow[],
 ): Promise<void> {
-  const edits = await sql`
-    SELECT id, sort_order FROM submission_inline_edits
-    WHERE submission_id = ${submissionId}
-    ORDER BY sort_order
-  `;
+  const edits = await client.query(
+    "SELECT id, sort_order FROM submission_inline_edits WHERE submission_id = $1 ORDER BY sort_order",
+    [submissionId]
+  );
   if (edits.rows.length === 0) return;
 
-  // Get per-edit votes from the jury_votes metadata
-  // For now, inline edit approval is based on the overall vote
-  // (matching v5 behavior: each edit is independently majority-voted
-  //  via editVotes stored in the vote note/metadata)
-  // TODO: When migrating the frontend, store edit votes as separate
-  // rows or in a JSONB column on jury_votes. For now, approve all
-  // edits if the submission is approved.
   const totalVoters = votes.length;
   const approvalThreshold = totalVoters / 2;
 
   for (const edit of edits.rows) {
-    // Default: edit approved if submission approved
-    // This will be refined when edit-specific votes are stored server-side
     const editApproved = votes.filter(v => v.approve).length > approvalThreshold;
-    await sql`
-      UPDATE submission_inline_edits
-      SET approved = ${editApproved}
-      WHERE id = ${edit.id}
-    `;
+    await client.query(
+      "UPDATE submission_inline_edits SET approved = $1 WHERE id = $2",
+      [editApproved, edit.id]
+    );
   }
 }
 
 // ---- Vault Entry Survival ----
 
 async function resolveVaultSurvival(
+  client: VercelPoolClient,
   submissionId: string,
   votes: VoteRow[],
-  now: string,
 ): Promise<void> {
-  const linked = await sql`
-    SELECT entry_type, entry_id FROM submission_linked_entries
-    WHERE submission_id = ${submissionId}
-  `;
+  const linked = await client.query(
+    "SELECT entry_type, entry_id FROM submission_linked_entries WHERE submission_id = $1",
+    [submissionId]
+  );
   if (linked.rows.length === 0) return;
 
-  // For linked vault entries, "still applies" = majority of voters agree
-  // In v5 this uses vaultVotes per voter. For now, if submission is approved,
-  // all linked entries survive. Will be refined with per-entry votes.
   const approveCount = votes.filter(v => v.approve).length;
   const stillApplies = approveCount > votes.length / 2;
-
   if (!stillApplies) return;
 
   for (const entry of linked.rows) {
     const table = getVaultTable(entry.entry_type);
     if (!table) continue;
-
-    // Use parameterized query per table (safe — table name is from our enum, not user input)
-    await sql.query(
+    await client.query(
       `UPDATE ${table} SET survival_count = survival_count + 1 WHERE id = $1`,
-      [entry.entry_id],
+      [entry.entry_id]
     );
   }
 }
@@ -229,16 +224,15 @@ async function resolveVaultSurvival(
 // ---- Graduate Pending Vault Entries ----
 
 async function graduateLinkedVaultEntries(
+  client: VercelPoolClient,
   submissionId: string,
   now: string,
 ): Promise<void> {
-  // Graduate pending vault entries linked to this submission
   const tables = ["vault_entries", "arguments", "beliefs", "translations"];
-
   for (const table of tables) {
-    await sql.query(
+    await client.query(
       `UPDATE ${table} SET status = 'approved', approved_at = $1 WHERE submission_id = $2 AND status = 'pending'`,
-      [now, submissionId],
+      [now, submissionId]
     );
   }
 }
@@ -246,6 +240,7 @@ async function graduateLinkedVaultEntries(
 // ---- Submitter Reputation ----
 
 async function updateSubmitterReputation(
+  client: VercelPoolClient,
   submissionId: string,
   sub: { submitted_by: string; org_id: string; is_di: boolean; di_partner_id: string | null },
   outcome: string,
@@ -258,149 +253,145 @@ async function updateSubmitterReputation(
 
   if (outcome === "approved" || outcome === "consensus") {
     // Win: increment wins, streak, assembly streak
-    await sql`
-      UPDATE users SET
-        total_wins = total_wins + 1,
-        current_streak = current_streak + 1
-      WHERE id = ${targetUserId}
-    `;
-    await sql`
-      UPDATE organization_members SET
-        assembly_streak = assembly_streak + 1
-      WHERE org_id = ${sub.org_id} AND user_id = ${targetUserId} AND is_active = TRUE
-    `;
+    await client.query(
+      "UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1 WHERE id = $1",
+      [targetUserId]
+    );
+    await client.query(
+      "UPDATE organization_members SET assembly_streak = assembly_streak + 1 WHERE org_id = $1 AND user_id = $2 AND is_active = TRUE",
+      [sub.org_id, targetUserId]
+    );
 
     // Check for trusted contributor status
-    const streakResult = await sql`
-      SELECT assembly_streak FROM organization_members
-      WHERE org_id = ${sub.org_id} AND user_id = ${targetUserId} AND is_active = TRUE
-    `;
+    const streakResult = await client.query(
+      "SELECT assembly_streak FROM organization_members WHERE org_id = $1 AND user_id = $2 AND is_active = TRUE",
+      [sub.org_id, targetUserId]
+    );
     if (streakResult.rows.length > 0 && streakResult.rows[0].assembly_streak === TRUSTED_STREAK) {
-      await sql`
-        INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
-        VALUES ('Earned Trusted Contributor status', ${targetUserId}, ${sub.org_id}, 'user', ${targetUserId})
-      `;
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, 'user', $4)",
+        ["Earned Trusted Contributor status", targetUserId, sub.org_id, targetUserId]
+      );
     }
   } else {
     // Loss: increment losses, reset streaks
     if (wasLie) {
-      await sql`
-        UPDATE users SET
-          total_losses = total_losses + 1,
-          current_streak = 0,
-          deliberate_lies = deliberate_lies + 1,
-          last_deception_finding = ${now}
-        WHERE id = ${targetUserId}
-      `;
+      await client.query(
+        "UPDATE users SET total_losses = total_losses + 1, current_streak = 0, deliberate_lies = deliberate_lies + 1, last_deception_finding = $1 WHERE id = $2",
+        [now, targetUserId]
+      );
     } else {
-      await sql`
-        UPDATE users SET
-          total_losses = total_losses + 1,
-          current_streak = 0
-        WHERE id = ${targetUserId}
-      `;
+      await client.query(
+        "UPDATE users SET total_losses = total_losses + 1, current_streak = 0 WHERE id = $1",
+        [targetUserId]
+      );
     }
 
     // Check if was trusted before resetting
-    const streakResult = await sql`
-      SELECT assembly_streak FROM organization_members
-      WHERE org_id = ${sub.org_id} AND user_id = ${targetUserId} AND is_active = TRUE
-    `;
+    const streakResult = await client.query(
+      "SELECT assembly_streak FROM organization_members WHERE org_id = $1 AND user_id = $2 AND is_active = TRUE",
+      [sub.org_id, targetUserId]
+    );
     const wasTrusted = streakResult.rows.length > 0 && streakResult.rows[0].assembly_streak >= TRUSTED_STREAK;
 
-    await sql`
-      UPDATE organization_members SET assembly_streak = 0
-      WHERE org_id = ${sub.org_id} AND user_id = ${targetUserId} AND is_active = TRUE
-    `;
+    await client.query(
+      "UPDATE organization_members SET assembly_streak = 0 WHERE org_id = $1 AND user_id = $2 AND is_active = TRUE",
+      [sub.org_id, targetUserId]
+    );
 
     if (wasTrusted) {
-      await sql`
-        INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
-        VALUES ('Lost Trusted Contributor status', ${targetUserId}, ${sub.org_id}, 'user', ${targetUserId})
-      `;
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, 'user', $4)",
+        ["Lost Trusted Contributor status", targetUserId, sub.org_id, targetUserId]
+      );
     }
   }
 
   // Store individual ratings
   for (const vote of votes) {
     if (vote.newsworthy && vote.interesting) {
-      await sql`
-        INSERT INTO user_ratings (user_id, submission_id, rated_by, newsworthy, interesting)
-        VALUES (${targetUserId}, ${submissionId}, ${vote.user_id}, ${vote.newsworthy}, ${vote.interesting})
-      `;
+      await client.query(
+        "INSERT INTO user_ratings (user_id, submission_id, rated_by, newsworthy, interesting) VALUES ($1, $2, $3, $4, $5)",
+        [targetUserId, submissionId, vote.user_id, vote.newsworthy, vote.interesting]
+      );
     }
   }
 
   // Record in review history
-  await sql`
-    INSERT INTO user_review_history (user_id, submission_id, outcome, from_di)
-    VALUES (${targetUserId}, ${submissionId}, ${outcome}, ${sub.is_di})
-  `;
+  await client.query(
+    "INSERT INTO user_review_history (user_id, submission_id, outcome, from_di) VALUES ($1, $2, $3, $4)",
+    [targetUserId, submissionId, outcome, sub.is_di]
+  );
 }
 
 // ---- Cross-Group Promotion ----
 
 async function promoteToCrossGroup(
+  client: VercelPoolClient,
   submissionId: string,
   orgId: string,
   submittedBy: string,
   now: string,
 ): Promise<boolean> {
   // Count qualifying assemblies (those with 5+ members, excluding the origin)
-  const qualifyingOrgs = await sql`
-    SELECT o.id, COUNT(om.id) AS member_count
-    FROM organizations o
-    JOIN organization_members om ON om.org_id = o.id AND om.is_active = TRUE
-    WHERE o.id != ${orgId}
-    GROUP BY o.id
-    HAVING COUNT(om.id) >= 5
-  `;
+  const qualifyingOrgs = await client.query(
+    `SELECT o.id, COUNT(om.id) AS member_count
+     FROM organizations o
+     JOIN organization_members om ON om.org_id = o.id AND om.is_active = TRUE
+     WHERE o.id != $1
+     GROUP BY o.id
+     HAVING COUNT(om.id) >= 5`,
+    [orgId]
+  );
 
   if (qualifyingOrgs.rows.length < 1) return false;
 
   // Select cross-group jurors from other assemblies
-  // Pick members who are NOT in the submitter's org
-  const crossPool = await sql`
-    SELECT DISTINCT om.user_id
-    FROM organization_members om
-    WHERE om.org_id != ${orgId}
-      AND om.is_active = TRUE
-      AND om.user_id != ${submittedBy}
-    ORDER BY RANDOM()
-    LIMIT 15
-  `;
+  const crossPool = await client.query(
+    `SELECT DISTINCT om.user_id
+     FROM organization_members om
+     WHERE om.org_id != $1
+       AND om.is_active = TRUE
+       AND om.user_id != $2
+     ORDER BY RANDOM()
+     LIMIT 15`,
+    [orgId, submittedBy]
+  );
 
   if (crossPool.rows.length < 3) return false;
 
   const crossJurySize = Math.min(crossPool.rows.length, 5);
 
   // Update submission for cross-group review
-  await sql`
-    UPDATE submissions SET
-      status = 'cross_review',
-      resolved_at = NULL,
-      cross_group_jury_size = ${crossJurySize},
-      cross_group_seed = ${Math.floor(Math.random() * 100000)}
-    WHERE id = ${submissionId}
-  `;
+  await client.query(
+    `UPDATE submissions SET
+       status = 'cross_review',
+       resolved_at = NULL,
+       cross_group_jury_size = $1,
+       cross_group_seed = $2
+     WHERE id = $3`,
+    [crossJurySize, Math.floor(Math.random() * 100000), submissionId]
+  );
 
   // Create jury assignments for cross-group
   for (const juror of crossPool.rows.slice(0, crossJurySize * 3)) {
-    await sql`
-      INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
-      VALUES (${submissionId}, ${juror.user_id}, 'cross_group', TRUE, FALSE)
-      ON CONFLICT DO NOTHING
-    `;
+    await client.query(
+      `INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+       VALUES ($1, $2, 'cross_group', TRUE, FALSE)
+       ON CONFLICT DO NOTHING`,
+      [submissionId, juror.user_id]
+    );
   }
 
-  await sql`
-    INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
-    VALUES (
-      'Promoted to cross-group review',
-      ${orgId}, 'submission', ${submissionId},
-      ${JSON.stringify({ qualifyingOrgs: qualifyingOrgs.rows.length, poolSize: crossPool.rows.length, jurySize: crossJurySize })}
-    )
-  `;
+  await client.query(
+    `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
+     VALUES ($1, $2, 'submission', $3, $4)`,
+    [
+      "Promoted to cross-group review",
+      orgId, submissionId,
+      JSON.stringify({ qualifyingOrgs: qualifyingOrgs.rows.length, poolSize: crossPool.rows.length, jurySize: crossJurySize }),
+    ]
+  );
 
   return true;
 }
@@ -408,31 +399,33 @@ async function promoteToCrossGroup(
 // ---- Cross-Group Result Recording ----
 
 async function recordCrossGroupResult(
+  client: VercelPoolClient,
   sub: { id: string; org_id: string; cross_group_jury_size: number | null; jury_seats: number | null },
   outcome: string,
   wasLie: boolean,
   now: string,
 ): Promise<void> {
-  await sql`
-    INSERT INTO cross_group_results (org_id, submission_id, outcome, jury_size, internal_jury_size, was_lie)
-    VALUES (${sub.org_id}, ${sub.id}, ${outcome}, ${sub.cross_group_jury_size || 3}, ${sub.jury_seats || 3}, ${wasLie})
-  `;
+  await client.query(
+    `INSERT INTO cross_group_results (org_id, submission_id, outcome, jury_size, internal_jury_size, was_lie)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [sub.org_id, sub.id, outcome, sub.cross_group_jury_size || 3, sub.jury_seats || 3, wasLie]
+  );
 
   if (wasLie) {
-    await sql`
-      UPDATE organizations SET
-        cross_group_deception_findings = cross_group_deception_findings + 1
-      WHERE id = ${sub.org_id}
-    `;
+    await client.query(
+      "UPDATE organizations SET cross_group_deception_findings = cross_group_deception_findings + 1 WHERE id = $1",
+      [sub.org_id]
+    );
 
-    await sql`
-      INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
-      VALUES (
-        ${`Cross-group deception finding — ${CROSS_GROUP_DECEPTION_MULT}× Assembly penalty`},
-        ${sub.org_id}, 'submission', ${sub.id},
-        ${JSON.stringify({ penalty: CROSS_GROUP_DECEPTION_MULT })}
-      )
-    `;
+    await client.query(
+      `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
+       VALUES ($1, $2, 'submission', $3, $4)`,
+      [
+        `Cross-group deception finding — ${CROSS_GROUP_DECEPTION_MULT}× Assembly penalty`,
+        sub.org_id, sub.id,
+        JSON.stringify({ penalty: CROSS_GROUP_DECEPTION_MULT }),
+      ]
+    );
   }
 }
 
@@ -448,4 +441,3 @@ function getVaultTable(entryType: string): string | null {
   };
   return map[entryType] || null;
 }
-
