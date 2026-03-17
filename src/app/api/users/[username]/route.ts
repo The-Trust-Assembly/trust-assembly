@@ -55,8 +55,15 @@ export async function PATCH(
 
   const body = await request.json();
   const allowedFields = ["displayName", "bio", "gender", "age", "country", "state", "politicalAffiliation"];
+  // orgId is mapped to primary_org_id (special handling, not a simple camelCase→snake_case)
   const updates: string[] = [];
   const values: unknown[] = [];
+
+  // Handle orgId → primary_org_id
+  if (body.orgId !== undefined) {
+    updates.push("primary_org_id");
+    values.push(body.orgId || null);
+  }
 
   // Build dynamic update — only allowed fields
   for (const field of allowedFields) {
