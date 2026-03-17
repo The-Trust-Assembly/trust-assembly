@@ -4303,7 +4303,7 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
       const newIds = [...myOrgIds, id];
       await updateUser({ orgId: id, orgIds: newIds });
       // Refresh org list from server
-      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
+      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.organizations || orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
     } catch (e) { setError("Network error creating assembly"); return; }
     setCreating(false); setNewOrg({ name: "", description: "", charter: "" });
   };
@@ -4356,7 +4356,7 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
     await updateUser({ orgId: oid, orgIds: newIds });
     // Refresh org list from server
     try {
-      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
+      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.organizations || orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
     } catch (e) { /* will refresh on next load */ }
   };
 
@@ -4372,7 +4372,7 @@ function OrgScreen({ user, onUpdate, onViewCitizen }) {
     await updateUser({ orgId: newActive, orgIds: newIds });
     // Refresh org list from server
     try {
-      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
+      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.organizations || orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
     } catch (e) { /* will refresh on next load */ }
   };
 
