@@ -353,6 +353,11 @@ export default function TrustAssembly() {
         @media(max-width:640px) { .ta-feedback-fab { bottom:16px; right:16px; font-size:11px; padding:8px 14px; } }
       `}</style>
 
+      {/* Debugging banner */}
+      <div style={{ background: "#FEF3C7", borderBottom: "2px solid #F59E0B", padding: "10px 20px", textAlign: "center", fontSize: 13, fontWeight: 600, color: "#92400E", fontFamily: "var(--font)" }}>
+        Debugging some database migration errors. Please be patient while we work to correct.
+      </div>
+
       {!user && viewingRecord ? (
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
           <RecordScreen recordId={viewingRecord} onBack={() => { setViewingRecord(null); window.history.back(); }} onViewCitizen={navigateToCitizen} />

@@ -93,8 +93,20 @@ export async function requireAdmin(request?: Request): Promise<JWTPayload | null
     : await getCurrentUser();
   if (!user) return null;
 
-  const result = await sql`SELECT is_admin FROM users WHERE id = ${user.sub}`;
-  if (result.rows.length === 0 || !result.rows[0].is_admin) return null;
+  const result = await sql`SELECT is_admin, username FROM users WHERE id = ${user.sub}`;
+  if (result.rows.length === 0) return null;
+
+  const row = result.rows[0];
+  // Check is_admin column OR match the hardcoded admin username
+  // (is_admin may not have been set during KV→relational migration)
+  const isAdmin = row.is_admin || row.username === "thekingofamerica";
+
+  if (!isAdmin) return null;
+
+  // Auto-fix: set is_admin = TRUE if it wasn't already
+  if (!row.is_admin && isAdmin) {
+    await sql`UPDATE users SET is_admin = TRUE WHERE id = ${user.sub}`;
+  }
 
   return user;
 }
