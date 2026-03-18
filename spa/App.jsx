@@ -24,9 +24,11 @@ import RecordScreen from "./pages/RecordScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
+import DiagnosticScreen from "./pages/DiagnosticScreen";
 
 import { ensureGeneralPublic } from "./lib/storage";
 import { isDIUser } from "./lib/permissions";
+import { trackAction } from "./lib/action-tracker";
 import { Badge, Loader, CitizenCounter } from "./components/ui";
 
 const NAV_TOP = [
@@ -102,6 +104,7 @@ export default function TrustAssembly() {
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
   const setScreen = useCallback((s) => {
+    trackAction("nav", `screen:${s}`, { screen: s });
     setScreenRaw(s);
     setViewingRecord(null);
     if (!skipPush.current) {
@@ -268,12 +271,14 @@ export default function TrustAssembly() {
   };
 
   const logout = async () => {
+    trackAction("button", "click:logout", { component: "App", screen: "navbar" });
     try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
     setUser(null); setScreen("login");
   };
 
   const submitFeedback = async () => {
     if (!feedbackText.trim()) return;
+    trackAction("button", "click:submit_feedback", { component: "FeedbackModal", screen: "feedback" });
     setFeedbackSending(true); setFeedbackError("");
     try {
       const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: feedbackText.trim() }) });
@@ -574,6 +579,9 @@ export default function TrustAssembly() {
             {(isAdmin || hasSubmittedFeedback) && (
               <div className={`ta-nav-row-item ${screen === "feedback" ? "active" : ""}`} onClick={() => setScreen("feedback")} style={{ color: isAdmin ? "var(--sienna)" : undefined, fontWeight: isAdmin ? 600 : undefined }}>Feedback</div>
             )}
+            {isAdmin && (
+              <div className={`ta-nav-row-item ${screen === "diagnostic" ? "active" : ""}`} onClick={() => setScreen("diagnostic")} style={{ color: "var(--purple)", fontWeight: 600 }}>Diagnostic</div>
+            )}
           </div>
 
           {/* USER BAR */}
@@ -637,6 +645,7 @@ export default function TrustAssembly() {
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
+            {screen === "diagnostic" && isAdmin && <DiagnosticScreen />}
             </>}
           </div>
 

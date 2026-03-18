@@ -1,6 +1,9 @@
 // ============================================================
 // API Client — replaces window.storage calls with real backend
+// All requests are automatically tracked by the action tracker.
 // ============================================================
+
+import { trackAction } from "../../spa/lib/action-tracker";
 
 async function request(path, opts = {}) {
   const { method = "GET", body, params } = opts;
@@ -18,9 +21,36 @@ async function request(path, opts = {}) {
     fetchOpts.headers["Content-Type"] = "application/json";
     fetchOpts.body = JSON.stringify(body);
   }
-  const res = await fetch(url, fetchOpts);
+  const start = typeof performance !== "undefined" ? performance.now() : Date.now();
+  let res;
+  try {
+    res = await fetch(url, fetchOpts);
+  } catch (networkErr) {
+    const durationMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - start);
+    trackAction("api", `${method} ${path}`, {
+      ok: false,
+      durationMs,
+      error: networkErr.message || "Network error",
+      extra: { bodyKeys: body ? Object.keys(body) : null },
+    });
+    throw networkErr;
+  }
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+  const durationMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - start);
+  if (!res.ok) {
+    trackAction("api", `${method} ${path}`, {
+      ok: false,
+      durationMs,
+      error: data.error || `HTTP ${res.status}`,
+      extra: { status: res.status, bodyKeys: body ? Object.keys(body) : null },
+    });
+    throw new Error(data.error || `Request failed: ${res.status}`);
+  }
+  trackAction("api", `${method} ${path}`, {
+    ok: true,
+    durationMs,
+    extra: { status: res.status },
+  });
   return data;
 }
 
@@ -230,4 +260,16 @@ export async function apiGetMyJuryAssignments() {
 
 export async function apiAcceptJury(id) {
   return request(`/api/jury/${id}/accept`, { method: "POST" });
+}
+
+// ---- Diagnostic ----
+export async function apiGetDiagnosticReport(hours = 24) {
+  return request("/api/diagnostic", { params: { hours: String(hours) } });
+}
+
+export async function apiFlushClientLog(entries) {
+  return request("/api/diagnostic/client-log", {
+    method: "POST",
+    body: { entries },
+  });
 }
