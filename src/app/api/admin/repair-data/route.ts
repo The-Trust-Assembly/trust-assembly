@@ -140,9 +140,10 @@ export async function POST(request: NextRequest) {
     `;
     for (const sub of missingHistory.rows) {
       const targetUserId = (sub.is_di && sub.di_partner_id) ? sub.di_partner_id : sub.submitted_by;
+      const fromDi = !!(sub.is_di && sub.di_partner_id);
       await sql`
-        INSERT INTO user_review_history (user_id, submission_id, org_id, outcome, created_at)
-        VALUES (${targetUserId}, ${sub.submission_id}, ${sub.org_id}, ${sub.status}, ${sub.resolved_at})
+        INSERT INTO user_review_history (user_id, submission_id, outcome, from_di, created_at)
+        VALUES (${targetUserId}, ${sub.submission_id}, ${sub.status}, ${fromDi}, ${sub.resolved_at})
         ON CONFLICT DO NOTHING
       `;
       totalRepaired++;
