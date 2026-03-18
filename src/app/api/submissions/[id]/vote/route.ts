@@ -93,7 +93,7 @@ export async function POST(
   // Use sql.connect() for a dedicated client where transactions actually work.
   // The sql`` tagged template uses the neon HTTP driver (stateless), where
   // BEGIN/COMMIT/ROLLBACK are no-ops across separate calls.
-  let resolution: { resolved: boolean; outcome?: string; promotedToCrossGroup?: boolean };
+  let resolution: { resolved: boolean; outcome?: string; promotedToCrossGroup?: boolean } = { resolved: false };
 
   const client = await sql.connect();
   try {
