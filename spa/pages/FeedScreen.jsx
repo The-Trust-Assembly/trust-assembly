@@ -13,14 +13,17 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   const [disputingId, setDisputingId] = useState(null);
   const [disputeForm, setDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
   const [disputeError, setDisputeError] = useState(""); const [disputeSuccess, setDisputeSuccess] = useState("");
+  const [taggingId, setTaggingId] = useState(null);
+  const [stories, setStories] = useState({});
+  const [tagMsg, setTagMsg] = useState("");
   const [approveMsg, setApproveMsg] = useState("");
   const isAdmin = user && user.username === ADMIN_USERNAME;
 
   const [loadError, setLoadError] = useState("");
   const load = async () => {
     try {
-      const [subsData, orgsData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS)]);
-      setSubs(subsData || {}); setOrgs(orgsData || {}); setLoadError("");
+      const [subsData, orgsData, storiesData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS), sG(SK.STORIES)]);
+      setSubs(subsData || {}); setOrgs(orgsData || {}); setStories(storiesData || {}); setLoadError("");
     } catch (e) {
       console.error("FeedScreen load error:", e);
       setLoadError("Failed to load data. Please refresh the page.");
@@ -132,6 +135,35 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
           {isExpanded && (
             <div>
               <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
+
+              {/* Tag to story */}
+              {["approved", "consensus", "cross_review"].includes(sub.status) && taggingId !== sub.id && (
+                <button className="ta-btn-ghost" style={{ color: "#7C3AED", marginTop: 6, fontSize: 12, marginRight: 8 }} onClick={() => { setTaggingId(sub.id); setTagMsg(""); }}>
+                  📖 Tag to Story
+                </button>
+              )}
+              {taggingId === sub.id && (() => {
+                const availableStories = Object.values(stories).filter(s => ["approved", "consensus", "cross_review"].includes(s.status));
+                return (
+                  <div style={{ marginTop: 8, padding: 10, background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 8 }}>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#7C3AED", fontWeight: 700, marginBottom: 6 }}>TAG TO STORY</div>
+                    {tagMsg && <div className={tagMsg.includes("Error") ? "ta-error" : "ta-success"} style={{ marginBottom: 6, fontSize: 12 }}>{tagMsg}</div>}
+                    {availableStories.length === 0 ? (
+                      <div style={{ fontSize: 12, color: "#64748B" }}>No approved stories available. <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => onNavigate && onNavigate("stories")}>Create one</button></div>
+                    ) : availableStories.map(s => (
+                      <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 6px", marginBottom: 3, borderRadius: 4, background: "#fff" }}>
+                        <span style={{ fontSize: 12, color: "#1E293B", flex: 1 }}>{s.title} <span style={{ fontSize: 10, color: "#94A3B8" }}>({s.orgName})</span></span>
+                        <button className="ta-link-btn" style={{ fontSize: 10, color: "#7C3AED" }} onClick={async () => {
+                          const res = await fetch(`/api/stories/${s.id}/tag`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId: sub.id }) });
+                          const data = await res.json();
+                          if (res.ok) { setTagMsg(data.status === "approved" ? "Tagged (auto-approved)." : "Tag submitted for approval."); } else { setTagMsg("Error: " + (data.error || "Failed")); }
+                        }}>Tag</button>
+                      </div>
+                    ))}
+                    <button className="ta-link-btn" style={{ fontSize: 11, marginTop: 6, color: "#94A3B8" }} onClick={() => { setTaggingId(null); setTagMsg(""); }}>Cancel</button>
+                  </div>
+                );
+              })()}
 
               {canDispute(sub) && disputingId !== sub.id && (
                 <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} }); }}>

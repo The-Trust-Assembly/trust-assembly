@@ -494,5 +494,147 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  return ok({ submissions, disputes, myDisputes, wildWest });
+  // ── Story proposals where user is juror and hasn't voted ──
+  const storyProposalsResult = await sql`
+    SELECT
+      st.id, st.title, st.description, st.status, st.org_id,
+      st.jury_seats, st.jury_seed, st.cross_group_jury_size, st.cross_group_seed,
+      st.created_at, st.approved_at, st.resolved_at,
+      u.username AS submitted_by,
+      o.name AS org_name,
+      ja.role AS jury_role,
+      ja.accepted AS jury_accepted
+    FROM jury_assignments ja
+    LEFT JOIN stories st ON st.id = ja.story_id
+    LEFT JOIN users u ON u.id = st.submitted_by
+    LEFT JOIN organizations o ON o.id = st.org_id
+    WHERE ja.user_id = ${session.sub}
+      AND st.status IN ('pending_review', 'cross_review')
+      AND NOT EXISTS (
+        SELECT 1 FROM jury_votes jv
+        WHERE jv.story_id = st.id
+          AND jv.user_id = ${session.sub}
+          AND jv.role = ja.role
+      )
+    ORDER BY st.created_at DESC
+  `;
+
+  // Wild West fallback for stories
+  let wwStoryRows: Record<string, unknown>[] = [];
+  if (wildWest) {
+    const existingStoryIds = storyProposalsResult.rows.map((r: Record<string, unknown>) => r.id as string);
+    const wwStoryQuery = existingStoryIds.length > 0
+      ? `SELECT
+          st.id, st.title, st.description, st.status, st.org_id,
+          st.jury_seats, st.jury_seed, st.cross_group_jury_size, st.cross_group_seed,
+          st.created_at, st.approved_at, st.resolved_at,
+          u.username AS submitted_by,
+          o.name AS org_name,
+          'in_group' AS jury_role,
+          FALSE AS jury_accepted
+        FROM stories st
+        LEFT JOIN users u ON u.id = st.submitted_by
+        LEFT JOIN organizations o ON o.id = st.org_id
+        WHERE st.status IN ('pending_review', 'pending_jury')
+          AND st.submitted_by != $1
+          AND EXISTS (
+            SELECT 1 FROM organization_members om
+            WHERE om.org_id = st.org_id AND om.user_id = $1 AND om.is_active = TRUE
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM jury_votes jv
+            WHERE jv.story_id = st.id AND jv.user_id = $1
+          )
+          AND st.id != ALL($2::uuid[])
+        ORDER BY st.created_at DESC`
+      : `SELECT
+          st.id, st.title, st.description, st.status, st.org_id,
+          st.jury_seats, st.jury_seed, st.cross_group_jury_size, st.cross_group_seed,
+          st.created_at, st.approved_at, st.resolved_at,
+          u.username AS submitted_by,
+          o.name AS org_name,
+          'in_group' AS jury_role,
+          FALSE AS jury_accepted
+        FROM stories st
+        LEFT JOIN users u ON u.id = st.submitted_by
+        LEFT JOIN organizations o ON o.id = st.org_id
+        WHERE st.status IN ('pending_review', 'pending_jury')
+          AND st.submitted_by != $1
+          AND EXISTS (
+            SELECT 1 FROM organization_members om
+            WHERE om.org_id = st.org_id AND om.user_id = $1 AND om.is_active = TRUE
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM jury_votes jv
+            WHERE jv.story_id = st.id AND jv.user_id = $1
+          )
+        ORDER BY st.created_at DESC`;
+
+    const wwStoryParams = existingStoryIds.length > 0
+      ? [session.sub, existingStoryIds]
+      : [session.sub];
+    const wwStoryResult = await sql.query(wwStoryQuery, wwStoryParams);
+    wwStoryRows = wwStoryResult.rows;
+  }
+
+  const allStoryRows = [...storyProposalsResult.rows, ...wwStoryRows] as Record<string, unknown>[];
+
+  // Batch load story jury info
+  const storyIds = allStoryRows.map((r: Record<string, unknown>) => r.id as string);
+  let storyJurorsMap: Record<string, string[]> = {};
+  let storyVotesMap: Record<string, Record<string, Record<string, unknown>>> = {};
+
+  if (storyIds.length > 0) {
+    const sJurors = await sql.query(
+      `SELECT ja.story_id, u.username
+       FROM jury_assignments ja
+       LEFT JOIN users u ON u.id = ja.user_id
+       WHERE ja.story_id = ANY($1)
+       ORDER BY ja.assigned_at`,
+      [storyIds]
+    );
+    for (const row of sJurors.rows) {
+      if (!storyJurorsMap[row.story_id]) storyJurorsMap[row.story_id] = [];
+      storyJurorsMap[row.story_id].push(row.username);
+    }
+
+    const sVotes = await sql.query(
+      `SELECT jv.story_id, jv.approve, jv.note, jv.voted_at, u.username
+       FROM jury_votes jv
+       LEFT JOIN users u ON u.id = jv.user_id
+       WHERE jv.story_id = ANY($1)
+       ORDER BY jv.voted_at`,
+      [storyIds]
+    );
+    for (const row of sVotes.rows) {
+      if (!storyVotesMap[row.story_id]) storyVotesMap[row.story_id] = {};
+      storyVotesMap[row.story_id][row.username] = {
+        approve: row.approve, note: row.note, time: row.voted_at,
+      };
+    }
+  }
+
+  const storyProposals = allStoryRows.map((row: Record<string, unknown>) => {
+    const sid = row.id as string;
+    return {
+      id: sid,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      orgId: row.org_id,
+      orgName: (row.org_name as string) || "Unknown Org",
+      submittedBy: row.submitted_by || "unknown",
+      jurySeats: row.jury_seats,
+      crossGroupJurySize: row.cross_group_jury_size,
+      createdAt: row.created_at,
+      juryRole: row.jury_role,
+      juryAccepted: row.jury_accepted,
+      jurors: storyJurorsMap[sid] || [],
+      votes: storyVotesMap[sid] || {},
+      _fromRelational: true,
+      _inMyQueue: true,
+    };
+  });
+
+  return ok({ submissions, disputes, myDisputes, storyProposals, wildWest });
 }

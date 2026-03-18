@@ -17,6 +17,7 @@ import AboutScreen from "./pages/AboutScreen";
 import VaultScreen from "./pages/VaultScreen";
 import ConsensusScreen from "./pages/ConsensusScreen";
 import AuditScreen from "./pages/AuditScreen";
+import StoriesScreen from "./pages/StoriesScreen";
 import FeedbackScreen from "./pages/FeedbackScreen";
 import CitizenLookupScreen from "./pages/CitizenLookupScreen";
 import RecordScreen from "./pages/RecordScreen";
@@ -34,7 +35,7 @@ const NAV_TOP = [
 const NAV_BOT = [
   { key: "profile", label: "Citizen" }, { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" },
   { key: "vision", label: "Vision" }, { key: "about", label: "About" },
-  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "audit", label: "Ledger" },
+  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" },
 ];
 
 function formatNotification(n) {
@@ -624,6 +625,7 @@ export default function TrustAssembly() {
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
+            {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
             {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}

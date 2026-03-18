@@ -25,6 +25,7 @@ export async function sG(k) {
     case SK.USERS:   url = "/api/data/users"; break;
     case SK.AUDIT:   url = "/api/data/audit"; break;
     case SK.DISPUTES: url = "/api/data/disputes"; break;
+    case SK.STORIES:  url = "/api/data/stories"; break;
     case SK.VAULT:   url = "/api/vault?type=vault&status=approved&limit=1000"; break;
     case SK.ARGS:    url = "/api/vault?type=argument&limit=1000"; break;
     case SK.BELIEFS: url = "/api/vault?type=belief&limit=1000"; break;

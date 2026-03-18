@@ -429,6 +429,185 @@ async function recordCrossGroupResult(
   }
 }
 
+// ============================================================
+// Story Resolution
+// Simpler than submission resolution: no reputation changes,
+// no vault graduation, no inline edits. Just majority vote
+// with cross-group promotion on approval.
+// ============================================================
+
+export async function tryResolveStory(
+  storyId: string,
+  juryRole: string,
+): Promise<ResolutionResult> {
+  // Get story
+  const storyResult = await sql`
+    SELECT st.*, o.name AS org_name
+    FROM stories st
+    JOIN organizations o ON o.id = st.org_id
+    WHERE st.id = ${storyId}
+  `;
+  if (storyResult.rows.length === 0) return { resolved: false };
+  const story = storyResult.rows[0] as {
+    id: string; status: string; org_id: string; submitted_by: string;
+    cross_group_jury_size: number | null; jury_seats: number | null;
+  };
+
+  const isCross = juryRole === "cross_group";
+
+  // Count votes for this role
+  const voteResult = await sql`
+    SELECT approve, user_id
+    FROM jury_votes
+    WHERE story_id = ${storyId} AND role = ${juryRole}
+  `;
+  const votes = voteResult.rows as { approve: boolean; user_id: string }[];
+  const voteCount = votes.length;
+  const approveCount = votes.filter(v => v.approve).length;
+  const rejectCount = voteCount - approveCount;
+
+  const expectedJurors = isCross
+    ? (story.cross_group_jury_size || 3)
+    : (story.jury_seats || 3);
+  const majority = getMajority(expectedJurors);
+
+  let resolved = false;
+  let outcome: string | null = null;
+
+  if (approveCount >= majority) {
+    resolved = true;
+    outcome = isCross ? "consensus" : "approved";
+  } else if (rejectCount >= majority) {
+    resolved = true;
+    outcome = isCross ? "consensus_rejected" : "rejected";
+  } else if (voteCount >= expectedJurors) {
+    resolved = true;
+    outcome = approveCount >= rejectCount
+      ? (isCross ? "consensus" : "approved")
+      : (isCross ? "consensus_rejected" : "rejected");
+  }
+
+  if (!resolved || !outcome) return { resolved: false };
+
+  const now = new Date().toISOString();
+  let promotedToCrossGroup = false;
+  const client = await sql.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Update story status
+    if (outcome === "approved" || outcome === "consensus") {
+      await client.query(
+        "UPDATE stories SET status = $1, approved_at = $2, resolved_at = $2 WHERE id = $3",
+        [outcome, now, storyId]
+      );
+    } else {
+      await client.query(
+        "UPDATE stories SET status = $1, resolved_at = $2 WHERE id = $3",
+        [outcome, now, storyId]
+      );
+    }
+
+    // Cross-group promotion for in-group approval
+    if (!isCross && outcome === "approved") {
+      promotedToCrossGroup = await promoteStoryToCrossGroup(client, storyId, story.org_id, story.submitted_by, now);
+    }
+
+    // Audit log
+    await client.query(
+      `INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+       VALUES ($1, $2, $3, 'story', $4, $5)`,
+      [
+        `Story resolved: ${outcome.toUpperCase()}`,
+        story.submitted_by, story.org_id, storyId,
+        JSON.stringify({ outcome, approveCount, rejectCount, voteCount, expectedJurors }),
+      ]
+    );
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Story resolution transaction failed:", e);
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  return { resolved: true, outcome, promotedToCrossGroup };
+}
+
+async function promoteStoryToCrossGroup(
+  client: VercelPoolClient,
+  storyId: string,
+  orgId: string,
+  submittedBy: string,
+  now: string,
+): Promise<boolean> {
+  // Count qualifying assemblies (5+ members, excluding origin)
+  const qualifyingOrgs = await client.query(
+    `SELECT o.id, COUNT(om.id) AS member_count
+     FROM organizations o
+     JOIN organization_members om ON om.org_id = o.id AND om.is_active = TRUE
+     WHERE o.id != $1
+     GROUP BY o.id
+     HAVING COUNT(om.id) >= 5`,
+    [orgId]
+  );
+
+  if (qualifyingOrgs.rows.length < 1) return false;
+
+  // Select cross-group jurors from other assemblies
+  const crossPool = await client.query(
+    `SELECT DISTINCT om.user_id
+     FROM organization_members om
+     WHERE om.org_id != $1
+       AND om.is_active = TRUE
+       AND om.user_id != $2
+     ORDER BY RANDOM()
+     LIMIT 15`,
+    [orgId, submittedBy]
+  );
+
+  if (crossPool.rows.length < 3) return false;
+
+  const crossJurySize = Math.min(crossPool.rows.length, 5);
+
+  // Update story for cross-group review
+  await client.query(
+    `UPDATE stories SET
+       status = 'cross_review',
+       approved_at = $1,
+       resolved_at = NULL,
+       cross_group_jury_size = $2,
+       cross_group_seed = $3
+     WHERE id = $4`,
+    [now, crossJurySize, Math.floor(Math.random() * 100000), storyId]
+  );
+
+  // Create jury assignments
+  for (const juror of crossPool.rows.slice(0, crossJurySize * 3)) {
+    await client.query(
+      `INSERT INTO jury_assignments (story_id, user_id, role, in_pool, accepted)
+       VALUES ($1, $2, 'cross_group', TRUE, FALSE)
+       ON CONFLICT DO NOTHING`,
+      [storyId, juror.user_id]
+    );
+  }
+
+  await client.query(
+    `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
+     VALUES ($1, $2, 'story', $3, $4)`,
+    [
+      "Story promoted to cross-group review",
+      orgId, storyId,
+      JSON.stringify({ qualifyingOrgs: qualifyingOrgs.rows.length, poolSize: crossPool.rows.length, jurySize: crossJurySize }),
+    ]
+  );
+
+  return true;
+}
+
 // ---- Helpers ----
 
 function getVaultTable(entryType: string): string | null {

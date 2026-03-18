@@ -22,6 +22,7 @@ export default function ReviewScreen({ user }) {
   const [juryScore, setJuryScore] = useState(null);
   const [diLinkReqs, setDiLinkReqs] = useState({});
   const [wildWest, setWildWest] = useState(false);
+  const [storyProposals, setStoryProposals] = useState([]);
 
   const load = useCallback(async () => {
     let ww = false;
@@ -48,6 +49,9 @@ export default function ReviewScreen({ user }) {
         }
         if (queueData.myDisputes) {
           for (const relDisp of queueData.myDisputes) { allDisputes[relDisp.id] = { ...allDisputes[relDisp.id], ...relDisp }; }
+        }
+        if (queueData.storyProposals) {
+          setStoryProposals(queueData.storyProposals);
         }
       } else {
         console.warn("[ReviewScreen] /api/reviews/queue returned", queueRes.status);
@@ -422,7 +426,7 @@ export default function ReviewScreen({ user }) {
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #991B1B", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#991B1B", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#4F46E5", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
             {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
@@ -602,6 +606,52 @@ export default function ReviewScreen({ user }) {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>)}
+
+      {/* Story Proposals Tab */}
+      {tab === "stories" && (storyProposals.length === 0 ? <Empty text="No story proposals awaiting your review." /> : <div>
+        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>Story pages track real-world events across multiple submissions. Vote on whether these stories deserve their own page.</p>
+        {storyProposals.map(sp => {
+          const isReviewing = reviewingId === sp.id;
+          return (
+            <div key={sp.id} className="ta-card" style={{ borderLeft: "4px solid #8B5CF6" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sp.submittedBy} · {sp.orgName} · {sDate(sp.createdAt)}</span>
+                <span style={{ fontSize: 10, padding: "2px 7px", background: "#F5F3FF", color: "#7C3AED", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Story Proposal</span>
+              </div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "#0F172A", marginBottom: 8 }}>{sp.title}</div>
+              <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, marginBottom: 10, whiteSpace: "pre-wrap" }}>{sp.description}</div>
+              <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 8 }}>
+                Jurors: {(sp.jurors || []).length} assigned · Votes: {Object.keys(sp.votes || {}).length}/{sp.jurySeats || "?"}
+              </div>
+              {!isReviewing ? (
+                <button className="ta-btn-primary" style={{ fontSize: 12 }} onClick={() => { setReviewingId(sp.id); setVoteNote(""); }}>Review & Vote</button>
+              ) : (
+                <div style={{ padding: 12, background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+                  <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 8 }}>YOUR VOTE</div>
+                  <textarea
+                    className="ta-input"
+                    style={{ width: "100%", marginBottom: 10, padding: "8px 12px", fontSize: 13, minHeight: 60, resize: "vertical" }}
+                    placeholder="Optional note explaining your reasoning..."
+                    value={voteNote}
+                    onChange={e => setVoteNote(e.target.value)}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="ta-btn-primary" style={{ background: "#059669" }} onClick={async () => {
+                      const res = await fetch(`/api/stories/${sp.id}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approve: true, note: voteNote, role: sp.juryRole || "in_group" }) });
+                      if (res.ok) { setReviewingId(null); load(); }
+                    }}>Approve</button>
+                    <button className="ta-btn-primary" style={{ background: "#DC2626" }} onClick={async () => {
+                      const res = await fetch(`/api/stories/${sp.id}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approve: false, note: voteNote, role: sp.juryRole || "in_group" }) });
+                      if (res.ok) { setReviewingId(null); load(); }
+                    }}>Reject</button>
+                    <button className="ta-link-btn" onClick={() => setReviewingId(null)}>Cancel</button>
+                  </div>
                 </div>
               )}
             </div>

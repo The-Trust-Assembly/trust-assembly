@@ -6,7 +6,7 @@ import { LighthouseIcon, AttrLine, TABadge } from "../components/ui";
 
 export const VER = "v5";
 
-export const SK = { USERS: `ta-u-${VER}`, ORGS: `ta-o-${VER}`, SUBS: `ta-s-${VER}`, SESSION: `ta-ss-${VER}`, AUDIT: `ta-a-${VER}`, VAULT: `ta-vault-${VER}`, ARGS: `ta-args-${VER}`, BELIEFS: `ta-beliefs-${VER}`, TRANSLATIONS: `ta-trans-${VER}`, DISPUTES: `ta-disp-${VER}`, SYNTH: `ta-synth-${VER}`, GP: `ta-gp-${VER}`, APPS: `ta-apps-${VER}` };
+export const SK = { USERS: `ta-u-${VER}`, ORGS: `ta-o-${VER}`, SUBS: `ta-s-${VER}`, SESSION: `ta-ss-${VER}`, AUDIT: `ta-a-${VER}`, VAULT: `ta-vault-${VER}`, ARGS: `ta-args-${VER}`, BELIEFS: `ta-beliefs-${VER}`, TRANSLATIONS: `ta-trans-${VER}`, DISPUTES: `ta-disp-${VER}`, SYNTH: `ta-synth-${VER}`, GP: `ta-gp-${VER}`, APPS: `ta-apps-${VER}`, STORIES: `ta-stories-${VER}` };
 
 export const GP_NAME = "The General Public";
 export const GP_DESC = "Every Digital Citizen is a member. The town square — your permanent home assembly.";
