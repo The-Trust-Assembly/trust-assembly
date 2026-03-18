@@ -220,7 +220,7 @@ export default function TrustAssembly() {
     const t = setInterval(() => {
       setHeroFading(true);
       setTimeout(() => { setHeroIdx(i => (i + 1) % HERO_SLIDES.length); setHeroFading(false); }, 280);
-    }, 3000);
+    }, 8000);
     return () => clearInterval(t);
   }, [user, heroPaused]);
 

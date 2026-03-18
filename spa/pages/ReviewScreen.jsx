@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Component } from "react";
 import { SK, MAX_SHARED_ASSEMBLIES, NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
 import { sDate, anonName } from "../lib/utils";
 import { sG, isWildWestMode } from "../lib/storage";
@@ -11,7 +11,28 @@ import DIPanelContent from "../components/DIPanelContent";
 
 const DRAFT_DEBOUNCE = 500;
 
+class ReviewErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("[ReviewScreen] Render error:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return <div style={{ padding: 24, textAlign: "center" }}>
+        <h3 style={{ color: "#DC2626", fontFamily: "var(--mono)" }}>Review page encountered an error</h3>
+        <p style={{ color: "#64748B", fontSize: 13, marginTop: 8 }}>{this.state.error?.message || "Unknown error"}</p>
+        <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 12, padding: "8px 16px", background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12 }}>Retry</button>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
 export default function ReviewScreen({ user }) {
+  if (!user) return <Empty text="Loading user..." />;
+  return <ReviewErrorBoundary><ReviewScreenInner user={user} /></ReviewErrorBoundary>;
+}
+
+function ReviewScreenInner({ user }) {
   const [subs, setSubs] = useState(null); const [disputes, setDisputes] = useState(null); const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState(null); const [voteNote, setVoteNote] = useState("");
   const [newsRating, setNewsRating] = useState(5); const [funRating, setFunRating] = useState(5);
@@ -257,6 +278,7 @@ export default function ReviewScreen({ user }) {
   };
 
   const renderItem = (sub, isCross) => {
+    if (!sub || !sub.id) return null;
     const seats = isCross ? (sub.crossGroupJurySize || (sub.crossGroupJurors || []).length) : (sub.jurySeats || (sub.jurors || []).length);
     const accepted = isCross ? (sub.crossGroupAcceptedJurors || []).length : (sub.acceptedJurors || []).length;
     const votesIn = isCross ? Object.keys(sub.crossGroupVotes || {}).length : Object.keys(sub.votes || {}).length;

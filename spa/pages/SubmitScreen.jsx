@@ -308,7 +308,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   };
 
   return (
-    <div style={{ paddingRight: 56 }}>
+    <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
 
       {/* Saved drafts banner */}
@@ -641,33 +641,28 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>}
       </div>
 
-      {/* ── Sticky Submit Button ── */}
-      <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #F1F5F9 8px)", paddingTop: 12, paddingBottom: 8, zIndex: 10 }}>
-        <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ width: "100%", padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
-        <LegalDisclaimer short />
-      </div>
-
-      {/* ── Floating Save Draft Button (right side) ── */}
-      <div style={{ position: "fixed", right: 20, top: "50%", transform: "translateY(-50%)", zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-        <button onClick={saveDraft} disabled={savingDraft} style={{
-          writingMode: "vertical-rl", textOrientation: "mixed",
-          background: "#FFFBEB", color: "#CA8A04", border: "1.5px solid #CA8A04",
-          padding: "14px 8px", borderRadius: 8, cursor: savingDraft ? "default" : "pointer",
-          fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.12)", opacity: savingDraft ? 0.6 : 1,
-          letterSpacing: "0.04em",
-        }}>
-          {savingDraft ? "Saving..." : "Save Draft"}
-        </button>
+      {/* ── Submit & Save Draft Buttons ── */}
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #E2E8F0" }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+          <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
+          <button onClick={saveDraft} disabled={savingDraft} style={{
+            padding: "12px 16px", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 600,
+            background: "#FFFBEB", color: "#CA8A04", border: "1.5px solid #CA8A04",
+            borderRadius: 8, cursor: savingDraft ? "default" : "pointer",
+            opacity: savingDraft ? 0.6 : 1,
+          }}>
+            {savingDraft ? "Saving..." : "Save Draft"}
+          </button>
+        </div>
         {draftMsg && (
           <div style={{
-            writingMode: "horizontal-tb", fontSize: 10, padding: "4px 8px", borderRadius: 6,
+            fontSize: 11, padding: "4px 8px", borderRadius: 6, marginBottom: 6,
             background: draftMsg.includes("saved") || draftMsg.includes("loaded") ? "#ECFDF5" : "#FEF2F2",
             color: draftMsg.includes("saved") || draftMsg.includes("loaded") ? "#059669" : "#DC2626",
-            maxWidth: 80, textAlign: "center", lineHeight: 1.3,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+            textAlign: "center",
           }}>{draftMsg}</div>
         )}
+        <LegalDisclaimer short />
       </div>
     </div>
   );

@@ -1431,8 +1431,8 @@ export async function POST(request: NextRequest) {
     // E2: Resolved disputes with complete vote records
     const resolvedDisputes = await sql`
       SELECT d.id, d.status, d.submission_id,
-        (SELECT COUNT(*)::int FROM jury_votes jv WHERE jv.submission_id = d.id::text) AS vote_count,
-        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.submission_id = d.id::text) AS juror_count
+        (SELECT COUNT(*)::int FROM jury_votes jv WHERE jv.dispute_id = d.id) AS vote_count,
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.dispute_id = d.id) AS juror_count
       FROM disputes d
       WHERE d.status IN ('upheld', 'dismissed')
     `;
@@ -1529,6 +1529,19 @@ export async function POST(request: NextRequest) {
   // SECTION F: STORY PAGES PIPELINE AUDIT
   // ═══════════════════════════════════════════════════════════════════
   try {
+    // Check if stories table exists before querying
+    const storiesTableCheck = await sql`
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stories') AS exists
+    `;
+    if (!storiesTableCheck.rows[0]?.exists) {
+      results.push({
+        name: "Section F: Story Pages Pipeline Audit",
+        status: "INFO",
+        description: "Stories table does not exist yet — migration 004_story_pages.sql has not been run. Skipping story audit.",
+        codeFixed: true,
+        details: { reason: "table_not_found", table: "stories", migration: "004_story_pages.sql" },
+      });
+    } else {
     // F1: Stories without jury assignments
     const storiesNoJury = await sql`
       SELECT s.id, s.title, s.status, s.created_at
@@ -1636,6 +1649,7 @@ export async function POST(request: NextRequest) {
       codeFixed: true,
       details: { totalCrossReview: crossGroupStories.rows.length, missingJury: noCGJury.length },
     });
+    } // end else (stories table exists)
   } catch (sectionFError) {
     results.push({
       name: "Section F: Story Pages Pipeline Audit",
@@ -1650,6 +1664,19 @@ export async function POST(request: NextRequest) {
   // SECTION G: DRAFTS CONSISTENCY
   // ═══════════════════════════════════════════════════════════════════
   try {
+    // Check if submission_drafts table exists before querying
+    const draftsTableCheck = await sql`
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'submission_drafts') AS exists
+    `;
+    if (!draftsTableCheck.rows[0]?.exists) {
+      results.push({
+        name: "Section G: Drafts Consistency",
+        status: "INFO",
+        description: "submission_drafts table does not exist yet — migration 005_submission_drafts.sql has not been run. Skipping drafts audit.",
+        codeFixed: true,
+        details: { reason: "table_not_found", table: "submission_drafts", migration: "005_submission_drafts.sql" },
+      });
+    } else {
     // G1: Orphaned drafts (user deleted but draft remains — shouldn't happen with CASCADE)
     const orphanedDrafts = await sql`
       SELECT sd.id, sd.user_id
@@ -1698,6 +1725,7 @@ export async function POST(request: NextRequest) {
       codeFixed: true,
       details: { stale: staleDrafts.rows[0].cnt, total: totalDrafts.rows[0].cnt },
     });
+    } // end else (submission_drafts table exists)
   } catch (sectionGError) {
     results.push({
       name: "Section G: Drafts Consistency",
