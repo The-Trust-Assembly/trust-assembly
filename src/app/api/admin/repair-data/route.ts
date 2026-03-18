@@ -17,6 +17,8 @@ import { ok, forbidden, err } from "@/lib/api-utils";
 // 7. Unresolved inline edits on approved submissions
 // 8. Approved applications where user wasn't added to org
 // 9. pending_di_review enum value (ALTER TYPE)
+// 10. Asymmetric DI partnerships (partner doesn't point back)
+// 11. DI submissions missing di_partner_id
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -257,9 +259,9 @@ export async function POST(request: NextRequest) {
           [app.org_id, app.user_id]
         );
         await client.query(
-          `INSERT INTO organization_member_history (org_id, user_id, action, performed_by)
-           VALUES ($1, $2, 'joined_via_repair', $3)`,
-          [app.org_id, app.user_id, admin.sub]
+          `INSERT INTO organization_member_history (org_id, user_id, action)
+           VALUES ($1, $2, 'joined')`,
+          [app.org_id, app.user_id]
         );
         await client.query("COMMIT");
         report.push(`OK @${app.username}: added to ${app.org_name} (approved application was missing membership)`);
@@ -294,6 +296,53 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       report.push(`WARN: Could not alter enum — ${(e as Error).message}. May need to run manually.`);
     }
+
+    // ── 10. Fix asymmetric DI partnerships ──
+    report.push("\n--- Fix asymmetric DI partnerships ---");
+    // Find DI users where partner doesn't point back
+    const asymmetricDI = await sql`
+      SELECT u1.id AS user_id, u1.username AS username, u1.di_partner_id,
+             u2.id AS partner_id, u2.username AS partner_username, u2.di_partner_id AS partner_points_to
+      FROM users u1
+      JOIN users u2 ON u2.id = u1.di_partner_id
+      WHERE u1.is_di = TRUE
+        AND u1.di_partner_id IS NOT NULL
+        AND (u2.di_partner_id IS NULL OR u2.di_partner_id != u1.id)
+    `;
+    for (const row of asymmetricDI.rows) {
+      // The partner should point back — fix the missing link
+      await sql`
+        UPDATE users
+        SET di_partner_id = ${row.user_id},
+            is_di = TRUE,
+            di_approved = TRUE
+        WHERE id = ${row.partner_id}
+          AND (di_partner_id IS NULL OR di_partner_id != ${row.user_id})
+      `;
+      report.push(`OK @${row.partner_username}: di_partner_id → @${row.username} (was ${row.partner_points_to || 'NULL'}, now symmetric)`);
+      totalRepaired++;
+    }
+    if (asymmetricDI.rows.length === 0) {
+      report.push("SKIP: All DI partnerships are already symmetric");
+    }
+
+    // ── 11. Fix DI submissions missing di_partner_id ──
+    report.push("\n--- Fix DI submissions missing di_partner_id ---");
+    const diSubsNoPartner = await sql`
+      UPDATE submissions s
+      SET di_partner_id = u.di_partner_id
+      FROM users u
+      WHERE s.submitted_by = u.id
+        AND s.is_di = TRUE
+        AND s.di_partner_id IS NULL
+        AND u.di_partner_id IS NOT NULL
+      RETURNING s.id, u.username, u.di_partner_id
+    `;
+    for (const row of diSubsNoPartner.rows) {
+      report.push(`OK submission ${(row.id as string).slice(0, 8)}… by @${row.username}: set di_partner_id`);
+    }
+    report.push(`Fixed ${diSubsNoPartner.rows.length} DI submission(s) missing di_partner_id`);
+    totalRepaired += diSubsNoPartner.rows.length;
 
     // ── Audit the repair itself ──
     await sql`
