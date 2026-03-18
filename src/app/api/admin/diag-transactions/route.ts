@@ -1169,6 +1169,134 @@ export async function POST(request: NextRequest) {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // SECTION L: PIPELINE STAGE AUDIT (DRY-RUN)
+  // Traces every live submission through the pipeline stages:
+  //   Created → Jury Assigned → Visible in Queue → Votes → Resolution → Published
+  // ═══════════════════════════════════════════════════════════════════
+
+  try {
+    // ── L1: Pending submissions with NO jury assignments ──
+    const pendingNoJury = await sql`
+      SELECT s.id, s.status, s.jury_seats, s.created_at, s.org_id,
+             u.username AS submitter, o.name AS org_name
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.submitted_by
+      LEFT JOIN organizations o ON o.id = s.org_id
+      WHERE s.status = 'pending_review'
+        AND NOT EXISTS (
+          SELECT 1 FROM jury_assignments ja WHERE ja.submission_id = s.id
+        )
+    `;
+
+    // ── L2: pending_jury submissions (stuck waiting for org growth) ──
+    const pendingJuryStuck = await sql`
+      SELECT s.id, s.status, s.created_at, s.org_id,
+             u.username AS submitter, o.name AS org_name,
+             (SELECT COUNT(*) FROM organization_members om
+              WHERE om.org_id = s.org_id AND om.is_active = TRUE)::int AS current_member_count
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.submitted_by
+      LEFT JOIN organizations o ON o.id = s.org_id
+      WHERE s.status = 'pending_jury'
+    `;
+
+    // ── L3: pending_review not visible to ANY assigned juror (all already voted or assignments stale) ──
+    const invisibleToJury = await sql`
+      SELECT s.id, s.status, s.jury_seats, s.created_at,
+             u.username AS submitter, o.name AS org_name,
+             (SELECT COUNT(*) FROM jury_assignments ja
+              WHERE ja.submission_id = s.id AND ja.role = 'in_group')::int AS total_assigned,
+             (SELECT COUNT(*) FROM jury_assignments ja
+              WHERE ja.submission_id = s.id AND ja.role = 'in_group' AND ja.accepted = TRUE)::int AS accepted_count,
+             (SELECT COUNT(DISTINCT jv.user_id) FROM jury_votes jv
+              WHERE jv.submission_id = s.id AND jv.role = 'in_group')::int AS voted_count
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.submitted_by
+      LEFT JOIN organizations o ON o.id = s.org_id
+      WHERE s.status = 'pending_review'
+    `;
+    // Filter to submissions where every assigned juror has voted but resolution didn't trigger
+    const stalledSubs = invisibleToJury.rows.filter(s =>
+      (s.total_assigned as number) > 0 &&
+      (s.voted_count as number) >= (s.total_assigned as number)
+    );
+
+    // ── L4: Submissions with enough votes for majority but NOT resolved ──
+    const unresolvedWithMajority = await sql`
+      SELECT s.id, s.status, s.jury_seats, s.created_at,
+             u.username AS submitter, o.name AS org_name,
+             (SELECT COUNT(*) FROM jury_votes jv
+              WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = TRUE)::int AS approve_count,
+             (SELECT COUNT(*) FROM jury_votes jv
+              WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = FALSE)::int AS reject_count
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.submitted_by
+      LEFT JOIN organizations o ON o.id = s.org_id
+      WHERE s.status IN ('pending_review', 'cross_review')
+    `;
+    const shouldBeResolved = unresolvedWithMajority.rows.filter(s => {
+      const seats = (s.jury_seats as number) || 3;
+      const majority = Math.floor(seats / 2) + 1;
+      return (s.approve_count as number) >= majority || (s.reject_count as number) >= majority;
+    });
+
+    // ── L5: Approved/consensus submissions NOT returned by corrections API ──
+    // Check for approved submissions with missing normalized_url
+    const approvedNoUrl = await sql`
+      SELECT s.id, s.status, s.url, s.normalized_url, s.original_headline,
+             u.username AS submitter
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.submitted_by
+      WHERE s.status IN ('approved', 'consensus')
+        AND (s.normalized_url IS NULL OR s.normalized_url = '')
+    `;
+
+    const pipelineIssues: string[] = [];
+    if (pendingNoJury.rows.length > 0) pipelineIssues.push(`${pendingNoJury.rows.length} pending_review submission(s) have NO jury assignments`);
+    if (pendingJuryStuck.rows.length > 0) pipelineIssues.push(`${pendingJuryStuck.rows.length} submission(s) stuck in pending_jury`);
+    if (stalledSubs.length > 0) pipelineIssues.push(`${stalledSubs.length} submission(s) have all jurors voted but resolution never triggered`);
+    if (shouldBeResolved.length > 0) pipelineIssues.push(`${shouldBeResolved.length} submission(s) have enough votes for majority but are NOT resolved`);
+    if (approvedNoUrl.rows.length > 0) pipelineIssues.push(`${approvedNoUrl.rows.length} approved submission(s) have no normalized_url — invisible to corrections API`);
+
+    results.push({
+      name: "Pipeline stage audit (dry-run)",
+      status: pipelineIssues.length === 0 ? "PASS" : "FAIL",
+      description: pipelineIssues.length === 0
+        ? "All submissions are progressing through the pipeline correctly. No stalled or invisible items."
+        : `Found ${pipelineIssues.length} pipeline issue(s):\n${pipelineIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "Each submission must flow: Created → Jury Assigned → Visible in Queue → Votes Cast → Resolution Triggered → Published. A break at any stage leaves the submission stuck.",
+      remediation: "pending_review with no jury: re-run jury assignment. pending_jury stuck: org needs more members or use admin approve. Stalled resolution: tryResolveSubmission failed silently — re-trigger vote. Missing normalized_url: backfill from url column.",
+      details: {
+        pendingReviewNoJury: pendingNoJury.rows.map(s => ({
+          id: s.id, submitter: `@${s.submitter}`, org: s.org_name,
+          jurySeats: s.jury_seats, createdAt: s.created_at,
+        })),
+        pendingJuryStuck: pendingJuryStuck.rows.map(s => ({
+          id: s.id, submitter: `@${s.submitter}`, org: s.org_name,
+          currentMemberCount: s.current_member_count, createdAt: s.created_at,
+        })),
+        stalledResolution: stalledSubs.map(s => ({
+          id: s.id, submitter: `@${s.submitter}`, org: s.org_name,
+          totalAssigned: s.total_assigned, votedCount: s.voted_count,
+          jurySeats: s.jury_seats, createdAt: s.created_at,
+        })),
+        shouldBeResolved: shouldBeResolved.map(s => ({
+          id: s.id, submitter: `@${s.submitter}`, org: s.org_name,
+          approveCount: s.approve_count, rejectCount: s.reject_count,
+          jurySeats: s.jury_seats, majority: Math.floor(((s.jury_seats as number) || 3) / 2) + 1,
+        })),
+        approvedNoUrl: approvedNoUrl.rows.map(s => ({
+          id: s.id, submitter: `@${s.submitter}`, headline: s.original_headline,
+          url: s.url, normalizedUrl: s.normalized_url,
+        })),
+      },
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    results.push({ name: "Pipeline stage audit (dry-run)", status: "ERROR", description: `Errored: ${msg}`, details: { error: msg } });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // SECTION K: COMPLETE PROCESS INVENTORY
   // Every multi-step write in the system, whether it needs fixing
   // ═══════════════════════════════════════════════════════════════════
