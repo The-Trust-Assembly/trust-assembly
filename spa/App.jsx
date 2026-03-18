@@ -438,22 +438,6 @@ export default function TrustAssembly() {
               >Join as Citizen</button>
             </div>
 
-            {/* Category pills */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 5, marginBottom: 22, flexWrap: "wrap" }}
-              onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
-              {HERO_SLIDES.map((sl, i) => (
-                <button key={sl.id} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
-                  fontFamily: "-apple-system, sans-serif", fontSize: 11, fontWeight: heroIdx === i ? 600 : 400,
-                  color: heroIdx === i ? "#fff" : "#777",
-                  backgroundColor: heroIdx === i ? "#ffffff12" : "transparent",
-                  border: `1px solid ${heroIdx === i ? "#ffffff22" : "#ffffff0a"}`,
-                  borderRadius: 20, padding: "5px 12px", cursor: "pointer", transition: "all 0.2s",
-                }}>
-                  {sl.pills}
-                </button>
-              ))}
-            </div>
-
             {/* Slide label */}
             <div style={{ fontFamily: "-apple-system, sans-serif", fontSize: 13, color: "#999", marginBottom: 14, fontStyle: "italic", opacity: heroFading ? 0 : 1, transition: "opacity 0.2s" }}>
               {HERO_SLIDES[heroIdx].label}
@@ -483,20 +467,6 @@ export default function TrustAssembly() {
               )}
             </div>
 
-            {/* Progress dots */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
-              {HERO_SLIDES.map((_, i) => (
-                <div key={i} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
-                  width: heroIdx === i ? 24 : 8, height: 8, borderRadius: 4,
-                  backgroundColor: heroIdx === i ? "var(--gold)" : "#ffffff18",
-                  cursor: "pointer", transition: "all 0.3s", overflow: "hidden", position: "relative",
-                }}>
-                  {heroIdx === i && !heroPaused && (
-                    <div style={{ position: "absolute", top: 0, left: 0, height: "100%", backgroundColor: "#D4B45E", borderRadius: 4, animation: "ta-prog 8s linear" }} />
-                  )}
-                </div>
-              ))}
-            </div>
 
             {/* Descriptive text */}
             <div style={{ maxWidth: 480, margin: "28px auto 0" }}>
@@ -529,7 +499,7 @@ export default function TrustAssembly() {
 
             {/* Closing CTA */}
             <div style={{ textAlign: "center", marginTop: 40, padding: "32px 0", borderTop: "1px solid #eee" }}>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>The truth has a browser extension.</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>Honesty has a browser extension.</div>
               <div style={{ fontSize: 13, color: "#999", marginBottom: 20 }}>Free. Open. Jury-verified. No algorithm decides what's true.</div>
               <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", backgroundColor: "#1a1a1a", border: "none", borderRadius: 6, padding: "12px 32px", cursor: "pointer" }}
                 onClick={() => setLoginAccordion(true)}

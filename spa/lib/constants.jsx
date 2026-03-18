@@ -432,6 +432,7 @@ export const HERO_SLIDES = [
         <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>Daily Health Wire</div>
         <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, color: "#1a1a1a", fontFamily: "Georgia, serif" }}>Common Grocery Store Item Linked to 300% Surge in Cancer Risk, Study Warns</div>
         <div style={{ fontSize: 11, color: "#999", marginTop: 10, fontFamily: "Helvetica, sans-serif" }}>By Staff Report · March 14, 2026</div>
+        <div style={{ fontSize: 12.5, color: "#444", marginTop: 12, lineHeight: 1.6, fontFamily: "Georgia, serif" }}>Researchers at a leading university have identified a common food additive found in thousands of grocery store products that may be driving a dramatic surge in cancer diagnoses. The study, described by the authors as "alarming," suggests the substance could be responsible for a 300% increase in certain tumor types.</div>
       </div>
     ),
     after: (
@@ -443,6 +444,7 @@ export const HERO_SLIDES = [
         </div>
         <AttrLine label="CORRECTED" org="Science Watch" votes="9/9" color="#8B2D2D" />
         <div style={{ fontSize: 11, color: "#999", marginTop: 10, fontFamily: "Helvetica, sans-serif" }}>By Staff Report · March 14, 2026</div>
+        <div style={{ fontSize: 12.5, color: "#444", marginTop: 12, lineHeight: 1.6, fontFamily: "Georgia, serif" }}>Researchers at a leading university <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>conducted a preliminary study on 12 mice using doses 50× higher than typical human exposure</span>. The study, described by the authors as <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>"early-stage and not generalizable,"</span> found <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>cellular changes in rodent tissue that have not been observed in any human trial to date</span>.</div>
       </div>
     ),
   },
@@ -503,6 +505,7 @@ export const HERO_SLIDES = [
         <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "#333" }}>
           The city's <span style={{ backgroundColor: "#FFF3CD", padding: "0 2px" }}>wildly popular</span> new transit line carried <span style={{ backgroundColor: "#FFF3CD", padding: "0 2px" }}>millions of riders</span> in its first year, built for <span style={{ backgroundColor: "#FFF3CD", padding: "0 2px" }}>a fraction of the projected cost</span>, officials announced at a press conference Tuesday.
         </div>
+        <div style={{ fontSize: 12.5, color: "#444", marginTop: 12, lineHeight: 1.6 }}>The Green Line extension, which opened last March, has been hailed as a model for urban infrastructure investment. Transit officials cited strong ridership numbers and praised the project team for delivering the line well under budget, calling it proof that public transit can be built efficiently.</div>
       </div>
     ),
     after: (
@@ -511,6 +514,7 @@ export const HERO_SLIDES = [
         <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "#333" }}>
           The city's <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>below-projection</span> new transit line carried <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>1.2 million riders against a 3 million target</span> in its first year, built for <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>$2.1B vs. a $2.4B budget (12% under, not the 40% claimed)</span>, officials announced at a press conference Tuesday.
         </div>
+        <div style={{ fontSize: 12.5, color: "#444", marginTop: 12, lineHeight: 1.6 }}>The Green Line extension, which opened last March, has been <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>struggling with ridership 60% below projections</span>. Transit officials cited <span style={{ color: "#8B2D2D", borderBottom: "1.5px dotted #8B2D2D55" }}>selectively chosen figures that omitted the original targets</span>, calling it proof that public transit can be built efficiently.</div>
       </div>
     ),
   },
@@ -566,6 +570,7 @@ export const HERO_SLIDES = [
         <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, paddingBottom: 7, borderBottom: "2px solid #222", fontFamily: "Helvetica, sans-serif" }}>The Independent Register</div>
         <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.3, color: "#1a1a1a", fontFamily: "Georgia, serif" }}>City Water Tests Reveal Lead Levels 4× Federal Limit in Three School Districts</div>
         <div style={{ fontSize: 12, color: "#777", marginTop: 10, lineHeight: 1.5, fontFamily: "Georgia, serif" }}>Testing data obtained through public records request. Reporter cross-referenced with EPA enforcement records and interviewed the lab that conducted the analysis.</div>
+        <div style={{ fontSize: 12.5, color: "#444", marginTop: 12, lineHeight: 1.6, fontFamily: "Georgia, serif" }}>Samples collected from 14 drinking fountains across three elementary schools showed lead concentrations ranging from 62 to 78 parts per billion — well above the EPA action level of 15 ppb. District officials said they were unaware of the results until contacted by the Register.</div>
       </div>
     ),
     after: (
@@ -577,6 +582,7 @@ export const HERO_SLIDES = [
         </div>
         <AttrLine label="✓ AFFIRMED" org="Local Watch Assembly" votes="7/7 jurors" color="#1B5E3F" />
         <div style={{ fontSize: 12, color: "#777", marginTop: 10, lineHeight: 1.5, fontFamily: "Georgia, serif" }}>Testing data obtained through public records request. Reporter cross-referenced with EPA enforcement records and interviewed the lab that conducted the analysis.</div>
+        <div style={{ fontSize: 12.5, color: "#444", marginTop: 12, lineHeight: 1.6, fontFamily: "Georgia, serif" }}>Samples collected from 14 drinking fountains across three elementary schools showed lead concentrations ranging from <span style={{ color: "#1B5E3F", fontWeight: 600 }}>62 to 78 parts per billion</span> — well above the EPA action level of 15 ppb. District officials said they were unaware of the results until contacted by the Register.</div>
       </div>
     ),
   },
