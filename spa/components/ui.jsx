@@ -244,13 +244,13 @@ export function CitizenCounter() {
     (async () => {
       const u = (await sG(SK.USERS)) || {};
       const o = (await sG(SK.ORGS)) || {};
-      setCount(Object.keys(u).length);
+      setCount(Object.keys(u).filter(k => !k.startsWith("_")).length);
       const orgs = Object.values(o);
       setOrgStats({ total: orgs.length, large: orgs.filter(x => x.members.length >= 100).length });
     })();
     const i = setInterval(async () => {
       const u = (await sG(SK.USERS)) || {};
-      setCount(Object.keys(u).length);
+      setCount(Object.keys(u).filter(k => !k.startsWith("_")).length);
     }, 8000);
     return () => clearInterval(i);
   }, []);

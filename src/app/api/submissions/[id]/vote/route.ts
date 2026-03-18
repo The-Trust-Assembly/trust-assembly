@@ -72,7 +72,7 @@ export async function POST(
     }
   }
 
-  // Check if already voted
+  // Check if already voted (pre-transaction fast check)
   const existingVote = await sql`
     SELECT id FROM jury_votes
     WHERE submission_id = ${id} AND user_id = ${session.sub} AND role = ${juryRole}
@@ -89,58 +89,57 @@ export async function POST(
     return err("interesting must be between 1 and 10");
   }
 
-  // ── Atomic vote + resolution ──
-  // Wrap the vote insertion and resolution attempt in a single transaction
-  // with SELECT FOR UPDATE to prevent race conditions where two simultaneous
-  // votes could both trigger resolution and double-count reputation changes.
+  // ── Atomic vote insertion ──
+  // Use sql.connect() for a dedicated client where transactions actually work.
+  // The sql`` tagged template uses the neon HTTP driver (stateless), where
+  // BEGIN/COMMIT/ROLLBACK are no-ops across separate calls.
   let resolution: { resolved: boolean; outcome?: string; promotedToCrossGroup?: boolean };
 
+  const client = await sql.connect();
   try {
-    await sql`BEGIN`;
+    await client.query("BEGIN");
 
     // Lock the submission row to serialize concurrent votes
-    await sql`SELECT id FROM submissions WHERE id = ${id} FOR UPDATE`;
+    await client.query("SELECT id FROM submissions WHERE id = $1 FOR UPDATE", [id]);
 
-    // Re-check for duplicate vote inside the transaction
-    const dupeCheck = await sql`
-      SELECT id FROM jury_votes
-      WHERE submission_id = ${id} AND user_id = ${session.sub} AND role = ${juryRole}
-    `;
+    // Re-check for duplicate vote inside the transaction (race condition guard)
+    const dupeCheck = await client.query(
+      "SELECT id FROM jury_votes WHERE submission_id = $1 AND user_id = $2 AND role = $3",
+      [id, session.sub, juryRole]
+    );
     if (dupeCheck.rows.length > 0) {
-      await sql`ROLLBACK`;
+      await client.query("ROLLBACK");
       return err("You have already voted on this submission", 409);
     }
 
     // Cast vote
-    await sql`
-      INSERT INTO jury_votes (
+    await client.query(
+      `INSERT INTO jury_votes (
         submission_id, user_id, role, approve, note,
         deliberate_lie, newsworthy, interesting
-      ) VALUES (
-        ${id}, ${session.sub}, ${juryRole}, ${approve}, ${note || null},
-        ${deliberateLie || false}, ${newsworthy || null}, ${interesting || null}
-      )
-    `;
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [id, session.sub, juryRole, approve, note || null,
+       deliberateLie || false, newsworthy || null, interesting || null]
+    );
 
     // Audit log
-    await sql`
-      INSERT INTO audit_log (action, user_id, entity_type, entity_id)
-      VALUES ('Vote cast', ${session.sub}, 'submission', ${id})
-    `;
+    await client.query(
+      "INSERT INTO audit_log (action, user_id, entity_type, entity_id) VALUES ($1, $2, $3, $4)",
+      ["Vote cast", session.sub, "submission", id]
+    );
 
-    // Attempt to resolve — checks if majority reached, updates status,
-    // reputation, vault entries, and promotes to cross-group if applicable.
-    // Note: tryResolveSubmission runs its own BEGIN/COMMIT internally,
-    // but since we are already inside a transaction, it operates within
-    // our transaction context (nested BEGIN is a no-op in PostgreSQL
-    // without savepoints). We commit the outer transaction here.
-    await sql`COMMIT`;
-
-    resolution = await tryResolveSubmission(id, juryRole);
+    await client.query("COMMIT");
   } catch (e) {
-    await sql`ROLLBACK`;
+    await client.query("ROLLBACK");
     throw e;
+  } finally {
+    client.release();
   }
+
+  // Resolution runs outside the vote transaction — it acquires its own
+  // dedicated client internally via sql.connect(). This ensures the vote
+  // is committed and visible before resolution checks vote counts.
+  resolution = await tryResolveSubmission(id, juryRole);
 
   return ok({
     status: resolution.resolved ? "resolved" : "voted",

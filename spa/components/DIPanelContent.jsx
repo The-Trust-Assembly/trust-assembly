@@ -21,10 +21,11 @@ export default function DIPanelContent({ user, subs, onReload }) {
     } catch {}
   })(); }, []);
 
-  // DI submissions awaiting my pre-approval
+  // DI submissions awaiting my pre-approval (supports multiple DI partners)
+  const myDIs = user.diPartners || (user.diPartner ? [user.diPartner] : []);
   const diQueue = subs ? Object.values(subs).filter(s => s.status === "di_pending" && (
     s.diPartner === user.username ||
-    (s.isDI && user.diPartner && s.submittedBy === user.diPartner)
+    (s.isDI && myDIs.includes(s.submittedBy))
   )) : [];
 
   // Pending DI link requests

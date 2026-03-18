@@ -60,6 +60,15 @@ export async function POST(request: NextRequest) {
     return err("A pending request already exists for this partner", 409);
   }
 
+  // Enforce 5-DI-per-human limit
+  const approvedCount = await sql`
+    SELECT COUNT(*)::int AS cnt FROM di_requests
+    WHERE partner_user_id = ${partner.rows[0].id} AND status = 'approved'
+  `;
+  if (approvedCount.rows[0].cnt >= 5) {
+    return err("This partner already has 5 approved DI partnerships (maximum)", 409);
+  }
+
   const result = await sql`
     INSERT INTO di_requests (di_user_id, partner_user_id)
     VALUES (${session.sub}, ${partner.rows[0].id})

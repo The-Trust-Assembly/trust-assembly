@@ -19,6 +19,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [diLinkResult, setDiLinkResult] = useState(null);
   const [recomputeRunning, setRecomputeRunning] = useState(false);
   const [recomputeResult, setRecomputeResult] = useState(null);
+  const [repairRunning, setRepairRunning] = useState(false);
+  const [repairResult, setRepairResult] = useState(null);
   const [adminFlagRunning, setAdminFlagRunning] = useState(false);
   const [adminFlagResult, setAdminFlagResult] = useState(null);
   const [migrateKvRunning, setMigrateKvRunning] = useState(false);
@@ -77,6 +79,18 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
       setRecomputeResult({ success: false, report: [`Error: ${e.message}`] });
     }
     setRecomputeRunning(false);
+  };
+
+  const runRepairData = async () => {
+    setRepairRunning(true); setRepairResult(null);
+    try {
+      const res = await fetch("/api/admin/repair-data", { method: "POST" });
+      const data = await res.json();
+      setRepairResult(data);
+    } catch (e) {
+      setRepairResult({ success: false, report: [`Error: ${e.message}`] });
+    }
+    setRepairRunning(false);
   };
 
   const runForceDILink = async () => {
@@ -194,6 +208,21 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
             </div>
           )}
 
+          {/* Repair Historical Data */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+            <button className="ta-btn-primary" onClick={runRepairData} disabled={repairRunning} style={{ background: "#0891B2", fontSize: 12 }}>
+              {repairRunning ? "Repairing..." : "Repair Historical Data"}
+            </button>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Fixes NULL primary_org_id, duplicate votes, missing audit logs, stuck edits, missing memberships, enum gaps</span>
+          </div>
+          {repairResult && (
+            <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: repairResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 300, overflowY: "auto" }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Repaired: {repairResult.totalRepaired || 0} item(s)</div>
+              {(repairResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+              {!repairResult.success && repairResult.error && <div style={{ color: "var(--fired-clay)" }}>{repairResult.error}</div>}
+            </div>
+          )}
+
           {/* Force DI Link */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
             <button className="ta-btn-primary" onClick={runForceDILink} disabled={diLinkRunning} style={{ background: "var(--sienna)", fontSize: 12 }}>
@@ -247,9 +276,27 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
           <div style={{ fontSize: 12, color: "var(--stone)", marginBottom: 12, lineHeight: 1.5 }}>
             Tests whether database transactions actually work. Checks connection behavior, data integrity, and identifies inconsistencies caused by broken transactions.
           </div>
-          <button className="ta-btn-primary" onClick={runDiagTransactions} disabled={diagRunning} style={{ background: "var(--teal)", fontSize: 12 }}>
-            {diagRunning ? "Running diagnostics..." : "Run Transaction Diagnostics"}
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="ta-btn-primary" onClick={runDiagTransactions} disabled={diagRunning} style={{ background: "var(--teal)", fontSize: 12 }}>
+              {diagRunning ? "Running diagnostics..." : "Run Transaction Diagnostics"}
+            </button>
+            {diagResult && (
+              <button
+                className="ta-btn-primary"
+                style={{ background: "var(--charcoal)", fontSize: 12 }}
+                onClick={() => {
+                  const text = JSON.stringify(diagResult, null, 2);
+                  navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.getElementById("diag-copy-btn");
+                    if (btn) { btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = "Copy Full Report"; }, 2000); }
+                  });
+                }}
+                id="diag-copy-btn"
+              >
+                Copy Full Report
+              </button>
+            )}
+          </div>
 
           {diagResult && (
             <div style={{ marginTop: 14 }}>
@@ -305,8 +352,22 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
                         padding: "1px 6px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.05em",
                       }}>{test.status}</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--charcoal)" }}>{test.name}</span>
+                      {test.codeFixed === true && <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "#059669", padding: "1px 5px", borderRadius: 3 }}>CODE FIXED</span>}
+                      {test.codeFixed === false && <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "#D97706", padding: "1px 5px", borderRadius: 3 }}>NEEDS FIX</span>}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--charcoal)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{test.description}</div>
+                    {test.rootCause && (
+                      <details style={{ marginTop: 4 }}>
+                        <summary style={{ fontSize: 10, color: "#7C3AED", cursor: "pointer", fontWeight: 600 }}>Root cause</summary>
+                        <div style={{ fontSize: 10, color: "var(--charcoal)", lineHeight: 1.5, padding: "4px 8px", marginTop: 2, background: "rgba(124,58,237,0.05)", borderRadius: 4 }}>{test.rootCause}</div>
+                      </details>
+                    )}
+                    {test.remediation && (
+                      <details style={{ marginTop: 2 }}>
+                        <summary style={{ fontSize: 10, color: "#2563EB", cursor: "pointer", fontWeight: 600 }}>Remediation</summary>
+                        <div style={{ fontSize: 10, color: "var(--charcoal)", lineHeight: 1.5, padding: "4px 8px", marginTop: 2, background: "rgba(37,99,235,0.05)", borderRadius: 4 }}>{test.remediation}</div>
+                      </details>
+                    )}
 
                     {/* Per-submission pipeline audit — rich rendering */}
                     {hasSubmissions && (

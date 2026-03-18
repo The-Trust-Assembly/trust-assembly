@@ -168,52 +168,69 @@ export async function POST(request: NextRequest) {
     // DI submissions require partner pre-approval before entering jury review
     const initialStatus = submitterIsDI ? "di_pending" : count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
-    // Create submission (with normalized_url for indexed lookups)
+    // Use sql.connect() for a dedicated client where transactions work.
+    // The sql`` tagged template (neon HTTP driver) is stateless — each call
+    // goes to a different connection, so multi-step writes can partially fail.
     const normalizedUrl = normalizeUrl(url);
-    const result = await sql`
-      INSERT INTO submissions (
-        submission_type, status, url, normalized_url, original_headline, replacement,
-        reasoning, author, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats
-      ) VALUES (
-        ${submissionType}, ${initialStatus}, ${url}, ${normalizedUrl}, ${originalHeadline},
-        ${replacement || null}, ${reasoning}, ${author || null},
-        ${session.sub}, ${targetOrg}, ${trustedSkip}, ${submitterIsDI}, ${user.rows[0].di_partner_id || null}, ${jurySeats}
-      ) RETURNING id, submission_type, status, created_at
-    `;
+    const client = await sql.connect();
+    let sub: Record<string, unknown>;
 
-    const sub = result.rows[0];
+    try {
+      await client.query("BEGIN");
 
-    // Insert evidence if provided
-    if (evidence && Array.isArray(evidence)) {
-      for (let i = 0; i < evidence.length; i++) {
-        const e = evidence[i];
-        if (e.url && e.explanation) {
-          await sql`
-            INSERT INTO submission_evidence (submission_id, url, explanation, sort_order)
-            VALUES (${sub.id}, ${e.url}, ${e.explanation}, ${i})
-          `;
+      // Create submission (with normalized_url for indexed lookups)
+      const result = await client.query(
+        `INSERT INTO submissions (
+          submission_type, status, url, normalized_url, original_headline, replacement,
+          reasoning, author, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING id, submission_type, status, created_at`,
+        [submissionType, initialStatus, url, normalizedUrl, originalHeadline,
+         replacement || null, reasoning, author || null,
+         session.sub, targetOrg, trustedSkip, submitterIsDI, user.rows[0].di_partner_id || null, jurySeats]
+      );
+      sub = result.rows[0];
+
+      // Insert evidence if provided
+      if (evidence && Array.isArray(evidence)) {
+        for (let i = 0; i < evidence.length; i++) {
+          const e = evidence[i];
+          if (e.url && e.explanation) {
+            await client.query(
+              "INSERT INTO submission_evidence (submission_id, url, explanation, sort_order) VALUES ($1, $2, $3, $4)",
+              [sub.id, e.url, e.explanation, i]
+            );
+          }
         }
       }
-    }
 
-    // Insert inline edits (body corrections) if provided
-    if (inlineEdits && Array.isArray(inlineEdits)) {
-      for (let i = 0; i < inlineEdits.length; i++) {
-        const edit = inlineEdits[i];
-        if (edit.original && edit.replacement) {
-          await sql`
-            INSERT INTO submission_inline_edits (submission_id, original_text, replacement_text, reasoning, sort_order)
-            VALUES (${sub.id}, ${edit.original}, ${edit.replacement}, ${edit.reasoning || null}, ${i})
-          `;
+      // Insert inline edits (body corrections) if provided
+      if (inlineEdits && Array.isArray(inlineEdits)) {
+        for (let i = 0; i < inlineEdits.length; i++) {
+          const edit = inlineEdits[i];
+          if (edit.original && edit.replacement) {
+            await client.query(
+              "INSERT INTO submission_inline_edits (submission_id, original_text, replacement_text, reasoning, sort_order) VALUES ($1, $2, $3, $4, $5)",
+              [sub.id, edit.original, edit.replacement, edit.reasoning || null, i]
+            );
+          }
         }
       }
-    }
 
-    // Audit log
-    await sql`
-      INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
-      VALUES ('Submission filed', ${session.sub}, ${targetOrg}, 'submission', ${sub.id})
-    `;
+      // Audit log
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+        ["Submission filed", session.sub, targetOrg, "submission", sub.id]
+      );
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      console.error("Submission creation transaction failed, rolled back:", e);
+      throw e;
+    } finally {
+      client.release();
+    }
 
     // ── Trusted contributor: auto-approve ──
     // Route through the same pipeline as jury-resolved submissions to
@@ -221,46 +238,59 @@ export async function POST(request: NextRequest) {
     // graduate vault entries, and trigger cross-group promotion.
     if (trustedSkip) {
       const now = new Date().toISOString();
+      const approveClient = await sql.connect();
 
       try {
-        await sql`BEGIN`;
+        await approveClient.query("BEGIN");
 
-        await sql`UPDATE submissions SET status = 'approved', resolved_at = ${now} WHERE id = ${sub.id}`;
+        await approveClient.query(
+          "UPDATE submissions SET status = 'approved', resolved_at = $1 WHERE id = $2",
+          [now, sub.id]
+        );
 
         // Reputation: increment wins and streak (consistent with vote-resolution)
-        await sql`
-          UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1
-          WHERE id = ${session.sub}
-        `;
-        await sql`
-          UPDATE organization_members SET assembly_streak = assembly_streak + 1
-          WHERE org_id = ${targetOrg} AND user_id = ${session.sub} AND is_active = TRUE
-        `;
+        await approveClient.query(
+          "UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1 WHERE id = $1",
+          [session.sub]
+        );
+        await approveClient.query(
+          "UPDATE organization_members SET assembly_streak = assembly_streak + 1 WHERE org_id = $1 AND user_id = $2 AND is_active = TRUE",
+          [targetOrg, session.sub]
+        );
 
         // Graduate linked vault entries if any
         const vaultTables = ["vault_entries", "arguments", "beliefs", "translations"];
         for (const table of vaultTables) {
-          await sql.query(
+          await approveClient.query(
             `UPDATE ${table} SET status = 'approved', approved_at = $1 WHERE submission_id = $2 AND status = 'pending'`,
-            [now, sub.id],
+            [now, sub.id]
           );
         }
 
         // Audit log entry for trusted auto-approval
-        await sql`
-          INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-          VALUES (
-            'Submission resolved: APPROVED (trusted contributor auto-approve)',
-            ${session.sub}, ${targetOrg}, 'submission', ${sub.id},
-            ${JSON.stringify({ outcome: 'approved', trustedSkip: true })}
-          )
-        `;
+        await approveClient.query(
+          `INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+           VALUES ($1, $2, $3, 'submission', $4, $5)`,
+          [
+            "Submission resolved: APPROVED (trusted contributor auto-approve)",
+            session.sub, targetOrg, sub.id,
+            JSON.stringify({ outcome: "approved", trustedSkip: true }),
+          ]
+        );
 
-        await sql`COMMIT`;
+        // Review history for trusted skip
+        await approveClient.query(
+          "INSERT INTO user_review_history (user_id, submission_id, outcome, from_di) VALUES ($1, $2, $3, $4)",
+          [session.sub, sub.id, "approved", submitterIsDI]
+        );
+
+        await approveClient.query("COMMIT");
       } catch (e) {
-        await sql`ROLLBACK`;
-        console.error("Trusted auto-approve transaction failed:", e);
+        await approveClient.query("ROLLBACK");
+        console.error("Trusted auto-approve transaction failed, rolled back:", e);
         throw e;
+      } finally {
+        approveClient.release();
       }
     }
 
@@ -270,29 +300,45 @@ export async function POST(request: NextRequest) {
       // Wild West: add all eligible org members to pool so they can review
       const poolSize = wildWest ? count : jurySize * JURY_POOL_MULTIPLIER;
 
-      await sql`
-        UPDATE submissions SET jury_seats = ${jurySize} WHERE id = ${sub.id}
-      `;
+      const juryClient = await sql.connect();
+      try {
+        await juryClient.query("BEGIN");
 
-      const diPartnerId = user.rows[0].is_di ? (await sql`SELECT di_partner_id FROM users WHERE id = ${session.sub}`).rows[0]?.di_partner_id : null;
+        await juryClient.query(
+          "UPDATE submissions SET jury_seats = $1 WHERE id = $2",
+          [jurySize, sub.id]
+        );
 
-      const pool = await sql`
-        SELECT om.user_id
-        FROM organization_members om
-        WHERE om.org_id = ${targetOrg}
-          AND om.is_active = TRUE
-          AND om.user_id != ${session.sub}
-          AND (${diPartnerId}::uuid IS NULL OR om.user_id != ${diPartnerId})
-        ORDER BY RANDOM()
-        LIMIT ${poolSize}
-      `;
+        const diPartnerId = user.rows[0].is_di ? (await sql`SELECT di_partner_id FROM users WHERE id = ${session.sub}`).rows[0]?.di_partner_id : null;
 
-      for (const juror of pool.rows) {
-        await sql`
-          INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
-          VALUES (${sub.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
-          ON CONFLICT DO NOTHING
-        `;
+        const pool = await juryClient.query(
+          `SELECT om.user_id
+           FROM organization_members om
+           WHERE om.org_id = $1
+             AND om.is_active = TRUE
+             AND om.user_id != $2
+             AND ($3::uuid IS NULL OR om.user_id != $3)
+           ORDER BY RANDOM()
+           LIMIT $4`,
+          [targetOrg, session.sub, diPartnerId, poolSize]
+        );
+
+        for (const juror of pool.rows) {
+          await juryClient.query(
+            `INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+             VALUES ($1, $2, 'in_group', TRUE, FALSE)
+             ON CONFLICT DO NOTHING`,
+            [sub.id, juror.user_id]
+          );
+        }
+
+        await juryClient.query("COMMIT");
+      } catch (e) {
+        await juryClient.query("ROLLBACK");
+        console.error("Jury assignment transaction failed, rolled back:", e);
+        throw e;
+      } finally {
+        juryClient.release();
       }
     }
 

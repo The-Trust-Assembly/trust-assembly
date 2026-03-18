@@ -44,18 +44,34 @@ export async function POST(
     return err("You have already voted on this dispute", 409);
   }
 
-  // Insert vote
-  const result = await sql`
-    INSERT INTO jury_votes (dispute_id, user_id, role, approve, note, deliberate_lie)
-    VALUES (${id}, ${session.sub}, 'dispute', ${approve}, ${note || null}, ${deliberateLie || false})
-    RETURNING id, dispute_id, approve, voted_at
-  `;
+  // Use sql.connect() for a dedicated client where transactions work.
+  const client = await sql.connect();
+  let vote: Record<string, unknown>;
 
-  // Audit log
-  await sql`
-    INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
-    VALUES ('Dispute vote cast', ${session.sub}, ${dispute.rows[0].org_id}, 'dispute', ${id})
-  `;
+  try {
+    await client.query("BEGIN");
 
-  return ok(result.rows[0], 201);
+    const result = await client.query(
+      `INSERT INTO jury_votes (dispute_id, user_id, role, approve, note, deliberate_lie)
+       VALUES ($1, $2, 'dispute', $3, $4, $5)
+       RETURNING id, dispute_id, approve, voted_at`,
+      [id, session.sub, approve, note || null, deliberateLie || false]
+    );
+    vote = result.rows[0];
+
+    await client.query(
+      "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+      ["Dispute vote cast", session.sub, dispute.rows[0].org_id, "dispute", id]
+    );
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Dispute vote transaction failed, rolled back:", e);
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  return ok(vote, 201);
 }
