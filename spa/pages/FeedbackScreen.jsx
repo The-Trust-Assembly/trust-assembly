@@ -19,6 +19,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [diLinkResult, setDiLinkResult] = useState(null);
   const [recomputeRunning, setRecomputeRunning] = useState(false);
   const [recomputeResult, setRecomputeResult] = useState(null);
+  const [repairRunning, setRepairRunning] = useState(false);
+  const [repairResult, setRepairResult] = useState(null);
   const [adminFlagRunning, setAdminFlagRunning] = useState(false);
   const [adminFlagResult, setAdminFlagResult] = useState(null);
   const [migrateKvRunning, setMigrateKvRunning] = useState(false);
@@ -77,6 +79,18 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
       setRecomputeResult({ success: false, report: [`Error: ${e.message}`] });
     }
     setRecomputeRunning(false);
+  };
+
+  const runRepairData = async () => {
+    setRepairRunning(true); setRepairResult(null);
+    try {
+      const res = await fetch("/api/admin/repair-data", { method: "POST" });
+      const data = await res.json();
+      setRepairResult(data);
+    } catch (e) {
+      setRepairResult({ success: false, report: [`Error: ${e.message}`] });
+    }
+    setRepairRunning(false);
   };
 
   const runForceDILink = async () => {
@@ -191,6 +205,21 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
             <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: recomputeResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
               {(recomputeResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
               {!recomputeResult.success && recomputeResult.error && <div style={{ color: "var(--fired-clay)" }}>{recomputeResult.error}</div>}
+            </div>
+          )}
+
+          {/* Repair Historical Data */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+            <button className="ta-btn-primary" onClick={runRepairData} disabled={repairRunning} style={{ background: "#0891B2", fontSize: 12 }}>
+              {repairRunning ? "Repairing..." : "Repair Historical Data"}
+            </button>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Fixes NULL primary_org_id, duplicate votes, missing audit logs, stuck edits, missing memberships, enum gaps</span>
+          </div>
+          {repairResult && (
+            <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: repairResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 300, overflowY: "auto" }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Repaired: {repairResult.totalRepaired || 0} item(s)</div>
+              {(repairResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+              {!repairResult.success && repairResult.error && <div style={{ color: "var(--fired-clay)" }}>{repairResult.error}</div>}
             </div>
           )}
 
