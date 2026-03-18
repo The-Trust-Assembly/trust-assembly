@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   if (!session) return unauthorized();
 
   const body = await request.json();
-  const { submissionId, reasoning, evidence } = body;
+  const { submissionId, reasoning, evidence, fieldResponses, disputeType } = body;
 
   if (!submissionId || !reasoning) {
     return err("submissionId and reasoning are required");
@@ -83,15 +83,24 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Look up submission to get org_id and original submitter
+  // Look up submission to get org_id, original submitter, and status
   const sub = await sql`
-    SELECT id, org_id, submitted_by FROM submissions WHERE id = ${submissionId}
+    SELECT id, org_id, submitted_by, status FROM submissions WHERE id = ${submissionId}
   `;
   if (sub.rows.length === 0) {
     return err("Submission not found", 404);
   }
 
-  const { org_id, submitted_by } = sub.rows[0];
+  const { org_id, submitted_by, status: subStatus } = sub.rows[0];
+
+  // Validate dispute is on a resolved submission
+  const validDisputeStatuses = ["approved", "consensus", "rejected", "consensus_rejected"];
+  if (!validDisputeStatuses.includes(subStatus as string)) {
+    return err("Can only dispute submissions that have been approved or rejected");
+  }
+
+  // Determine dispute type from body or infer from submission status
+  const resolvedType = disputeType || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
 
   // Use sql.connect() for a dedicated client where transactions work.
   const client = await sql.connect();
@@ -100,11 +109,16 @@ export async function POST(request: NextRequest) {
   try {
     await client.query("BEGIN");
 
+    // Ensure dispute_type and field_responses columns exist
+    await client.query("ALTER TABLE disputes ADD COLUMN IF NOT EXISTS dispute_type TEXT DEFAULT 'challenge_approval'");
+    await client.query("ALTER TABLE disputes ADD COLUMN IF NOT EXISTS field_responses JSONB");
+
     const result = await client.query(
-      `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, submission_id, org_id, status, created_at`,
-      [submissionId, org_id, session.sub, submitted_by, reasoning]
+      `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, submission_id, org_id, status, dispute_type, created_at`,
+      [submissionId, org_id, session.sub, submitted_by, reasoning, resolvedType,
+       fieldResponses ? JSON.stringify(fieldResponses) : null]
     );
     dispute = result.rows[0];
 

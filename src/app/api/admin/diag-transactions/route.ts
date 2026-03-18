@@ -1359,6 +1359,128 @@ export async function POST(request: NextRequest) {
   });
 
   // ═══════════════════════════════════════════════════════════════════
+  // SECTION E: DISPUTE & CONCESSION PIPELINE AUDIT
+  // Validates that disputes and concessions have complete data
+  // ═══════════════════════════════════════════════════════════════════
+
+  try {
+    // E1: Disputes with valid submission references
+    const orphanedDisputes = await sql`
+      SELECT d.id, d.submission_id, d.status
+      FROM disputes d
+      LEFT JOIN submissions s ON s.id = d.submission_id
+      WHERE s.id IS NULL
+    `;
+    results.push({
+      name: "E1: Orphaned disputes (no submission)",
+      status: orphanedDisputes.rows.length === 0 ? "PASS" : "FAIL",
+      description: orphanedDisputes.rows.length === 0
+        ? "All disputes reference valid submissions."
+        : `${orphanedDisputes.rows.length} dispute(s) reference non-existent submissions.`,
+      rootCause: "Dispute's submission_id points to a deleted or non-existent submission.",
+      remediation: "Delete orphaned dispute records or restore the referenced submissions.",
+      codeFixed: true,
+      details: { orphanedDisputes: orphanedDisputes.rows.map(d => ({ id: d.id, submissionId: d.submission_id, status: d.status })) },
+    });
+
+    // E2: Resolved disputes with complete vote records
+    const resolvedDisputes = await sql`
+      SELECT d.id, d.status, d.submission_id,
+        (SELECT COUNT(*)::int FROM jury_votes jv WHERE jv.submission_id = d.id::text) AS vote_count,
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.submission_id = d.id::text) AS juror_count
+      FROM disputes d
+      WHERE d.status IN ('upheld', 'dismissed')
+    `;
+    // Note: disputes may use their own vote tracking, check if dispute votes exist
+    const disputeVoteCheck = await sql`
+      SELECT d.id, d.status,
+        (SELECT COUNT(*)::int FROM audit_log al WHERE al.entity_type = 'dispute' AND al.entity_id = d.id::text) AS audit_count
+      FROM disputes d
+      WHERE d.status IN ('upheld', 'dismissed')
+    `;
+    const disputesNoAudit = disputeVoteCheck.rows.filter((d: Record<string, unknown>) => (d.audit_count as number) === 0);
+    results.push({
+      name: "E2: Resolved disputes have audit logs",
+      status: disputesNoAudit.length === 0 ? "PASS" : "WARN",
+      description: disputesNoAudit.length === 0
+        ? `All ${disputeVoteCheck.rows.length} resolved disputes have audit log entries.`
+        : `${disputesNoAudit.length}/${disputeVoteCheck.rows.length} resolved disputes have no audit log entries.`,
+      rootCause: "Dispute resolution may have failed to write audit logs (transaction-era bug).",
+      remediation: "Run repair-data to backfill missing audit logs for resolved disputes.",
+      codeFixed: true,
+      details: { totalResolved: disputeVoteCheck.rows.length, missingAudit: disputesNoAudit.length },
+    });
+
+    // E3: Disputes with evidence integrity
+    const disputeEvidenceCheck = await sql`
+      SELECT d.id, d.status,
+        (SELECT COUNT(*)::int FROM dispute_evidence de WHERE de.dispute_id = d.id) AS evidence_count
+      FROM disputes d
+    `;
+    results.push({
+      name: "E3: Dispute evidence integrity",
+      status: "INFO",
+      description: `${disputeEvidenceCheck.rows.length} total disputes, ${disputeEvidenceCheck.rows.filter((d: Record<string, unknown>) => (d.evidence_count as number) > 0).length} have evidence attached.`,
+      codeFixed: true,
+      details: {
+        total: disputeEvidenceCheck.rows.length,
+        withEvidence: disputeEvidenceCheck.rows.filter((d: Record<string, unknown>) => (d.evidence_count as number) > 0).length,
+        withoutEvidence: disputeEvidenceCheck.rows.filter((d: Record<string, unknown>) => (d.evidence_count as number) === 0).length,
+      },
+    });
+
+    // E4: Concessions with valid submission references
+    const orphanedConcessions = await sql`
+      SELECT c.id, c.submission_id, c.status
+      FROM concessions c
+      LEFT JOIN submissions s ON s.id = c.submission_id
+      WHERE s.id IS NULL
+    `;
+    results.push({
+      name: "E4: Orphaned concessions (no submission)",
+      status: orphanedConcessions.rows.length === 0 ? "PASS" : "FAIL",
+      description: orphanedConcessions.rows.length === 0
+        ? "All concessions reference valid submissions."
+        : `${orphanedConcessions.rows.length} concession(s) reference non-existent submissions.`,
+      codeFixed: true,
+      details: { orphanedConcessions: orphanedConcessions.rows.map(c => ({ id: c.id, submissionId: c.submission_id, status: c.status })) },
+    });
+
+    // E5: Dispute type column presence check
+    try {
+      const typeCheck = await sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'disputes' AND column_name = 'dispute_type'
+      `;
+      results.push({
+        name: "E5: Dispute type column exists",
+        status: typeCheck.rows.length > 0 ? "PASS" : "INFO",
+        description: typeCheck.rows.length > 0
+          ? "disputes.dispute_type column exists (challenge_approval / challenge_rejection)."
+          : "disputes.dispute_type column not yet created — will be added on first dispute filing.",
+        codeFixed: true,
+        details: { exists: typeCheck.rows.length > 0 },
+      });
+    } catch {
+      results.push({
+        name: "E5: Dispute type column check",
+        status: "INFO",
+        description: "Could not check for dispute_type column.",
+        codeFixed: true,
+        details: {},
+      });
+    }
+  } catch (sectionEError) {
+    results.push({
+      name: "Section E: Dispute & Concession Audit",
+      status: "ERROR",
+      description: `Section E failed: ${sectionEError instanceof Error ? sectionEError.message : String(sectionEError)}`,
+      codeFixed: true,
+      details: {},
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // SUMMARY
   // ═══════════════════════════════════════════════════════════════════
   const passCount = results.filter(r => r.status === "PASS").length;

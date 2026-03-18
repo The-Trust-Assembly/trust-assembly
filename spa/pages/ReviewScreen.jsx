@@ -4,9 +4,9 @@ import { sDate, anonName } from "../lib/utils";
 import { sG, isWildWestMode } from "../lib/storage";
 import { getMajority, W, computeJuryScore } from "../lib/scoring";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining } from "../lib/permissions";
-import { recuseJuror } from "../lib/jury";
+import { recuseJuror, getConcessionRecovery, fileDispute } from "../lib/jury";
 import { clearDraft } from "../lib/hooks";
-import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, Empty, Loader } from "../components/ui";
+import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader } from "../components/ui";
 import DIPanelContent from "../components/DIPanelContent";
 
 const DRAFT_DEBOUNCE = 500;
@@ -195,6 +195,49 @@ export default function ReviewScreen({ user }) {
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
   const hasDIPartnership = !!user.diPartner || all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
 
+  // My Results: user's rejected submissions that they can concede or dispute
+  const myRejected = all.filter(s => s.submittedBy === user.username && s.status === "rejected");
+  const myDisputedSubs = new Set(Object.values(disputes || {}).filter(d => d.originalSubmitter === user.username || d.disputedBy === user.username).map(d => d.submissionId));
+
+  // State for My Results tab actions
+  const [concedingId, setConcedingId] = useState(null);
+  const [concedeReason, setConcedeReason] = useState("");
+  const [concedeError, setConcedeError] = useState("");
+  const [concedeSuccess, setConcedeSuccess] = useState("");
+  const [disputingResultId, setDisputingResultId] = useState(null);
+  const [resultDisputeForm, setResultDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
+  const [resultDisputeError, setResultDisputeError] = useState("");
+
+  const submitConcession = async (subId) => {
+    setConcedeError("");
+    if (!concedeReason.trim()) return setConcedeError("Reasoning required.");
+    try {
+      const res = await fetch("/api/concessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: subId, reasoning: concedeReason.trim() }),
+      });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setConcedeError(data.error || "Failed to concede"); return; }
+    } catch { setConcedeError("Network error."); return; }
+    setConcedingId(null); setConcedeReason("");
+    setConcedeSuccess("Concession submitted. Your reputation recovery is being calculated.");
+    load();
+  };
+
+  const submitResultDispute = async (subId) => {
+    setResultDisputeError("");
+    if (!resultDisputeForm.reasoning.trim()) return setResultDisputeError("Reasoning required.");
+    const validEvidence = resultDisputeForm.evidence.filter(e => e.url.trim());
+    for (const ev of validEvidence) {
+      if (!/^https?:\/\/.+\..+/.test(ev.url.trim())) return setResultDisputeError("Evidence URLs must start with http:// or https://");
+    }
+    const result = await fileDispute(subId, user.username, resultDisputeForm.reasoning, validEvidence, { disputeType: "challenge_rejection" });
+    if (result.error) return setResultDisputeError(result.error);
+    setDisputingResultId(null); setResultDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
+    setConcedeSuccess("Dispute filed. A new jury will review.");
+    load();
+  };
+
   const castDisputeVote = async (disputeId, upheld) => {
     // ── Vote on dispute via relational API (single source of truth) ──
     try {
@@ -379,7 +422,7 @@ export default function ReviewScreen({ user }) {
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #991B1B", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#991B1B", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#4F46E5", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
             {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
@@ -467,6 +510,100 @@ export default function ReviewScreen({ user }) {
                 </div>)}
               </div>}
               <AuditTrail entries={d.auditTrail} />
+            </div>
+          );
+        })}
+      </div>)}
+
+      {/* My Results Tab — user's rejected submissions with concede/dispute actions */}
+      {tab === "myresults" && (myRejected.length === 0 ? <Empty text="No rejected submissions. When your submissions are rejected by a jury, they'll appear here so you can concede or dispute." /> : <div>
+        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>
+          Your submissions that were rejected by jury vote. You can <strong>concede</strong> (accept the rejection and recover reputation) or <strong>dispute</strong> (challenge the rejection with additional evidence — a new jury will decide).
+        </p>
+        {concedeSuccess && <div className="ta-success" style={{ marginBottom: 12 }}>{concedeSuccess}</div>}
+        {myRejected.sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt)).map(s => {
+          const approveCount = Object.values(s.votes || {}).filter(v => v.approve).length;
+          const rejectCount = Object.values(s.votes || {}).filter(v => !v.approve).length;
+          const rejectionNotes = Object.entries(s.votes || {}).filter(([, v]) => !v.approve && v.note).map(([voter, v]) => ({ voter, note: v.note, time: v.time }));
+          const hasDisputed = myDisputedSubs.has(s.id);
+          const recovery = s.resolvedAt ? getConcessionRecovery(s.resolvedAt) : 0;
+          return (
+            <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #DC2626" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
+                  {s.orgName} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
+                </span>
+                <StatusPill status={s.status} />
+              </div>
+              <a href={s.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{s.url}</a>
+              <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+                <SubHeadline sub={s} />
+              </div>
+              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 8 }}>{s.reasoning}</div>
+
+              {/* Juror rejection notes */}
+              {rejectionNotes.length > 0 && (
+                <div style={{ marginBottom: 10, padding: 10, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#DC2626", marginBottom: 6, fontWeight: 700 }}>JUROR REJECTION NOTES</div>
+                  {rejectionNotes.map((jn, i) => (
+                    <div key={i} style={{ fontSize: 12, color: "#1E293B", padding: "6px 0", borderTop: i > 0 ? "1px solid #FECACA" : "none", lineHeight: 1.6 }}>
+                      {jn.note}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Actions */}
+              {hasDisputed ? (
+                <div style={{ fontSize: 11, color: "#EA580C", fontFamily: "var(--mono)", padding: "6px 8px", background: "#FFF7ED", borderRadius: 6 }}>⚖ Dispute filed — awaiting jury review</div>
+              ) : (
+                <div>
+                  {concedingId !== s.id && disputingResultId !== s.id && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                      <button className="ta-btn-secondary" style={{ fontSize: 11, borderColor: "#7C3AED", color: "#7C3AED" }} onClick={() => { setConcedingId(s.id); setDisputingResultId(null); setConcedeReason(""); setConcedeError(""); }}>
+                        Concede ({Math.round(recovery * 100)}% recovery)
+                      </button>
+                      <button className="ta-btn-secondary" style={{ fontSize: 11, borderColor: "#EA580C", color: "#EA580C" }} onClick={() => { setDisputingResultId(s.id); setConcedingId(null); setResultDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); setResultDisputeError(""); }}>
+                        ⚖ Dispute Rejection
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Concede form */}
+                  {concedingId === s.id && (
+                    <div style={{ marginTop: 8, padding: 12, background: "#F5F3FF", border: "1.5px solid #7C3AED", borderRadius: 8 }}>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#7C3AED", fontWeight: 700, marginBottom: 6 }}>CONCEDE THIS REJECTION</div>
+                      <p style={{ fontSize: 12, color: "#475569", marginBottom: 8, lineHeight: 1.6 }}>
+                        Conceding accepts the jury's rejection. Recovery: <strong>{Math.round(recovery * 100)}%</strong> of reputation loss.
+                        {recovery >= 1 ? " First concession this week — full recovery." : recovery >= 0.9 ? " Within 2 weeks." : recovery >= 0.5 ? " Within 1 month — 50% recovery." : " Recovery decays over time."}
+                      </p>
+                      {concedeError && <div className="ta-error">{concedeError}</div>}
+                      <div className="ta-field"><label>Why are you conceding? *</label><textarea value={concedeReason} onChange={e => setConcedeReason(e.target.value)} rows={2} placeholder="Briefly explain why you accept the jury's decision..." /></div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="ta-btn-primary" style={{ background: "#7C3AED" }} onClick={() => submitConcession(s.id)}>Submit Concession</button>
+                        <button className="ta-btn-ghost" onClick={() => setConcedingId(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dispute form */}
+                  {disputingResultId === s.id && (
+                    <div style={{ marginTop: 8, padding: 12, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#EA580C", fontWeight: 700, marginBottom: 6 }}>⚖ DISPUTE THIS REJECTION</div>
+                      <p style={{ fontSize: 12, color: "#475569", marginBottom: 8, lineHeight: 1.6 }}>
+                        Challenge the jury's rejection. Provide additional evidence and reasoning. A new jury will review. If upheld, your reputation is restored and the disputer gains credit.
+                      </p>
+                      {resultDisputeError && <div className="ta-error">{resultDisputeError}</div>}
+                      <div className="ta-field"><label>Why was the rejection wrong? *</label><textarea value={resultDisputeForm.reasoning} onChange={e => setResultDisputeForm({ ...resultDisputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain why the jury's rejection was incorrect. Provide additional context the jury may have missed..." /></div>
+                      <EvidenceFields evidence={resultDisputeForm.evidence} onChange={ev => setResultDisputeForm({ ...resultDisputeForm, evidence: ev })} />
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => submitResultDispute(s.id)}>File Dispute</button>
+                        <button className="ta-btn-ghost" onClick={() => setDisputingResultId(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

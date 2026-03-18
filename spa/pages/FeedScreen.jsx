@@ -31,13 +31,17 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   useEffect(() => { load(); }, []);
 
   const canDispute = (sub) => {
-    if (!user || sub.submittedBy === user.username) return false;
+    if (!user) return false;
     const userOrgs = user.orgIds || (user.orgId ? [user.orgId] : []);
     if (!userOrgs.includes(sub.orgId)) return false;
-    if (!["approved", "consensus"].includes(sub.status)) return false;
-    const org = orgs[sub.orgId];
-    return org && org.members.length >= 100;
+    // Approved/consensus: any member except submitter can dispute
+    if (["approved", "consensus"].includes(sub.status)) return sub.submittedBy !== user.username;
+    // Rejected: any member (including submitter) can dispute
+    if (sub.status === "rejected") return true;
+    return false;
   };
+
+  const isRejectionDispute = (sub) => sub.status === "rejected";
 
   const approveAllPending = async () => {
     setApproveMsg("");
@@ -61,10 +65,15 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
     for (const ev of validEvidence) {
       if (!/^https?:\/\/.+\..+/.test(ev.url.trim())) return setDisputeError("Evidence URLs must start with http:// or https://");
     }
-    const result = await fileDispute(subId, user.username, disputeForm.reasoning, validEvidence);
+    const sub = subs[subId];
+    const disputeType = sub && sub.status === "rejected" ? "challenge_rejection" : "challenge_approval";
+    const result = await fileDispute(subId, user.username, disputeForm.reasoning, validEvidence, {
+      fieldResponses: disputeForm.fieldResponses,
+      disputeType,
+    });
     if (result.error) return setDisputeError(result.error);
     setDisputeSuccess("Dispute filed. Jury selected.");
-    setDisputingId(null); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
+    setDisputingId(null); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} });
     load();
   };
 
@@ -125,15 +134,65 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
               <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
 
               {canDispute(sub) && disputingId !== sub.id && (
-                <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
+                <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} }); }}>
+                  {isRejectionDispute(sub) ? "⚖ Dispute This Rejection" : "⚖ Dispute This Submission"}
+                </button>
               )}
 
               {disputingId === sub.id && (
                 <div style={{ marginTop: 10, padding: 14, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
-                  <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>
+                    {isRejectionDispute(sub) ? "⚖ Dispute Rejection" : "⚖ File Intra-Assembly Dispute"}
+                  </div>
+
+                  {isRejectionDispute(sub) ? (
+                    <>
+                      <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>
+                        This submission was rejected by the jury. You can dispute the rejection by providing additional evidence and reasoning. The original submission cannot be changed. A new jury will review the dispute.
+                      </p>
+                      {/* Show juror rejection notes */}
+                      {(() => {
+                        const rejectionNotes = Object.entries(sub.votes || {}).filter(([, v]) => !v.approve && v.note).map(([voter, v]) => ({ voter, note: v.note, time: v.time }));
+                        return rejectionNotes.length > 0 && (
+                          <div style={{ marginBottom: 12, padding: 10, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8 }}>
+                            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#DC2626", marginBottom: 6, fontWeight: 700 }}>JUROR REJECTION NOTES</div>
+                            {rejectionNotes.map((jn, i) => (
+                              <div key={i} style={{ fontSize: 12, color: "#1E293B", padding: "6px 0", borderTop: i > 0 ? "1px solid #FECACA" : "none", lineHeight: 1.6 }}>
+                                {jn.note}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>
+                        You are disputing this approved submission. Explain why each part of the submission is wrong. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.
+                      </p>
+                      {/* Per-field dispute responses for approved submissions */}
+                      <div style={{ marginBottom: 12, padding: 10, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                        <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 8, fontWeight: 700 }}>ORIGINAL SUBMISSION — RESPOND TO EACH FIELD</div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 2 }}>ORIGINAL HEADLINE</div>
+                          <div style={{ fontSize: 12, color: "#1E293B", padding: "4px 8px", background: "#fff", borderRadius: 4, border: "1px solid #E2E8F0" }}>{sub.originalHeadline}</div>
+                          <textarea value={(disputeForm.fieldResponses || {}).headline || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, headline: e.target.value } })} rows={2} placeholder="Why is this characterization of the headline wrong? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid #EA580C40", fontSize: 12, borderRadius: 6, boxSizing: "border-box", fontFamily: "var(--body)" }} />
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 2 }}>PROPOSED REPLACEMENT</div>
+                          <div style={{ fontSize: 12, color: "#DC2626", fontWeight: 600, padding: "4px 8px", background: "#fff", borderRadius: 4, border: "1px solid #E2E8F0" }}>{sub.replacement}</div>
+                          <textarea value={(disputeForm.fieldResponses || {}).replacement || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, replacement: e.target.value } })} rows={2} placeholder="Why is this replacement inaccurate? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid #EA580C40", fontSize: 12, borderRadius: 6, boxSizing: "border-box", fontFamily: "var(--body)" }} />
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 2 }}>REASONING</div>
+                          <div style={{ fontSize: 12, color: "#475569", padding: "4px 8px", background: "#fff", borderRadius: 4, border: "1px solid #E2E8F0", lineHeight: 1.6 }}>{sub.reasoning}</div>
+                          <textarea value={(disputeForm.fieldResponses || {}).reasoning || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, reasoning: e.target.value } })} rows={2} placeholder="Why is this reasoning flawed? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid #EA580C40", fontSize: 12, borderRadius: 6, boxSizing: "border-box", fontFamily: "var(--body)" }} />
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {disputeError && <div className="ta-error">{disputeError}</div>}
-                  <div className="ta-field"><label>Why is this submission wrong? *</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain specifically what is incorrect, misleading, or deceptive..." /></div>
+                  <div className="ta-field"><label>{isRejectionDispute(sub) ? "Why was the rejection wrong? *" : "Overall dispute reasoning *"}</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder={isRejectionDispute(sub) ? "Explain why the jury's rejection was incorrect, and provide any additional context..." : "Explain specifically what is incorrect, misleading, or deceptive..."} /></div>
                   <EvidenceFields evidence={disputeForm.evidence} onChange={ev => setDisputeForm({ ...disputeForm, evidence: ev })} />
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                     <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => submitDispute(sub.id)}>File Dispute</button>

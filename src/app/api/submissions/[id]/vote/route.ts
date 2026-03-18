@@ -139,7 +139,14 @@ export async function POST(
   // Resolution runs outside the vote transaction — it acquires its own
   // dedicated client internally via sql.connect(). This ensures the vote
   // is committed and visible before resolution checks vote counts.
-  resolution = await tryResolveSubmission(id, juryRole);
+  // Wrapped in try/catch: the vote is already committed, so resolution
+  // failure must not return a 500 (which would show "Vote failed" to the user).
+  try {
+    resolution = await tryResolveSubmission(id, juryRole);
+  } catch (e) {
+    console.error(`Resolution failed for submission ${id} after vote was committed:`, e);
+    // Vote was saved — return success. Resolution can be retried via admin tools.
+  }
 
   return ok({
     status: resolution.resolved ? "resolved" : "voted",
