@@ -42,24 +42,38 @@ export async function PATCH(
 
   const newStatus = action === "approve" ? "approved" : "rejected";
 
-  await sql`
-    UPDATE membership_applications
-    SET status = ${newStatus}, founder_approved = ${action === "approve"}
-    WHERE id = ${appId}
-  `;
+  // Use sql.connect() for a dedicated client where transactions work.
+  const client = await sql.connect();
+  try {
+    await client.query("BEGIN");
 
-  // If approved, add user to organization members
-  if (action === "approve") {
-    await sql`
-      INSERT INTO organization_members (org_id, user_id)
-      VALUES (${id}, ${app.rows[0].user_id})
-      ON CONFLICT (org_id, user_id) DO UPDATE SET is_active = TRUE, left_at = NULL
-    `;
+    await client.query(
+      "UPDATE membership_applications SET status = $1, founder_approved = $2 WHERE id = $3",
+      [newStatus, action === "approve", appId]
+    );
 
-    await sql`
-      INSERT INTO organization_member_history (org_id, user_id, action)
-      VALUES (${id}, ${app.rows[0].user_id}, 'joined')
-    `;
+    // If approved, add user to organization members atomically
+    if (action === "approve") {
+      await client.query(
+        `INSERT INTO organization_members (org_id, user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (org_id, user_id) DO UPDATE SET is_active = TRUE, left_at = NULL`,
+        [id, app.rows[0].user_id]
+      );
+
+      await client.query(
+        "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
+        [id, app.rows[0].user_id, "joined"]
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Application approval transaction failed, rolled back:", e);
+    throw e;
+  } finally {
+    client.release();
   }
 
   return ok({ id: appId, status: newStatus });

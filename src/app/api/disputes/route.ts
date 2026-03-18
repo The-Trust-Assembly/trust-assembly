@@ -93,33 +93,48 @@ export async function POST(request: NextRequest) {
 
   const { org_id, submitted_by } = sub.rows[0];
 
-  // Create dispute
-  const result = await sql`
-    INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning)
-    VALUES (${submissionId}, ${org_id}, ${session.sub}, ${submitted_by}, ${reasoning})
-    RETURNING id, submission_id, org_id, status, created_at
-  `;
+  // Use sql.connect() for a dedicated client where transactions work.
+  const client = await sql.connect();
+  let dispute: Record<string, unknown>;
 
-  const dispute = result.rows[0];
+  try {
+    await client.query("BEGIN");
 
-  // Insert evidence if provided
-  if (evidence && Array.isArray(evidence)) {
-    for (let i = 0; i < evidence.length; i++) {
-      const e = evidence[i];
-      if (e.url && e.explanation) {
-        await sql`
-          INSERT INTO dispute_evidence (dispute_id, url, explanation, sort_order)
-          VALUES (${dispute.id}, ${e.url}, ${e.explanation}, ${i})
-        `;
+    const result = await client.query(
+      `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, submission_id, org_id, status, created_at`,
+      [submissionId, org_id, session.sub, submitted_by, reasoning]
+    );
+    dispute = result.rows[0];
+
+    // Insert evidence if provided
+    if (evidence && Array.isArray(evidence)) {
+      for (let i = 0; i < evidence.length; i++) {
+        const e = evidence[i];
+        if (e.url && e.explanation) {
+          await client.query(
+            "INSERT INTO dispute_evidence (dispute_id, url, explanation, sort_order) VALUES ($1, $2, $3, $4)",
+            [dispute.id, e.url, e.explanation, i]
+          );
+        }
       }
     }
-  }
 
-  // Audit log
-  await sql`
-    INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
-    VALUES ('Dispute filed', ${session.sub}, ${org_id}, 'dispute', ${dispute.id})
-  `;
+    // Audit log
+    await client.query(
+      "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+      ["Dispute filed", session.sub, org_id, "dispute", dispute.id]
+    );
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Dispute creation transaction failed, rolled back:", e);
+    throw e;
+  } finally {
+    client.release();
+  }
 
   return ok(dispute, 201);
 }

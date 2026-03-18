@@ -26,24 +26,37 @@ export async function POST(
     return err("Cannot leave the General Public assembly");
   }
 
-  // Deactivate membership
-  await sql`
-    UPDATE organization_members
-    SET is_active = FALSE, left_at = now()
-    WHERE org_id = ${id} AND user_id = ${session.sub}
-  `;
+  // Use sql.connect() for a dedicated client where transactions work.
+  const client = await sql.connect();
+  try {
+    await client.query("BEGIN");
 
-  // Log to history
-  await sql`
-    INSERT INTO organization_member_history (org_id, user_id, action)
-    VALUES (${id}, ${session.sub}, 'left')
-  `;
+    // Deactivate membership
+    await client.query(
+      "UPDATE organization_members SET is_active = FALSE, left_at = now() WHERE org_id = $1 AND user_id = $2",
+      [id, session.sub]
+    );
 
-  // If this was primary org, clear it
-  await sql`
-    UPDATE users SET primary_org_id = NULL
-    WHERE id = ${session.sub} AND primary_org_id = ${id}
-  `;
+    // Log to history
+    await client.query(
+      "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
+      [id, session.sub, "left"]
+    );
+
+    // If this was primary org, clear it
+    await client.query(
+      "UPDATE users SET primary_org_id = NULL WHERE id = $1 AND primary_org_id = $2",
+      [session.sub, id]
+    );
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Org leave transaction failed, rolled back:", e);
+    throw e;
+  } finally {
+    client.release();
+  }
 
   return ok({ status: "left" });
 }

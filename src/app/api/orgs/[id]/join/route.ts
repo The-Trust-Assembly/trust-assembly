@@ -42,24 +42,37 @@ export async function POST(
 
   // Handle based on enrollment mode
   if (org.enrollment_mode === "open") {
-    // Direct join
-    if (membership.rows.length > 0) {
-      // Re-activate
-      await sql`
-        UPDATE organization_members SET is_active = TRUE, left_at = NULL, joined_at = now()
-        WHERE org_id = ${id} AND user_id = ${session.sub}
-      `;
-    } else {
-      await sql`
-        INSERT INTO organization_members (org_id, user_id)
-        VALUES (${id}, ${session.sub})
-      `;
-    }
+    // Use sql.connect() for a dedicated client where transactions work.
+    const client = await sql.connect();
+    try {
+      await client.query("BEGIN");
 
-    await sql`
-      INSERT INTO organization_member_history (org_id, user_id, action)
-      VALUES (${id}, ${session.sub}, 'joined')
-    `;
+      if (membership.rows.length > 0) {
+        // Re-activate
+        await client.query(
+          "UPDATE organization_members SET is_active = TRUE, left_at = NULL, joined_at = now() WHERE org_id = $1 AND user_id = $2",
+          [id, session.sub]
+        );
+      } else {
+        await client.query(
+          "INSERT INTO organization_members (org_id, user_id) VALUES ($1, $2)",
+          [id, session.sub]
+        );
+      }
+
+      await client.query(
+        "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
+        [id, session.sub, "joined"]
+      );
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      console.error("Org join transaction failed, rolled back:", e);
+      throw e;
+    } finally {
+      client.release();
+    }
 
     return ok({ status: "joined", orgId: id, orgName: org.name }, 201);
   }

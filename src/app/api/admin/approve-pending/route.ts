@@ -31,45 +31,55 @@ export async function POST(request: NextRequest) {
     // cross_review submissions were already in-group approved — give them consensus
     const resolvedStatus = sub.prev_status === 'cross_review' ? 'consensus' : 'approved';
 
-    await sql`
-      UPDATE submissions
-      SET status = ${resolvedStatus}, resolved_at = ${now}, deliberate_lie_finding = FALSE, jury_seats = 1
-      WHERE id = ${sub.id}
-    `;
-
     // Credit the win to the submitter (or DI partner)
     const targetUserId = (sub.is_di && sub.di_partner_id) ? sub.di_partner_id : sub.submitted_by;
 
-    await sql`
-      UPDATE users SET
-        total_wins = total_wins + 1,
-        current_streak = current_streak + 1
-      WHERE id = ${targetUserId}
-    `;
+    // Use sql.connect() for a dedicated client where transactions work.
+    const client = await sql.connect();
+    try {
+      await client.query("BEGIN");
 
-    await sql`
-      UPDATE organization_members SET
-        assembly_streak = assembly_streak + 1
-      WHERE org_id = ${sub.org_id} AND user_id = ${targetUserId} AND is_active = TRUE
-    `;
-
-    // Graduate linked vault entries
-    for (const table of ["vault_entries", "arguments", "beliefs", "translations"]) {
-      await sql.query(
-        `UPDATE ${table} SET status = 'approved', approved_at = $1 WHERE submission_id = $2 AND status = 'pending'`,
-        [now, sub.id],
+      await client.query(
+        "UPDATE submissions SET status = $1, resolved_at = $2, deliberate_lie_finding = FALSE, jury_seats = 1 WHERE id = $3",
+        [resolvedStatus, now, sub.id]
       );
-    }
 
-    // Audit log
-    await sql`
-      INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-      VALUES (
-        'Admin: approved pending submission',
-        ${admin.sub}, ${sub.org_id}, 'submission', ${sub.id},
-        ${JSON.stringify({ previousStatus: sub.prev_status, resolvedAs: sub.prev_status === 'cross_review' ? 'consensus' : 'approved', approvedAt: now, adminUsername: admin.username })}
-      )
-    `;
+      await client.query(
+        "UPDATE users SET total_wins = total_wins + 1, current_streak = current_streak + 1 WHERE id = $1",
+        [targetUserId]
+      );
+
+      await client.query(
+        "UPDATE organization_members SET assembly_streak = assembly_streak + 1 WHERE org_id = $1 AND user_id = $2 AND is_active = TRUE",
+        [sub.org_id, targetUserId]
+      );
+
+      // Graduate linked vault entries
+      for (const table of ["vault_entries", "arguments", "beliefs", "translations"]) {
+        await client.query(
+          `UPDATE ${table} SET status = 'approved', approved_at = $1 WHERE submission_id = $2 AND status = 'pending'`,
+          [now, sub.id]
+        );
+      }
+
+      // Audit log
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata) VALUES ($1, $2, $3, $4, $5, $6)",
+        [
+          "Admin: approved pending submission",
+          admin.sub, sub.org_id, "submission", sub.id,
+          JSON.stringify({ previousStatus: sub.prev_status, resolvedAs: resolvedStatus, approvedAt: now, adminUsername: admin.username }),
+        ]
+      );
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      console.error(`Admin approve-pending transaction failed for ${sub.id}, rolled back:`, e);
+      throw e;
+    } finally {
+      client.release();
+    }
 
     resolved++;
   }

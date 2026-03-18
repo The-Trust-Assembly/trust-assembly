@@ -46,18 +46,30 @@ export async function POST(
   const now = new Date().toISOString();
 
   if (action === "reject") {
-    await sql`
-      UPDATE submissions SET status = 'rejected', resolved_at = ${now}
-      WHERE id = ${id}
-    `;
-    await sql`
-      INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-      VALUES (
-        'DI submission rejected by partner (pre-review)',
-        ${session.sub}, ${sub.org_id}, 'submission', ${id},
-        ${JSON.stringify({ partnerUsername: session.username, action: "reject" })}
-      )
-    `;
+    // Use sql.connect() for a dedicated client where transactions work.
+    const client = await sql.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        "UPDATE submissions SET status = 'rejected', resolved_at = $1 WHERE id = $2",
+        [now, id]
+      );
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata) VALUES ($1, $2, $3, $4, $5, $6)",
+        [
+          "DI submission rejected by partner (pre-review)",
+          session.sub, sub.org_id, "submission", id,
+          JSON.stringify({ partnerUsername: session.username, action: "reject" }),
+        ]
+      );
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      console.error("DI reject transaction failed, rolled back:", e);
+      throw e;
+    } finally {
+      client.release();
+    }
     return ok({ id, status: "rejected", action: "rejected" });
   }
 
@@ -74,50 +86,68 @@ export async function POST(
 
   let newStatus = "pending_jury";
 
-  if (hasEnough) {
-    // Assign jury
-    const jurySize = wildWest ? 1 : getJurySize(count);
-    const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+  // Use sql.connect() for a dedicated client where transactions work.
+  const approveClient = await sql.connect();
+  try {
+    await approveClient.query("BEGIN");
 
-    await sql`
-      UPDATE submissions SET jury_seats = ${jurySize} WHERE id = ${id}
-    `;
+    if (hasEnough) {
+      // Assign jury
+      const jurySize = wildWest ? 1 : getJurySize(count);
+      const poolSize = jurySize * JURY_POOL_MULTIPLIER;
 
-    const pool = await sql`
-      SELECT om.user_id
-      FROM organization_members om
-      WHERE om.org_id = ${sub.org_id}
-        AND om.is_active = TRUE
-        AND om.user_id != ${sub.submitted_by}
-        AND om.user_id != ${session.sub}
-      ORDER BY RANDOM()
-      LIMIT ${poolSize}
-    `;
+      await approveClient.query(
+        "UPDATE submissions SET jury_seats = $1 WHERE id = $2",
+        [jurySize, id]
+      );
 
-    if (pool.rows.length > 0) {
-      for (const juror of pool.rows) {
-        await sql`
-          INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
-          VALUES (${id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
-          ON CONFLICT DO NOTHING
-        `;
+      const pool = await approveClient.query(
+        `SELECT om.user_id
+         FROM organization_members om
+         WHERE om.org_id = $1
+           AND om.is_active = TRUE
+           AND om.user_id != $2
+           AND om.user_id != $3
+         ORDER BY RANDOM()
+         LIMIT $4`,
+        [sub.org_id, sub.submitted_by, session.sub, poolSize]
+      );
+
+      if (pool.rows.length > 0) {
+        for (const juror of pool.rows) {
+          await approveClient.query(
+            `INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+             VALUES ($1, $2, 'in_group', TRUE, FALSE)
+             ON CONFLICT DO NOTHING`,
+            [id, juror.user_id]
+          );
+        }
+        newStatus = "pending_review";
       }
-      newStatus = "pending_review";
     }
+
+    await approveClient.query(
+      "UPDATE submissions SET status = $1 WHERE id = $2",
+      [newStatus, id]
+    );
+
+    await approveClient.query(
+      "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata) VALUES ($1, $2, $3, $4, $5, $6)",
+      [
+        `DI submission approved by partner — status: ${newStatus}`,
+        session.sub, sub.org_id, "submission", id,
+        JSON.stringify({ partnerUsername: session.username, action: "approve", newStatus, memberCount: count }),
+      ]
+    );
+
+    await approveClient.query("COMMIT");
+  } catch (e) {
+    await approveClient.query("ROLLBACK");
+    console.error("DI approve transaction failed, rolled back:", e);
+    throw e;
+  } finally {
+    approveClient.release();
   }
-
-  await sql`
-    UPDATE submissions SET status = ${newStatus} WHERE id = ${id}
-  `;
-
-  await sql`
-    INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-    VALUES (
-      ${`DI submission approved by partner — status: ${newStatus}`},
-      ${session.sub}, ${sub.org_id}, 'submission', ${id},
-      ${JSON.stringify({ partnerUsername: session.username, action: "approve", newStatus, memberCount: count })}
-    )
-  `;
 
   return ok({ id, status: newStatus, action: "approved", juryAssigned: newStatus === "pending_review" });
 }

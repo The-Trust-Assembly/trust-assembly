@@ -44,18 +44,34 @@ export async function POST(
     return err("You have already voted on this concession", 409);
   }
 
-  // Insert vote
-  const result = await sql`
-    INSERT INTO jury_votes (concession_id, user_id, role, approve)
-    VALUES (${id}, ${session.sub}, 'concession', ${approve})
-    RETURNING id, concession_id, approve, voted_at
-  `;
+  // Use sql.connect() for a dedicated client where transactions work.
+  const client = await sql.connect();
+  let vote: Record<string, unknown>;
 
-  // Audit log
-  await sql`
-    INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id)
-    VALUES ('Concession vote cast', ${session.sub}, ${concession.rows[0].org_id}, 'concession', ${id})
-  `;
+  try {
+    await client.query("BEGIN");
 
-  return ok(result.rows[0], 201);
+    const result = await client.query(
+      `INSERT INTO jury_votes (concession_id, user_id, role, approve)
+       VALUES ($1, $2, 'concession', $3)
+       RETURNING id, concession_id, approve, voted_at`,
+      [id, session.sub, approve]
+    );
+    vote = result.rows[0];
+
+    await client.query(
+      "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+      ["Concession vote cast", session.sub, concession.rows[0].org_id, "concession", id]
+    );
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("Concession vote transaction failed, rolled back:", e);
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  return ok(vote, 201);
 }
