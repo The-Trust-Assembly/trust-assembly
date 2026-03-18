@@ -413,6 +413,36 @@ export async function POST(request: NextRequest) {
     report.push(`Backfilled ${subsNoEvidence.rows.length} submission(s) missing evidence rows`);
     totalRepaired += subsNoEvidence.rows.length;
 
+    // ── 14. Fix di_pending submissions with NULL di_partner_id ──
+    report.push("\n--- Fix di_pending submissions missing di_partner_id ---");
+    const diPendingNoPartner = await sql`
+      UPDATE submissions s
+      SET di_partner_id = u.di_partner_id
+      FROM users u
+      WHERE s.submitted_by = u.id
+        AND s.status = 'di_pending'
+        AND s.di_partner_id IS NULL
+        AND u.di_partner_id IS NOT NULL
+      RETURNING s.id, u.username, u.di_partner_id
+    `;
+    for (const row of diPendingNoPartner.rows) {
+      report.push(`OK submission ${(row.id as string).slice(0, 8)}… by @${row.username}: set di_partner_id on di_pending submission`);
+    }
+    report.push(`Fixed ${diPendingNoPartner.rows.length} di_pending submission(s) missing di_partner_id`);
+    totalRepaired += diPendingNoPartner.rows.length;
+
+    // ── 15. Fix di_pending submissions with is_di=FALSE ──
+    report.push("\n--- Fix di_pending submissions with is_di=FALSE ---");
+    const diPendingNotMarked = await sql`
+      UPDATE submissions
+      SET is_di = TRUE
+      WHERE status = 'di_pending'
+        AND is_di = FALSE
+      RETURNING id
+    `;
+    report.push(`Fixed ${diPendingNotMarked.rows.length} di_pending submission(s) with is_di=FALSE`);
+    totalRepaired += diPendingNotMarked.rows.length;
+
     // ── Audit the repair itself ──
     await sql`
       INSERT INTO audit_log (action, user_id, entity_type, metadata)

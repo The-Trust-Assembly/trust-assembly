@@ -272,10 +272,19 @@ export async function POST(request: NextRequest) {
       // ── STEP 1: Votes exist ──
       const inGroupVotes = votes.filter(v => v.role === "in_group");
       const crossVotes = votes.filter(v => v.role === "cross_group");
+      const wasAdminApproved = audits.some(a =>
+        (a.action as string)?.includes("Admin: approved pending") ||
+        (a.action as string)?.includes("Admin: wild-west") ||
+        (a.action as string)?.includes("admin_approve_pending")
+      );
       if (isResolved || isCrossReview) {
         if (inGroupVotes.length === 0) {
-          steps.push({ step: "In-group votes", status: "MISSING", expected: "At least 1 vote", actual: "0 votes" });
-          issues.push("No in-group votes found for resolved/cross_review submission");
+          if (wasAdminApproved) {
+            steps.push({ step: "In-group votes", status: "OK", expected: "Admin-approved (no jury vote required)", actual: "0 votes — resolved by admin bulk-approval" });
+          } else {
+            steps.push({ step: "In-group votes", status: "MISSING", expected: "At least 1 vote", actual: "0 votes" });
+            issues.push("No in-group votes found for resolved/cross_review submission");
+          }
         } else {
           const approves = inGroupVotes.filter(v => v.approve).length;
           const rejects = inGroupVotes.length - approves;
@@ -1063,6 +1072,100 @@ export async function POST(request: NextRequest) {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     results.push({ name: "Vault/arguments/beliefs/translations consistency", status: "ERROR", description: `Errored: ${msg}`, details: { error: msg } });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SECTION K2: DI PENDING SUBMISSIONS AUDIT
+  // Check for di_pending submissions stuck without partner visibility
+  // ═══════════════════════════════════════════════════════════════════
+
+  try {
+    const diPending = await sql`
+      SELECT s.id, s.url, s.original_headline, s.is_di, s.di_partner_id,
+             s.created_at, s.org_id,
+             u.username AS submitter, u.is_di AS submitter_is_di,
+             u.di_partner_id AS submitter_di_partner_id,
+             partner.username AS partner_username,
+             o.name AS org_name
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.submitted_by
+      LEFT JOIN users partner ON partner.id = COALESCE(s.di_partner_id, u.di_partner_id)
+      LEFT JOIN organizations o ON o.id = s.org_id
+      WHERE s.status = 'di_pending'
+      ORDER BY s.created_at DESC
+    `;
+
+    const diIssues: string[] = [];
+    const stuckSubs: Array<Record<string, unknown>> = [];
+
+    for (const sub of diPending.rows) {
+      const issues: string[] = [];
+
+      // Check: is_di should be true
+      if (!sub.is_di) issues.push("is_di is FALSE — submission won't appear in DI queue");
+
+      // Check: di_partner_id should be set on submission
+      if (!sub.di_partner_id) {
+        if (sub.submitter_di_partner_id) {
+          issues.push(`di_partner_id is NULL on submission but submitter has partner @${sub.partner_username} — needs backfill`);
+        } else {
+          issues.push("di_partner_id is NULL on submission AND submitter has no partner — DI link may be broken");
+        }
+      }
+
+      // Check: submitter should be a DI
+      if (!sub.submitter_is_di) issues.push("submitter is_di is FALSE — not recognized as DI user");
+
+      if (issues.length > 0) {
+        stuckSubs.push({
+          id: sub.id,
+          submitter: `@${sub.submitter}`,
+          partner: sub.partner_username ? `@${sub.partner_username}` : "NONE",
+          org: sub.org_name,
+          headline: sub.original_headline,
+          createdAt: sub.created_at,
+          diPartnerIdOnSub: sub.di_partner_id || "NULL",
+          submitterIsDI: sub.submitter_is_di,
+          issues,
+        });
+      }
+    }
+
+    const totalDiPending = diPending.rows.length;
+    const stuckCount = stuckSubs.length;
+    const healthyCount = totalDiPending - stuckCount;
+
+    results.push({
+      name: "DI pending submissions queue",
+      status: stuckCount > 0 ? "FAIL" : totalDiPending > 0 ? "WARN" : "PASS",
+      description: totalDiPending === 0
+        ? "No di_pending submissions in queue."
+        : stuckCount > 0
+          ? `${stuckCount} of ${totalDiPending} di_pending submission(s) have issues that prevent them from appearing in the DI partner's queue.`
+          : `${totalDiPending} di_pending submission(s) awaiting partner pre-approval. All have correct DI linkage.`,
+      rootCause: "DI submissions set is_di=TRUE and di_partner_id from the submitter's user record at creation time. If the submitter's DI partnership wasn't fully persisted (broken sql`` era), di_partner_id may be NULL on the submission. The DI queue (GET /submissions/di-queue) matches on s.di_partner_id OR u.di_partner_id, but requires is_di=TRUE.",
+      remediation: "Run: UPDATE submissions s SET di_partner_id = u.di_partner_id FROM users u WHERE s.submitted_by = u.id AND s.status = 'di_pending' AND s.di_partner_id IS NULL AND u.di_partner_id IS NOT NULL. Also verify submitter's is_di and di_partner_id are correct in users table.",
+      codeFixed: true,
+      details: {
+        totalDiPending,
+        healthyCount,
+        stuckCount,
+        stuckSubs,
+        allDiPending: diPending.rows.map(s => ({
+          id: s.id,
+          submitter: `@${s.submitter}`,
+          partner: s.partner_username ? `@${s.partner_username}` : "NONE",
+          org: s.org_name,
+          headline: s.original_headline,
+          diPartnerIdOnSub: s.di_partner_id ? "SET" : "NULL",
+          isDI: s.is_di,
+          createdAt: s.created_at,
+        })),
+      },
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    results.push({ name: "DI pending submissions queue", status: "ERROR", description: `Errored: ${msg}`, details: { error: msg } });
   }
 
   // ═══════════════════════════════════════════════════════════════════
