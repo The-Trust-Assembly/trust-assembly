@@ -409,13 +409,14 @@ export default function TrustAssembly() {
           {/* DARK BAND */}
           <div className="ta-dark-band" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CrestIcon size={38} />
-            <div>
+            <div style={{ flex: 1 }}>
               <span className="ta-dark-band-title"><span className="ta-dark-band-cap">T</span>RUST<span style={{ letterSpacing: "0.22em" }}> </span><span className="ta-dark-band-cap">A</span>SSEMBLY</span>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                 <span className="ta-dark-band-sub">TRUTH WILL OUT.</span>
                 <span className="ta-dark-band-beta">BETA</span>
               </div>
             </div>
+            <button onClick={() => { setScreen("login"); setLoginAccordion(true); }} style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "var(--gold)", background: "none", border: "none", cursor: "pointer", padding: "8px 12px" }}>Login</button>
           </div>
 
           {/* HERO SECTION */}
@@ -432,10 +433,10 @@ export default function TrustAssembly() {
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
               >Install Extension</button>
               <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => setLoginAccordion(true)}
+                onClick={() => { setScreen("register"); setLoginAccordion(true); }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
                 onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
-              >Join as Citizen</button>
+              >Register an Account</button>
             </div>
 
             {/* Slide label */}
