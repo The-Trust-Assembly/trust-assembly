@@ -17,6 +17,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   const [stories, setStories] = useState({});
   const [tagMsg, setTagMsg] = useState("");
   const [approveMsg, setApproveMsg] = useState("");
+  const [savedDrafts, setSavedDrafts] = useState([]);
   const isAdmin = user && user.username === ADMIN_USERNAME;
 
   const [loadError, setLoadError] = useState("");
@@ -32,6 +33,17 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // Load saved drafts
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/drafts");
+        if (res.ok) { const data = await res.json(); setSavedDrafts(data.drafts || []); }
+      } catch {}
+    })();
+  }, [user]);
 
   const canDispute = (sub) => {
     if (!user) return false;
@@ -93,6 +105,37 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
           {approveMsg && <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>{approveMsg}</span>}
         </div>
       )}
+      {/* Saved drafts CTA */}
+      {user && savedDrafts.length > 0 && (
+        <div style={{ padding: 14, background: "#FFFBEB", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#CA8A04", fontWeight: 700, marginBottom: 8 }}>
+            {savedDrafts.length} Draft{savedDrafts.length > 1 ? "s" : ""} in Progress
+          </div>
+          {savedDrafts.slice(0, 5).map(d => {
+            let domain = "";
+            try { domain = new URL(d.url).hostname.replace(/^www\./, ""); } catch {}
+            const ago = sDate(d.updatedAt);
+            return (
+              <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", marginBottom: 4, background: "#fff", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {d.title || "(no headline)"}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#64748B" }}>{domain} · {ago}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                  <button className="ta-btn-primary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={() => onNavigate && onNavigate("submit", d.id)}>Continue</button>
+                  <button className="ta-link-btn" style={{ fontSize: 10, color: "#DC2626" }} onClick={async () => {
+                    try { await fetch(`/api/drafts/${d.id}`, { method: "DELETE" }); setSavedDrafts(prev => prev.filter(x => x.id !== d.id)); } catch {}
+                  }}>Discard</button>
+                </div>
+              </div>
+            );
+          })}
+          {savedDrafts.length > 5 && <div style={{ fontSize: 10, color: "#64748B", marginTop: 4 }}>+ {savedDrafts.length - 5} more</div>}
+        </div>
+      )}
+
       {user && !Object.values(subs || {}).some(s => s.submittedBy === user.username) && (
         <div style={{ padding: 16, background: "#fff", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 16, textAlign: "center" }}>
           <div style={{ fontSize: 18, marginBottom: 6 }}>⚖</div>

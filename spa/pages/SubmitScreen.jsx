@@ -5,7 +5,7 @@ import { useDraft, clearDraft } from "../lib/hooks";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrustedProgress, getDISubmissionLimit } from "../lib/permissions";
 import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer } from "../components/ui";
 
-export default function SubmitScreen({ user, onUpdate }) {
+export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded }) {
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [authors, setAuthors] = useState([]);
   const [authorInput, setAuthorInput] = useState("");
@@ -26,6 +26,13 @@ export default function SubmitScreen({ user, onUpdate }) {
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [loading, setLoading] = useState(false);
   const [myOrgs, setMyOrgs] = useState([]);
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+
+  // Server-side drafts
+  const [savedDrafts, setSavedDrafts] = useState([]);
+  const [draftMsg, setDraftMsg] = useState("");
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const loadedDraftRef = useRef(null);
 
   // Auto-save draft
   const draftState = useMemo(() => ({ form, authors, inlineEdits, standingCorrections, submitArgs, submitBeliefs, submitTranslations, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds }), [form, authors, inlineEdits, standingCorrections, submitArgs, submitBeliefs, submitTranslations, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds]);
@@ -56,6 +63,85 @@ export default function SubmitScreen({ user, onUpdate }) {
     // Default to user's active org (only if no draft restored)
     if (user.orgId && selectedOrgIds.length === 0) setSelectedOrgIds([user.orgId]);
   })(); }, [user.orgId, user.orgIds]);
+
+  // Load saved drafts list from server
+  const fetchDrafts = async () => {
+    try {
+      const res = await fetch("/api/drafts");
+      if (res.ok) { const data = await res.json(); setSavedDrafts(data.drafts || []); }
+    } catch {}
+  };
+  useEffect(() => { fetchDrafts(); }, []);
+
+  // Restore form from a server draft
+  const restoreFromDraft = (d) => {
+    if (d.form) setForm(f => ({ ...f, ...d.form }));
+    if (d.authors) setAuthors(d.authors);
+    if (d.inlineEdits) setInlineEdits(d.inlineEdits);
+    if (d.standingCorrections) setStandingCorrections(d.standingCorrections);
+    if (d.submitArgs) setSubmitArgs(d.submitArgs);
+    if (d.submitBeliefs) setSubmitBeliefs(d.submitBeliefs);
+    if (d.submitTranslations) setSubmitTranslations(d.submitTranslations);
+    if (d.standingCorrection) setStandingCorrection(d.standingCorrection);
+    if (d.submitArg !== undefined) setSubmitArg(d.submitArg);
+    if (d.submitBelief !== undefined) setSubmitBelief(d.submitBelief);
+    if (d.submitTranslation) setSubmitTranslation(d.submitTranslation);
+    if (d.linkedEntries) setLinkedEntries(d.linkedEntries);
+    if (d.evidenceUrls) setEvidenceUrls(d.evidenceUrls);
+    if (d.selectedOrgIds) setSelectedOrgIds(d.selectedOrgIds);
+  };
+
+  // Auto-load draft if draftId prop is provided (from FeedScreen CTA)
+  useEffect(() => {
+    if (!draftId || loadedDraftRef.current === draftId) return;
+    loadedDraftRef.current = draftId;
+    (async () => {
+      try {
+        const res = await fetch(`/api/drafts/${draftId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.draft?.draftData) restoreFromDraft(data.draft.draftData);
+        }
+      } catch {}
+      if (onDraftLoaded) onDraftLoaded();
+    })();
+  }, [draftId]);
+
+  // Save draft to server
+  const saveDraft = async () => {
+    if (!form.url.trim()) { setDraftMsg("Enter an article URL before saving."); return; }
+    setSavingDraft(true); setDraftMsg("");
+    try {
+      const res = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: form.url.trim(), title: form.originalHeadline.trim() || null, draftData: draftState }),
+      });
+      if (res.ok) { setDraftMsg("Draft saved."); fetchDrafts(); }
+      else { const d = await res.json().catch(() => ({})); setDraftMsg(d.error || "Failed to save draft."); }
+    } catch { setDraftMsg("Network error saving draft."); }
+    setSavingDraft(false);
+    setTimeout(() => setDraftMsg(""), 4000);
+  };
+
+  // Delete a saved draft
+  const deleteDraft = async (id) => {
+    try {
+      await fetch(`/api/drafts/${id}`, { method: "DELETE" });
+      fetchDrafts();
+    } catch {}
+  };
+
+  // Load a saved draft from server into form
+  const loadDraft = async (id) => {
+    try {
+      const res = await fetch(`/api/drafts/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.draft?.draftData) { restoreFromDraft(data.draft.draftData); setDraftMsg("Draft loaded."); setTimeout(() => setDraftMsg(""), 3000); }
+      }
+    } catch {}
+  };
 
   const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || myOrgs.find(o => o.id === user.orgId);
 
@@ -193,11 +279,48 @@ export default function SubmitScreen({ user, onUpdate }) {
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
     setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setAuthors([]); setAuthorInput(""); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrections([{ assertion: "", evidence: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArgs([""]); setSubmitArg(""); setSubmitBeliefs([""]); setSubmitBelief(""); setSubmitTranslations([{ original: "", translated: "", type: "clarity" }]); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
     clearDraft("ta_draft_submit");
+    // Delete server draft for this URL if one exists
+    const matchingDraft = savedDrafts.find(d => d.url === form.url.trim());
+    if (matchingDraft) { try { await fetch(`/api/drafts/${matchingDraft.id}`, { method: "DELETE" }); } catch {} fetchDrafts(); }
   };
 
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
+
+      {/* Saved drafts banner */}
+      {savedDrafts.length > 0 && (
+        <div style={{ marginBottom: 14, padding: "10px 14px", background: "#FFFBEB", border: "1.5px solid #CA8A04", borderRadius: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: "#CA8A04", fontWeight: 700 }}>
+              {savedDrafts.length} saved draft{savedDrafts.length > 1 ? "s" : ""}
+            </span>
+            <button className="ta-link-btn" style={{ fontSize: 11, color: "#CA8A04" }} onClick={() => setShowDrafts(s => !s)}>
+              {showDrafts ? "Hide" : "Show"}
+            </button>
+          </div>
+          {showDrafts && (
+            <div style={{ marginTop: 8 }}>
+              {savedDrafts.map(d => {
+                let domain = "";
+                try { domain = new URL(d.url).hostname.replace(/^www\./, ""); } catch {}
+                return (
+                  <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", marginBottom: 4, background: "#fff", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title || "(no headline)"}</div>
+                      <div style={{ fontSize: 10, color: "#64748B" }}>{domain} · {new Date(d.updatedAt).toLocaleDateString()}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                      <button className="ta-link-btn" style={{ fontSize: 10, color: "#2563EB" }} onClick={() => loadDraft(d.id)}>Load</button>
+                      <button className="ta-link-btn" style={{ fontSize: 10, color: "#DC2626" }} onClick={() => deleteDraft(d.id)}>Delete</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* What you're about to do */}
       <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #CBD5E1", borderLeft: "4px solid #CA8A04", borderRadius: 8, marginBottom: 16 }}>
@@ -461,9 +584,15 @@ export default function SubmitScreen({ user, onUpdate }) {
         </div>}
       </div>
 
-      {/* ── Sticky Submit Button ── */}
+      {/* ── Sticky Submit + Save Draft Buttons ── */}
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #F1F5F9 8px)", paddingTop: 12, paddingBottom: 8, zIndex: 10 }}>
         <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ width: "100%", padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+          <button className="ta-btn-ghost" onClick={saveDraft} disabled={savingDraft} style={{ fontSize: 11, color: "#CA8A04", border: "1px solid #CA8A04", padding: "6px 14px", borderRadius: 8 }}>
+            {savingDraft ? "Saving..." : "Save Draft"}
+          </button>
+          {draftMsg && <span style={{ fontSize: 11, color: draftMsg.includes("saved") || draftMsg.includes("loaded") ? "#059669" : "#DC2626" }}>{draftMsg}</span>}
+        </div>
         <LegalDisclaimer short />
       </div>
     </div>

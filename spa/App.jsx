@@ -75,6 +75,7 @@ export default function TrustAssembly() {
   const [heroFading, setHeroFading] = useState(false);
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
+  const [activeDraftId, setActiveDraftId] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
@@ -619,9 +620,9 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
+            {screen === "feed" && <FeedScreen user={user} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} />}
-            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} />}
+            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}

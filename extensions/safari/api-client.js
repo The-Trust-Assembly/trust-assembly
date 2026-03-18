@@ -304,6 +304,84 @@ const TA = {
     } catch (e) {
       return null;
     }
+  },
+
+  // ── Drafts ──
+
+  /**
+   * List user's saved submission drafts.
+   */
+  async getDrafts() {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/drafts`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.drafts || [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  /**
+   * Save or update a draft (upserts by URL).
+   */
+  async saveDraft(url, title, draftData) {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/drafts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, title, draftData }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        return { error: errBody.error || "Failed to save draft" };
+      }
+      return await res.json();
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
+  /**
+   * Get a single draft by ID (with full draftData).
+   */
+  async getDraft(id) {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/drafts/${encodeURIComponent(id)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.draft || null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * Get draft by URL (for auto-load when visiting a page).
+   */
+  async getDraftByUrl(url) {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/drafts/by-url?url=${encodeURIComponent(url)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.draft || null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * Delete a saved draft.
+   */
+  async deleteDraft(id) {
+    try {
+      const res = await this._authedFetch(`${API_BASE}/api/drafts/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
   }
 };
 

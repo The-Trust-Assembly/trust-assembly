@@ -446,6 +446,42 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
                       </div>
                     )}
 
+                    {/* Ghost story votes — rich rendering */}
+                    {test.details?.ghostStoryVotes && test.details.ghostStoryVotes.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#7C3AED", marginBottom: 4 }}>Ghost Story Votes (saved to DB, audit missing):</div>
+                        {test.details.ghostStoryVotes.map((gv, gi) => (
+                          <div key={gi} style={{ fontSize: 10, padding: "4px 8px", background: "rgba(124,58,237,0.05)", borderRadius: 4, marginBottom: 2, fontFamily: "var(--mono)" }}>
+                            user {gv.userId?.slice(0,8)} voted on story "{gv.storyTitle}" ({gv.storyId?.slice(0,8)}) — story is {gv.storyStatus}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Stories without jury */}
+                    {test.details?.storiesWithoutJury && test.details.storiesWithoutJury.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#DC2626", marginBottom: 4 }}>Stories Missing Jury:</div>
+                        {test.details.storiesWithoutJury.map((s, si) => (
+                          <div key={si} style={{ fontSize: 10, padding: "4px 8px", background: "rgba(220,38,38,0.05)", borderRadius: 4, marginBottom: 2, fontFamily: "var(--mono)" }}>
+                            {s.id?.slice(0,8)} "{s.title}" — status: {s.status}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Stuck stories */}
+                    {test.details?.stuckStories && test.details.stuckStories.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#EA580C", marginBottom: 4 }}>Stuck Story Resolutions:</div>
+                        {test.details.stuckStories.map((s, si) => (
+                          <div key={si} style={{ fontSize: 10, padding: "4px 8px", background: "rgba(234,88,12,0.05)", borderRadius: 4, marginBottom: 2, fontFamily: "var(--mono)" }}>
+                            {s.id?.slice(0,8)} "{s.title}" — {s.votes}/{s.jurors} votes, still {s.status}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Reputation mismatches — rich rendering */}
                     {test.details?.mismatches && test.details.mismatches.length > 0 && (
                       <div style={{ marginTop: 8 }}>
@@ -462,7 +498,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
                     )}
 
                     {/* Fallback raw details for tests without rich rendering */}
-                    {test.details && !hasSubmissions && !test.details.ghostVotes && !test.details.mismatches && (
+                    {test.details && !hasSubmissions && !test.details.ghostVotes && !test.details.ghostStoryVotes && !test.details.storiesWithoutJury && !test.details.stuckStories && !test.details.mismatches && (
                       <details style={{ marginTop: 6 }}>
                         <summary style={{ fontSize: 10, color: "var(--stone)", cursor: "pointer", fontFamily: "var(--mono)" }}>Raw details</summary>
                         <pre style={{ fontSize: 10, color: "var(--stone)", marginTop: 4, overflow: "auto", maxHeight: 200, background: "rgba(0,0,0,0.03)", padding: 8, borderRadius: 4 }}>

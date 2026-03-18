@@ -7,6 +7,8 @@
 let currentUrl = null;
 let currentUser = null;
 let userAssemblies = null; // { joined: [], followed: [] }
+let pendingUrlDraft = null; // Server draft for current URL (checked on popup open)
+let cachedDraftsList = null; // Cached list of all user drafts
 
 // ── Form state persistence ──
 const FORM_STATE_KEY = "ta-form-draft";
@@ -110,6 +112,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   } else {
     // Load corrections
     loadCorrections();
+    // Check for server-side draft for current URL
+    if (currentUrl && currentUrl.startsWith("http")) {
+      TA.getDraftByUrl(currentUrl).then(d => {
+        if (d) { pendingUrlDraft = d; }
+      }).catch(() => {});
+      TA.getDrafts().then(d => { cachedDraftsList = d; }).catch(() => {});
+    }
   }
 
   // Settings toggles
@@ -612,10 +621,48 @@ async function renderSubmitTab() {
         </div>
       </div>
 
-      <button class="submit-btn" id="btn-submit" style="margin-top:10px; background:${isAffirm ? '#1B5E3F' : '#C4573F'}">
-        Submit ${isAffirm ? 'Affirmation' : 'Correction'}
-      </button>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="submit-btn" id="btn-submit" style="flex:1; background:${isAffirm ? '#1B5E3F' : '#C4573F'}">
+          Submit ${isAffirm ? 'Affirmation' : 'Correction'}
+        </button>
+        <button class="submit-btn" id="btn-save-draft" style="flex:0 0 auto; background:#B8963E; padding:8px 14px; font-size:11px">
+          Save Draft
+        </button>
+      </div>
+      <div id="draft-msg" class="submit-msg" style="display:none"></div>
       <div id="submit-msg" class="submit-msg" style="display:none"></div>
+
+      ${pendingUrlDraft ? `
+      <div id="draft-banner" style="margin-top:8px;padding:8px 10px;background:#FFFBEB;border:1px solid #B8963E;border-radius:4px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:#7A7570">Saved draft found for this page</span>
+        <div style="display:flex;gap:6px">
+          <button id="btn-load-url-draft" style="font-size:10px;color:#1B5E3F;background:none;border:1px solid #1B5E3F;padding:3px 8px;border-radius:3px;cursor:pointer">Load</button>
+          <button id="btn-dismiss-draft" style="font-size:10px;color:#7A7570;background:none;border:none;cursor:pointer">Dismiss</button>
+        </div>
+      </div>
+      ` : ''}
+
+      ${cachedDraftsList && cachedDraftsList.length > 0 ? `
+      <div style="margin-top:8px;border-top:1px solid #EBE8E2;padding-top:8px">
+        <div style="font-size:10px;font-weight:600;color:#B8963E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Saved Drafts (${cachedDraftsList.length})</div>
+        ${cachedDraftsList.slice(0, 5).map(d => {
+          let domain = "";
+          try { domain = new URL(d.url).hostname.replace(/^www\\./, ""); } catch {}
+          return `
+          <div class="draft-list-item" style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;margin-bottom:3px;background:#FDFBF5;border:1px solid #EBE8E2;border-radius:3px">
+            <div style="flex:1;min-width:0;overflow:hidden">
+              <div style="font-size:11px;color:#1B2A4A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(d.title || "(no headline)")}</div>
+              <div style="font-size:9px;color:#7A7570">${escapeHtml(domain)}</div>
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0;margin-left:6px">
+              <button class="draft-load-btn" data-draft-id="${d.id}" style="font-size:9px;color:#1B5E3F;background:none;border:1px solid #1B5E3F;padding:2px 6px;border-radius:3px;cursor:pointer">Load</button>
+              <button class="draft-delete-btn" data-draft-id="${d.id}" style="font-size:9px;color:#C4573F;background:none;border:none;cursor:pointer">Del</button>
+            </div>
+          </div>`;
+        }).join("")}
+        ${cachedDraftsList.length > 5 ? `<div style="font-size:9px;color:#7A7570">+ ${cachedDraftsList.length - 5} more</div>` : ''}
+      </div>
+      ` : ''}
     </div>
   `;
 
@@ -828,6 +875,74 @@ async function renderSubmitTab() {
 
   // Submit button
   document.getElementById("btn-submit").addEventListener("click", doSubmit);
+
+  // Save Draft button
+  const btnSaveDraft = document.getElementById("btn-save-draft");
+  if (btnSaveDraft) {
+    btnSaveDraft.addEventListener("click", async () => {
+      captureFormFields();
+      const url = document.getElementById("sub-url")?.value?.trim();
+      if (!url) {
+        const draftMsgEl = document.getElementById("draft-msg");
+        if (draftMsgEl) { draftMsgEl.textContent = "Enter a URL first."; draftMsgEl.className = "submit-msg error"; draftMsgEl.style.display = "block"; }
+        return;
+      }
+      btnSaveDraft.disabled = true;
+      btnSaveDraft.textContent = "Saving...";
+      const result = await TA.saveDraft(url, formState.headline || null, formState);
+      const draftMsgEl = document.getElementById("draft-msg");
+      if (result.error) {
+        if (draftMsgEl) { draftMsgEl.textContent = result.error; draftMsgEl.className = "submit-msg error"; draftMsgEl.style.display = "block"; }
+      } else {
+        if (draftMsgEl) { draftMsgEl.textContent = "Draft saved!"; draftMsgEl.className = "submit-msg success"; draftMsgEl.style.display = "block"; }
+        // Refresh drafts list
+        cachedDraftsList = await TA.getDrafts();
+      }
+      btnSaveDraft.disabled = false;
+      btnSaveDraft.textContent = "Save Draft";
+      setTimeout(() => { if (draftMsgEl) draftMsgEl.style.display = "none"; }, 3000);
+    });
+  }
+
+  // Load URL draft banner
+  const btnLoadUrlDraft = document.getElementById("btn-load-url-draft");
+  if (btnLoadUrlDraft && pendingUrlDraft) {
+    btnLoadUrlDraft.addEventListener("click", () => {
+      if (pendingUrlDraft.draftData) {
+        formState = { ...formState, ...pendingUrlDraft.draftData };
+        pendingUrlDraft = null;
+        renderSubmitTab();
+      }
+    });
+  }
+  const btnDismissDraft = document.getElementById("btn-dismiss-draft");
+  if (btnDismissDraft) {
+    btnDismissDraft.addEventListener("click", () => {
+      pendingUrlDraft = null;
+      const banner = document.getElementById("draft-banner");
+      if (banner) banner.style.display = "none";
+    });
+  }
+
+  // Draft list load/delete buttons
+  document.querySelectorAll(".draft-load-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.draftId;
+      const draft = await TA.getDraft(id);
+      if (draft && draft.draftData) {
+        formState = { ...formState, ...draft.draftData };
+        renderSubmitTab();
+      }
+    });
+  });
+  document.querySelectorAll(".draft-delete-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.draftId;
+      await TA.deleteDraft(id);
+      cachedDraftsList = await TA.getDrafts();
+      renderSubmitTab();
+    });
+  });
 
   // Live preview for replacement headline
   const replacementInput = document.getElementById("sub-replacement");
@@ -1047,6 +1162,16 @@ async function doSubmit() {
   // Clear form state and preview
   await clearFormState();
   clearPreviewMessage();
+
+  // Delete server draft for this URL if one exists
+  if (cachedDraftsList) {
+    const matchingDraft = cachedDraftsList.find(d => d.url === url);
+    if (matchingDraft) {
+      TA.deleteDraft(matchingDraft.id).catch(() => {});
+      cachedDraftsList = cachedDraftsList.filter(d => d.id !== matchingDraft.id);
+    }
+  }
+  pendingUrlDraft = null;
 }
 
 // ── Assemblies tab ──

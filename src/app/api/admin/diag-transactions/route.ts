@@ -1481,6 +1481,189 @@ export async function POST(request: NextRequest) {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // SECTION F: STORY PAGES PIPELINE AUDIT
+  // ═══════════════════════════════════════════════════════════════════
+  try {
+    // F1: Stories without jury assignments
+    const storiesNoJury = await sql`
+      SELECT s.id, s.title, s.status, s.created_at
+      FROM stories s
+      WHERE s.status IN ('pending_jury', 'pending_review')
+        AND NOT EXISTS (SELECT 1 FROM jury_assignments ja WHERE ja.story_id = s.id)
+    `;
+    results.push({
+      name: "F1: Pending stories have jury assignments",
+      status: storiesNoJury.rows.length === 0 ? "PASS" : "FAIL",
+      description: storiesNoJury.rows.length === 0
+        ? "All pending stories have jury assignments."
+        : `${storiesNoJury.rows.length} pending story(s) have no jury assignments.`,
+      rootCause: "Story creation may have failed after INSERT but before jury assignment (transaction-era bug).",
+      remediation: "Manually draw jury for these stories or delete and recreate them.",
+      codeFixed: true,
+      details: { storiesWithoutJury: storiesNoJury.rows.map(s => ({ id: s.id, title: s.title, status: s.status, createdAt: s.created_at })) },
+    });
+
+    // F2: Ghost story votes — votes without audit logs
+    const ghostStoryVotes = await sql`
+      SELECT jv.user_id, jv.story_id, jv.created_at, s.title, s.status AS story_status
+      FROM jury_votes jv
+      JOIN stories s ON s.id = jv.story_id
+      WHERE jv.story_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM audit_log al
+          WHERE al.entity_type = 'story'
+            AND al.entity_id = jv.story_id
+            AND al.action LIKE 'Vote cast%'
+            AND al.user_id = jv.user_id
+        )
+    `;
+    results.push({
+      name: "F2: Ghost story votes (vote saved, audit missing)",
+      status: ghostStoryVotes.rows.length === 0 ? "PASS" : "WARN",
+      description: ghostStoryVotes.rows.length === 0
+        ? "No ghost story votes detected."
+        : `${ghostStoryVotes.rows.length} story vote(s) lack audit log entries (user may have seen 500 error).`,
+      rootCause: "Vote INSERT succeeded but audit log INSERT failed — broken transaction.",
+      remediation: "Run repair-data to backfill missing audit logs.",
+      codeFixed: true,
+      details: { ghostStoryVotes: ghostStoryVotes.rows.map(v => ({ userId: v.user_id, storyId: v.story_id, storyTitle: v.title, storyStatus: v.story_status, createdAt: v.created_at })) },
+    });
+
+    // F3: Stuck story resolutions — all jurors voted but story still pending
+    const stuckStories = await sql`
+      SELECT s.id, s.title, s.status, s.jury_seats,
+        (SELECT COUNT(*)::int FROM jury_votes jv WHERE jv.story_id = s.id) AS vote_count,
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'juror') AS juror_count
+      FROM stories s
+      WHERE s.status IN ('pending_review', 'cross_review')
+    `;
+    const actuallyStuck = stuckStories.rows.filter((s: Record<string, unknown>) => {
+      const votes = s.vote_count as number;
+      const jurors = s.juror_count as number;
+      return jurors > 0 && votes >= jurors;
+    });
+    results.push({
+      name: "F3: Stuck story resolutions",
+      status: actuallyStuck.length === 0 ? "PASS" : "FAIL",
+      description: actuallyStuck.length === 0
+        ? "No stuck story resolutions detected."
+        : `${actuallyStuck.length} story(s) have all votes cast but are still pending.`,
+      rootCause: "tryResolveStory() may not have been called or failed after vote insertion.",
+      remediation: "Re-trigger resolution for these stories.",
+      codeFixed: true,
+      details: { stuckStories: actuallyStuck.map(s => ({ id: s.id, title: s.title, status: s.status, votes: s.vote_count, jurors: s.juror_count })) },
+    });
+
+    // F4: Orphaned story_submissions
+    const orphanedStorySubs = await sql`
+      SELECT ss.id, ss.story_id, ss.submission_id
+      FROM story_submissions ss
+      LEFT JOIN stories s ON s.id = ss.story_id
+      LEFT JOIN submissions sub ON sub.id = ss.submission_id
+      WHERE s.id IS NULL OR sub.id IS NULL
+    `;
+    results.push({
+      name: "F4: Orphaned story_submissions",
+      status: orphanedStorySubs.rows.length === 0 ? "PASS" : "WARN",
+      description: orphanedStorySubs.rows.length === 0
+        ? "No orphaned story-submission links."
+        : `${orphanedStorySubs.rows.length} story_submissions reference missing stories or submissions.`,
+      codeFixed: true,
+      details: { orphanedCount: orphanedStorySubs.rows.length },
+    });
+
+    // F5: Cross-group promotion consistency
+    const crossGroupStories = await sql`
+      SELECT s.id, s.title,
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'cross_group_juror') AS cg_juror_count
+      FROM stories s
+      WHERE s.status = 'cross_review'
+    `;
+    const noCGJury = crossGroupStories.rows.filter((s: Record<string, unknown>) => (s.cg_juror_count as number) === 0);
+    results.push({
+      name: "F5: Cross-review stories have cross-group jury",
+      status: noCGJury.length === 0 ? "PASS" : "FAIL",
+      description: noCGJury.length === 0
+        ? `All ${crossGroupStories.rows.length} cross-review stories have cross-group jurors.`
+        : `${noCGJury.length} cross-review story(s) lack cross-group jury assignments.`,
+      rootCause: "promoteStoryToCrossGroup() may have failed after status update.",
+      remediation: "Re-run cross-group promotion for these stories.",
+      codeFixed: true,
+      details: { totalCrossReview: crossGroupStories.rows.length, missingJury: noCGJury.length },
+    });
+  } catch (sectionFError) {
+    results.push({
+      name: "Section F: Story Pages Pipeline Audit",
+      status: "ERROR",
+      description: `Section F failed: ${sectionFError instanceof Error ? sectionFError.message : String(sectionFError)}`,
+      codeFixed: true,
+      details: {},
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SECTION G: DRAFTS CONSISTENCY
+  // ═══════════════════════════════════════════════════════════════════
+  try {
+    // G1: Orphaned drafts (user deleted but draft remains — shouldn't happen with CASCADE)
+    const orphanedDrafts = await sql`
+      SELECT sd.id, sd.user_id
+      FROM submission_drafts sd
+      LEFT JOIN users u ON u.id = sd.user_id
+      WHERE u.id IS NULL
+    `;
+    results.push({
+      name: "G1: Orphaned drafts (missing user)",
+      status: orphanedDrafts.rows.length === 0 ? "PASS" : "WARN",
+      description: orphanedDrafts.rows.length === 0
+        ? "No orphaned drafts."
+        : `${orphanedDrafts.rows.length} draft(s) reference non-existent users.`,
+      codeFixed: true,
+      details: { orphanedCount: orphanedDrafts.rows.length },
+    });
+
+    // G2: Over-limit users (more than 10 drafts)
+    const overLimit = await sql`
+      SELECT user_id, COUNT(*)::int AS cnt
+      FROM submission_drafts
+      GROUP BY user_id
+      HAVING COUNT(*) > 10
+    `;
+    results.push({
+      name: "G2: Users exceeding draft limit (>10)",
+      status: overLimit.rows.length === 0 ? "PASS" : "WARN",
+      description: overLimit.rows.length === 0
+        ? "No users exceed the 10-draft limit."
+        : `${overLimit.rows.length} user(s) have more than 10 drafts.`,
+      codeFixed: true,
+      details: { overLimitUsers: overLimit.rows.map(r => ({ userId: r.user_id, count: r.cnt })) },
+    });
+
+    // G3: Stale drafts (older than 30 days)
+    const staleDrafts = await sql`
+      SELECT COUNT(*)::int AS cnt
+      FROM submission_drafts
+      WHERE updated_at < now() - interval '30 days'
+    `;
+    const totalDrafts = await sql`SELECT COUNT(*)::int AS cnt FROM submission_drafts`;
+    results.push({
+      name: "G3: Stale drafts (>30 days old)",
+      status: "INFO",
+      description: `${staleDrafts.rows[0].cnt} of ${totalDrafts.rows[0].cnt} total drafts are older than 30 days.`,
+      codeFixed: true,
+      details: { stale: staleDrafts.rows[0].cnt, total: totalDrafts.rows[0].cnt },
+    });
+  } catch (sectionGError) {
+    results.push({
+      name: "Section G: Drafts Consistency",
+      status: "ERROR",
+      description: `Section G failed: ${sectionGError instanceof Error ? sectionGError.message : String(sectionGError)}`,
+      codeFixed: true,
+      details: {},
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // SUMMARY
   // ═══════════════════════════════════════════════════════════════════
   const passCount = results.filter(r => r.status === "PASS").length;
@@ -1515,6 +1698,9 @@ export async function POST(request: NextRequest) {
         adminForceDi: "src/app/api/admin/force-di-partner/route.ts — FIXED: uses sql.connect()",
         adminWildWest: "src/app/api/admin/wild-west-backfill/route.ts — FIXED: uses sql.connect()",
         reconcile: "src/app/api/reconcile/route.ts — FIXED: uses sql.connect()",
+        storyCreate: "src/app/api/stories/route.ts — FIXED: uses sql.connect()",
+        storyVote: "src/app/api/stories/[id]/vote/route.ts — FIXED: uses sql.connect()",
+        drafts: "src/app/api/drafts/route.ts — simple single-write operations, no transaction needed",
       },
       dataRepairNeeded: "Historical damage from the broken sql`` era has been repaired by the repair-data endpoint. Run this diagnostic to verify all data is consistent. Remaining FAILs indicate historical damage that the repair script couldn't fully address (e.g. lost evidence data).",
     },
