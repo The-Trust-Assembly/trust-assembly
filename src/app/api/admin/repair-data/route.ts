@@ -401,11 +401,12 @@ export async function POST(request: NextRequest) {
     `;
     for (const sub of subsNoEvidence.rows) {
       await sql`
-        INSERT INTO submission_evidence (submission_id, url, description)
+        INSERT INTO submission_evidence (submission_id, url, explanation, sort_order)
         VALUES (
           ${sub.id},
           ${sub.url || 'https://repair-placeholder'},
-          ${'(backfilled) Original evidence was lost due to broken sql`` transactions'}
+          ${'(backfilled) Original evidence was lost due to broken sql`` transactions'},
+          0
         )
       `;
     }
