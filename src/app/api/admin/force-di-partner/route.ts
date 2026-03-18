@@ -56,18 +56,20 @@ export async function POST(request: NextRequest) {
       report.push(`OK @${diUsername}: di_partner_id → @thekingofamerica (was ${currentPartner || "NULL"})`);
     }
 
-    // 4. Set @thekingofamerica's di_partner_id to the most recently created DI
-    const latestDI = await client.query(
-      "SELECT id, username FROM users WHERE is_di = TRUE ORDER BY created_at DESC LIMIT 1"
-    );
-    if (latestDI.rows.length > 0) {
-      const latestDIId = latestDI.rows[0].id as string;
-      const latestDIUsername = latestDI.rows[0].username as string;
-      await client.query(
-        "UPDATE users SET di_partner_id = $1 WHERE id = $2",
-        [latestDIId, kingId]
+    // 4. Set @thekingofamerica's di_partner_id to the first DI (if not already set).
+    // With multi-DI support, humans can have up to 5 DIs; di_partner_id holds the first,
+    // and the full list is derived from di_requests WHERE status='approved'.
+    const currentKing = await client.query("SELECT di_partner_id FROM users WHERE id = $1", [kingId]);
+    if (!currentKing.rows[0]?.di_partner_id) {
+      const firstDI = await client.query(
+        "SELECT id, username FROM users WHERE is_di = TRUE ORDER BY created_at ASC LIMIT 1"
       );
-      report.push(`OK @thekingofamerica: di_partner_id → @${latestDIUsername}`);
+      if (firstDI.rows.length > 0) {
+        await client.query("UPDATE users SET di_partner_id = $1 WHERE id = $2", [firstDI.rows[0].id, kingId]);
+        report.push(`OK @thekingofamerica: di_partner_id → @${firstDI.rows[0].username} (first DI)`);
+      }
+    } else {
+      report.push(`SKIP @thekingofamerica: di_partner_id already set (multi-DI — full list in di_requests)`);
     }
 
     // 5. Backfill di_partner_id on all submissions from DI users where it's NULL

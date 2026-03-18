@@ -69,6 +69,20 @@ export async function GET() {
     });
   }
 
+  // Get approved DI partnerships (for multi-DI support — humans can have up to 5 DIs)
+  const diPartnerships = await sql`
+    SELECT dr.partner_user_id, u.username AS di_username
+    FROM di_requests dr
+    JOIN users u ON u.id = dr.di_user_id
+    WHERE dr.status = 'approved'
+    ORDER BY dr.created_at ASC
+  `;
+  const diPartnersMap: Record<string, string[]> = {};
+  for (const row of diPartnerships.rows) {
+    if (!diPartnersMap[row.partner_user_id]) diPartnersMap[row.partner_user_id] = [];
+    diPartnersMap[row.partner_user_id].push(row.di_username);
+  }
+
   // Get notifications (last 50 per user)
   const notifications = await sql`
     SELECT user_id, id, type, title, body, entity_type, entity_id, "read", created_at
@@ -112,6 +126,7 @@ export async function GET() {
       bio: row.bio,
       isDI: row.is_di,
       diPartner: row.di_partner_username,
+      diPartners: diPartnersMap[uid] || [],
       diApproved: row.di_approved,
       isAdmin: row.is_admin,
       signupDate: row.created_at,

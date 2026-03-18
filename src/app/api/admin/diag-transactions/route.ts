@@ -418,7 +418,7 @@ export async function POST(request: NextRequest) {
       }
 
       // ── STEP 10: Vote endpoint audit log (every vote should have one) ──
-      const voteAudits = audits.filter(a => (a.action as string) === "Vote cast");
+      const voteAudits = audits.filter(a => (a.action as string).startsWith("Vote cast"));
       const totalVotes = votes.length;
       if (totalVotes > 0) {
         if (voteAudits.length < totalVotes) {
@@ -501,7 +501,7 @@ export async function POST(request: NextRequest) {
         SELECT 1 FROM audit_log al
         WHERE al.entity_type = 'submission'
           AND al.entity_id = jv.submission_id
-          AND al.action = 'Vote cast'
+          AND al.action LIKE 'Vote cast%'
           AND al.user_id = jv.user_id
       )
       ORDER BY jv.voted_at DESC
@@ -692,9 +692,9 @@ export async function POST(request: NextRequest) {
       description: enrollIssues.length === 0
         ? "All users have org memberships and consistent primary_org_id."
         : `Found ${enrollIssues.length} enrollment issue(s):\n${enrollIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "POST /auth/register (src/app/api/auth/register/route.ts) does: INSERT user → INSERT organization_members → UPDATE users SET primary_org_id. Three sequential sql`` calls with no transaction. If INSERT user succeeds but later steps fail, user exists without org membership or with NULL primary_org_id.",
-      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction wrapping all 3 operations. DATA REPAIR: For nullPrimaryOrg users, UPDATE users SET primary_org_id = (SELECT org_id FROM organization_members WHERE user_id = users.id AND is_active = TRUE LIMIT 1) for each affected user.",
-      codeFixed: false,
+      rootCause: "POST /auth/register uses sql.connect() transaction to INSERT user → INSERT organization_members → UPDATE users SET primary_org_id. If any step fails, the entire registration is rolled back.",
+      remediation: "CODE FIX APPLIED: Uses sql.connect() transaction. Historical damage (NULL primary_org_id, missing org memberships) is repaired by the repair-data endpoint.",
+      codeFixed: true,
       details: {
         usersWithNoOrg: noOrgUsers.rows.map(u => ({ user: `@${u.username}`, createdAt: u.created_at })),
         orphanedPrimaryOrg: orphanedPrimaryOrg.rows.map(u => ({ user: `@${u.username}`, primaryOrg: u.org_name || u.primary_org_id })),
@@ -718,28 +718,17 @@ export async function POST(request: NextRequest) {
       SELECT id, username FROM users WHERE is_di = TRUE AND di_partner_id IS NULL
     `;
 
-    // DI users where di_partner_id points to a user that doesn't point back
-    const asymmetricDI = await sql`
-      SELECT
-        u1.id AS di_id, u1.username AS di_user, u1.di_partner_id,
-        u2.username AS partner_user, u2.di_partner_id AS partner_points_to
-      FROM users u1
-      JOIN users u2 ON u2.id = u1.di_partner_id
-      WHERE u1.is_di = TRUE
-        AND u1.di_partner_id IS NOT NULL
-        AND (u2.di_partner_id IS NULL OR u2.di_partner_id != u1.id)
-    `;
-
-    // DI requests that are approved but users not linked
+    // Approved DI requests where the DI user isn't properly linked
+    // (di_partner_id doesn't match, or is_di/di_approved not set)
     const approvedNotLinked = await sql`
       SELECT dr.id, dr.di_user_id, dr.partner_user_id, dr.status,
-        u1.username AS di_user, u1.di_partner_id AS di_actual_partner,
-        u2.username AS partner_user, u2.di_partner_id AS partner_actual_partner
+        u1.username AS di_user, u1.di_partner_id AS di_actual_partner, u1.is_di, u1.di_approved,
+        u2.username AS partner_user
       FROM di_requests dr
       JOIN users u1 ON u1.id = dr.di_user_id
       JOIN users u2 ON u2.id = dr.partner_user_id
       WHERE dr.status = 'approved'
-        AND (u1.di_partner_id != dr.partner_user_id OR u2.di_partner_id != dr.di_user_id
+        AND (u1.di_partner_id != dr.partner_user_id
              OR u1.is_di != TRUE OR u1.di_approved != TRUE)
     `;
 
@@ -751,34 +740,55 @@ export async function POST(request: NextRequest) {
       WHERE s.is_di = TRUE AND s.di_partner_id IS NULL
     `;
 
+    // Human partners with more than 5 approved DIs (over limit)
+    const overLimit = await sql`
+      SELECT partner_user_id, u.username, COUNT(*)::int AS di_count
+      FROM di_requests dr
+      JOIN users u ON u.id = dr.partner_user_id
+      WHERE dr.status = 'approved'
+      GROUP BY partner_user_id, u.username
+      HAVING COUNT(*) > 5
+    `;
+
     const diIssues: string[] = [];
     if (diNoPartner.rows.length > 0) diIssues.push(`${diNoPartner.rows.length} DI user(s) have is_di=TRUE but NULL di_partner_id — partnership setup failed`);
-    if (asymmetricDI.rows.length > 0) diIssues.push(`${asymmetricDI.rows.length} DI partnership(s) are asymmetric — one side linked but the other isn't (partial UPDATE in /di-requests/[id] PATCH)`);
-    if (approvedNotLinked.rows.length > 0) diIssues.push(`${approvedNotLinked.rows.length} approved DI request(s) but users not properly linked — di-request approved but user UPDATE failed`);
+    if (approvedNotLinked.rows.length > 0) diIssues.push(`${approvedNotLinked.rows.length} approved DI request(s) but DI user not properly linked — di-request approved but user UPDATE failed`);
     if (diSubsNoPartner.rows.length > 0) diIssues.push(`${diSubsNoPartner.rows.length} DI submission(s) have is_di=TRUE but NULL di_partner_id`);
+    if (overLimit.rows.length > 0) diIssues.push(`${overLimit.rows.length} human partner(s) exceed the 5-DI limit`);
+
+    // Multi-DI partnership summary
+    const diSummary = await sql`
+      SELECT u.username AS partner, COUNT(*)::int AS di_count,
+        array_agg(du.username ORDER BY dr.created_at) AS di_usernames
+      FROM di_requests dr
+      JOIN users u ON u.id = dr.partner_user_id
+      JOIN users du ON du.id = dr.di_user_id
+      WHERE dr.status = 'approved'
+      GROUP BY u.username
+    `;
 
     results.push({
       name: "DI partnership consistency",
       status: diIssues.length === 0 ? "PASS" : "FAIL",
       description: diIssues.length === 0
-        ? "All DI partnerships are symmetric and fully linked."
+        ? `All DI partnerships are consistent. ${diSummary.rows.length} human partner(s) with approved DIs.`
         : `Found ${diIssues.length} DI issue(s):\n${diIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "PATCH /di-requests/[id] (src/app/api/di-requests/[id]/route.ts) does: UPDATE di_requests status → UPDATE users (DI user) SET is_di, di_partner_id, di_approved → UPDATE users (partner) SET di_partner_id. Three sequential sql`` calls. If the first UPDATE succeeds but the second or third fails, partnership is asymmetric.",
-      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction wrapping all 3 UPDATEs. DATA REPAIR: For asymmetric partnerships, identify which side is incomplete and run the missing UPDATE. For approvedNotLinked, re-run the user UPDATE statements from the PATCH endpoint.",
-      codeFixed: false,
+      rootCause: "PATCH /di-requests/[id] uses sql.connect() transaction to UPDATE di_requests status + UPDATE DI user (is_di, di_partner_id, di_approved) + UPDATE partner (di_partner_id if NULL). Source of truth for multi-DI partnerships is di_requests table, not users.di_partner_id.",
+      remediation: "CODE FIX APPLIED: Uses sql.connect() transaction. Humans can have up to 5 DIs; the full list is derived from di_requests WHERE status='approved'. The human's users.di_partner_id holds the first approved DI only (for backward compat).",
+      codeFixed: true,
       details: {
         diNoPartner: diNoPartner.rows.map(u => ({ user: `@${u.username}` })),
-        asymmetric: asymmetricDI.rows.map(r => ({
-          diUser: `@${r.di_user}`, partnerUser: `@${r.partner_user}`,
-          diPointsTo: r.di_partner_id, partnerPointsTo: r.partner_points_to,
-          diagnosis: "One UPDATE in /di-requests/[id] PATCH succeeded, the other failed",
-        })),
         approvedNotLinked: approvedNotLinked.rows.map(r => ({
           diUser: `@${r.di_user}`, partnerUser: `@${r.partner_user}`,
           requestStatus: r.status,
-          diActualPartner: r.di_actual_partner, partnerActualPartner: r.partner_actual_partner,
+          diActualPartner: r.di_actual_partner,
+          isDI: r.is_di, diApproved: r.di_approved,
         })),
         diSubsNoPartner: diSubsNoPartner.rows.map(r => ({ submission: r.id, user: `@${r.username}` })),
+        overLimit: overLimit.rows.map(r => ({ partner: `@${r.username}`, diCount: r.di_count })),
+        partnerships: diSummary.rows.map(r => ({
+          partner: `@${r.partner}`, diCount: r.di_count, diUsers: (r.di_usernames as string[]).map(u => `@${u}`),
+        })),
       },
     });
   } catch (e: unknown) {
@@ -821,7 +831,7 @@ export async function POST(request: NextRequest) {
       WHERE NOT EXISTS (
         SELECT 1 FROM audit_log al
         WHERE al.entity_type = 'submission' AND al.entity_id = s.id
-          AND (al.action LIKE 'Submission created%' OR al.action LIKE 'New submission%' OR al.action = 'Submitted correction')
+          AND (al.action LIKE 'Submission created%' OR al.action LIKE 'New submission%' OR al.action = 'Submitted correction' OR al.action LIKE 'Submission filed%')
       )
     `;
 
@@ -857,9 +867,9 @@ export async function POST(request: NextRequest) {
       description: subCreateIssues.length === 0
         ? "All submissions have evidence, jury assignments, and audit logs."
         : `Found ${subCreateIssues.length} creation issue(s):\n${subCreateIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "POST /submissions (src/app/api/submissions/route.ts) does: INSERT submission → INSERT evidence (loop) → INSERT inline_edits (loop) → INSERT audit → UPDATE jury_seats → INSERT jury_assignments (loop). All sequential sql`` calls. The trusted_skip path has its own broken BEGIN/COMMIT wrapping auto-approve logic.",
-      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction. DATA REPAIR: pendingNoJury submissions need jury re-assignment (re-run jury pool selection). noEvidence submissions may need manual review — the submission exists but evidence INSERT loop failed.",
-      codeFixed: false,
+      rootCause: "POST /submissions uses sql.connect() transaction for INSERT submission → INSERT evidence (loop) → INSERT inline_edits (loop) → INSERT audit → UPDATE jury_seats → INSERT jury_assignments (loop). Historical submissions from the broken sql`` era may have missing evidence or audit logs.",
+      remediation: "CODE FIX APPLIED: Uses sql.connect() transaction. Historical damage (missing evidence, missing audit logs) is repaired by the repair-data endpoint. Evidence rows lost from the broken era cannot be recovered (data was never persisted).",
+      codeFixed: true,
       details: {
         noEvidence: noEvidence.rows.map(s => ({ id: s.id, status: s.status, user: `@${s.username}`, url: s.url })),
         pendingNoJury: pendingNoJury.rows.map(s => ({ id: s.id, seats: s.jury_seats, user: `@${s.username}`, createdAt: s.created_at })),
@@ -927,9 +937,9 @@ export async function POST(request: NextRequest) {
       description: disputeIssues.length === 0
         ? "All disputes have evidence, audit logs, and vote audit trails."
         : `Found ${disputeIssues.length} dispute issue(s):\n${disputeIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "POST /disputes does INSERT dispute → INSERT evidence (loop) → INSERT audit. POST /disputes/[id]/vote and /concessions/[id]/vote do INSERT vote → INSERT audit. All use sequential sql`` calls without transactions.",
-      remediation: "CODE NOT YET FIXED. All 3 endpoints need sql.connect() transactions. Lower priority than vote resolution since disputes are less data-critical. Missing audit logs are cosmetic (data exists, just unlogged).",
-      codeFixed: false,
+      rootCause: "POST /disputes, POST /disputes/[id]/vote, and POST /concessions/[id]/vote all use sql.connect() transactions. Historical missing audit logs are from the broken sql`` era.",
+      remediation: "CODE FIX APPLIED: All 3 endpoints use sql.connect() transactions. Historical missing audit logs are cosmetic (data exists, just unlogged) and can be backfilled by the repair-data endpoint.",
+      codeFixed: true,
       details: {
         disputeNoEvidence: disputeNoEvidence.rows.map(d => ({ id: d.id, status: d.status, user: `@${d.username}` })),
         disputeNoAudit: disputeNoAudit.rows.length,
@@ -971,9 +981,9 @@ export async function POST(request: NextRequest) {
       description: appIssues.length === 0
         ? "All approved applications have matching active org memberships."
         : `Found ${appIssues.length} application issue(s):\n${appIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "PATCH /orgs/[id]/applications/[appId] does UPDATE application SET status='approved' → INSERT/UPDATE organization_members → INSERT history. If application UPDATE succeeds but org_members INSERT fails, the application shows approved but user was never added to the org.",
-      remediation: "CODE NOT YET FIXED. Needs sql.connect() transaction. DATA REPAIR: For each approvedNotMember, manually INSERT into organization_members (org_id, user_id, is_active=TRUE) and INSERT into organization_member_history.",
-      codeFixed: false,
+      rootCause: "PATCH /orgs/[id]/applications/[appId] uses sql.connect() transaction to UPDATE application → INSERT/UPDATE organization_members → INSERT history. Historical damage from the broken sql`` era is repaired by the repair-data endpoint.",
+      remediation: "CODE FIX APPLIED: Uses sql.connect() transaction. Historical approved-but-not-member cases are repaired by the repair-data endpoint.",
+      codeFixed: true,
       details: {
         approvedNotMember: approvedNotMember.rows.map(a => ({
           user: `@${a.username}`, org: a.org_name,
@@ -1063,63 +1073,47 @@ export async function POST(request: NextRequest) {
   results.push({
     name: "All multi-step write operations inventory",
     status: "INFO",
-    description: "Every endpoint that does 2+ SQL writes without a real transaction. All use sql`` (stateless HTTP) so any multi-step sequence can leave partial state.",
+    description: "Every endpoint that does 2+ SQL writes. ALL now use sql.connect() with real BEGIN/COMMIT/ROLLBACK transactions.",
     details: {
       critical: [
-        { endpoint: "POST /submissions/[id]/vote", file: "src/app/api/submissions/[id]/vote/route.ts", risk: "CRITICAL",
-          operations: "BEGIN(no-op) → FOR UPDATE(no-op) → INSERT vote → INSERT audit → COMMIT(no-op) → tryResolveSubmission(15+ writes)",
-          consequence: "Vote auto-commits, user sees 500 if resolution fails. No row lock means race conditions." },
-        { endpoint: "POST /lib/vote-resolution", file: "src/lib/vote-resolution.ts", risk: "CRITICAL",
-          operations: "BEGIN(no-op) → UPDATE status → resolve edits → vault survival → graduate vault → reputation → cross-group → audit → COMMIT(no-op)",
-          consequence: "Each step auto-commits. Failure at step N leaves steps 1..N-1 permanently committed." },
-        { endpoint: "PATCH /di-requests/[id]", file: "src/app/api/di-requests/[id]/route.ts", risk: "CRITICAL",
-          operations: "UPDATE di_request → UPDATE user1 → UPDATE user2",
-          consequence: "Asymmetric DI partnership if second UPDATE fails." },
-        { endpoint: "POST /submissions", file: "src/app/api/submissions/route.ts", risk: "CRITICAL",
-          operations: "INSERT submission → INSERT evidence(loop) → INSERT edits(loop) → INSERT audit → UPDATE jury_seats → INSERT jury_assignments(loop)",
-          consequence: "Orphaned submission if evidence/jury fails. Trusted-skip has broken BEGIN/COMMIT wrapping same auto-approve logic." },
+        { endpoint: "POST /submissions/[id]/vote", file: "src/app/api/submissions/[id]/vote/route.ts", status: "FIXED",
+          operations: "BEGIN → FOR UPDATE → INSERT vote → INSERT audit → COMMIT → tryResolveSubmission(15+ writes in nested transaction)" },
+        { endpoint: "POST /lib/vote-resolution", file: "src/lib/vote-resolution.ts", status: "FIXED",
+          operations: "BEGIN → UPDATE status → resolve edits → vault survival → graduate vault → reputation → cross-group → audit → COMMIT" },
+        { endpoint: "PATCH /di-requests/[id]", file: "src/app/api/di-requests/[id]/route.ts", status: "FIXED",
+          operations: "BEGIN → UPDATE di_request → UPDATE DI user → UPDATE partner (if NULL) → COMMIT" },
+        { endpoint: "POST /submissions", file: "src/app/api/submissions/route.ts", status: "FIXED",
+          operations: "BEGIN → INSERT submission → INSERT evidence(loop) → INSERT edits(loop) → INSERT audit → UPDATE jury_seats → INSERT jury_assignments(loop) → COMMIT" },
       ],
       high: [
-        { endpoint: "POST /auth/register", file: "src/app/api/auth/register/route.ts", risk: "HIGH",
-          operations: "INSERT user → INSERT org_member → UPDATE primary_org_id",
-          consequence: "User created without org membership if INSERT fails." },
-        { endpoint: "POST /submissions/[id]/di-review", file: "src/app/api/submissions/[id]/di-review/route.ts", risk: "HIGH",
-          operations: "UPDATE submission → INSERT jury_assignments(loop) → UPDATE status → INSERT audit",
-          consequence: "Incomplete jury if loop fails mid-way." },
-        { endpoint: "POST /orgs/[id]/join", file: "src/app/api/orgs/[id]/join/route.ts", risk: "HIGH",
-          operations: "INSERT/UPDATE org_member → INSERT history",
-          consequence: "Membership without history trail." },
-        { endpoint: "PATCH /orgs/[id]/applications/[appId]", file: "src/app/api/orgs/[id]/applications/[appId]/route.ts", risk: "HIGH",
-          operations: "UPDATE application → INSERT/UPDATE org_member → INSERT history",
-          consequence: "Application approved but user not added to org." },
-        { endpoint: "POST /orgs/[id]/leave", file: "src/app/api/orgs/[id]/leave/route.ts", risk: "HIGH",
-          operations: "UPDATE org_member → INSERT history → UPDATE primary_org_id",
-          consequence: "User deactivated but primary_org_id not cleared." },
+        { endpoint: "POST /auth/register", file: "src/app/api/auth/register/route.ts", status: "FIXED",
+          operations: "BEGIN → INSERT user → INSERT org_member → UPDATE primary_org_id → COMMIT" },
+        { endpoint: "POST /submissions/[id]/di-review", file: "src/app/api/submissions/[id]/di-review/route.ts", status: "FIXED",
+          operations: "BEGIN → UPDATE submission → INSERT jury_assignments(loop) → UPDATE status → INSERT audit → COMMIT" },
+        { endpoint: "POST /orgs/[id]/join", file: "src/app/api/orgs/[id]/join/route.ts", status: "FIXED",
+          operations: "BEGIN → INSERT/UPDATE org_member → INSERT history → COMMIT" },
+        { endpoint: "PATCH /orgs/[id]/applications/[appId]", file: "src/app/api/orgs/[id]/applications/[appId]/route.ts", status: "FIXED",
+          operations: "BEGIN → UPDATE application → INSERT/UPDATE org_member → INSERT history → COMMIT" },
+        { endpoint: "POST /orgs/[id]/leave", file: "src/app/api/orgs/[id]/leave/route.ts", status: "FIXED",
+          operations: "BEGIN → UPDATE org_member → INSERT history → UPDATE primary_org_id → COMMIT" },
       ],
       medium: [
-        { endpoint: "POST /disputes", file: "src/app/api/disputes/route.ts", risk: "MEDIUM",
-          operations: "INSERT dispute → INSERT evidence(loop) → INSERT audit",
-          consequence: "Dispute without evidence or audit trail." },
-        { endpoint: "POST /disputes/[id]/vote", file: "src/app/api/disputes/[id]/vote/route.ts", risk: "MEDIUM",
-          operations: "INSERT vote → INSERT audit",
-          consequence: "Vote without audit trail." },
-        { endpoint: "POST /concessions/[id]/vote", file: "src/app/api/concessions/[id]/vote/route.ts", risk: "MEDIUM",
-          operations: "INSERT vote → INSERT audit",
-          consequence: "Vote without audit trail." },
+        { endpoint: "POST /disputes", file: "src/app/api/disputes/route.ts", status: "FIXED",
+          operations: "BEGIN → INSERT dispute → INSERT evidence(loop) → INSERT audit → COMMIT" },
+        { endpoint: "POST /disputes/[id]/vote", file: "src/app/api/disputes/[id]/vote/route.ts", status: "FIXED",
+          operations: "BEGIN → INSERT vote → INSERT audit → COMMIT" },
+        { endpoint: "POST /concessions/[id]/vote", file: "src/app/api/concessions/[id]/vote/route.ts", status: "FIXED",
+          operations: "BEGIN → INSERT vote → INSERT audit → COMMIT" },
       ],
       adminBulk: [
-        { endpoint: "POST /admin/approve-pending", file: "src/app/api/admin/approve-pending/route.ts", risk: "CRITICAL",
-          operations: "Loop: UPDATE submission → UPDATE user → UPDATE org_member → UPDATE vault tables → INSERT audit",
-          consequence: "Partial bulk approve: some submissions approved, others not." },
-        { endpoint: "POST /admin/force-di-partner", file: "src/app/api/admin/force-di-partner/route.ts", risk: "CRITICAL",
-          operations: "Loop: UPDATE users → UPDATE submissions → INSERT/UPDATE di_requests → INSERT audit",
-          consequence: "Partial DI linkage across multiple users." },
-        { endpoint: "POST /admin/wild-west-backfill", file: "src/app/api/admin/wild-west-backfill/route.ts", risk: "CRITICAL",
-          operations: "Loop: UPDATE submission → UPDATE user → UPDATE org_member → UPDATE vault → INSERT audit",
-          consequence: "Same as approve-pending — partial state." },
-        { endpoint: "POST /reconcile", file: "src/app/api/reconcile/route.ts", risk: "CRITICAL",
-          operations: "Massive migration: 600+ lines, writes to 15+ tables in nested loops",
-          consequence: "Partial migration leaves orphaned data across the entire system." },
+        { endpoint: "POST /admin/approve-pending", file: "src/app/api/admin/approve-pending/route.ts", status: "FIXED",
+          operations: "BEGIN → Loop: UPDATE submission → UPDATE user → UPDATE org_member → UPDATE vault tables → INSERT audit → COMMIT" },
+        { endpoint: "POST /admin/force-di-partner", file: "src/app/api/admin/force-di-partner/route.ts", status: "FIXED",
+          operations: "BEGIN → Loop: UPDATE users → UPDATE submissions → INSERT/UPDATE di_requests → INSERT audit → COMMIT" },
+        { endpoint: "POST /admin/wild-west-backfill", file: "src/app/api/admin/wild-west-backfill/route.ts", status: "FIXED",
+          operations: "BEGIN → Loop: UPDATE submission → UPDATE user → UPDATE org_member → UPDATE vault → INSERT audit → COMMIT" },
+        { endpoint: "POST /reconcile", file: "src/app/api/reconcile/route.ts", status: "FIXED",
+          operations: "BEGIN → Migration: writes to 15+ tables in nested loops → COMMIT" },
       ],
     },
   });
@@ -1141,26 +1135,26 @@ export async function POST(request: NextRequest) {
     context: {
       purpose: "This diagnostic audits the entire Trust Assembly system for data inconsistencies caused by broken database transactions. The root cause: the sql`` tagged template from @vercel/postgres uses the neon() HTTP driver, where each call is a stateless HTTP request. BEGIN/COMMIT/ROLLBACK across separate sql`` calls are complete no-ops — they go to different connections.",
       fixApproach: "Replace sql`` with sql.connect() for any endpoint doing 2+ SQL writes. sql.connect() returns a dedicated pooled client where transactions work. Use client.query() with $1/$2 params instead of template literals.",
-      codeFixStatus: `${fixedCount} section(s) have code fixes applied (vote endpoint + vote-resolution). ${unfixedCount} section(s) still need code fixes (registration, DI partnership, submission creation, disputes, membership applications, org join/leave, admin bulk ops).`,
+      codeFixStatus: `All ${fixedCount + unfixedCount} audited section(s) have code fixes applied — every multi-step write endpoint uses sql.connect() with real BEGIN/COMMIT/ROLLBACK transactions.`,
       keyFiles: {
         dbDriver: "src/lib/db.ts — re-exports sql from @vercel/postgres",
         voteEndpoint: "src/app/api/submissions/[id]/vote/route.ts — FIXED: uses sql.connect()",
         voteResolution: "src/lib/vote-resolution.ts — FIXED: uses sql.connect(), all helpers accept VercelPoolClient",
-        registration: "src/app/api/auth/register/route.ts — NOT YET FIXED",
-        diPartnership: "src/app/api/di-requests/[id]/route.ts — NOT YET FIXED",
-        submissionCreate: "src/app/api/submissions/route.ts — NOT YET FIXED",
-        orgJoin: "src/app/api/orgs/[id]/join/route.ts — NOT YET FIXED",
-        orgLeave: "src/app/api/orgs/[id]/leave/route.ts — NOT YET FIXED",
-        appApproval: "src/app/api/orgs/[id]/applications/[appId]/route.ts — NOT YET FIXED",
-        disputes: "src/app/api/disputes/route.ts — NOT YET FIXED",
-        disputeVote: "src/app/api/disputes/[id]/vote/route.ts — NOT YET FIXED",
-        concessionVote: "src/app/api/concessions/[id]/vote/route.ts — NOT YET FIXED",
-        adminApprovePending: "src/app/api/admin/approve-pending/route.ts — NOT YET FIXED",
-        adminForceDi: "src/app/api/admin/force-di-partner/route.ts — NOT YET FIXED",
-        adminWildWest: "src/app/api/admin/wild-west-backfill/route.ts — NOT YET FIXED",
-        reconcile: "src/app/api/reconcile/route.ts — NOT YET FIXED",
+        registration: "src/app/api/auth/register/route.ts — FIXED: uses sql.connect()",
+        diPartnership: "src/app/api/di-requests/[id]/route.ts — FIXED: uses sql.connect()",
+        submissionCreate: "src/app/api/submissions/route.ts — FIXED: uses sql.connect()",
+        orgJoin: "src/app/api/orgs/[id]/join/route.ts — FIXED: uses sql.connect()",
+        orgLeave: "src/app/api/orgs/[id]/leave/route.ts — FIXED: uses sql.connect()",
+        appApproval: "src/app/api/orgs/[id]/applications/[appId]/route.ts — FIXED: uses sql.connect()",
+        disputes: "src/app/api/disputes/route.ts — FIXED: uses sql.connect()",
+        disputeVote: "src/app/api/disputes/[id]/vote/route.ts — FIXED: uses sql.connect()",
+        concessionVote: "src/app/api/concessions/[id]/vote/route.ts — FIXED: uses sql.connect()",
+        adminApprovePending: "src/app/api/admin/approve-pending/route.ts — FIXED: uses sql.connect()",
+        adminForceDi: "src/app/api/admin/force-di-partner/route.ts — FIXED: uses sql.connect()",
+        adminWildWest: "src/app/api/admin/wild-west-backfill/route.ts — FIXED: uses sql.connect()",
+        reconcile: "src/app/api/reconcile/route.ts — FIXED: uses sql.connect()",
       },
-      dataRepairNeeded: "Historical damage from broken transactions cannot be fixed by code changes alone. After deploying code fixes, run this diagnostic again. Any remaining FAILs on Sections B-J represent data that needs backfill scripts. Each section's 'remediation' field describes the specific repair needed.",
+      dataRepairNeeded: "Historical damage from the broken sql`` era has been repaired by the repair-data endpoint. Run this diagnostic to verify all data is consistent. Remaining FAILs indicate historical damage that the repair script couldn't fully address (e.g. lost evidence data).",
     },
     summary: {
       pass: passCount,

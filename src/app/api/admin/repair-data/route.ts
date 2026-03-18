@@ -17,8 +17,10 @@ import { ok, forbidden, err } from "@/lib/api-utils";
 // 7. Unresolved inline edits on approved submissions
 // 8. Approved applications where user wasn't added to org
 // 9. pending_di_review enum value (ALTER TYPE)
-// 10. Asymmetric DI partnerships (partner doesn't point back)
+// 10. DI partnerships (multi-DI aware — fixes unlinked DIs via di_requests)
 // 11. DI submissions missing di_partner_id
+// 12. Missing "Submission filed" audit log entries
+// 13. Missing evidence rows (backfilled with placeholder)
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -297,33 +299,49 @@ export async function POST(request: NextRequest) {
       report.push(`WARN: Could not alter enum — ${(e as Error).message}. May need to run manually.`);
     }
 
-    // ── 10. Fix asymmetric DI partnerships ──
-    report.push("\n--- Fix asymmetric DI partnerships ---");
-    // Find DI users where partner doesn't point back
-    const asymmetricDI = await sql`
-      SELECT u1.id AS user_id, u1.username AS username, u1.di_partner_id,
-             u2.id AS partner_id, u2.username AS partner_username, u2.di_partner_id AS partner_points_to
-      FROM users u1
-      JOIN users u2 ON u2.id = u1.di_partner_id
-      WHERE u1.is_di = TRUE
-        AND u1.di_partner_id IS NOT NULL
-        AND (u2.di_partner_id IS NULL OR u2.di_partner_id != u1.id)
+    // ── 10. Fix DI partnerships via di_requests (multi-DI aware) ──
+    report.push("\n--- Fix DI partnerships ---");
+    // Fix approved di_requests where the DI user isn't properly linked
+    const unlinkedDIs = await sql`
+      SELECT dr.id AS req_id, dr.di_user_id, dr.partner_user_id,
+             u1.username AS di_username, u1.is_di, u1.di_partner_id, u1.di_approved,
+             u2.username AS partner_username, u2.di_partner_id AS partner_di_partner_id
+      FROM di_requests dr
+      JOIN users u1 ON u1.id = dr.di_user_id
+      JOIN users u2 ON u2.id = dr.partner_user_id
+      WHERE dr.status = 'approved'
+        AND (u1.di_partner_id != dr.partner_user_id
+             OR u1.is_di != TRUE OR u1.di_approved != TRUE)
     `;
-    for (const row of asymmetricDI.rows) {
-      // The partner should point back — fix the missing link
+    for (const row of unlinkedDIs.rows) {
       await sql`
-        UPDATE users
-        SET di_partner_id = ${row.user_id},
-            is_di = TRUE,
-            di_approved = TRUE
-        WHERE id = ${row.partner_id}
-          AND (di_partner_id IS NULL OR di_partner_id != ${row.user_id})
+        UPDATE users SET is_di = TRUE, di_partner_id = ${row.partner_user_id}, di_approved = TRUE
+        WHERE id = ${row.di_user_id}
       `;
-      report.push(`OK @${row.partner_username}: di_partner_id → @${row.username} (was ${row.partner_points_to || 'NULL'}, now symmetric)`);
+      report.push(`OK @${row.di_username}: linked to @${row.partner_username} (was unlinked despite approved di_request)`);
       totalRepaired++;
     }
-    if (asymmetricDI.rows.length === 0) {
-      report.push("SKIP: All DI partnerships are already symmetric");
+    // For human partners with NULL di_partner_id, set to their first approved DI
+    const humansMissingDI = await sql`
+      SELECT DISTINCT ON (dr.partner_user_id) dr.partner_user_id, dr.di_user_id,
+             u2.username AS partner_username, u1.username AS di_username
+      FROM di_requests dr
+      JOIN users u1 ON u1.id = dr.di_user_id
+      JOIN users u2 ON u2.id = dr.partner_user_id
+      WHERE dr.status = 'approved'
+        AND u2.di_partner_id IS NULL
+      ORDER BY dr.partner_user_id, dr.created_at ASC
+    `;
+    for (const row of humansMissingDI.rows) {
+      await sql`
+        UPDATE users SET di_partner_id = ${row.di_user_id}
+        WHERE id = ${row.partner_user_id} AND di_partner_id IS NULL
+      `;
+      report.push(`OK @${row.partner_username}: di_partner_id → @${row.di_username} (first approved DI)`);
+      totalRepaired++;
+    }
+    if (unlinkedDIs.rows.length === 0 && humansMissingDI.rows.length === 0) {
+      report.push("SKIP: All DI partnerships are properly linked");
     }
 
     // ── 11. Fix DI submissions missing di_partner_id ──
@@ -343,6 +361,56 @@ export async function POST(request: NextRequest) {
     }
     report.push(`Fixed ${diSubsNoPartner.rows.length} DI submission(s) missing di_partner_id`);
     totalRepaired += diSubsNoPartner.rows.length;
+
+    // ── 12. Backfill missing "Submission filed" audit entries ──
+    report.push("\n--- Backfill missing Submission filed audit logs ---");
+    const subsNoCreateAudit = await sql`
+      SELECT s.id, s.submitted_by, s.org_id, s.created_at, u.username
+      FROM submissions s
+      JOIN users u ON u.id = s.submitted_by
+      WHERE NOT EXISTS (
+        SELECT 1 FROM audit_log al
+        WHERE al.entity_type = 'submission' AND al.entity_id = s.id
+          AND (al.action LIKE 'Submission created%' OR al.action LIKE 'New submission%'
+               OR al.action = 'Submitted correction' OR al.action LIKE 'Submission filed%')
+      )
+    `;
+    for (const sub of subsNoCreateAudit.rows) {
+      await sql`
+        INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata, created_at)
+        VALUES (
+          'Submission filed (backfilled)',
+          ${sub.submitted_by}, ${sub.org_id}, 'submission', ${sub.id},
+          ${JSON.stringify({ repairedAt: new Date().toISOString(), note: "Backfilled — original audit entry was lost due to broken sql`` transactions" })},
+          ${sub.created_at}
+        )
+      `;
+    }
+    report.push(`Backfilled ${subsNoCreateAudit.rows.length} missing Submission filed audit log(s)`);
+    totalRepaired += subsNoCreateAudit.rows.length;
+
+    // ── 13. Backfill missing evidence rows with placeholder ──
+    report.push("\n--- Backfill missing evidence rows ---");
+    const subsNoEvidence = await sql`
+      SELECT s.id, s.submitted_by, s.url, u.username
+      FROM submissions s
+      JOIN users u ON u.id = s.submitted_by
+      WHERE NOT EXISTS (
+        SELECT 1 FROM submission_evidence se WHERE se.submission_id = s.id
+      )
+    `;
+    for (const sub of subsNoEvidence.rows) {
+      await sql`
+        INSERT INTO submission_evidence (submission_id, url, description)
+        VALUES (
+          ${sub.id},
+          ${sub.url || 'https://repair-placeholder'},
+          ${'(backfilled) Original evidence was lost due to broken sql`` transactions'}
+        )
+      `;
+    }
+    report.push(`Backfilled ${subsNoEvidence.rows.length} submission(s) missing evidence rows`);
+    totalRepaired += subsNoEvidence.rows.length;
 
     // ── Audit the repair itself ──
     await sql`
