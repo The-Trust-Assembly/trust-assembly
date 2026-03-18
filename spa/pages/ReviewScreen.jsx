@@ -257,7 +257,7 @@ export default function ReviewScreen({ user }) {
   };
 
   const renderItem = (sub, isCross) => {
-    const seats = isCross ? (sub.crossGroupJurySize || sub.crossGroupJurors.length) : (sub.jurySeats || sub.jurors.length);
+    const seats = isCross ? (sub.crossGroupJurySize || (sub.crossGroupJurors || []).length) : (sub.jurySeats || (sub.jurors || []).length);
     const accepted = isCross ? (sub.crossGroupAcceptedJurors || []).length : (sub.acceptedJurors || []).length;
     const votesIn = isCross ? Object.keys(sub.crossGroupVotes || {}).length : Object.keys(sub.votes || {}).length;
     const needed = getMajority(seats);
@@ -271,7 +271,7 @@ export default function ReviewScreen({ user }) {
         </div>
       </div>
       <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
-      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", padding: "4px 8px", background: "#F0FDFA", borderRadius: 8, marginTop: 6 }}>🌐 Cross-group jury: {juryTotal} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {sub.orgName}</div>}
+      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", padding: "4px 8px", background: "#F0FDFA", borderRadius: 8, marginTop: 6 }}>🌐 Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {sub.orgName}</div>}
       <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
         <SubHeadline sub={sub} />
       </div>
@@ -384,7 +384,7 @@ export default function ReviewScreen({ user }) {
         </div>
       ) : (() => {
         const accepted = isCross ? (sub.crossGroupAcceptedJurors || []) : (sub.acceptedJurors || []);
-        const seats = isCross ? (sub.crossGroupJurySize || sub.crossGroupJurors.length) : (sub.jurySeats || sub.jurors.length);
+        const seats = isCross ? (sub.crossGroupJurySize || (sub.crossGroupJurors || []).length) : (sub.jurySeats || (sub.jurors || []).length);
         const alreadyAccepted = accepted.includes(user.username);
         const startReview = () => {
           setReviewingId(sub.id); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false);
@@ -506,7 +506,7 @@ export default function ReviewScreen({ user }) {
                 <div style={{ fontSize: 13, color: "#1E293B" }}>{d.status === "upheld" ? "The dispute was upheld — the original submission was found to be wrong." : "The dispute was dismissed — the original submission stands."}</div>
                 <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>Votes: {upheldCount} uphold / {rejectedCount} dismiss</div>
               </div>}
-              {d.status === "pending_review" && <div style={{ fontSize: 11, color: "#D97706" }}>Jury review in progress — {voteCount}/{d.jurors.length} votes cast</div>}
+              {d.status === "pending_review" && <div style={{ fontSize: 11, color: "#D97706" }}>Jury review in progress — {voteCount}/{(d.jurors || []).length} votes cast</div>}
               {jurorNotes.length > 0 && <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>Juror Notes</div>
                 {jurorNotes.map((jn, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: jn.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${jn.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>

@@ -15,6 +15,9 @@ export default function ProfileScreen({ user, onViewCitizen }) {
   const [juryScore, setJuryScore] = useState(null);
   const [diAgents, setDiAgents] = useState([]);
   const [loadError, setLoadError] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => { (async () => {
     try {
       const all = (await sG(SK.USERS)) || {}; if (all[user.username]) setU(all[user.username]);
@@ -37,7 +40,39 @@ export default function ProfileScreen({ user, onViewCitizen }) {
   if (loadError) return <div className="ta-error" style={{ margin: 20 }}>{loadError}</div>;
   return (
     <div>
-      <div className="ta-section-rule" /><h2 className="ta-section-head">Citizen Record</h2>
+      <div className="ta-section-rule" />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h2 className="ta-section-head" style={{ margin: 0 }}>Citizen Record</h2>
+        {!showDeleteConfirm && <button onClick={() => setShowDeleteConfirm(true)} style={{ fontSize: 11, fontFamily: "var(--mono)", padding: "5px 12px", background: "transparent", color: "#DC2626", border: "1px solid #DC262640", borderRadius: 6, cursor: "pointer", letterSpacing: "0.03em" }}>Delete Account</button>}
+      </div>
+
+      {showDeleteConfirm && (
+        <div style={{ margin: "12px 0", padding: 16, background: "#FEF2F2", border: "2px solid #DC2626", borderRadius: 8 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: "#DC2626", fontWeight: 700, marginBottom: 8 }}>Permanently Delete Account</div>
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.7, marginBottom: 10 }}>
+            This action is <strong>permanent and cannot be undone</strong>. If you proceed:
+          </div>
+          <div style={{ fontSize: 12, color: "#991B1B", lineHeight: 1.8, marginBottom: 12, paddingLeft: 8 }}>
+            <div>Your username on all past submissions will be replaced with random characters.</div>
+            <div>Your votes, review history, and reputation data will be permanently removed.</div>
+            <div>Your assembly memberships and jury assignments will be deleted.</div>
+            <div>Your personal information (name, email, demographics) will be erased.</div>
+          </div>
+          <div style={{ fontSize: 12, color: "#475569", marginBottom: 8 }}>Type <strong>@{u.username}</strong> to confirm:</div>
+          <input value={deleteInput} onChange={e => setDeleteInput(e.target.value)} placeholder={"@" + u.username} style={{ width: "100%", maxWidth: 280, padding: "6px 10px", fontSize: 13, border: "1px solid #E2E8F0", borderRadius: 6, fontFamily: "var(--mono)", boxSizing: "border-box" }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button disabled={deleteInput !== "@" + u.username || deleting} onClick={async () => {
+              setDeleting(true);
+              try {
+                const res = await fetch("/api/users/me/delete", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmUsername: u.username }) });
+                if (res.ok) { await fetch("/api/auth/logout", { method: "POST" }); window.location.reload(); }
+                else { const d = await res.json().catch(() => ({})); alert(d.error || "Failed to delete account"); setDeleting(false); }
+              } catch { alert("Network error"); setDeleting(false); }
+            }} style={{ fontSize: 11, fontFamily: "var(--mono)", padding: "6px 16px", background: deleteInput === "@" + u.username && !deleting ? "#DC2626" : "#E2E8F0", color: deleteInput === "@" + u.username && !deleting ? "#fff" : "#94A3B8", border: "none", borderRadius: 6, cursor: deleteInput === "@" + u.username && !deleting ? "pointer" : "not-allowed", fontWeight: 700 }}>{deleting ? "Deleting..." : "Permanently Delete My Account"}</button>
+            <button onClick={() => { setShowDeleteConfirm(false); setDeleteInput(""); }} style={{ fontSize: 11, fontFamily: "var(--mono)", padding: "6px 16px", background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 6, cursor: "pointer" }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Visible Penalty Banner */}
       {hasActiveDeceptionPenalty(u) && (() => {
