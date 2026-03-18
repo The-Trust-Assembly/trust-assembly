@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       SELECT
         s.id, s.status, s.submitted_by, s.org_id, s.is_di, s.di_partner_id,
         s.resolved_at, s.deliberate_lie_finding, s.jury_seats, s.cross_group_jury_size,
-        s.cross_group_seed, s.created_at,
+        s.cross_group_seed, s.created_at, s.trusted_skip,
         u.username AS submitter_username,
         o.name AS org_name
       FROM submissions s
@@ -277,10 +277,19 @@ export async function POST(request: NextRequest) {
         (a.action as string)?.includes("Admin: wild-west") ||
         (a.action as string)?.includes("admin_approve_pending")
       );
+      const wasTrustedSkip = sub.trusted_skip === true;
+      // Detect historical batch-approved submissions: backfilled audit + 0 votes
+      // is the signature of subs approved via admin bulk endpoint before audit logging worked
+      const wasLikelyBatchApproved = !wasAdminApproved && inGroupVotes.length === 0 &&
+        audits.some(a => (a.action as string)?.includes("backfilled by repair script"));
       if (isResolved || isCrossReview) {
         if (inGroupVotes.length === 0) {
           if (wasAdminApproved) {
             steps.push({ step: "In-group votes", status: "OK", expected: "Admin-approved (no jury vote required)", actual: "0 votes — resolved by admin bulk-approval" });
+          } else if (wasTrustedSkip) {
+            steps.push({ step: "In-group votes", status: "OK", expected: "Trusted skip (streak >= 10)", actual: "0 votes — auto-approved via trusted streak" });
+          } else if (wasLikelyBatchApproved) {
+            steps.push({ step: "In-group votes", status: "OK", expected: "Likely admin batch-approved (historical)", actual: "0 votes — audit log is backfilled, original admin action lost" });
           } else {
             steps.push({ step: "In-group votes", status: "MISSING", expected: "At least 1 vote", actual: "0 votes" });
             issues.push("No in-group votes found for resolved/cross_review submission");

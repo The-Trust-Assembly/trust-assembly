@@ -3,6 +3,25 @@ import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, err } from "@/lib/api-utils";
 
+function normalizeUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw);
+    parsed.hostname = parsed.hostname.replace(/^www\./, "");
+    parsed.hash = "";
+    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
+      parsed.pathname = parsed.pathname.slice(0, -1);
+    }
+    const trackingParams = [
+      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+      "fbclid", "gclid", "ref", "source",
+    ];
+    trackingParams.forEach((p) => parsed.searchParams.delete(p));
+    return parsed.toString();
+  } catch {
+    return raw;
+  }
+}
+
 // POST /api/admin/repair-data
 // Repairs historical data damage caused by broken sql`` transactions.
 // Admin-only. Idempotent — safe to run multiple times.
@@ -21,6 +40,9 @@ import { ok, forbidden, err } from "@/lib/api-utils";
 // 11. DI submissions missing di_partner_id
 // 12. Missing "Submission filed" audit log entries
 // 13. Missing evidence rows (backfilled with placeholder)
+// 14. di_pending submissions missing di_partner_id
+// 15. di_pending submissions with is_di=FALSE
+// 16. NULL normalized_url on submissions (invisible to corrections API)
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -442,6 +464,23 @@ export async function POST(request: NextRequest) {
     `;
     report.push(`Fixed ${diPendingNotMarked.rows.length} di_pending submission(s) with is_di=FALSE`);
     totalRepaired += diPendingNotMarked.rows.length;
+
+    // ── 16. Backfill NULL normalized_url on submissions ──
+    report.push("\n--- Backfill NULL normalized_url ---");
+    const nullUrlSubs = await sql`
+      SELECT id, url FROM submissions
+      WHERE normalized_url IS NULL AND url IS NOT NULL
+    `;
+    let urlsFixed = 0;
+    for (const sub of nullUrlSubs.rows) {
+      const normalized = normalizeUrl(sub.url as string);
+      await sql`
+        UPDATE submissions SET normalized_url = ${normalized} WHERE id = ${sub.id}
+      `;
+      urlsFixed++;
+    }
+    report.push(`Backfilled ${urlsFixed} submission(s) with NULL normalized_url`);
+    totalRepaired += urlsFixed;
 
     // ── Audit the repair itself ──
     await sql`
