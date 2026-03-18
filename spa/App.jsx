@@ -452,18 +452,18 @@ export default function TrustAssembly() {
               {HERO_SLIDES[heroIdx].layout === "columns" ? (
                 <>
                   <div style={{ display: "flex", gap: 16, marginBottom: 6, padding: "0 4px" }}>
-                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
                     <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
                   </div>
                   <div style={{ display: "flex", gap: 16, minHeight: 200 }}>
-                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.55 }}>{HERO_SLIDES[heroIdx].before}</div>
+                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.72 }}>{HERO_SLIDES[heroIdx].before}</div>
                     <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
                   </div>
                 </>
               ) : (
                 <div style={{ maxWidth: 520, margin: "0 auto" }}>
-                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em" }}>BEFORE</span></div>
-                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.55, marginBottom: 12 }}>{HERO_SLIDES[heroIdx].before}</div>
+                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.72, marginBottom: 12 }}>{HERO_SLIDES[heroIdx].before}</div>
                   <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
                   <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
                 </div>

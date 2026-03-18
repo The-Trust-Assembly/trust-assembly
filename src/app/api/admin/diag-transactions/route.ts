@@ -1178,6 +1178,51 @@ export async function POST(request: NextRequest) {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // SECTION K2: DI ACCOUNTS IN JURY ASSIGNMENTS
+  // DI accounts (is_di=TRUE) should never be assigned as jurors.
+  // Only human accounts should appear in jury_assignments.
+  // ═══════════════════════════════════════════════════════════════════
+
+  try {
+    const diJurors = await sql`
+      SELECT ja.submission_id, ja.user_id, u.username, u.is_di,
+             s.status AS sub_status, s.submitted_by, o.name AS org_name
+      FROM jury_assignments ja
+      JOIN users u ON u.id = ja.user_id
+      JOIN submissions s ON s.id = ja.submission_id
+      LEFT JOIN organizations o ON o.id = s.org_id
+      WHERE u.is_di = TRUE
+      ORDER BY s.created_at DESC
+    `;
+
+    const diJurorCount = diJurors.rows.length;
+
+    results.push({
+      name: "DI accounts in jury assignments",
+      status: diJurorCount === 0 ? "PASS" : "FAIL",
+      description: diJurorCount === 0
+        ? "No DI accounts found in jury assignments. Only human accounts are assigned as jurors."
+        : `Found ${diJurorCount} jury assignment(s) where a DI account was assigned as juror. DI accounts should never be jurors — only their human partner should receive review assignments.`,
+      rootCause: "Jury pool queries in POST /submissions and POST /submissions/[id]/di-review must JOIN users and filter u.is_di = FALSE to exclude DI accounts from the jury pool.",
+      remediation: "CODE FIX: Add JOIN users u ON u.id = om.user_id AND u.is_di = FALSE to jury pool queries in submissions/route.ts and di-review/route.ts. DATA REPAIR: DELETE FROM jury_assignments WHERE user_id IN (SELECT id FROM users WHERE is_di = TRUE) to clean up historical bad assignments.",
+      codeFixed: true,
+      details: {
+        diJurorCount,
+        diJurors: diJurors.rows.map((r: Record<string, unknown>) => ({
+          submissionId: r.submission_id,
+          userId: r.user_id,
+          username: r.username,
+          orgName: r.org_name,
+          submissionStatus: r.sub_status,
+        })),
+      },
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    results.push({ name: "DI accounts in jury assignments", status: "ERROR", description: `Errored: ${msg}`, details: { error: msg } });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // SECTION L: PIPELINE STAGE AUDIT (DRY-RUN)
   // Traces every live submission through the pipeline stages:
   //   Created → Jury Assigned → Visible in Queue → Votes → Resolution → Published

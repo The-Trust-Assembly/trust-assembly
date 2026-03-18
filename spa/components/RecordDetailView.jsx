@@ -94,16 +94,33 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
         </div>
       )}
 
-      {/* Juror notes — visible after resolution, especially important for rejections */}
+      {/* Jury verdict tally + individual votes — visible after resolution */}
       {sub.resolvedAt && (() => {
         const allVotes = { ...(sub.votes || {}), ...(sub.crossGroupVotes || {}) };
-        const notes = Object.entries(allVotes).filter(([, v]) => v.note && v.note.trim()).map(([voter, v]) => ({ voter: sub.anonMap?.[voter] || voter, note: v.note, approve: v.approve, time: v.time }));
-        if (notes.length === 0) return null;
+        const voteEntries = Object.entries(allVotes);
+        if (voteEntries.length === 0) return null;
+        const approveCount = voteEntries.filter(([, v]) => v.approve).length;
+        const rejectCount = voteEntries.filter(([, v]) => !v.approve).length;
+        const isRejected = ["rejected", "consensus_rejected"].includes(sub.status);
+        const allJurorRows = voteEntries.map(([voter, v]) => ({
+          voter: sub.anonMap?.[voter] || voter,
+          note: (v.note && v.note.trim()) ? v.note : "N/A — resolved before detailed review notes were recorded",
+          approve: v.approve,
+          time: v.time,
+          hasNote: !!(v.note && v.note.trim()),
+        }));
         return (
-          <div style={{ marginTop: 14, padding: 12, background: ["rejected", "consensus_rejected"].includes(sub.status) ? "#FEF2F2" : "#F1F5F9", borderRadius: 8, border: `1px solid ${["rejected", "consensus_rejected"].includes(sub.status) ? "#DC262640" : "#E2E8F0"}` }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>Juror Review Notes ({notes.length})</div>
-            {notes.map((n, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: n.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${n.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
-              <span style={{ fontSize: 10, color: n.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{n.approve ? "APPROVE" : "REJECT"}</span> — {n.note}
+          <div style={{ marginTop: 14, padding: 12, background: isRejected ? "#FEF2F2" : "#F1F5F9", borderRadius: 8, border: `1px solid ${isRejected ? "#DC262640" : "#E2E8F0"}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569" }}>Jury Verdict</div>
+              <div style={{ fontSize: 11, fontFamily: "var(--mono)", fontWeight: 700 }}>
+                <span style={{ color: "#059669" }}>{approveCount} Approve</span>
+                <span style={{ color: "#64748B", margin: "0 4px" }}>&middot;</span>
+                <span style={{ color: "#DC2626" }}>{rejectCount} Reject</span>
+              </div>
+            </div>
+            {allJurorRows.map((n, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: n.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${n.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
+              <span style={{ fontSize: 10, color: n.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{n.approve ? "APPROVE" : "REJECT"}</span> — <span style={n.hasNote ? {} : { color: "#94A3B8", fontStyle: "italic" }}>{n.note}</span>
             </div>)}
           </div>
         );
