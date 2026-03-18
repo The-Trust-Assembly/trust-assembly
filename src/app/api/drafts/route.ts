@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const result = await sql`
     SELECT id, url, title, updated_at, created_at
     FROM submission_drafts
-    WHERE user_id = ${user.id}
+    WHERE user_id = ${user.sub}
     ORDER BY updated_at DESC
   `;
 
@@ -44,13 +44,13 @@ export async function POST(request: NextRequest) {
 
   // Check if this is an update to existing draft or a new one
   const existing = await sql`
-    SELECT id FROM submission_drafts WHERE user_id = ${user.id} AND url = ${url}
+    SELECT id FROM submission_drafts WHERE user_id = ${user.sub} AND url = ${url}
   `;
 
   if (existing.rows.length === 0) {
     // New draft — enforce max limit
     const countResult = await sql`
-      SELECT COUNT(*)::int AS cnt FROM submission_drafts WHERE user_id = ${user.id}
+      SELECT COUNT(*)::int AS cnt FROM submission_drafts WHERE user_id = ${user.sub}
     `;
     if (countResult.rows[0].cnt >= MAX_DRAFTS) {
       return err(`Maximum ${MAX_DRAFTS} saved drafts. Delete one to save a new draft.`, 409);
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
   const result = await sql`
     INSERT INTO submission_drafts (user_id, url, title, draft_data)
-    VALUES (${user.id}, ${url}, ${title || null}, ${JSON.stringify(draftData)})
+    VALUES (${user.sub}, ${url}, ${title || null}, ${JSON.stringify(draftData)})
     ON CONFLICT (user_id, url) DO UPDATE SET
       draft_data = ${JSON.stringify(draftData)},
       title = ${title || null},

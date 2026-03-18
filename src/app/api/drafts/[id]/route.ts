@@ -15,7 +15,7 @@ export async function GET(
   const result = await sql`
     SELECT id, url, title, draft_data, updated_at, created_at
     FROM submission_drafts
-    WHERE id = ${id} AND user_id = ${user.id}
+    WHERE id = ${id} AND user_id = ${user.sub}
   `;
 
   if (result.rows.length === 0) return err("Draft not found", 404);
@@ -44,7 +44,7 @@ export async function DELETE(
   const { id } = await params;
   const result = await sql`
     DELETE FROM submission_drafts
-    WHERE id = ${id} AND user_id = ${user.id}
+    WHERE id = ${id} AND user_id = ${user.sub}
     RETURNING id
   `;
 

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const result = await sql`
     SELECT id, url, title, draft_data, updated_at, created_at
     FROM submission_drafts
-    WHERE user_id = ${user.id} AND url = ${url}
+    WHERE user_id = ${user.sub} AND url = ${url}
   `;
 
   if (result.rows.length === 0) {
