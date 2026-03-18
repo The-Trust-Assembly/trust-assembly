@@ -346,6 +346,8 @@ export default function TrustAssembly() {
         .ta-field input,.ta-field textarea,.ta-field select { width:100%; padding:9px 11px; border:1.5px solid var(--brass); background:var(--vellum); font-family:var(--font); font-size:14px; color:var(--charcoal); border-radius:6px; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
         .ta-field input:focus,.ta-field textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
         .ta-field textarea { resize:vertical; }
+        .ta-input { box-sizing:border-box; border:1.5px solid var(--brass); background:var(--vellum); font-family:var(--font); font-size:14px; color:var(--charcoal); border-radius:6px; outline:none; transition:border-color 0.2s; }
+        .ta-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
         .ta-btn-primary { background:var(--accent); color:#fff; border:none; padding:10px 20px; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; border-radius:6px; transition:background 0.2s; }
         .ta-btn-primary:hover { background:var(--accent-hover); }
         .ta-btn-primary:disabled { background:var(--stone); cursor:not-allowed; }

@@ -13,6 +13,7 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [subs, setSubs] = useState({});
 
   // Create form state
   const [showCreate, setShowCreate] = useState(false);
@@ -22,9 +23,10 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
-    const [storiesData, orgsData] = await Promise.all([sG(SK.STORIES), sG(SK.ORGS)]);
+    const [storiesData, orgsData, subsData] = await Promise.all([sG(SK.STORIES), sG(SK.ORGS), sG(SK.SUBS)]);
     setStories(storiesData || {});
     setOrgs(orgsData || {});
+    setSubs(subsData || {});
     setLoading(false);
   }, []);
 
@@ -216,7 +218,7 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
                 story={s}
                 user={user}
                 orgs={orgs}
-                allSubs={stories}
+                allSubs={subs}
                 onCollapse={() => setExpandedId(null)}
                 onReload={load}
                 onViewCitizen={onViewCitizen}
