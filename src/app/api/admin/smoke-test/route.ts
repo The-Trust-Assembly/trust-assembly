@@ -322,7 +322,7 @@ export async function POST(request: NextRequest) {
           AND s.normalized_url = ${normalizedUrl}
       `;
 
-      const found = corrResult.rows.some((r: { id: string }) => r.id === ghostIds.submissionId);
+      const found = corrResult.rows.some((r) => (r as { id: string }).id === ghostIds.submissionId);
 
       return {
         status: found ? "PASS" as const : "FAIL" as const,
