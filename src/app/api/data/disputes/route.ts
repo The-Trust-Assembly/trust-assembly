@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/data/disputes — returns ALL disputes keyed by ID
 // in the format the v5 SPA expects.
-// This replaces sG(SK.DISPUTES) reads from the deprecated KV store.
+// Serves sG(SK.DISPUTES) reads from the relational database.
 export async function GET() {
   try {
   const result = await sql`

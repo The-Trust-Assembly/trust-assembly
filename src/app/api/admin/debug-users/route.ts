@@ -66,15 +66,7 @@ export async function GET(request: NextRequest) {
     membershipMap[uid].push({ orgId: row.org_id as string, orgName: row.org_name as string });
   }
 
-  // 6. KV store user data for comparison
-  const kvData = await sql`
-    SELECT key, LENGTH(value::text) AS size
-    FROM kv_store
-    WHERE key LIKE '%user%' OR key LIKE '%User%'
-    ORDER BY key
-  `;
-
-  // 7. For each ghost, get full details
+  // 6. For each ghost, get full details
   const ghostDetails = [];
   for (const ghostUsername of ghosts) {
     const row = dbUsers.rows.find(r => r.username === ghostUsername);
@@ -112,6 +104,5 @@ export async function GET(request: NextRequest) {
       orgCount: (membershipMap[r.id as string] || []).length,
       createdAt: r.created_at,
     })),
-    kvUserKeys: kvData.rows,
   });
 }

@@ -272,23 +272,6 @@ export async function GET(request: NextRequest) {
   }
 
   // ═══════════════════════════════════════════════════
-  // 7. KV STORE: legacy data that might conflict
-  // ═══════════════════════════════════════════════════
-  try {
-    const kvAll = await sql`
-      SELECT key, LENGTH(value::text) AS size
-      FROM kv_store
-      ORDER BY key
-    `;
-    report.kvStore = {
-      totalKeys: kvAll.rows.length,
-      keys: kvAll.rows.map(r => ({ key: r.key, sizeBytes: parseInt(r.size as string) })),
-    };
-  } catch (e) {
-    report.kvStore = { error: (e as Error).message };
-  }
-
-  // ═══════════════════════════════════════════════════
   // 8. WRITE PATH TESTS: verify each write endpoint works
   // ═══════════════════════════════════════════════════
   report.writePathNotes = {

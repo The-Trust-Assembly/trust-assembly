@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/data/submissions — returns ALL submissions keyed by ID
 // in the format the v5 SPA expects (camelCase, nested votes/jurors/evidence).
-// This replaces sG(SK.SUBS) reads from the deprecated KV store.
+// Serves sG(SK.SUBS) reads from the relational database.
 export async function GET() {
   try {
   // ── Auto-promote pending_jury → pending_review ──

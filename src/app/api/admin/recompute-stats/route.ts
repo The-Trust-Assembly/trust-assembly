@@ -142,50 +142,6 @@ export async function POST(request: NextRequest) {
     report.push(`Streak: @${row.username} → ${row.new_streak}`);
   }
 
-  // 7. Also try to pull from KV store if relational data shows 0
-  const kvResult = await sql`
-    SELECT key, value FROM kv_store WHERE key LIKE 'ta-u-%'
-  `;
-  let kvBackfills = 0;
-  for (const row of kvResult.rows) {
-    try {
-      const kvData = typeof row.value === "string" ? JSON.parse(row.value) : row.value;
-      if (!kvData || typeof kvData !== "object") continue;
-      for (const [username, userData] of Object.entries(kvData as Record<string, Record<string, unknown>>)) {
-        if (!userData || typeof userData !== "object") continue;
-        const kvWins = (userData.totalWins as number) || 0;
-        const kvLosses = (userData.totalLosses as number) || 0;
-        const kvStreak = (userData.currentStreak as number) || 0;
-        const kvDW = (userData.disputeWins as number) || 0;
-        const kvDL = (userData.disputeLosses as number) || 0;
-        const kvLies = (userData.deliberateLies as number) || 0;
-        if (kvWins === 0 && kvLosses === 0) continue;
-
-        const updated = await sql`
-          UPDATE users SET
-            total_wins = GREATEST(total_wins, ${kvWins}),
-            total_losses = GREATEST(total_losses, ${kvLosses}),
-            current_streak = GREATEST(current_streak, ${kvStreak}),
-            dispute_wins = GREATEST(dispute_wins, ${kvDW}),
-            dispute_losses = GREATEST(dispute_losses, ${kvDL}),
-            deliberate_lies = GREATEST(deliberate_lies, ${kvLies})
-          WHERE username = LOWER(${username})
-            AND (total_wins < ${kvWins} OR total_losses < ${kvLosses}
-              OR current_streak < ${kvStreak} OR dispute_wins < ${kvDW}
-              OR dispute_losses < ${kvDL} OR deliberate_lies < ${kvLies})
-          RETURNING username, total_wins, total_losses, current_streak
-        `;
-        if (updated.rows.length > 0) {
-          kvBackfills++;
-          const u = updated.rows[0];
-          report.push(`KV backfill: @${u.username} → wins=${u.total_wins} losses=${u.total_losses} streak=${u.current_streak}`);
-        }
-      }
-    } catch (e) {
-      report.push(`KV parse error for key ${row.key}: ${e}`);
-    }
-  }
-
   if (report.length === 0) {
     report.push("All user stats already match the source data. No changes needed.");
   }
@@ -193,12 +149,12 @@ export async function POST(request: NextRequest) {
   await sql`
     INSERT INTO audit_log (action, user_id, entity_type, metadata)
     VALUES (
-      'Admin recomputed user stats from submissions/disputes/KV',
+      'Admin recomputed user stats from submissions/disputes',
       ${admin.sub},
       'user',
-      ${JSON.stringify({ changes: report.length, kvBackfills, report })}
+      ${JSON.stringify({ changes: report.length, report })}
     )
   `;
 
-  return ok({ success: true, changes: report.length, kvBackfills, report });
+  return ok({ success: true, changes: report.length, report });
 }

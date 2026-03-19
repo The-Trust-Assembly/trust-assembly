@@ -219,19 +219,7 @@ export async function GET(request: NextRequest) {
     report.slowActions = { error: (e as Error).message };
   }
 
-  // ── Section G: KV Store Usage (deprecated endpoint hits) ──
-  try {
-    const kvHits = await sql`
-      SELECT COUNT(*) as cnt
-      FROM audit_log
-      WHERE action LIKE '%KV%' AND created_at >= ${cutoff}
-    `;
-    report.deprecatedKvHits = parseInt(kvHits.rows[0].cnt);
-  } catch (e) {
-    report.deprecatedKvHits = { error: (e as Error).message };
-  }
-
-  // ── Section H: Client-Reported Errors (from action-tracker flush) ──
+  // ── Section G: Client-Reported Errors (from action-tracker flush) ──
   try {
     const clientErrors = await sql`
       SELECT metadata, created_at
