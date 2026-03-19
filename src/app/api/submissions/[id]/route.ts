@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, notFound } from "@/lib/api-utils";
+import { getCurrentUserFromRequest } from "@/lib/auth";
+import { ok, err, notFound, unauthorized, forbidden } from "@/lib/api-utils";
+
+const GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutes
 
 // GET /api/submissions/[id] — submission detail with evidence and votes
 //
@@ -97,4 +100,86 @@ export async function GET(
     })),
     linkedEntries: linkedEntries.rows,
   });
+}
+
+// DELETE /api/submissions/[id] — delete own submission within 5-minute grace period
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getCurrentUserFromRequest(request);
+  if (!session) return unauthorized();
+
+  const { id } = await params;
+
+  const result = await sql`
+    SELECT id, submitted_by, created_at, status
+    FROM submissions WHERE id = ${id}
+  `;
+  if (result.rows.length === 0) return notFound("Submission not found");
+
+  const sub = result.rows[0];
+  if (sub.submitted_by !== session.sub) return forbidden("Can only delete your own submissions");
+
+  const elapsed = Date.now() - new Date(sub.created_at).getTime();
+  if (elapsed > GRACE_PERIOD_MS) return err("Grace period expired. Submissions can only be deleted within 5 minutes of creation.");
+
+  // Check if any votes have been cast
+  const votes = await sql`SELECT id FROM jury_votes WHERE submission_id = ${id} LIMIT 1`;
+  if (votes.rows.length > 0) return err("Cannot delete — a juror has already begun reviewing.");
+
+  // Delete related data and the submission
+  await sql`DELETE FROM submission_evidence WHERE submission_id = ${id}`;
+  await sql`DELETE FROM submission_inline_edits WHERE submission_id = ${id}`;
+  await sql`DELETE FROM submission_linked_entries WHERE submission_id = ${id}`;
+  await sql`DELETE FROM jury_assignments WHERE submission_id = ${id}`;
+  await sql`DELETE FROM submissions WHERE id = ${id}`;
+
+  return ok({ deleted: true });
+}
+
+// PATCH /api/submissions/[id] — edit own submission within 5-minute grace period
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getCurrentUserFromRequest(request);
+  if (!session) return unauthorized();
+
+  const { id } = await params;
+
+  const result = await sql`
+    SELECT id, submitted_by, created_at, status
+    FROM submissions WHERE id = ${id}
+  `;
+  if (result.rows.length === 0) return notFound("Submission not found");
+
+  const sub = result.rows[0];
+  if (sub.submitted_by !== session.sub) return forbidden("Can only edit your own submissions");
+
+  const elapsed = Date.now() - new Date(sub.created_at).getTime();
+  if (elapsed > GRACE_PERIOD_MS) return err("Grace period expired. Submissions can only be edited within 5 minutes of creation.");
+
+  const votes = await sql`SELECT id FROM jury_votes WHERE submission_id = ${id} LIMIT 1`;
+  if (votes.rows.length > 0) return err("Cannot edit — a juror has already begun reviewing.");
+
+  const body = await request.json();
+  const { originalHeadline, replacement, reasoning } = body;
+
+  const updates: string[] = [];
+  const values: unknown[] = [id];
+  let idx = 2;
+
+  if (originalHeadline !== undefined) { updates.push(`original_headline = $${idx++}`); values.push(originalHeadline); }
+  if (replacement !== undefined) { updates.push(`replacement = $${idx++}`); values.push(replacement); }
+  if (reasoning !== undefined) { updates.push(`reasoning = $${idx++}`); values.push(reasoning); }
+
+  if (updates.length === 0) return err("No fields to update");
+
+  await sql.query(
+    `UPDATE submissions SET ${updates.join(", ")} WHERE id = $1`,
+    values
+  );
+
+  return ok({ updated: true });
 }

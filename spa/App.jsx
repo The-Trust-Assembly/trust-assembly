@@ -290,7 +290,11 @@ export default function TrustAssembly() {
   }, [user, screen]);
 
   const refreshUser = async () => { try { if (!user) return; const users = (await sG(SK.USERS)) || {}; const u = users[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); } } catch {} };
-  useEffect(() => { if (user) refreshUser(); }, [screen]);
+  useEffect(() => {
+    if (user) refreshUser();
+    // Mark review-related notifications as read when the Review tab is opened
+    if (user && screen === "review") markNotifsRead();
+  }, [screen]);
 
   // Check if user has submitted feedback (to show Feedback nav item)
   useEffect(() => {

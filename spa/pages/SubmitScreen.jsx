@@ -27,6 +27,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const [linkedSubs, setLinkedSubs] = useState([]);
   const [evidenceUrls, setEvidenceUrls] = useState([{ url: "", explanation: "" }]);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [graceSubmissions, setGraceSubmissions] = useState([]); // { id, createdAt, orgName }
+  const [graceTimer, setGraceTimer] = useState(null);
   const [myOrgs, setMyOrgs] = useState([]);
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
 
@@ -197,18 +200,30 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   };
   const unlinkEntry = (id) => setLinkedEntries(prev => prev.filter(e => e.id !== id));
 
+  const validate = () => {
+    setError("");
+    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
+    if (targetOrgIds.length === 0) { setError("Select at least one Assembly."); return false; }
+    if (!form.url.trim() || !form.originalHeadline.trim()) { setError("URL and original headline required."); return false; }
+    if (form.submissionType === "correction" && !form.replacement.trim()) { setError("Corrected headline required for corrections."); return false; }
+    if (!form.reasoning.trim()) { setError("Reasoning is mandatory."); return false; }
+    if (form.url.trim().length > 2000) { setError("URL: 2000 character maximum."); return false; }
+    if (form.originalHeadline.trim().length > 500) { setError("Original headline: 500 character maximum."); return false; }
+    if (form.replacement.trim().length > 500) { setError("Replacement headline: 500 character maximum."); return false; }
+    if (form.reasoning.trim().length > 2000) { setError("Reasoning: 2000 character maximum."); return false; }
+    if (!/^https?:\/\/.+\..+/.test(form.url.trim())) { setError("Article URL must start with http:// or https://"); return false; }
+    return true;
+  };
+
+  const handleSubmitClick = () => {
+    if (!validate()) return;
+    setShowConfirm(true);
+  };
+
   const go = async () => {
+    setShowConfirm(false);
     setError(""); setSuccess("");
     const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
-    if (targetOrgIds.length === 0) return setError("Select at least one Assembly.");
-    if (!form.url.trim() || !form.originalHeadline.trim()) return setError("URL and original headline required.");
-    if (form.submissionType === "correction" && !form.replacement.trim()) return setError("Corrected headline required for corrections.");
-    if (!form.reasoning.trim()) return setError("Reasoning is mandatory.");
-    if (form.url.trim().length > 2000) return setError("URL: 2000 character maximum.");
-    if (form.originalHeadline.trim().length > 500) return setError("Original headline: 500 character maximum.");
-    if (form.replacement.trim().length > 500) return setError("Replacement headline: 500 character maximum.");
-    if (form.reasoning.trim().length > 2000) return setError("Reasoning: 2000 character maximum.");
-    if (!/^https?:\/\/.+\..+/.test(form.url.trim())) return setError("Article URL must start with http:// or https://");
     setLoading(true);
     // Filter non-empty inline edits and evidence (shared across all assemblies)
     const validEdits = inlineEdits.filter(e => e.original.trim() && e.replacement.trim());
@@ -299,6 +314,20 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
     }
     setLoading(false);
     if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
+    // Track grace period submissions
+    const graceItems = createdSubs.map(s => ({ id: s.id, createdAt: s.created_at || new Date().toISOString(), orgName: s.org_name || "assembly" }));
+    setGraceSubmissions(graceItems);
+    // Start 5-minute countdown
+    const endTime = Date.now() + 5 * 60 * 1000;
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      if (remaining <= 0) { setGraceTimer(null); setGraceSubmissions([]); return; }
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      setGraceTimer(`${mins}:${secs.toString().padStart(2, "0")}`);
+      setTimeout(updateTimer, 1000);
+    };
+    updateTimer();
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
     setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setAuthors([]); setAuthorInput(""); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrections([{ assertion: "", evidence: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArgs([""]); setSubmitArg(""); setSubmitBeliefs([""]); setSubmitBelief(""); setSubmitTranslations([{ original: "", translated: "", type: "clarity" }]); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setLinkedSubs([]); setSubSearch(""); setSubResults([]); setShowSubSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
     clearDraft("ta_draft_submit");
@@ -641,10 +670,45 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>}
       </div>
 
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowConfirm(false)}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, maxWidth: 440, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#0F172A", marginBottom: 8 }}>Ready to submit?</div>
+            <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.7, marginBottom: 16 }}>
+              You'll have <strong>5 minutes</strong> to edit or delete this submission before it goes out for jury review.
+              {selectedOrgIds.length > 0 && <> Submitting to: <strong>{myOrgs.filter(o => selectedOrgIds.includes(o.id)).map(o => o.name).join(", ")}</strong>.</>}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="ta-btn-primary" onClick={go} style={{ flex: 1 }}>Submit</button>
+              <button className="ta-btn-ghost" onClick={() => setShowConfirm(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grace Period Banner */}
+      {graceSubmissions.length > 0 && graceTimer && (
+        <div style={{ margin: "16px 0", padding: 16, background: "#ECFDF5", border: "1.5px solid #059669", borderRadius: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#059669", fontWeight: 700 }}>Grace Period Active</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 14, color: "#059669", fontWeight: 700 }}>{graceTimer}</div>
+          </div>
+          <div style={{ fontSize: 12, color: "#1E293B", lineHeight: 1.6, marginBottom: 10 }}>You can delete this submission before the timer expires and jury review begins.</div>
+          <button className="ta-btn-ghost" style={{ color: "#DC2626", fontSize: 11 }} onClick={async () => {
+            for (const gs of graceSubmissions) {
+              try { await fetch(`/api/submissions/${gs.id}`, { method: "DELETE" }); } catch {}
+            }
+            setGraceSubmissions([]); setGraceTimer(null);
+            setSuccess(""); setError("");
+          }}>Delete Submission</button>
+        </div>
+      )}
+
       {/* ── Submit & Save Draft Buttons ── */}
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #E2E8F0" }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-          <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
+          <button className="ta-btn-primary" onClick={handleSubmitClick} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
           <button onClick={saveDraft} disabled={savingDraft} style={{
             padding: "12px 16px", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 600,
             background: "#FFFBEB", color: "#CA8A04", border: "1.5px solid #CA8A04",

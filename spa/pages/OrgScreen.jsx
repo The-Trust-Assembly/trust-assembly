@@ -194,7 +194,25 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
   const switchActive = async (oid) => {
     if (!isMember(oid)) return;
-    await updateUser({ orgId: oid });
+    setError("");
+    try {
+      const res = await fetch(`/api/users/${user.username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId: oid }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to set active assembly. Please try again.");
+        return;
+      }
+    } catch (e) {
+      setError("Network error setting active assembly. Please try again.");
+      return;
+    }
+    onUpdate({ ...user, orgId: oid });
+    setSuccess("Active assembly updated.");
+    setTimeout(() => setSuccess(""), 2000);
   };
 
   const sponsorApp = async (appId) => {
@@ -504,7 +522,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
               </div>
               <div style={{ display: "flex", gap: 4 }}>
                 {!isActive && <button className="ta-btn-secondary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={() => switchActive(o.id)}>Set Active</button>}
-                {!isGP && <button className="ta-btn-ghost" style={{ color: "#DC2626", fontSize: 10, padding: "4px 8px" }} onClick={() => leaveOrg(o.id)}>Leave</button>}
+                {!isGP && <button className="ta-btn-ghost" style={{ color: "#DC2626", fontSize: 10, padding: "4px 8px" }} onClick={() => { if (window.confirm(`Leave "${o.name}"? You'll need to re-apply to rejoin.`)) leaveOrg(o.id); }}>Leave</button>}
               </div>
             </div>
           </div>
