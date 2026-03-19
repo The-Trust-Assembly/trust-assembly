@@ -4,6 +4,7 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { slugify } from "@/lib/slugify";
 
 function normalizeUrl(raw: string): string {
   try {
@@ -179,6 +180,7 @@ export async function POST(request: NextRequest) {
       await client.query("BEGIN");
 
       // Create submission (with normalized_url for indexed lookups)
+      // Generate slug from headline; ID suffix added after INSERT via a two-step approach
       const result = await client.query(
         `INSERT INTO submissions (
           submission_type, status, url, normalized_url, original_headline, replacement,
@@ -189,6 +191,10 @@ export async function POST(request: NextRequest) {
          replacement || null, reasoning, author || null,
          session.sub, targetOrg, trustedSkip, submitterIsDI, user.rows[0].di_partner_id || null, jurySeats]
       );
+      // Set slug now that we have the ID
+      const subSlug = slugify(originalHeadline, result.rows[0].id);
+      await client.query("UPDATE submissions SET slug = $1 WHERE id = $2", [subSlug, result.rows[0].id]);
+      result.rows[0].slug = subSlug;
       sub = result.rows[0];
 
       // Insert evidence if provided

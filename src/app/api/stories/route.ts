@@ -4,6 +4,7 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { slugify } from "@/lib/slugify";
 
 // GET /api/stories — list stories (filterable, searchable)
 export async function GET(request: NextRequest) {
@@ -124,6 +125,11 @@ export async function POST(request: NextRequest) {
       [title.trim(), description.trim(), initialStatus, session.sub, orgId]
     );
     story = result.rows[0];
+
+    // Set SEO-friendly slug
+    const storySlug = slugify(title.trim(), story.id as string);
+    await client.query("UPDATE stories SET slug = $1 WHERE id = $2", [storySlug, story.id]);
+    story.slug = storySlug;
 
     // Audit log
     await client.query(
