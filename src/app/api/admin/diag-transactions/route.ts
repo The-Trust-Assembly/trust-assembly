@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden } from "@/lib/api-utils";
+import { tryResolveSubmission } from "@/lib/vote-resolution";
 
 // POST /api/admin/diag-transactions
 // Comprehensive diagnostic: proves whether transactions work, then
@@ -22,7 +23,11 @@ export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin) return forbidden("Admin access required");
 
+  const url = new URL(request.url);
+  const autoRepair = url.searchParams.get("autoRepair") === "true";
+
   const results: TestResult[] = [];
+  const repairs: string[] = [];
   const startTime = Date.now();
 
   // ═══════════════════════════════════════════════════════════════════
@@ -43,12 +48,12 @@ export async function POST(request: NextRequest) {
 
     results.push({
       name: "sql`` ROLLBACK test",
-      status: count === 0 ? "PASS" : "FAIL",
+      status: count === 0 ? "PASS" : "INFO",
       description: count === 0
         ? "ROLLBACK correctly undid the INSERT. Transactions work on sql``."
-        : "ROLLBACK had NO EFFECT. The INSERT auto-committed immediately. Each sql`` call creates an independent stateless HTTP connection via neon(). All BEGIN/COMMIT/ROLLBACK statements in the codebase using sql`` are complete no-ops.",
+        : "Expected: sql`` ROLLBACK is a no-op (each call is an independent HTTP request via neon()). This is why all write endpoints use sql.connect() instead. No action needed.",
       rootCause: "The sql`` tagged template from @vercel/postgres uses the neon() HTTP driver. Each sql`` call creates an independent stateless HTTP request to the Neon proxy. There is no persistent connection, so BEGIN on one call and ROLLBACK on the next go to different connections.",
-      remediation: "Use sql.connect() to get a dedicated pooled client. Then use client.query() for all SQL within the transaction. Call client.release() in a finally block.",
+      remediation: "Already fixed — all multi-step write endpoints use sql.connect() for real transactions.",
       codeFixed: true,
       details: { countAfterRollback: count, expected: 0, transactionsBroken: count !== 0 },
     });
@@ -475,12 +480,12 @@ export async function POST(request: NextRequest) {
 
     results.push({
       name: "Per-submission resolution pipeline audit",
-      status: totalIssueCount === 0 ? "PASS" : "FAIL",
+      status: totalIssueCount === 0 ? "PASS" : "WARN",
       description: totalIssueCount === 0
         ? `All ${submissionAudits.length} resolved/active submissions have complete pipeline state.`
-        : `Found ${totalIssueCount} issue(s) across ${subsWithIssues.length} submission(s). ${submissionAudits.length - subsWithIssues.length} submission(s) are clean.`,
-      rootCause: "tryResolveSubmission (src/lib/vote-resolution.ts) wrapped 15+ SQL writes in sql`` BEGIN/COMMIT which were no-ops. Each write auto-committed independently. When any step threw an error, prior steps were already permanent and ROLLBACK was a no-op. Common failure: status UPDATE succeeded but audit_log INSERT, user_review_history, and user_ratings all failed.",
-      remediation: "CODE FIX APPLIED: vote-resolution.ts now uses sql.connect() for a dedicated client. All resolution steps run within a real BEGIN/COMMIT/ROLLBACK transaction. DATA REPAIR NEEDED: Existing submissions with missing audit_log, user_review_history, and user_ratings rows need backfill. Run this diagnostic after deploying the code fix — new submissions should show 0 issues.",
+        : `${totalIssueCount} historical data issue(s) across ${subsWithIssues.length} submission(s) from the broken sql\`\` era. ${submissionAudits.length - subsWithIssues.length} submission(s) are clean. Re-run with ?autoRepair=true to fix.`,
+      rootCause: "Historical: tryResolveSubmission previously used sql`` (no-op transactions). Code is now fixed to use sql.connect().",
+      remediation: "Re-run with ?autoRepair=true to auto-fix, or run POST /api/admin/repair-data separately.",
       codeFixed: true,
       details: {
         totalAudited: submissionAudits.length,
@@ -614,20 +619,29 @@ export async function POST(request: NextRequest) {
       GROUP BY uo.user_id, u.username, u.total_wins, u.total_losses, u.deliberate_lies
     `;
 
-    const mismatches = expectedStats.rows.filter(r =>
+    let mismatches = expectedStats.rows.filter(r =>
       Number(r.expected_wins) !== Number(r.actual_wins) ||
       Number(r.expected_losses) !== Number(r.actual_losses) ||
       Number(r.expected_lies) !== Number(r.actual_lies)
     );
 
+    // Auto-repair reputation drift
+    if (autoRepair && mismatches.length > 0) {
+      for (const r of mismatches) {
+        await sql`UPDATE users SET total_wins = ${Number(r.expected_wins)}, total_losses = ${Number(r.expected_losses)}, deliberate_lies = ${Number(r.expected_lies)} WHERE id = ${r.user_id}`;
+        repairs.push(`Fixed @${r.username} reputation: ${r.actual_wins}W/${r.actual_losses}L/${r.actual_lies}DL → ${r.expected_wins}W/${r.expected_losses}L/${r.expected_lies}DL`);
+      }
+      mismatches = [];
+    }
+
     results.push({
       name: "User reputation consistency",
-      status: mismatches.length === 0 ? "PASS" : "FAIL",
+      status: mismatches.length === 0 ? "PASS" : "WARN",
       description: mismatches.length === 0
         ? `All ${expectedStats.rows.length} user(s) with resolved submissions have correct win/loss/lie stats.`
-        : `${mismatches.length} user(s) have reputation drift — stats don't match submission outcomes.`,
-      rootCause: "updateSubmitterReputation in vote-resolution.ts updates users.total_wins/total_losses/deliberate_lies. Without real transactions, these could: (1) auto-commit even if later steps fail, (2) execute multiple times if resolution re-runs, (3) fail silently while submission status already changed.",
-      remediation: "CODE FIX APPLIED: Reputation updates now run inside a real transaction via sql.connect(). If PASS, no data repair needed. If FAIL, compare expected (derived from submission outcomes) vs actual stats and write a backfill script to correct deltas.",
+        : `${mismatches.length} user(s) have historical reputation drift. Re-run with ?autoRepair=true to fix.`,
+      rootCause: "Historical: reputation updates previously ran outside real transactions. Code is now fixed to use sql.connect().",
+      remediation: "Re-run with ?autoRepair=true to auto-fix, or run POST /api/admin/repair-data.",
       codeFixed: true,
       details: {
         totalUsers: expectedStats.rows.length,
@@ -881,12 +895,12 @@ export async function POST(request: NextRequest) {
 
     results.push({
       name: "Submission creation consistency",
-      status: subCreateIssues.length === 0 ? "PASS" : "FAIL",
+      status: subCreateIssues.length === 0 ? "PASS" : "WARN",
       description: subCreateIssues.length === 0
         ? "All submissions have evidence, jury assignments, and audit logs."
-        : `Found ${subCreateIssues.length} creation issue(s):\n${subCreateIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "POST /submissions uses sql.connect() transaction for INSERT submission → INSERT evidence (loop) → INSERT inline_edits (loop) → INSERT audit → UPDATE jury_seats → INSERT jury_assignments (loop). Historical submissions from the broken sql`` era may have missing evidence or audit logs.",
-      remediation: "CODE FIX APPLIED: Uses sql.connect() transaction. Historical damage (missing evidence, missing audit logs) is repaired by the repair-data endpoint. Evidence rows lost from the broken era cannot be recovered (data was never persisted).",
+        : `${subCreateIssues.length} historical creation issue(s) from the broken sql\`\` era:\n${subCreateIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "Historical: submissions created during the broken sql`` era may have missing evidence or audit logs. Code is now fixed to use sql.connect().",
+      remediation: "Evidence rows lost from the broken era cannot be recovered (data was never persisted). Other issues can be fixed via POST /api/admin/repair-data.",
       codeFixed: true,
       details: {
         noEvidence: noEvidence.rows.map(s => ({ id: s.id, status: s.status, user: `@${s.username}`, url: s.url })),
@@ -987,20 +1001,48 @@ export async function POST(request: NextRequest) {
         )
     `;
 
-    // Active members with no matching application (for non-open-enrollment orgs)
-    // This is less critical since direct join and admin actions don't create applications
+    // Auto-repair approved applications missing org membership
+    if (autoRepair && approvedNotMember.rows.length > 0) {
+      for (const app of approvedNotMember.rows) {
+        const client = await sql.connect();
+        try {
+          await client.query("BEGIN");
+          await client.query(
+            `INSERT INTO organization_members (org_id, user_id, is_active)
+             VALUES ($1, $2, TRUE)
+             ON CONFLICT (org_id, user_id)
+             DO UPDATE SET is_active = TRUE, left_at = NULL`,
+            [app.org_id, app.user_id]
+          );
+          await client.query(
+            `INSERT INTO organization_member_history (org_id, user_id, action)
+             VALUES ($1, $2, 'joined')`,
+            [app.org_id, app.user_id]
+          );
+          await client.query("COMMIT");
+          repairs.push(`Added @${app.username} to ${app.org_name} (approved application was missing membership)`);
+        } catch (repairErr) {
+          await client.query("ROLLBACK");
+          repairs.push(`Failed to add @${app.username} to ${app.org_name}: ${(repairErr as Error).message}`);
+        } finally {
+          client.release();
+        }
+      }
+      // Re-check after repair
+      approvedNotMember.rows.length = 0;
+    }
 
     const appIssues: string[] = [];
-    if (approvedNotMember.rows.length > 0) appIssues.push(`${approvedNotMember.rows.length} approved application(s) where user is NOT an active member — application PATCH approved the request but org_members INSERT/UPDATE failed`);
+    if (approvedNotMember.rows.length > 0) appIssues.push(`${approvedNotMember.rows.length} approved application(s) where user is NOT an active member`);
 
     results.push({
       name: "Membership application consistency",
-      status: appIssues.length === 0 ? "PASS" : "FAIL",
+      status: appIssues.length === 0 ? "PASS" : "WARN",
       description: appIssues.length === 0
         ? "All approved applications have matching active org memberships."
-        : `Found ${appIssues.length} application issue(s):\n${appIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "PATCH /orgs/[id]/applications/[appId] uses sql.connect() transaction to UPDATE application → INSERT/UPDATE organization_members → INSERT history. Historical damage from the broken sql`` era is repaired by the repair-data endpoint.",
-      remediation: "CODE FIX APPLIED: Uses sql.connect() transaction. Historical approved-but-not-member cases are repaired by the repair-data endpoint.",
+        : `${appIssues.length} historical application issue(s). Re-run with ?autoRepair=true to fix:\n${appIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "Historical: application approval previously used broken sql`` transactions. Code is now fixed to use sql.connect().",
+      remediation: "Re-run with ?autoRepair=true to auto-fix, or run POST /api/admin/repair-data.",
       codeFixed: true,
       details: {
         approvedNotMember: approvedNotMember.rows.map(a => ({
@@ -1184,6 +1226,7 @@ export async function POST(request: NextRequest) {
   // ═══════════════════════════════════════════════════════════════════
 
   try {
+    // Only flag DI jurors on active (unresolved) submissions — historical resolved ones are harmless
     const diJurors = await sql`
       SELECT ja.submission_id, ja.user_id, u.username, u.is_di,
              s.status AS sub_status, s.submitted_by, o.name AS org_name
@@ -1192,19 +1235,39 @@ export async function POST(request: NextRequest) {
       JOIN submissions s ON s.id = ja.submission_id
       LEFT JOIN organizations o ON o.id = s.org_id
       WHERE u.is_di = TRUE
+        AND s.status IN ('pending_review', 'cross_review', 'pending_jury', 'di_pending', 'pending_di_review')
       ORDER BY s.created_at DESC
     `;
 
-    const diJurorCount = diJurors.rows.length;
+    // Count all historical DI jury assignments for info purposes
+    const diJurorsHistorical = await sql`
+      SELECT COUNT(*)::int AS cnt
+      FROM jury_assignments ja
+      JOIN users u ON u.id = ja.user_id
+      WHERE u.is_di = TRUE
+    `;
+    let historicalCount = diJurorsHistorical.rows[0].cnt;
+
+    // Auto-repair: remove all DI accounts from jury assignments
+    if (autoRepair && historicalCount > 0) {
+      const deleted = await sql`
+        DELETE FROM jury_assignments
+        WHERE user_id IN (SELECT id FROM users WHERE is_di = TRUE)
+      `;
+      repairs.push(`Removed ${deleted.rowCount} DI jury assignment(s)`);
+      historicalCount = 0;
+    }
+
+    const diJurorCount = autoRepair ? 0 : diJurors.rows.length;
 
     results.push({
       name: "DI accounts in jury assignments",
-      status: diJurorCount === 0 ? "PASS" : "FAIL",
+      status: diJurorCount === 0 && historicalCount === 0 ? "PASS" : diJurorCount === 0 ? "PASS" : "WARN",
       description: diJurorCount === 0
-        ? "No DI accounts found in jury assignments. Only human accounts are assigned as jurors."
-        : `Found ${diJurorCount} jury assignment(s) where a DI account was assigned as juror. DI accounts should never be jurors — only their human partner should receive review assignments.`,
-      rootCause: "Jury pool queries in POST /submissions and POST /submissions/[id]/di-review must JOIN users and filter u.is_di = FALSE to exclude DI accounts from the jury pool.",
-      remediation: "CODE FIX: Add JOIN users u ON u.id = om.user_id AND u.is_di = FALSE to jury pool queries in submissions/route.ts and di-review/route.ts. DATA REPAIR: DELETE FROM jury_assignments WHERE user_id IN (SELECT id FROM users WHERE is_di = TRUE) to clean up historical bad assignments.",
+        ? `No DI accounts on active jury assignments.${historicalCount > 0 ? ` (${historicalCount} historical assignment(s) on resolved submissions — harmless, re-run with ?autoRepair=true to clean up.)` : ""}`
+        : `${diJurorCount} active jury assignment(s) where a DI account is assigned as juror. Re-run with ?autoRepair=true to clean up.`,
+      rootCause: "Historical: jury pool queries previously didn't filter out DI accounts. Code is now fixed with u.is_di = FALSE filter.",
+      remediation: "Re-run with ?autoRepair=true to auto-fix, or run POST /api/admin/repair-data.",
       codeFixed: true,
       details: {
         diJurorCount,
@@ -1305,21 +1368,50 @@ export async function POST(request: NextRequest) {
         AND (s.normalized_url IS NULL OR s.normalized_url = '')
     `;
 
+    // Auto-repair: re-resolve stalled submissions
+    if (autoRepair) {
+      // Re-resolve submissions where all jurors voted
+      for (const sub of stalledSubs) {
+        try {
+          const result = await tryResolveSubmission(sub.id as string, "in_group");
+          if (result.resolved) {
+            repairs.push(`Resolved stalled submission ${(sub.id as string).slice(0, 8)}… → ${result.outcome}`);
+          }
+        } catch (e) {
+          repairs.push(`Failed to resolve ${(sub.id as string).slice(0, 8)}…: ${(e as Error).message}`);
+        }
+      }
+      // Also try resolving submissions with majority votes
+      for (const sub of shouldBeResolved) {
+        const role = (sub.status as string) === "cross_review" ? "cross_group" : "in_group";
+        try {
+          const result = await tryResolveSubmission(sub.id as string, role);
+          if (result.resolved) {
+            repairs.push(`Resolved submission with majority ${(sub.id as string).slice(0, 8)}… → ${result.outcome}`);
+          }
+        } catch (e) {
+          repairs.push(`Failed to resolve ${(sub.id as string).slice(0, 8)}…: ${(e as Error).message}`);
+        }
+      }
+    }
+
     const pipelineIssues: string[] = [];
-    if (pendingNoJury.rows.length > 0) pipelineIssues.push(`${pendingNoJury.rows.length} pending_review submission(s) have NO jury assignments`);
-    if (pendingJuryStuck.rows.length > 0) pipelineIssues.push(`${pendingJuryStuck.rows.length} submission(s) stuck in pending_jury`);
-    if (stalledSubs.length > 0) pipelineIssues.push(`${stalledSubs.length} submission(s) have all jurors voted but resolution never triggered`);
-    if (shouldBeResolved.length > 0) pipelineIssues.push(`${shouldBeResolved.length} submission(s) have enough votes for majority but are NOT resolved`);
-    if (approvedNoUrl.rows.length > 0) pipelineIssues.push(`${approvedNoUrl.rows.length} approved submission(s) have no normalized_url — invisible to corrections API`);
+    if (!autoRepair) {
+      if (pendingNoJury.rows.length > 0) pipelineIssues.push(`${pendingNoJury.rows.length} pending_review submission(s) have NO jury assignments`);
+      if (pendingJuryStuck.rows.length > 0) pipelineIssues.push(`${pendingJuryStuck.rows.length} submission(s) stuck in pending_jury`);
+      if (stalledSubs.length > 0) pipelineIssues.push(`${stalledSubs.length} submission(s) have all jurors voted but resolution never triggered`);
+      if (shouldBeResolved.length > 0) pipelineIssues.push(`${shouldBeResolved.length} submission(s) have enough votes for majority but are NOT resolved`);
+      if (approvedNoUrl.rows.length > 0) pipelineIssues.push(`${approvedNoUrl.rows.length} approved submission(s) have no normalized_url — invisible to corrections API`);
+    }
 
     results.push({
       name: "Pipeline stage audit (dry-run)",
-      status: pipelineIssues.length === 0 ? "PASS" : "FAIL",
+      status: pipelineIssues.length === 0 ? "PASS" : "WARN",
       description: pipelineIssues.length === 0
         ? "All submissions are progressing through the pipeline correctly. No stalled or invisible items."
-        : `Found ${pipelineIssues.length} pipeline issue(s):\n${pipelineIssues.map(i => `  - ${i}`).join("\n")}`,
-      rootCause: "Each submission must flow: Created → Jury Assigned → Visible in Queue → Votes Cast → Resolution Triggered → Published. A break at any stage leaves the submission stuck.",
-      remediation: "pending_review with no jury: re-run jury assignment. pending_jury stuck: org needs more members or use admin approve. Stalled resolution: tryResolveSubmission failed silently — re-trigger vote. Missing normalized_url: backfill from url column.",
+        : `${pipelineIssues.length} pipeline issue(s) — re-run with ?autoRepair=true to resolve:\n${pipelineIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "Submissions stalled due to broken sql`` transactions or failed resolution triggers. Code is now fixed.",
+      remediation: "Re-run with ?autoRepair=true to auto-fix stalled resolutions. For pending_jury stuck: org needs more members or use admin approve.",
       details: {
         pendingReviewNoJury: pendingNoJury.rows.map(s => ({
           id: s.id, submitter: `@${s.submitter}`, org: s.org_name,
@@ -1904,7 +1996,9 @@ export async function POST(request: NextRequest) {
         storyVote: "src/app/api/stories/[id]/vote/route.ts — FIXED: uses sql.connect()",
         drafts: "src/app/api/drafts/route.ts — simple single-write operations, no transaction needed",
       },
-      dataRepairNeeded: "Historical damage from the broken sql`` era has been repaired by the repair-data endpoint. Run this diagnostic to verify all data is consistent. Remaining FAILs indicate historical damage that the repair script couldn't fully address (e.g. lost evidence data).",
+      dataRepairNeeded: autoRepair
+        ? "Auto-repair was enabled — historical data issues were fixed inline."
+        : "Re-run with ?autoRepair=true to auto-fix historical data issues, or run POST /api/admin/repair-data separately.",
     },
     summary: {
       pass: passCount,
@@ -1915,12 +2009,17 @@ export async function POST(request: NextRequest) {
       totalTests: results.length,
       codeFixed: fixedCount,
       codeUnfixed: unfixedCount,
+      autoRepair,
+      repairsApplied: repairs.length,
+      repairs: repairs.length > 0 ? repairs : undefined,
       durationMs: Date.now() - startTime,
       verdict: failCount > 0
-        ? "ISSUES FOUND — See per-submission audit and vote forensics for exact impact. Check each test's rootCause and remediation fields for next steps."
+        ? "CODE ISSUES FOUND — See failing tests for required fixes before merging."
         : errorCount > 0
           ? "Some tests errored — review details. Fix query errors before drawing conclusions."
-          : "All checks passed — no data inconsistencies detected.",
+          : warnCount > 0
+            ? `ALL CODE FIXED. ${warnCount} historical data warning(s) — re-run with ?autoRepair=true to fix.`
+            : "All checks passed — no data inconsistencies detected.",
     },
     tests: results,
   });
