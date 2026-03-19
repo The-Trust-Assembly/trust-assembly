@@ -5,7 +5,7 @@ import { sG } from "../lib/storage";
 import { W, computeAssemblyReputation, getMajority } from "../lib/scoring";
 import { checkEnrollment } from "../lib/permissions";
 import { getJurySize, getSuperJurySize, getConcessionRecovery } from "../lib/jury";
-import { UsernameLink, SubHeadline, InviteCTA, Empty, Loader } from "../components/ui";
+import { UsernameLink, SubHeadline, StatusPill, InviteCTA, Empty, Loader } from "../components/ui";
 import AssemblyGuide from "../components/AssemblyGuide";
 
 async function proposeConcession(orgId, proposerUsername, subId, reasoning) {
@@ -388,6 +388,45 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
             ))}
           </div>
         </div>
+
+        {/* Recent Submissions */}
+        {(() => {
+          const resolvedSubs = voSubs
+            .filter(s => ["approved", "consensus", "rejected", "consensus_rejected", "disputed"].includes(s.status))
+            .sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt));
+          const displaySubs = resolvedSubs.slice(0, 10);
+          return displaySubs.length > 0 && (
+            <div className="ta-card">
+              <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 8 }}>Recent Submissions ({resolvedSubs.length} total)</div>
+              {displaySubs.map(s => {
+                const approveCount = Object.values(s.votes || {}).filter(v => v.approve).length;
+                const rejectCount = Object.values(s.votes || {}).filter(v => !v.approve).length;
+                return (
+                  <div key={s.id} style={{ padding: "8px 10px", marginBottom: 6, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8, borderLeft: `3px solid ${s.status === "approved" || s.status === "consensus" ? "#059669" : s.status === "rejected" || s.status === "consensus_rejected" ? "#DC2626" : "#D97706"}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
+                        <UsernameLink username={s.submittedBy} onClick={onViewCitizen} /> · {sDate(s.resolvedAt || s.createdAt)}
+                        {s.isDI ? " · 🤖 DI" : ""}{s.trustedSkip ? " · 🛡" : ""}
+                      </span>
+                      <StatusPill status={s.status} />
+                    </div>
+                    <SubHeadline sub={s} size={12} />
+                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginTop: 4 }}>
+                      {approveCount + rejectCount > 0 && <span>{approveCount}↑ {rejectCount}↓</span>}
+                      {s.evidence && s.evidence.length > 0 && <span> · 📎 {s.evidence.length}</span>}
+                      {s.inlineEdits && s.inlineEdits.length > 0 && <span> · {s.inlineEdits.length} edits</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              {resolvedSubs.length > 10 && (
+                <div style={{ textAlign: "center", marginTop: 6 }}>
+                  <span style={{ fontSize: 11, color: "#64748B" }}>Showing 10 of {resolvedSubs.length} submissions</span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Members */}
         <div className="ta-card">

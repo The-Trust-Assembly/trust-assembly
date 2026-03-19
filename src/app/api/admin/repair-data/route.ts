@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, err } from "@/lib/api-utils";
+import { tryResolveSubmission } from "@/lib/vote-resolution";
 
 function normalizeUrl(raw: string): string {
   try {
@@ -481,6 +482,217 @@ export async function POST(request: NextRequest) {
     }
     report.push(`Backfilled ${urlsFixed} submission(s) with NULL normalized_url`);
     totalRepaired += urlsFixed;
+
+    // ── 17. Delete DI accounts from jury assignments ──
+    report.push("\n--- Remove DI accounts from jury assignments ---");
+    const diJuryDeleted = await sql`
+      DELETE FROM jury_assignments
+      WHERE user_id IN (SELECT id FROM users WHERE is_di = TRUE)
+      RETURNING id, submission_id, user_id
+    `;
+    report.push(`Deleted ${diJuryDeleted.rows.length} jury assignment(s) where juror is a DI account`);
+    totalRepaired += diJuryDeleted.rows.length;
+
+    // ── 18. Delete orphaned DI rejections (status='rejected' with is_di=TRUE) ──
+    // These are leftover from old code that set status='rejected' instead of deleting.
+    report.push("\n--- Clean up orphaned DI rejections ---");
+    const orphanedDiRejections = await sql`
+      SELECT s.id FROM submissions s
+      WHERE s.status = 'rejected'
+        AND s.is_di = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM jury_votes jv WHERE jv.submission_id = s.id
+        )
+    `;
+    for (const sub of orphanedDiRejections.rows) {
+      const client = await sql.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("DELETE FROM submission_evidence WHERE submission_id = $1", [sub.id]);
+        await client.query("DELETE FROM submission_inline_edits WHERE submission_id = $1", [sub.id]);
+        await client.query("DELETE FROM jury_assignments WHERE submission_id = $1", [sub.id]);
+        await client.query("DELETE FROM jury_votes WHERE submission_id = $1", [sub.id]);
+        await client.query("DELETE FROM submission_linked_entries WHERE submission_id = $1", [sub.id]);
+        await client.query("DELETE FROM submissions WHERE id = $1", [sub.id]);
+        await client.query(
+          "INSERT INTO audit_log (action, entity_type, metadata) VALUES ($1, $2, $3)",
+          [
+            "Orphaned DI rejection cleaned up (repair script)",
+            "di_rejection",
+            JSON.stringify({ deletedSubmissionId: sub.id, repairedAt: new Date().toISOString() }),
+          ]
+        );
+        await client.query("COMMIT");
+        report.push(`OK: Deleted orphaned DI rejection ${(sub.id as string).slice(0, 8)}…`);
+        totalRepaired++;
+      } catch (e) {
+        await client.query("ROLLBACK");
+        report.push(`ERR: Failed to clean up DI rejection ${(sub.id as string).slice(0, 8)}…: ${(e as Error).message}`);
+      } finally {
+        client.release();
+      }
+    }
+    report.push(`Cleaned up ${orphanedDiRejections.rows.length} orphaned DI rejection(s)`);
+
+    // ── 19. Fix user reputation drift ──
+    // Recompute total_wins, total_losses, deliberate_lies from actual submission outcomes
+    report.push("\n--- Fix user reputation drift ---");
+    const allSubmitters = await sql`
+      SELECT DISTINCT s.submitted_by AS user_id, u.username,
+             u.is_di, u.di_partner_id
+      FROM submissions s
+      JOIN users u ON u.id = s.submitted_by
+      WHERE s.status IN ('approved', 'consensus', 'rejected', 'consensus_rejected')
+    `;
+    let reputationFixed = 0;
+    for (const row of allSubmitters.rows) {
+      // For DI submissions, reputation goes to the human partner
+      const targetUserId = row.is_di && row.di_partner_id ? row.di_partner_id : row.user_id;
+
+      // Count wins (approved/consensus) for submissions by this user
+      const winsResult = await sql`
+        SELECT COUNT(*)::int AS cnt FROM submissions
+        WHERE submitted_by = ${row.user_id}
+          AND status IN ('approved', 'consensus')
+      `;
+      // Count losses (rejected/consensus_rejected) for submissions by this user
+      const lossesResult = await sql`
+        SELECT COUNT(*)::int AS cnt FROM submissions
+        WHERE submitted_by = ${row.user_id}
+          AND status IN ('rejected', 'consensus_rejected')
+      `;
+      // Count deliberate lies
+      const dlResult = await sql`
+        SELECT COUNT(*)::int AS cnt FROM submissions
+        WHERE submitted_by = ${row.user_id}
+          AND deliberate_lie_finding = TRUE
+          AND status IN ('approved', 'consensus', 'rejected', 'consensus_rejected')
+      `;
+
+      const expectedWins = winsResult.rows[0].cnt;
+      const expectedLosses = lossesResult.rows[0].cnt;
+      const expectedDL = dlResult.rows[0].cnt;
+
+      // Check current stats for the target user
+      const currentStats = await sql`
+        SELECT total_wins, total_losses, deliberate_lies FROM users WHERE id = ${targetUserId}
+      `;
+      if (currentStats.rows.length === 0) continue;
+      const current = currentStats.rows[0];
+
+      // If this is a DI, we need to aggregate across all DI submissions attributed to this partner
+      // For non-DI, it's straightforward
+      if (!row.is_di) {
+        // Also count wins/losses from DI submissions attributed to this user via di_partner_id
+        const diWins = await sql`
+          SELECT COUNT(*)::int AS cnt FROM submissions
+          WHERE di_partner_id = ${targetUserId}
+            AND is_di = TRUE
+            AND status IN ('approved', 'consensus')
+        `;
+        const diLosses = await sql`
+          SELECT COUNT(*)::int AS cnt FROM submissions
+          WHERE di_partner_id = ${targetUserId}
+            AND is_di = TRUE
+            AND status IN ('rejected', 'consensus_rejected')
+        `;
+        const diDL = await sql`
+          SELECT COUNT(*)::int AS cnt FROM submissions
+          WHERE di_partner_id = ${targetUserId}
+            AND is_di = TRUE
+            AND deliberate_lie_finding = TRUE
+            AND status IN ('approved', 'consensus', 'rejected', 'consensus_rejected')
+        `;
+
+        const totalWins = expectedWins + diWins.rows[0].cnt;
+        const totalLosses = expectedLosses + diLosses.rows[0].cnt;
+        const totalDL = expectedDL + diDL.rows[0].cnt;
+
+        if (current.total_wins !== totalWins || current.total_losses !== totalLosses || current.deliberate_lies !== totalDL) {
+          await sql`
+            UPDATE users SET total_wins = ${totalWins}, total_losses = ${totalLosses}, deliberate_lies = ${totalDL}
+            WHERE id = ${targetUserId}
+          `;
+          report.push(`OK @${row.username}: reputation ${current.total_wins}W/${current.total_losses}L/${current.deliberate_lies}DL → ${totalWins}W/${totalLosses}L/${totalDL}DL`);
+          reputationFixed++;
+        }
+      }
+    }
+    report.push(`Fixed ${reputationFixed} user(s) with reputation drift`);
+    totalRepaired += reputationFixed;
+
+    // ── 20. Fix membership inconsistency (users with primary_org but no active membership) ──
+    report.push("\n--- Fix membership inconsistencies ---");
+    const noMembership = await sql`
+      SELECT u.id, u.username, u.primary_org_id, o.name AS org_name
+      FROM users u
+      JOIN organizations o ON o.id = u.primary_org_id
+      WHERE u.primary_org_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM organization_members om
+          WHERE om.user_id = u.id AND om.org_id = u.primary_org_id AND om.is_active = TRUE
+        )
+    `;
+    for (const row of noMembership.rows) {
+      const client = await sql.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(
+          `INSERT INTO organization_members (org_id, user_id, is_active)
+           VALUES ($1, $2, TRUE)
+           ON CONFLICT (org_id, user_id)
+           DO UPDATE SET is_active = TRUE, left_at = NULL`,
+          [row.primary_org_id, row.id]
+        );
+        await client.query(
+          `INSERT INTO organization_member_history (org_id, user_id, action)
+           VALUES ($1, $2, 'joined')`,
+          [row.primary_org_id, row.id]
+        );
+        await client.query("COMMIT");
+        report.push(`OK @${row.username}: restored membership in ${row.org_name}`);
+        totalRepaired++;
+      } catch (e) {
+        await client.query("ROLLBACK");
+        report.push(`ERR @${row.username}: ${(e as Error).message}`);
+      } finally {
+        client.release();
+      }
+    }
+    report.push(`Fixed ${noMembership.rows.length} user(s) with missing org membership`);
+
+    // ── 21. Re-resolve stalled submissions ──
+    // Submissions in pending_review/cross_review where all jurors have voted but resolution never triggered
+    report.push("\n--- Re-resolve stalled submissions ---");
+    const stalledSubs = await sql`
+      SELECT s.id, s.status, s.jury_seats, s.cross_group_jury_size
+      FROM submissions s
+      WHERE s.status IN ('pending_review', 'cross_review')
+    `;
+    let stalledResolved = 0;
+    for (const sub of stalledSubs.rows) {
+      const isCross = sub.status === "cross_review";
+      const expectedJurors = isCross ? (sub.cross_group_jury_size || 3) : (sub.jury_seats || 3);
+      const role = isCross ? "cross_group" : "in_group";
+
+      const voteCount = await sql`
+        SELECT COUNT(*)::int AS cnt FROM jury_votes
+        WHERE submission_id = ${sub.id} AND role = ${role}
+      `;
+      if (voteCount.rows[0].cnt >= expectedJurors) {
+        try {
+          const result = await tryResolveSubmission(sub.id as string, role);
+          if (result.resolved) {
+            report.push(`OK: Resolved stalled submission ${(sub.id as string).slice(0, 8)}… → ${result.outcome}`);
+            stalledResolved++;
+          }
+        } catch (e) {
+          report.push(`ERR: Failed to resolve ${(sub.id as string).slice(0, 8)}…: ${(e as Error).message}`);
+        }
+      }
+    }
+    report.push(`Re-resolved ${stalledResolved} stalled submission(s)`);
+    totalRepaired += stalledResolved;
 
     // ── Audit the repair itself ──
     await sql`

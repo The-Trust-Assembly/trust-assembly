@@ -17,15 +17,18 @@ import AboutScreen from "./pages/AboutScreen";
 import VaultScreen from "./pages/VaultScreen";
 import ConsensusScreen from "./pages/ConsensusScreen";
 import AuditScreen from "./pages/AuditScreen";
+import StoriesScreen from "./pages/StoriesScreen";
 import FeedbackScreen from "./pages/FeedbackScreen";
 import CitizenLookupScreen from "./pages/CitizenLookupScreen";
 import RecordScreen from "./pages/RecordScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
+import DiagnosticScreen from "./pages/DiagnosticScreen";
 
 import { ensureGeneralPublic } from "./lib/storage";
 import { isDIUser } from "./lib/permissions";
+import { trackAction } from "./lib/action-tracker";
 import { Badge, Loader, CitizenCounter } from "./components/ui";
 
 const NAV_TOP = [
@@ -34,7 +37,7 @@ const NAV_TOP = [
 const NAV_BOT = [
   { key: "profile", label: "Citizen" }, { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" },
   { key: "vision", label: "Vision" }, { key: "about", label: "About" },
-  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "audit", label: "Ledger" },
+  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" },
 ];
 
 function formatNotification(n) {
@@ -74,6 +77,7 @@ export default function TrustAssembly() {
   const [heroFading, setHeroFading] = useState(false);
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
+  const [activeDraftId, setActiveDraftId] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
@@ -100,6 +104,7 @@ export default function TrustAssembly() {
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
   const setScreen = useCallback((s) => {
+    trackAction("nav", `screen:${s}`, { screen: s });
     setScreenRaw(s);
     setViewingRecord(null);
     if (!skipPush.current) {
@@ -266,12 +271,14 @@ export default function TrustAssembly() {
   };
 
   const logout = async () => {
+    trackAction("button", "click:logout", { component: "App", screen: "navbar" });
     try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
     setUser(null); setScreen("login");
   };
 
   const submitFeedback = async () => {
     if (!feedbackText.trim()) return;
+    trackAction("button", "click:submit_feedback", { component: "FeedbackModal", screen: "feedback" });
     setFeedbackSending(true); setFeedbackError("");
     try {
       const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: feedbackText.trim() }) });
@@ -344,6 +351,8 @@ export default function TrustAssembly() {
         .ta-field input,.ta-field textarea,.ta-field select { width:100%; padding:9px 11px; border:1.5px solid var(--brass); background:var(--vellum); font-family:var(--font); font-size:14px; color:var(--charcoal); border-radius:6px; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
         .ta-field input:focus,.ta-field textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
         .ta-field textarea { resize:vertical; }
+        .ta-input { box-sizing:border-box; border:1.5px solid var(--brass); background:var(--vellum); font-family:var(--font); font-size:14px; color:var(--charcoal); border-radius:6px; outline:none; transition:border-color 0.2s; }
+        .ta-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
         .ta-btn-primary { background:var(--accent); color:#fff; border:none; padding:10px 20px; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; border-radius:6px; transition:background 0.2s; }
         .ta-btn-primary:hover { background:var(--accent-hover); }
         .ta-btn-primary:disabled { background:var(--stone); cursor:not-allowed; }
@@ -378,10 +387,6 @@ export default function TrustAssembly() {
         @media(max-width:640px) { .ta-feedback-fab { bottom:16px; right:16px; font-size:11px; padding:8px 14px; } }
       `}</style>
 
-      {/* Debugging banner */}
-      <div style={{ background: "#FEF3C7", borderBottom: "2px solid #F59E0B", padding: "10px 20px", textAlign: "center", fontSize: 13, fontWeight: 600, color: "#92400E", fontFamily: "var(--font)" }}>
-        Debugging some database migration errors. Please be patient while we work to correct.
-      </div>
 
       {!user && viewingRecord ? (
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
@@ -413,13 +418,14 @@ export default function TrustAssembly() {
           {/* DARK BAND */}
           <div className="ta-dark-band" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CrestIcon size={38} />
-            <div>
+            <div style={{ flex: 1 }}>
               <span className="ta-dark-band-title"><span className="ta-dark-band-cap">T</span>RUST<span style={{ letterSpacing: "0.22em" }}> </span><span className="ta-dark-band-cap">A</span>SSEMBLY</span>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                 <span className="ta-dark-band-sub">TRUTH WILL OUT.</span>
                 <span className="ta-dark-band-beta">BETA</span>
               </div>
             </div>
+            <button onClick={() => { setScreen("login"); setLoginAccordion(true); }} style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "var(--gold)", background: "none", border: "none", cursor: "pointer", padding: "8px 12px" }}>Login</button>
           </div>
 
           {/* HERO SECTION */}
@@ -436,26 +442,10 @@ export default function TrustAssembly() {
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
               >Install Extension</button>
               <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => setLoginAccordion(true)}
+                onClick={() => { setScreen("register"); setLoginAccordion(true); }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
                 onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
-              >Join as Citizen</button>
-            </div>
-
-            {/* Category pills */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 5, marginBottom: 22, flexWrap: "wrap" }}
-              onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
-              {HERO_SLIDES.map((sl, i) => (
-                <button key={sl.id} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
-                  fontFamily: "-apple-system, sans-serif", fontSize: 11, fontWeight: heroIdx === i ? 600 : 400,
-                  color: heroIdx === i ? "#fff" : "#777",
-                  backgroundColor: heroIdx === i ? "#ffffff12" : "transparent",
-                  border: `1px solid ${heroIdx === i ? "#ffffff22" : "#ffffff0a"}`,
-                  borderRadius: 20, padding: "5px 12px", cursor: "pointer", transition: "all 0.2s",
-                }}>
-                  {sl.pills}
-                </button>
-              ))}
+              >Register an Account</button>
             </div>
 
             {/* Slide label */}
@@ -469,38 +459,24 @@ export default function TrustAssembly() {
               {HERO_SLIDES[heroIdx].layout === "columns" ? (
                 <>
                   <div style={{ display: "flex", gap: 16, marginBottom: 6, padding: "0 4px" }}>
-                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
                     <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
                   </div>
                   <div style={{ display: "flex", gap: 16, minHeight: 200 }}>
-                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.55 }}>{HERO_SLIDES[heroIdx].before}</div>
+                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.72 }}>{HERO_SLIDES[heroIdx].before}</div>
                     <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
                   </div>
                 </>
               ) : (
                 <div style={{ maxWidth: 520, margin: "0 auto" }}>
-                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.06em" }}>BEFORE</span></div>
-                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.55, marginBottom: 12 }}>{HERO_SLIDES[heroIdx].before}</div>
+                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.72, marginBottom: 12 }}>{HERO_SLIDES[heroIdx].before}</div>
                   <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
                   <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
                 </div>
               )}
             </div>
 
-            {/* Progress dots */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
-              {HERO_SLIDES.map((_, i) => (
-                <div key={i} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
-                  width: heroIdx === i ? 24 : 8, height: 8, borderRadius: 4,
-                  backgroundColor: heroIdx === i ? "var(--gold)" : "#ffffff18",
-                  cursor: "pointer", transition: "all 0.3s", overflow: "hidden", position: "relative",
-                }}>
-                  {heroIdx === i && !heroPaused && (
-                    <div style={{ position: "absolute", top: 0, left: 0, height: "100%", backgroundColor: "#D4B45E", borderRadius: 4, animation: "ta-prog 8s linear" }} />
-                  )}
-                </div>
-              ))}
-            </div>
 
             {/* Descriptive text */}
             <div style={{ maxWidth: 480, margin: "28px auto 0" }}>
@@ -533,7 +509,7 @@ export default function TrustAssembly() {
 
             {/* Closing CTA */}
             <div style={{ textAlign: "center", marginTop: 40, padding: "32px 0", borderTop: "1px solid #eee" }}>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>The truth has a browser extension.</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>Honesty has a browser extension.</div>
               <div style={{ fontSize: 13, color: "#999", marginBottom: 20 }}>Free. Open. Jury-verified. No algorithm decides what's true.</div>
               <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", backgroundColor: "#1a1a1a", border: "none", borderRadius: 6, padding: "12px 32px", cursor: "pointer" }}
                 onClick={() => setLoginAccordion(true)}
@@ -603,6 +579,9 @@ export default function TrustAssembly() {
             {(isAdmin || hasSubmittedFeedback) && (
               <div className={`ta-nav-row-item ${screen === "feedback" ? "active" : ""}`} onClick={() => setScreen("feedback")} style={{ color: isAdmin ? "var(--sienna)" : undefined, fontWeight: isAdmin ? 600 : undefined }}>Feedback</div>
             )}
+            {isAdmin && (
+              <div className={`ta-nav-row-item ${screen === "diagnostic" ? "active" : ""}`} onClick={() => setScreen("diagnostic")} style={{ color: "var(--purple)", fontWeight: 600 }}>Diagnostic</div>
+            )}
           </div>
 
           {/* USER BAR */}
@@ -651,12 +630,13 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} onNavigate={setScreen} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
+            {screen === "feed" && <FeedScreen user={user} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} />}
-            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} />}
+            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
+            {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
             {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
@@ -665,6 +645,7 @@ export default function TrustAssembly() {
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
+            {screen === "diagnostic" && isAdmin && <DiagnosticScreen />}
             </>}
           </div>
 

@@ -21,6 +21,8 @@ export const MAX_LENGTHS = {
   application_link: 2048,
   badge_detail: 500,
   feedback_message: 1000,
+  story_title: 300,
+  story_description: 5000,
 } as const;
 
 /**

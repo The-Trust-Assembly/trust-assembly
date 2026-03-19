@@ -5,7 +5,7 @@ import { useDraft, clearDraft } from "../lib/hooks";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrustedProgress, getDISubmissionLimit } from "../lib/permissions";
 import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer } from "../components/ui";
 
-export default function SubmitScreen({ user, onUpdate }) {
+export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded }) {
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [authors, setAuthors] = useState([]);
   const [authorInput, setAuthorInput] = useState("");
@@ -22,10 +22,20 @@ export default function SubmitScreen({ user, onUpdate }) {
   const [linkedEntries, setLinkedEntries] = useState([]);
   const [vaultSearch, setVaultSearch] = useState(""); const [vaultResults, setVaultResults] = useState([]);
   const [showVaultSearch, setShowVaultSearch] = useState(false);
+  const [showSubSearch, setShowSubSearch] = useState(false);
+  const [subSearch, setSubSearch] = useState(""); const [subResults, setSubResults] = useState([]);
+  const [linkedSubs, setLinkedSubs] = useState([]);
   const [evidenceUrls, setEvidenceUrls] = useState([{ url: "", explanation: "" }]);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [loading, setLoading] = useState(false);
   const [myOrgs, setMyOrgs] = useState([]);
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+
+  // Server-side drafts
+  const [savedDrafts, setSavedDrafts] = useState([]);
+  const [draftMsg, setDraftMsg] = useState("");
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const loadedDraftRef = useRef(null);
 
   // Auto-save draft
   const draftState = useMemo(() => ({ form, authors, inlineEdits, standingCorrections, submitArgs, submitBeliefs, submitTranslations, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds }), [form, authors, inlineEdits, standingCorrections, submitArgs, submitBeliefs, submitTranslations, standingCorrection, submitArg, submitBelief, submitTranslation, linkedEntries, evidenceUrls, selectedOrgIds]);
@@ -57,6 +67,85 @@ export default function SubmitScreen({ user, onUpdate }) {
     if (user.orgId && selectedOrgIds.length === 0) setSelectedOrgIds([user.orgId]);
   })(); }, [user.orgId, user.orgIds]);
 
+  // Load saved drafts list from server
+  const fetchDrafts = async () => {
+    try {
+      const res = await fetch("/api/drafts");
+      if (res.ok) { const data = await res.json(); setSavedDrafts(data.drafts || []); }
+    } catch {}
+  };
+  useEffect(() => { fetchDrafts(); }, []);
+
+  // Restore form from a server draft
+  const restoreFromDraft = (d) => {
+    if (d.form) setForm(f => ({ ...f, ...d.form }));
+    if (d.authors) setAuthors(d.authors);
+    if (d.inlineEdits) setInlineEdits(d.inlineEdits);
+    if (d.standingCorrections) setStandingCorrections(d.standingCorrections);
+    if (d.submitArgs) setSubmitArgs(d.submitArgs);
+    if (d.submitBeliefs) setSubmitBeliefs(d.submitBeliefs);
+    if (d.submitTranslations) setSubmitTranslations(d.submitTranslations);
+    if (d.standingCorrection) setStandingCorrection(d.standingCorrection);
+    if (d.submitArg !== undefined) setSubmitArg(d.submitArg);
+    if (d.submitBelief !== undefined) setSubmitBelief(d.submitBelief);
+    if (d.submitTranslation) setSubmitTranslation(d.submitTranslation);
+    if (d.linkedEntries) setLinkedEntries(d.linkedEntries);
+    if (d.evidenceUrls) setEvidenceUrls(d.evidenceUrls);
+    if (d.selectedOrgIds) setSelectedOrgIds(d.selectedOrgIds);
+  };
+
+  // Auto-load draft if draftId prop is provided (from FeedScreen CTA)
+  useEffect(() => {
+    if (!draftId || loadedDraftRef.current === draftId) return;
+    loadedDraftRef.current = draftId;
+    (async () => {
+      try {
+        const res = await fetch(`/api/drafts/${draftId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.draft?.draftData) restoreFromDraft(data.draft.draftData);
+        }
+      } catch {}
+      if (onDraftLoaded) onDraftLoaded();
+    })();
+  }, [draftId]);
+
+  // Save draft to server
+  const saveDraft = async () => {
+    if (!form.url.trim()) { setDraftMsg("Enter an article URL before saving."); return; }
+    setSavingDraft(true); setDraftMsg("");
+    try {
+      const res = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: form.url.trim(), title: form.originalHeadline.trim() || null, draftData: draftState }),
+      });
+      if (res.ok) { setDraftMsg("Draft saved."); fetchDrafts(); }
+      else { const d = await res.json().catch(() => ({})); setDraftMsg(d.error || "Failed to save draft."); }
+    } catch { setDraftMsg("Network error saving draft."); }
+    setSavingDraft(false);
+    setTimeout(() => setDraftMsg(""), 4000);
+  };
+
+  // Delete a saved draft
+  const deleteDraft = async (id) => {
+    try {
+      await fetch(`/api/drafts/${id}`, { method: "DELETE" });
+      fetchDrafts();
+    } catch {}
+  };
+
+  // Load a saved draft from server into form
+  const loadDraft = async (id) => {
+    try {
+      const res = await fetch(`/api/drafts/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.draft?.draftData) { restoreFromDraft(data.draft.draftData); setDraftMsg("Draft loaded."); setTimeout(() => setDraftMsg(""), 3000); }
+      }
+    } catch {}
+  };
+
   const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || myOrgs.find(o => o.id === user.orgId);
 
   const toggleOrg = (oid) => {
@@ -81,6 +170,25 @@ export default function SubmitScreen({ user, onUpdate }) {
     });
     setVaultResults(results);
   };
+
+  const searchSubmissions = async (query) => {
+    setSubSearch(query);
+    if (!query.trim()) { setSubResults([]); return; }
+    const allSubs = await sG(SK.SUBS);
+    const q = query.toLowerCase().trim();
+    const results = Object.values(allSubs || {})
+      .filter(s => ["approved", "consensus", "cross_review"].includes(s.status))
+      .filter(s => (s.originalHeadline || "").toLowerCase().includes(q) || (s.url || "").toLowerCase().includes(q))
+      .slice(0, 20);
+    setSubResults(results);
+  };
+
+  const linkSub = (sub) => {
+    if (linkedSubs.find(s => s.id === sub.id)) return;
+    setLinkedSubs(prev => [...prev, sub]);
+    setSubSearch(""); setSubResults([]);
+  };
+  const unlinkSub = (id) => setLinkedSubs(prev => prev.filter(s => s.id !== id));
 
   const linkEntry = (entry) => {
     if (linkedEntries.find(e => e.id === entry.id)) return;
@@ -128,6 +236,7 @@ export default function SubmitScreen({ user, onUpdate }) {
         orgIds: targetOrgIds,
         evidence: validEvidence.map(e => ({ url: e.url.trim(), explanation: e.explanation?.trim() || "" })),
         inlineEdits: validEdits.map(e => ({ original: e.original.trim(), replacement: e.replacement.trim(), reasoning: e.reasoning?.trim() || null })),
+        linkedSubmissionIds: linkedSubs.map(s => s.id),
       }),
     });
 
@@ -191,13 +300,50 @@ export default function SubmitScreen({ user, onUpdate }) {
     setLoading(false);
     if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
-    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setAuthors([]); setAuthorInput(""); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrections([{ assertion: "", evidence: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArgs([""]); setSubmitArg(""); setSubmitBeliefs([""]); setSubmitBelief(""); setSubmitTranslations([{ original: "", translated: "", type: "clarity" }]); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
+    setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setAuthors([]); setAuthorInput(""); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrections([{ assertion: "", evidence: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArgs([""]); setSubmitArg(""); setSubmitBeliefs([""]); setSubmitBelief(""); setSubmitTranslations([{ original: "", translated: "", type: "clarity" }]); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setLinkedSubs([]); setSubSearch(""); setSubResults([]); setShowSubSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
     clearDraft("ta_draft_submit");
+    // Delete server draft for this URL if one exists
+    const matchingDraft = savedDrafts.find(d => d.url === form.url.trim());
+    if (matchingDraft) { try { await fetch(`/api/drafts/${matchingDraft.id}`, { method: "DELETE" }); } catch {} fetchDrafts(); }
   };
 
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
+
+      {/* Saved drafts banner */}
+      {savedDrafts.length > 0 && (
+        <div style={{ marginBottom: 14, padding: "10px 14px", background: "#FFFBEB", border: "1.5px solid #CA8A04", borderRadius: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: "#CA8A04", fontWeight: 700 }}>
+              {savedDrafts.length} saved draft{savedDrafts.length > 1 ? "s" : ""}
+            </span>
+            <button className="ta-link-btn" style={{ fontSize: 11, color: "#CA8A04" }} onClick={() => setShowDrafts(s => !s)}>
+              {showDrafts ? "Hide" : "Show"}
+            </button>
+          </div>
+          {showDrafts && (
+            <div style={{ marginTop: 8 }}>
+              {savedDrafts.map(d => {
+                let domain = "";
+                try { domain = new URL(d.url).hostname.replace(/^www\./, ""); } catch {}
+                return (
+                  <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", marginBottom: 4, background: "#fff", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title || "(no headline)"}</div>
+                      <div style={{ fontSize: 10, color: "#64748B" }}>{domain} · {new Date(d.updatedAt).toLocaleDateString()}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                      <button className="ta-link-btn" style={{ fontSize: 10, color: "#2563EB" }} onClick={() => loadDraft(d.id)}>Load</button>
+                      <button className="ta-link-btn" style={{ fontSize: 10, color: "#DC2626" }} onClick={() => deleteDraft(d.id)}>Delete</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* What you're about to do */}
       <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #CBD5E1", borderLeft: "4px solid #CA8A04", borderRadius: 8, marginBottom: 16 }}>
@@ -357,7 +503,41 @@ export default function SubmitScreen({ user, onUpdate }) {
             })}
           </div>}
 
-          {/* Search to link existing */}
+          {/* Search to link existing submissions */}
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={() => setShowSubSearch(s => !s)} style={{ background: showSubSearch ? "#2563EB" : "#F9FAFB", color: showSubSearch ? "#fff" : "#1E293B", border: "1.5px solid #CBD5E1", padding: "6px 12px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 8, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+              {showSubSearch ? "✕ Close" : "🔗 Link Existing Submission"}
+            </button>
+            {showSubSearch && <div style={{ marginTop: 4, padding: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+              <input value={subSearch} onChange={e => searchSubmissions(e.target.value)} placeholder="Search approved submissions by headline or URL..." style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #CBD5E1", background: "#fff", fontSize: 13, borderRadius: 8, fontFamily: "inherit", boxSizing: "border-box" }} />
+              {subResults.length > 0 && <div style={{ marginTop: 8, maxHeight: 240, overflowY: "auto" }}>
+                {subResults.map(s => {
+                  const already = linkedSubs.find(ls => ls.id === s.id);
+                  return <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", borderBottom: "1px solid #E2E8F0", opacity: already ? 0.5 : 1, cursor: already ? "default" : "pointer" }} onClick={() => !already && linkSub(s)}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.originalHeadline}</div>
+                      <div style={{ fontSize: 10, color: "#94A3B8" }}>{s.orgName} · {new Date(s.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    {already ? <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#059669", flexShrink: 0, marginLeft: 8 }}>✓ linked</span> : <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", flexShrink: 0, marginLeft: 8 }}>+ link</span>}
+                  </div>;
+                })}
+              </div>}
+              {subSearch.trim() && subResults.length === 0 && <div style={{ marginTop: 8, fontSize: 12, color: "#475569", fontStyle: "italic" }}>No matching submissions found.</div>}
+            </div>}
+            {linkedSubs.length > 0 && <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>Linked Submissions ({linkedSubs.length})</div>
+              {linkedSubs.map(s => (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, marginBottom: 4 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.originalHeadline}</div>
+                  </div>
+                  <button onClick={() => unlinkSub(s.id)} style={{ background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14, padding: 0, flexShrink: 0 }}>×</button>
+                </div>
+              ))}
+            </div>}
+          </div>
+
+          {/* Search to link existing vault entries */}
           <div style={{ marginBottom: 12 }}>
             <button onClick={() => setShowVaultSearch(s => !s)} style={{ background: showVaultSearch ? "#2563EB" : "#F9FAFB", color: showVaultSearch ? "#fff" : "#1E293B", border: "1.5px solid #CBD5E1", padding: "6px 12px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               {showVaultSearch ? "✕ Close Search" : "🔍 Link Existing Vault Entry"}
@@ -461,9 +641,27 @@ export default function SubmitScreen({ user, onUpdate }) {
         </div>}
       </div>
 
-      {/* ── Sticky Submit Button ── */}
-      <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #F1F5F9 8px)", paddingTop: 12, paddingBottom: 8, zIndex: 10 }}>
-        <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ width: "100%", padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
+      {/* ── Submit & Save Draft Buttons ── */}
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #E2E8F0" }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+          <button className="ta-btn-primary" onClick={go} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
+          <button onClick={saveDraft} disabled={savingDraft} style={{
+            padding: "12px 16px", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 600,
+            background: "#FFFBEB", color: "#CA8A04", border: "1.5px solid #CA8A04",
+            borderRadius: 8, cursor: savingDraft ? "default" : "pointer",
+            opacity: savingDraft ? 0.6 : 1,
+          }}>
+            {savingDraft ? "Saving..." : "Save Draft"}
+          </button>
+        </div>
+        {draftMsg && (
+          <div style={{
+            fontSize: 11, padding: "4px 8px", borderRadius: 6, marginBottom: 6,
+            background: draftMsg.includes("saved") || draftMsg.includes("loaded") ? "#ECFDF5" : "#FEF2F2",
+            color: draftMsg.includes("saved") || draftMsg.includes("loaded") ? "#059669" : "#DC2626",
+            textAlign: "center",
+          }}>{draftMsg}</div>
+        )}
         <LegalDisclaimer short />
       </div>
     </div>

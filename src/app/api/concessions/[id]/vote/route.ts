@@ -26,7 +26,7 @@ export async function POST(
   if (concession.rows.length === 0) {
     return err("Concession not found", 404);
   }
-  if (concession.rows[0].status !== "pending") {
+  if (concession.rows[0].status !== "pending_review") {
     return err("Concession is not currently open for voting");
   }
 

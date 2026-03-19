@@ -19,3 +19,11 @@ export function forbidden(message = "Not authorized") {
 export function notFound(message = "Not found") {
   return NextResponse.json({ error: message }, { status: 404 });
 }
+
+export function serverError(route: string, error: unknown) {
+  console.error(`[${route}] Unhandled error:`, error);
+  return NextResponse.json(
+    { error: "Internal server error", detail: error instanceof Error ? error.message : String(error) },
+    { status: 500 }
+  );
+}

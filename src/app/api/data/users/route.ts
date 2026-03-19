@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { ok } from "@/lib/api-utils";
+import { ok, serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 // in the format the v5 SPA expects. Excludes password hashes.
 // This replaces sG(SK.USERS) reads from the deprecated KV store.
 export async function GET() {
+  try {
   const result = await sql`
     SELECT
       u.id, u.username, u.display_name, u.real_name, u.email,
@@ -160,4 +161,7 @@ export async function GET() {
   };
 
   return ok(users);
+  } catch (error) {
+    return serverError("GET /api/data/users", error);
+  }
 }

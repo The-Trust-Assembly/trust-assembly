@@ -314,8 +314,10 @@ export async function POST(request: NextRequest) {
         const pool = await juryClient.query(
           `SELECT om.user_id
            FROM organization_members om
+           JOIN users u ON u.id = om.user_id
            WHERE om.org_id = $1
              AND om.is_active = TRUE
+             AND u.is_di = FALSE
              AND om.user_id != $2
              AND ($3::uuid IS NULL OR om.user_id != $3)
            ORDER BY RANDOM()

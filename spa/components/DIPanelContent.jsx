@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import { sDate } from "../lib/utils";
 import { SubHeadline, StatusPill, AuditTrail, Empty } from "./ui";
 
+const safe = (v) => {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+};
+
 export default function DIPanelContent({ user, subs, onReload }) {
   const [diReqs, setDiReqs] = useState({});
   const [confirmAll, setConfirmAll] = useState(false);
@@ -95,12 +103,14 @@ export default function DIPanelContent({ user, subs, onReload }) {
   };
 
   const rejectDISub = async (subId) => {
-    // ── Reject DI submission via relational API (single source of truth) ──
+    // ── Reject DI submission — deletes all records (quality gate, not a verdict) ──
+    const reason = window.prompt("Optional: reason for rejecting this DI submission\n(Leave blank to use default)");
+    if (reason === null) return; // user cancelled prompt
     try {
       const res = await fetch(`/api/submissions/${subId}/di-review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reject" }),
+        body: JSON.stringify({ action: "reject", reason: reason.trim() || undefined }),
       });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to reject"); return; }
     } catch (e) { setError("Network error rejecting submission"); return; }
@@ -120,7 +130,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Link Requests</div>
         {pendingLinks.map(r => (
           <div key={r.diUsername} className="ta-card" style={{ borderLeft: "4px solid #4F46E5", padding: 12 }}>
-            <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{r.diUsername}</strong> wants to register as your Digital Intelligence</div>
+            <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{safe(r.diUsername)}</strong> wants to register as your Digital Intelligence</div>
             <div style={{ padding: 10, background: "#EEF2FF", borderRadius: 8, marginBottom: 8, fontSize: 12, color: "#1E293B", lineHeight: 1.6 }}>
               By approving, you accept responsibility for all of this DI's submissions. <strong>You receive the scoring</strong> — wins, losses, and deliberate deception penalties. You must pre-approve each submission before it enters jury review.
             </div>
@@ -152,14 +162,14 @@ export default function DIPanelContent({ user, subs, onReload }) {
       {diQueue.length === 0 ? <Empty text="No DI submissions awaiting your pre-approval." /> : diQueue.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>🤖 @{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>🤖 @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>
             <StatusPill status="di_pending" />
           </div>
-          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(sub.url)}</a>
           <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
             <SubHeadline sub={sub} />
           </div>
-          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{sub.reasoning}</div>
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{safe(sub.reasoning)}</div>
           {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#0D9488" }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button className="ta-btn-primary" style={{ background: "#4F46E5", fontSize: 12 }} onClick={() => approveDISub(sub.id)}>✓ Approve for Review</button>

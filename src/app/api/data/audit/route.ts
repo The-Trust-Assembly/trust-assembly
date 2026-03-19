@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { ok } from "@/lib/api-utils";
+import { ok, serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 //   1. Relational audit_log table (new entries from API endpoints)
 //   2. Legacy KV store key "ta-a-v5" (migrated historical data)
 export async function GET() {
+  try {
   // 1. Relational audit_log entries
   const result = await sql`
     SELECT
@@ -54,4 +55,7 @@ export async function GET() {
   all.sort((a, b) => new Date(String(a.time)).getTime() - new Date(String(b.time)).getTime());
 
   return ok(all);
+  } catch (error) {
+    return serverError("GET /api/data/audit", error);
+  }
 }

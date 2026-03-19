@@ -13,14 +13,18 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   const [disputingId, setDisputingId] = useState(null);
   const [disputeForm, setDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
   const [disputeError, setDisputeError] = useState(""); const [disputeSuccess, setDisputeSuccess] = useState("");
+  const [taggingId, setTaggingId] = useState(null);
+  const [stories, setStories] = useState({});
+  const [tagMsg, setTagMsg] = useState("");
   const [approveMsg, setApproveMsg] = useState("");
+  const [savedDrafts, setSavedDrafts] = useState([]);
   const isAdmin = user && user.username === ADMIN_USERNAME;
 
   const [loadError, setLoadError] = useState("");
   const load = async () => {
     try {
-      const [subsData, orgsData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS)]);
-      setSubs(subsData || {}); setOrgs(orgsData || {}); setLoadError("");
+      const [subsData, orgsData, storiesData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS), sG(SK.STORIES)]);
+      setSubs(subsData || {}); setOrgs(orgsData || {}); setStories(storiesData || {}); setLoadError("");
     } catch (e) {
       console.error("FeedScreen load error:", e);
       setLoadError("Failed to load data. Please refresh the page.");
@@ -30,14 +34,29 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   };
   useEffect(() => { load(); }, []);
 
+  // Load saved drafts
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/drafts");
+        if (res.ok) { const data = await res.json(); setSavedDrafts(data.drafts || []); }
+      } catch {}
+    })();
+  }, [user]);
+
   const canDispute = (sub) => {
-    if (!user || sub.submittedBy === user.username) return false;
+    if (!user) return false;
     const userOrgs = user.orgIds || (user.orgId ? [user.orgId] : []);
     if (!userOrgs.includes(sub.orgId)) return false;
-    if (!["approved", "consensus"].includes(sub.status)) return false;
-    const org = orgs[sub.orgId];
-    return org && org.members.length >= 100;
+    // Approved/consensus: any member except submitter can dispute
+    if (["approved", "consensus"].includes(sub.status)) return sub.submittedBy !== user.username;
+    // Rejected: any member (including submitter) can dispute
+    if (sub.status === "rejected") return true;
+    return false;
   };
+
+  const isRejectionDispute = (sub) => sub.status === "rejected";
 
   const approveAllPending = async () => {
     setApproveMsg("");
@@ -61,10 +80,15 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
     for (const ev of validEvidence) {
       if (!/^https?:\/\/.+\..+/.test(ev.url.trim())) return setDisputeError("Evidence URLs must start with http:// or https://");
     }
-    const result = await fileDispute(subId, user.username, disputeForm.reasoning, validEvidence);
+    const sub = subs[subId];
+    const disputeType = sub && sub.status === "rejected" ? "challenge_rejection" : "challenge_approval";
+    const result = await fileDispute(subId, user.username, disputeForm.reasoning, validEvidence, {
+      fieldResponses: disputeForm.fieldResponses,
+      disputeType,
+    });
     if (result.error) return setDisputeError(result.error);
     setDisputeSuccess("Dispute filed. Jury selected.");
-    setDisputingId(null); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
+    setDisputingId(null); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} });
     load();
   };
 
@@ -81,6 +105,37 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
           {approveMsg && <span style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>{approveMsg}</span>}
         </div>
       )}
+      {/* Saved drafts CTA */}
+      {user && savedDrafts.length > 0 && (
+        <div style={{ padding: 14, background: "#FFFBEB", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#CA8A04", fontWeight: 700, marginBottom: 8 }}>
+            {savedDrafts.length} Draft{savedDrafts.length > 1 ? "s" : ""} in Progress
+          </div>
+          {savedDrafts.slice(0, 5).map(d => {
+            let domain = "";
+            try { domain = new URL(d.url).hostname.replace(/^www\./, ""); } catch {}
+            const ago = sDate(d.updatedAt);
+            return (
+              <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", marginBottom: 4, background: "#fff", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {d.title || "(no headline)"}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#64748B" }}>{domain} · {ago}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                  <button className="ta-btn-primary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={() => onNavigate && onNavigate("submit", d.id)}>Continue</button>
+                  <button className="ta-link-btn" style={{ fontSize: 10, color: "#DC2626" }} onClick={async () => {
+                    try { await fetch(`/api/drafts/${d.id}`, { method: "DELETE" }); setSavedDrafts(prev => prev.filter(x => x.id !== d.id)); } catch {}
+                  }}>Discard</button>
+                </div>
+              </div>
+            );
+          })}
+          {savedDrafts.length > 5 && <div style={{ fontSize: 10, color: "#64748B", marginTop: 4 }}>+ {savedDrafts.length - 5} more</div>}
+        </div>
+      )}
+
       {user && !Object.values(subs || {}).some(s => s.submittedBy === user.username) && (
         <div style={{ padding: 16, background: "#fff", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 16, textAlign: "center" }}>
           <div style={{ fontSize: 18, marginBottom: 6 }}>⚖</div>
@@ -124,16 +179,95 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
             <div>
               <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
 
+              {/* Tag to story */}
+              {["approved", "consensus", "cross_review"].includes(sub.status) && taggingId !== sub.id && (
+                <button className="ta-btn-ghost" style={{ color: "#7C3AED", marginTop: 6, fontSize: 12, marginRight: 8 }} onClick={() => { setTaggingId(sub.id); setTagMsg(""); }}>
+                  📖 Tag to Story
+                </button>
+              )}
+              {taggingId === sub.id && (() => {
+                const availableStories = Object.values(stories).filter(s => ["approved", "consensus", "cross_review"].includes(s.status));
+                return (
+                  <div style={{ marginTop: 8, padding: 10, background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 8 }}>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#7C3AED", fontWeight: 700, marginBottom: 6 }}>TAG TO STORY</div>
+                    {tagMsg && <div className={tagMsg.includes("Error") ? "ta-error" : "ta-success"} style={{ marginBottom: 6, fontSize: 12 }}>{tagMsg}</div>}
+                    {availableStories.length === 0 ? (
+                      <div style={{ fontSize: 12, color: "#64748B" }}>No approved stories available. <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => onNavigate && onNavigate("stories")}>Create one</button></div>
+                    ) : availableStories.map(s => (
+                      <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 6px", marginBottom: 3, borderRadius: 4, background: "#fff" }}>
+                        <span style={{ fontSize: 12, color: "#1E293B", flex: 1 }}>{s.title} <span style={{ fontSize: 10, color: "#94A3B8" }}>({s.orgName})</span></span>
+                        <button className="ta-link-btn" style={{ fontSize: 10, color: "#7C3AED" }} onClick={async () => {
+                          const res = await fetch(`/api/stories/${s.id}/tag`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId: sub.id }) });
+                          const data = await res.json();
+                          if (res.ok) { setTagMsg(data.status === "approved" ? "Tagged (auto-approved)." : "Tag submitted for approval."); } else { setTagMsg("Error: " + (data.error || "Failed")); }
+                        }}>Tag</button>
+                      </div>
+                    ))}
+                    <button className="ta-link-btn" style={{ fontSize: 11, marginTop: 6, color: "#94A3B8" }} onClick={() => { setTaggingId(null); setTagMsg(""); }}>Cancel</button>
+                  </div>
+                );
+              })()}
+
               {canDispute(sub) && disputingId !== sub.id && (
-                <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); }}>⚖ Dispute This Submission</button>
+                <button className="ta-btn-ghost" style={{ color: "#EA580C", marginTop: 6, fontSize: 12 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} }); }}>
+                  {isRejectionDispute(sub) ? "⚖ Dispute This Rejection" : "⚖ Dispute This Submission"}
+                </button>
               )}
 
               {disputingId === sub.id && (
                 <div style={{ marginTop: 10, padding: 14, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>⚖ File Intra-Assembly Dispute</div>
-                  <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>You are disputing this submission. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.</p>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#EA580C", fontWeight: 700, marginBottom: 8 }}>
+                    {isRejectionDispute(sub) ? "⚖ Dispute Rejection" : "⚖ File Intra-Assembly Dispute"}
+                  </div>
+
+                  {isRejectionDispute(sub) ? (
+                    <>
+                      <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>
+                        This submission was rejected by the jury. You can dispute the rejection by providing additional evidence and reasoning. The original submission cannot be changed. A new jury will review the dispute.
+                      </p>
+                      {/* Show juror rejection notes */}
+                      {(() => {
+                        const rejectionNotes = Object.entries(sub.votes || {}).filter(([, v]) => !v.approve && v.note).map(([voter, v]) => ({ voter, note: v.note, time: v.time }));
+                        return rejectionNotes.length > 0 && (
+                          <div style={{ marginBottom: 12, padding: 10, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8 }}>
+                            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#DC2626", marginBottom: 6, fontWeight: 700 }}>JUROR REJECTION NOTES</div>
+                            {rejectionNotes.map((jn, i) => (
+                              <div key={i} style={{ fontSize: 12, color: "#1E293B", padding: "6px 0", borderTop: i > 0 ? "1px solid #FECACA" : "none", lineHeight: 1.6 }}>
+                                {jn.note}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 12, color: "#1E293B", marginBottom: 10, lineHeight: 1.6 }}>
+                        You are disputing this approved submission. Explain why each part of the submission is wrong. A jury of uninvolved Assembly members will review. If upheld, you gain significant reputation. If dismissed, you take a small reputation hit.
+                      </p>
+                      {/* Per-field dispute responses for approved submissions */}
+                      <div style={{ marginBottom: 12, padding: 10, background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+                        <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 8, fontWeight: 700 }}>ORIGINAL SUBMISSION — RESPOND TO EACH FIELD</div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 2 }}>ORIGINAL HEADLINE</div>
+                          <div style={{ fontSize: 12, color: "#1E293B", padding: "4px 8px", background: "#fff", borderRadius: 4, border: "1px solid #E2E8F0" }}>{sub.originalHeadline}</div>
+                          <textarea value={(disputeForm.fieldResponses || {}).headline || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, headline: e.target.value } })} rows={2} placeholder="Why is this characterization of the headline wrong? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid #EA580C40", fontSize: 12, borderRadius: 6, boxSizing: "border-box", fontFamily: "var(--body)" }} />
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 2 }}>PROPOSED REPLACEMENT</div>
+                          <div style={{ fontSize: 12, color: "#DC2626", fontWeight: 600, padding: "4px 8px", background: "#fff", borderRadius: 4, border: "1px solid #E2E8F0" }}>{sub.replacement}</div>
+                          <textarea value={(disputeForm.fieldResponses || {}).replacement || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, replacement: e.target.value } })} rows={2} placeholder="Why is this replacement inaccurate? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid #EA580C40", fontSize: 12, borderRadius: 6, boxSizing: "border-box", fontFamily: "var(--body)" }} />
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 2 }}>REASONING</div>
+                          <div style={{ fontSize: 12, color: "#475569", padding: "4px 8px", background: "#fff", borderRadius: 4, border: "1px solid #E2E8F0", lineHeight: 1.6 }}>{sub.reasoning}</div>
+                          <textarea value={(disputeForm.fieldResponses || {}).reasoning || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, reasoning: e.target.value } })} rows={2} placeholder="Why is this reasoning flawed? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid #EA580C40", fontSize: 12, borderRadius: 6, boxSizing: "border-box", fontFamily: "var(--body)" }} />
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {disputeError && <div className="ta-error">{disputeError}</div>}
-                  <div className="ta-field"><label>Why is this submission wrong? *</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder="Explain specifically what is incorrect, misleading, or deceptive..." /></div>
+                  <div className="ta-field"><label>{isRejectionDispute(sub) ? "Why was the rejection wrong? *" : "Overall dispute reasoning *"}</label><textarea value={disputeForm.reasoning} onChange={e => setDisputeForm({ ...disputeForm, reasoning: e.target.value })} rows={3} placeholder={isRejectionDispute(sub) ? "Explain why the jury's rejection was incorrect, and provide any additional context..." : "Explain specifically what is incorrect, misleading, or deceptive..."} /></div>
                   <EvidenceFields evidence={disputeForm.evidence} onChange={ev => setDisputeForm({ ...disputeForm, evidence: ev })} />
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                     <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => submitDispute(sub.id)}>File Dispute</button>

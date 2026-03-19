@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { ok } from "@/lib/api-utils";
+import { ok, serverError } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 // in the format the v5 SPA expects (camelCase, nested votes/jurors/evidence).
 // This replaces sG(SK.SUBS) reads from the deprecated KV store.
 export async function GET() {
+  try {
   // ── Auto-promote pending_jury → pending_review ──
   // Wrapped in try-catch so promotion failures never crash the read endpoint.
   try {
@@ -37,8 +38,10 @@ export async function GET() {
           const pool = await sql.query(
             `SELECT om.user_id
              FROM organization_members om
+             JOIN users u ON u.id = om.user_id
              WHERE om.org_id = $1
                AND om.is_active = TRUE
+               AND u.is_di = FALSE
                AND om.user_id != ALL($2::uuid[])
              ORDER BY RANDOM()
              LIMIT $3`,
@@ -252,4 +255,7 @@ export async function GET() {
   }
 
   return ok(subs);
+  } catch (error) {
+    return serverError("GET /api/data/submissions", error);
+  }
 }

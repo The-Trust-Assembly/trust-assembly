@@ -21,7 +21,7 @@ export async function POST(
 
   // Verify dispute exists and is open for voting
   const dispute = await sql`
-    SELECT id, org_id, status, filed_by FROM disputes WHERE id = ${id}
+    SELECT id, org_id, status, disputed_by FROM disputes WHERE id = ${id}
   `;
   if (dispute.rows.length === 0) {
     return err("Dispute not found", 404);
@@ -31,7 +31,7 @@ export async function POST(
   }
 
   // Can't vote on own dispute
-  if (dispute.rows[0].filed_by === session.sub) {
+  if (dispute.rows[0].disputed_by === session.sub) {
     return forbidden("Cannot vote on your own dispute");
   }
 

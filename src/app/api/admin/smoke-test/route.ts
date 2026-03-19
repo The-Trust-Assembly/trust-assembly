@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
     jurorIds: string[];
     submissionId?: string;
     memberIds: string[];
+    disputeId?: string;
+    concessionId?: string;
   } = { jurorIds: [], memberIds: [] };
 
   const overallStart = Date.now();
@@ -338,15 +340,124 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    // ═══════════════════════════════════════════════════════════════
+    // STAGE 7: Ghost dispute on approved submission
+    // ═══════════════════════════════════════════════════════════════
+    await runStage("7. File ghost dispute", async () => {
+      if (!ghostIds.submissionId || !ghostIds.jurorIds[0]) {
+        return { status: "SKIP" as const, description: "No ghost submission/jurors to dispute", details: {} };
+      }
+
+      const client = await sql.connect();
+      try {
+        await client.query("BEGIN");
+        const result = await client.query(
+          `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id`,
+          [ghostIds.submissionId, ghostIds.orgId, ghostIds.jurorIds[0], ghostIds.submitterId,
+           "Smoke test dispute — testing dispute pipeline", "challenge_approval"]
+        );
+        ghostIds.disputeId = result.rows[0].id;
+
+        await client.query(
+          "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+          ["Dispute filed (smoke test)", ghostIds.jurorIds[0], ghostIds.orgId, "dispute", ghostIds.disputeId]
+        );
+        await client.query("COMMIT");
+
+        return {
+          status: "PASS" as const,
+          description: `Ghost dispute created: ${ghostIds.disputeId}`,
+          details: { disputeId: ghostIds.disputeId, disputeType: "challenge_approval" },
+        };
+      } catch (e) {
+        await client.query("ROLLBACK");
+        throw e;
+      } finally {
+        client.release();
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // STAGE 8: Ghost concession on the submission
+    // ═══════════════════════════════════════════════════════════════
+    await runStage("8. File ghost concession", async () => {
+      if (!ghostIds.submissionId || !ghostIds.submitterId) {
+        return { status: "SKIP" as const, description: "No ghost submission/submitter for concession", details: {} };
+      }
+
+      const result = await sql`
+        INSERT INTO concessions (org_id, submission_id, proposed_by, reasoning)
+        VALUES (${ghostIds.orgId!}, ${ghostIds.submissionId}, ${ghostIds.submitterId}, 'Smoke test concession — testing concession pipeline')
+        RETURNING id, status
+      `;
+      ghostIds.concessionId = result.rows[0].id;
+
+      return {
+        status: "PASS" as const,
+        description: `Ghost concession created: ${ghostIds.concessionId}, status=${result.rows[0].status}`,
+        details: { concessionId: ghostIds.concessionId, status: result.rows[0].status },
+      };
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // STAGE 9: Verify dispute and concession audit logs
+    // ═══════════════════════════════════════════════════════════════
+    await runStage("9. Verify dispute/concession audit trail", async () => {
+      const disputeAudit = ghostIds.disputeId
+        ? await sql`SELECT COUNT(*)::int AS cnt FROM audit_log WHERE entity_type = 'dispute' AND entity_id = ${ghostIds.disputeId}`
+        : { rows: [{ cnt: 0 }] };
+      const disputeExists = ghostIds.disputeId
+        ? await sql`SELECT id, status FROM disputes WHERE id = ${ghostIds.disputeId}`
+        : { rows: [] };
+
+      const disputeOk = disputeAudit.rows[0].cnt > 0 && disputeExists.rows.length > 0;
+
+      return {
+        status: disputeOk ? "PASS" as const : "FAIL" as const,
+        description: disputeOk
+          ? "Dispute has audit log entry and exists in disputes table."
+          : "Dispute audit trail incomplete.",
+        details: {
+          disputeAuditCount: disputeAudit.rows[0].cnt,
+          disputeExists: disputeExists.rows.length > 0,
+          concessionId: ghostIds.concessionId,
+        },
+      };
+    });
+
   } finally {
     // ═══════════════════════════════════════════════════════════════
-    // STAGE 7: Cleanup — delete ALL ghost records
+    // STAGE 10: Cleanup — delete ALL ghost records
     // ═══════════════════════════════════════════════════════════════
     const cleanupStart = Date.now();
     const cleanupDetails: Record<string, unknown> = {};
     const cleanupErrors: string[] = [];
 
     try {
+      // Delete dispute and concession records first (they reference submissions)
+      if (ghostIds.disputeId) {
+        try {
+          await sql`DELETE FROM dispute_evidence WHERE dispute_id = ${ghostIds.disputeId}`;
+          cleanupDetails.disputeEvidence = "deleted";
+        } catch (e: unknown) { cleanupDetails.disputeEvidence = "skipped"; }
+        try {
+          await sql`DELETE FROM audit_log WHERE entity_type = 'dispute' AND entity_id = ${ghostIds.disputeId}`;
+          cleanupDetails.disputeAuditLog = "deleted";
+        } catch (e: unknown) { cleanupDetails.disputeAuditLog = "skipped"; }
+        try {
+          await sql`DELETE FROM disputes WHERE id = ${ghostIds.disputeId}`;
+          cleanupDetails.dispute = "deleted";
+        } catch (e: unknown) { cleanupErrors.push(`dispute: ${e instanceof Error ? e.message : String(e)}`); }
+      }
+      if (ghostIds.concessionId) {
+        try {
+          await sql`DELETE FROM concessions WHERE id = ${ghostIds.concessionId}`;
+          cleanupDetails.concession = "deleted";
+        } catch (e: unknown) { cleanupErrors.push(`concession: ${e instanceof Error ? e.message : String(e)}`); }
+      }
+
       if (ghostIds.submissionId) {
         // Delete in dependency order
         try {
@@ -437,7 +548,7 @@ export async function POST(request: NextRequest) {
       cleanupDetails.verifySubmitterGone = orphanUserCheck.rows[0].cnt === 0;
 
       stages.push({
-        stage: "7. Cleanup ghost records",
+        stage: "10. Cleanup ghost records",
         status: cleanupErrors.length === 0 ? "PASS" : "FAIL",
         description: cleanupErrors.length === 0
           ? "All ghost records deleted successfully. Zero residue."
@@ -448,7 +559,7 @@ export async function POST(request: NextRequest) {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       stages.push({
-        stage: "7. Cleanup ghost records",
+        stage: "10. Cleanup ghost records",
         status: "ERROR",
         description: `Cleanup threw: ${msg}`,
         details: { ...cleanupDetails, errors: [...cleanupErrors, msg] },

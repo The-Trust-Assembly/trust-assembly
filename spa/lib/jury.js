@@ -262,7 +262,7 @@ export function getConcessionRecovery(rejectedAt, concessionsThisWeek = 0) {
   return 0.05;
 }
 
-export async function fileDispute(subId, disputerUsername, reasoning, evidence) {
+export async function fileDispute(subId, disputerUsername, reasoning, evidence, { fieldResponses, disputeType } = {}) {
   try {
     const res = await fetch("/api/disputes", {
       method: "POST",
@@ -271,6 +271,8 @@ export async function fileDispute(subId, disputerUsername, reasoning, evidence) 
         submissionId: subId,
         reasoning: reasoning.trim(),
         evidence: (evidence || []).map(e => ({ url: e.url, explanation: e.explanation })),
+        ...(fieldResponses && Object.values(fieldResponses).some(v => v) ? { fieldResponses } : {}),
+        ...(disputeType ? { disputeType } : {}),
       }),
     });
     if (!res.ok) {
