@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/api-utils";
+import { ok, err, unauthorized, serverError } from "@/lib/api-utils";
 
 const MAX_DRAFTS = 10;
 
 // GET /api/drafts — list user's saved drafts
 export async function GET(request: NextRequest) {
+  try {
   const user = await getCurrentUserFromRequest(request);
   if (!user) return unauthorized();
 
@@ -26,10 +27,14 @@ export async function GET(request: NextRequest) {
       createdAt: r.created_at,
     })),
   });
+  } catch (error) {
+    return serverError("GET /api/drafts", error);
+  }
 }
 
 // POST /api/drafts — save or update a draft (upsert by URL)
 export async function POST(request: NextRequest) {
+  try {
   const user = await getCurrentUserFromRequest(request);
   if (!user) return unauthorized();
 
@@ -76,4 +81,7 @@ export async function POST(request: NextRequest) {
       updatedAt: row.updated_at,
     },
   });
+  } catch (error) {
+    return serverError("POST /api/drafts", error);
+  }
 }

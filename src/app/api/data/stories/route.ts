@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { ok } from "@/lib/api-utils";
+import { ok, serverError } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 // GET /api/data/stories — returns ALL stories keyed by ID
 // in the camelCase format the SPA expects.
 export async function GET() {
+  try {
   // ── Auto-promote pending_jury → pending_review ──
   try {
     const wildWest = await isWildWestMode();
@@ -174,4 +175,7 @@ export async function GET() {
   }
 
   return ok(stories);
+  } catch (error) {
+    return serverError("GET /api/data/stories", error);
+  }
 }

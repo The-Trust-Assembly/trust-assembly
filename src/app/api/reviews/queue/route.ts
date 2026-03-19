@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, unauthorized } from "@/lib/api-utils";
+import { ok, unauthorized, serverError } from "@/lib/api-utils";
 import { isWildWestMode } from "@/lib/jury-rules";
 
 // GET /api/reviews/queue — returns all review items for the current user
@@ -14,6 +14,7 @@ import { isWildWestMode } from "@/lib/jury-rules";
 //   myDisputes   – all disputes filed by user or against user's submissions
 
 export async function GET(request: NextRequest) {
+  try {
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
@@ -637,4 +638,7 @@ export async function GET(request: NextRequest) {
   });
 
   return ok({ submissions, disputes, myDisputes, storyProposals, wildWest });
+  } catch (error) {
+    return serverError("GET /api/reviews/queue", error);
+  }
 }

@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { ok } from "@/lib/api-utils";
+import { ok, serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 // in the format the v5 SPA expects.
 // This replaces sG(SK.DISPUTES) reads from the deprecated KV store.
 export async function GET() {
+  try {
   const result = await sql`
     SELECT
       d.id, d.submission_id, d.org_id, d.reasoning, d.status,
@@ -106,4 +107,7 @@ export async function GET() {
   }
 
   return ok(disputes);
+  } catch (error) {
+    return serverError("GET /api/data/disputes", error);
+  }
 }
