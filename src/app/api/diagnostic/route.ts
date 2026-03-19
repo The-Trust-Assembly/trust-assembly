@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
     // DI submissions with no diPartner
     const diNoParter = await sql`
       SELECT COUNT(*) as cnt FROM submissions
-      WHERE is_di_submission = TRUE AND di_partner IS NULL
+      WHERE is_di_submission = TRUE AND di_partner_id IS NULL
     `;
     if (parseInt(diNoParter.rows[0].cnt) > 0) {
       dataIssues.push({

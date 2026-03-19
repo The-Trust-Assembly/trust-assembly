@@ -93,6 +93,31 @@ export default function DiagnosticScreen() {
         <button onClick={load} className="ta-btn-secondary" style={{ padding: "4px 10px", fontSize: 11, marginLeft: 8 }}>
           Refresh
         </button>
+        <button
+          onClick={() => {
+            try {
+              const text = JSON.stringify(report, null, 2);
+              navigator.clipboard.writeText(text).then(
+                () => alert("Report copied to clipboard"),
+                () => {
+                  // Fallback for browsers that don't support clipboard API
+                  const ta = document.createElement("textarea");
+                  ta.value = text;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand("copy");
+                  document.body.removeChild(ta);
+                  alert("Report copied to clipboard");
+                }
+              );
+            } catch (e) { alert("Failed to copy: " + e.message); }
+          }}
+          className="ta-btn-secondary"
+          style={{ padding: "4px 10px", fontSize: 11, marginLeft: 4 }}
+          disabled={!report}
+        >
+          Copy Report
+        </button>
       </div>
 
       {/* Status banner */}

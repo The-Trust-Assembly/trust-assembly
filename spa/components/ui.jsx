@@ -179,7 +179,7 @@ export function LegalDisclaimer({ short }) {
 
 export function AuditTrail({ entries }) {
   const [open, setOpen] = useState(false);
-  if (!entries || entries.length === 0) return null;
+  if (!entries || !Array.isArray(entries) || entries.length === 0) return null;
   return (
     <div style={{ marginTop: 10 }}>
       <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", padding: 0 }}>{open ? "▾" : "▸"} Audit Trail ({entries.length})</button>
