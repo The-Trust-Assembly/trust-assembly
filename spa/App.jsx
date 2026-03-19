@@ -256,7 +256,7 @@ export default function TrustAssembly() {
                 ratingsReceived: [], reviewHistory: [], retractions: [], notifications: [],
               };
             }
-            if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
+            if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; const h = window.location.hash.slice(1); const hasDeepLink = h && h !== "login" && h !== "register"; if (!hasDeepLink) setScreen(isNew ? "orgs" : "feed"); }
           }
         }
       } catch (e) { console.error("Init error:", e); }
