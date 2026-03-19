@@ -147,24 +147,27 @@ export function Badge({ profile, score }) {
 
 export function SubHeadline({ sub, size = 14 }) {
   const isAffirm = sub.submissionType === "affirmation";
+  const oh = sub.originalHeadline && typeof sub.originalHeadline === "object" ? JSON.stringify(sub.originalHeadline) : sub.originalHeadline;
+  const rp = sub.replacement && typeof sub.replacement === "object" ? JSON.stringify(sub.replacement) : sub.replacement;
+  const au = sub.author && typeof sub.author === "object" ? JSON.stringify(sub.author) : sub.author;
   return (
     <div>
       {isAffirm ? (
-        <div style={{ fontFamily: "var(--serif)", fontSize: size, color: "#059669", fontWeight: 700, marginBottom: 2 }}>✓ {sub.originalHeadline}</div>
+        <div style={{ fontFamily: "var(--serif)", fontSize: size, color: "#059669", fontWeight: 700, marginBottom: 2 }}>✓ {oh}</div>
       ) : (
         <>
-          <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", marginBottom: 3, fontSize: size }}>{sub.originalHeadline}</div>
-          {sub.replacement && <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: size + 2, marginTop: 1 }}>{sub.replacement}</div>}
+          <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", marginBottom: 3, fontSize: size }}>{oh}</div>
+          {rp && <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: size + 2, marginTop: 1 }}>{rp}</div>}
         </>
       )}
-      {sub.author && <div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginTop: 2 }}>Author: {sub.author}</div>}
+      {au && <div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginTop: 2 }}>Author: {au}</div>}
     </div>
   );
 }
 
 export function StatusPill({ status }) {
   const m = { di_pending: { bg: "#EEF2FF", c: "#4F46E5", l: "🤖 DI Pre-Review" }, pending_jury: { bg: "#FFFBEB", c: "#D97706", l: "Awaiting Jury" }, pending_review: { bg: "#FFF7ED", c: "#EA580C", l: "Under Review" }, approved: { bg: "#ECFDF5", c: "#059669", l: "Approved" }, rejected: { bg: "#FEF2F2", c: "#DC2626", l: "Rejected" }, cross_review: { bg: "#F0FDFA", c: "#0D9488", l: "Cross-Group" }, consensus: { bg: "#F5F3FF", c: "#7C3AED", l: "Consensus" }, consensus_rejected: { bg: "#EBD5D3", c: "#991B1B", l: "Consensus Rejected" }, disputed: { bg: "#FFF7ED", c: "#EA580C", l: "⚖ Disputed" }, upheld: { bg: "#EA580C", c: "#fff", l: "Dispute Upheld" }, dismissed: { bg: "#ECFDF5", c: "#059669", l: "Dispute Dismissed" } };
-  const s = m[status] || { bg: "#eee", c: "#666", l: status };
+  const s = m[status] || { bg: "#eee", c: "#666", l: typeof status === "string" ? status : "unknown" };
   return <span style={{ fontSize: 10, padding: "2px 7px", background: s.bg, color: s.c, borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>{s.l}</span>;
 }
 

@@ -130,7 +130,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Link Requests</div>
         {pendingLinks.map(r => (
           <div key={r.diUsername} className="ta-card" style={{ borderLeft: "4px solid #4F46E5", padding: 12 }}>
-            <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{r.diUsername}</strong> wants to register as your Digital Intelligence</div>
+            <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{safe(r.diUsername)}</strong> wants to register as your Digital Intelligence</div>
             <div style={{ padding: 10, background: "#EEF2FF", borderRadius: 8, marginBottom: 8, fontSize: 12, color: "#1E293B", lineHeight: 1.6 }}>
               By approving, you accept responsibility for all of this DI's submissions. <strong>You receive the scoring</strong> — wins, losses, and deliberate deception penalties. You must pre-approve each submission before it enters jury review.
             </div>
@@ -165,7 +165,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
             <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>🤖 @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>
             <StatusPill status="di_pending" />
           </div>
-          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
+          <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(sub.url)}</a>
           <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
             <SubHeadline sub={sub} />
           </div>

@@ -321,8 +321,8 @@ function ReviewScreenInner({ user }) {
           <StatusPill status={sub.status} />
         </div>
       </div>
-      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
-      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", padding: "4px 8px", background: "#F0FDFA", borderRadius: 8, marginTop: 6 }}>🌐 Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {sub.orgName}</div>}
+      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(sub.url)}</a>
+      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", padding: "4px 8px", background: "#F0FDFA", borderRadius: 8, marginTop: 6 }}>🌐 Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
       <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
         <SubHeadline sub={sub} />
       </div>
@@ -538,7 +538,7 @@ function ReviewScreenInner({ user }) {
             <div key={d.id} className="ta-card" style={{ borderLeft: `4px solid ${statusColor}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
-                  {isDisputer ? "⚖ You disputed" : "⚖ Disputed against you"} · {d.orgName} · {sDate(d.createdAt)}
+                  {isDisputer ? "⚖ You disputed" : "⚖ Disputed against you"} · {safe(d.orgName)} · {sDate(d.createdAt)}
                 </span>
                 <span style={{ fontSize: 10, padding: "2px 7px", background: d.status === "pending_review" ? "#FFFBEB" : d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", color: statusColor, borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>{statusLabel}</span>
               </div>
@@ -586,11 +586,11 @@ function ReviewScreenInner({ user }) {
             <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #DC2626" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
-                  {s.orgName} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
+                  {safe(s.orgName)} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
                 </span>
                 <StatusPill status={s.status} />
               </div>
-              <a href={s.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{s.url}</a>
+              <a href={s.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(s.url)}</a>
               <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
                 <SubHeadline sub={s} />
               </div>
@@ -672,7 +672,7 @@ function ReviewScreenInner({ user }) {
           return (
             <div key={sp.id} className="ta-card" style={{ borderLeft: "4px solid #8B5CF6" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sp.submittedBy} · {sp.orgName} · {sDate(sp.createdAt)}</span>
+                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{safe(sp.submittedBy)} · {safe(sp.orgName)} · {sDate(sp.createdAt)}</span>
                 <span style={{ fontSize: 10, padding: "2px 7px", background: "#F5F3FF", color: "#7C3AED", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Story Proposal</span>
               </div>
               <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "#0F172A", marginBottom: 8 }}>{safe(sp.title)}</div>
