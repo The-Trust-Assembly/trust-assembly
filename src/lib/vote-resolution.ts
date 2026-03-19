@@ -346,12 +346,14 @@ async function promoteToCrossGroup(
 
   if (qualifyingOrgs.rows.length < 1) return false;
 
-  // Select cross-group jurors from other assemblies
+  // Select cross-group jurors from other assemblies (exclude DI accounts)
   const crossPool = await client.query(
     `SELECT DISTINCT om.user_id
      FROM organization_members om
+     JOIN users u ON u.id = om.user_id
      WHERE om.org_id != $1
        AND om.is_active = TRUE
+       AND u.is_di = FALSE
        AND om.user_id != $2
      ORDER BY RANDOM()
      LIMIT 15`,
@@ -557,12 +559,14 @@ async function promoteStoryToCrossGroup(
 
   if (qualifyingOrgs.rows.length < 1) return false;
 
-  // Select cross-group jurors from other assemblies
+  // Select cross-group jurors from other assemblies (exclude DI accounts)
   const crossPool = await client.query(
     `SELECT DISTINCT om.user_id
      FROM organization_members om
+     JOIN users u ON u.id = om.user_id
      WHERE om.org_id != $1
        AND om.is_active = TRUE
+       AND u.is_di = FALSE
        AND om.user_id != $2
      ORDER BY RANDOM()
      LIMIT 15`,

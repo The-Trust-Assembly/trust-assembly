@@ -37,8 +37,10 @@ export async function GET() {
           const pool = await sql.query(
             `SELECT om.user_id
              FROM organization_members om
+             JOIN users u ON u.id = om.user_id
              WHERE om.org_id = $1
                AND om.is_active = TRUE
+               AND u.is_di = FALSE
                AND om.user_id != ALL($2::uuid[])
              ORDER BY RANDOM()
              LIMIT $3`,
