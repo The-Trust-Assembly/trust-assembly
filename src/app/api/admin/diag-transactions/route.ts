@@ -1439,7 +1439,7 @@ export async function POST(request: NextRequest) {
     // Note: disputes may use their own vote tracking, check if dispute votes exist
     const disputeVoteCheck = await sql`
       SELECT d.id, d.status,
-        (SELECT COUNT(*)::int FROM audit_log al WHERE al.entity_type = 'dispute' AND al.entity_id = d.id::text) AS audit_count
+        (SELECT COUNT(*)::int FROM audit_log al WHERE al.entity_type = 'dispute' AND al.entity_id = d.id) AS audit_count
       FROM disputes d
       WHERE d.status IN ('upheld', 'dismissed')
     `;

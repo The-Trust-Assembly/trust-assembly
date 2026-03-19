@@ -95,12 +95,14 @@ export default function DIPanelContent({ user, subs, onReload }) {
   };
 
   const rejectDISub = async (subId) => {
-    // ── Reject DI submission via relational API (single source of truth) ──
+    // ── Reject DI submission — deletes all records (quality gate, not a verdict) ──
+    const reason = window.prompt("Optional: reason for rejecting this DI submission\n(Leave blank to use default)");
+    if (reason === null) return; // user cancelled prompt
     try {
       const res = await fetch(`/api/submissions/${subId}/di-review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reject" }),
+        body: JSON.stringify({ action: "reject", reason: reason.trim() || undefined }),
       });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to reject"); return; }
     } catch (e) { setError("Network error rejecting submission"); return; }

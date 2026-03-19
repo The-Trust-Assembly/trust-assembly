@@ -16,7 +16,7 @@ export async function POST(
 
   const { id } = await params;
   const body = await request.json();
-  const { action } = body;
+  const { action, reason } = body;
 
   if (!action || !["approve", "reject"].includes(action)) {
     return err("action must be 'approve' or 'reject'");
@@ -46,20 +46,37 @@ export async function POST(
   const now = new Date().toISOString();
 
   if (action === "reject") {
-    // Use sql.connect() for a dedicated client where transactions work.
+    // DI queue rejections are a quality gate — the human partner is saying
+    // "this doesn't meet the bar for jury review." This is NOT a jury verdict.
+    // We delete the submission and all associated records (evidence, edits,
+    // jury assignments) so they don't pollute the database. This never counts
+    // against the DI submitter's reputation.
     const client = await sql.connect();
     try {
       await client.query("BEGIN");
+      // Delete associated records first (CASCADE would handle this, but be explicit)
+      await client.query("DELETE FROM submission_evidence WHERE submission_id = $1", [id]);
+      await client.query("DELETE FROM submission_inline_edits WHERE submission_id = $1", [id]);
+      await client.query("DELETE FROM jury_assignments WHERE submission_id = $1", [id]);
+      await client.query("DELETE FROM jury_votes WHERE submission_id = $1", [id]);
+      await client.query("DELETE FROM submission_linked_entries WHERE submission_id = $1", [id]);
+      // Delete the submission itself
+      await client.query("DELETE FROM submissions WHERE id = $1", [id]);
+      // Log the rejection with reason in audit (no entity_id since record is gone)
       await client.query(
-        "UPDATE submissions SET status = 'rejected', resolved_at = $1 WHERE id = $2",
-        [now, id]
-      );
-      await client.query(
-        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata) VALUES ($1, $2, $3, $4, $5, $6)",
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, metadata) VALUES ($1, $2, $3, $4, $5)",
         [
-          "DI submission rejected by partner (pre-review)",
-          session.sub, sub.org_id, "submission", id,
-          JSON.stringify({ partnerUsername: session.username, action: "reject" }),
+          "DI submission rejected by partner (pre-review) — records deleted",
+          session.sub, sub.org_id, "di_rejection",
+          JSON.stringify({
+            partnerUsername: session.username,
+            diSubmitter: sub.submitted_by_username,
+            action: "reject",
+            reason: reason || "Does not meet quality bar for jury review",
+            deletedSubmissionId: id,
+            url: sub.url,
+            originalHeadline: sub.original_headline,
+          }),
         ]
       );
       await client.query("COMMIT");
@@ -70,7 +87,7 @@ export async function POST(
     } finally {
       client.release();
     }
-    return ok({ id, status: "rejected", action: "rejected" });
+    return ok({ id, status: "deleted", action: "rejected", reason: reason || "Does not meet quality bar for jury review" });
   }
 
   // action === "approve"
