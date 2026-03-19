@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://trustassembly.org";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

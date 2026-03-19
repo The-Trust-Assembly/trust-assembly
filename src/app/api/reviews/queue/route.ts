@@ -4,6 +4,8 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, unauthorized, serverError } from "@/lib/api-utils";
 import { isWildWestMode } from "@/lib/jury-rules";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/reviews/queue — returns all review items for the current user
 // from the relational DB.  The v5 SPA merges these into its KV-loaded state
 // so nothing from the relational tables falls through the cracks.
