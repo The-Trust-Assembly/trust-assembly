@@ -65,6 +65,16 @@ function ReviewScreenInner({ user }) {
   const [wildWest, setWildWest] = useState(false);
   const [storyProposals, setStoryProposals] = useState([]);
 
+  // State for My Results tab actions — must be declared here (not after early return)
+  // to satisfy React's rules of hooks (same number of hooks every render).
+  const [concedingId, setConcedingId] = useState(null);
+  const [concedeReason, setConcedeReason] = useState("");
+  const [concedeError, setConcedeError] = useState("");
+  const [concedeSuccess, setConcedeSuccess] = useState("");
+  const [disputingResultId, setDisputingResultId] = useState(null);
+  const [resultDisputeForm, setResultDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
+  const [resultDisputeError, setResultDisputeError] = useState("");
+
   const load = useCallback(async () => {
     let ww = false;
     try { ww = await isWildWestMode(); } catch { ww = true; }
@@ -252,15 +262,6 @@ function ReviewScreenInner({ user }) {
   // My Results: user's rejected submissions that they can concede or dispute
   const myRejected = all.filter(s => s.submittedBy === user.username && s.status === "rejected");
   const myDisputedSubs = new Set(Object.values(disputes || {}).filter(d => d.originalSubmitter === user.username || d.disputedBy === user.username).map(d => d.submissionId));
-
-  // State for My Results tab actions
-  const [concedingId, setConcedingId] = useState(null);
-  const [concedeReason, setConcedeReason] = useState("");
-  const [concedeError, setConcedeError] = useState("");
-  const [concedeSuccess, setConcedeSuccess] = useState("");
-  const [disputingResultId, setDisputingResultId] = useState(null);
-  const [resultDisputeForm, setResultDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
-  const [resultDisputeError, setResultDisputeError] = useState("");
 
   const submitConcession = async (subId) => {
     setConcedeError("");
