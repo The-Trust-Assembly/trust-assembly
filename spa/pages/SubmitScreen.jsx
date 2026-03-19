@@ -32,6 +32,48 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const [graceTimer, setGraceTimer] = useState(null);
   const [myOrgs, setMyOrgs] = useState([]);
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const importTimerRef = useRef(null);
+
+  // Auto-import article headline and author when a valid URL is entered
+  const importArticleMeta = useCallback(async (url) => {
+    if (!url || !/^https?:\/\/.+\..+/.test(url.trim())) return;
+    setImporting(true); setImportMsg("");
+    try {
+      const res = await fetch(`/api/article-meta?url=${encodeURIComponent(url.trim())}`);
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setImportMsg(d.error || "Could not fetch article."); setImporting(false); return; }
+      const data = await res.json();
+      let imported = [];
+      if (data.headline && !form.originalHeadline.trim()) {
+        setForm(f => ({ ...f, originalHeadline: data.headline }));
+        imported.push("headline");
+      }
+      if (data.authors && data.authors.length > 0 && authors.length === 0) {
+        setAuthors(data.authors);
+        setForm(f => ({ ...f, author: data.authors.join(", ") }));
+        imported.push(data.authors.length === 1 ? "author" : "authors");
+      }
+      if (imported.length > 0) {
+        setImportMsg(`Imported ${imported.join(" and ")} from article.`);
+      } else if (data.headline || data.authors) {
+        setImportMsg("Fields already filled — import skipped.");
+      } else {
+        setImportMsg("No headline or author found on page.");
+      }
+    } catch { setImportMsg("Failed to fetch article."); }
+    setImporting(false);
+    setTimeout(() => setImportMsg(""), 5000);
+  }, [form.originalHeadline, authors]);
+
+  // Debounced auto-import on URL paste/change
+  const handleUrlChange = useCallback((newUrl) => {
+    setForm(f => ({ ...f, url: newUrl }));
+    clearTimeout(importTimerRef.current);
+    if (/^https?:\/\/.+\..+/.test(newUrl.trim()) && !form.originalHeadline.trim()) {
+      importTimerRef.current = setTimeout(() => importArticleMeta(newUrl), 600);
+    }
+  }, [form.originalHeadline, importArticleMeta]);
 
   // Server-side drafts
   const [savedDrafts, setSavedDrafts] = useState([]);
@@ -437,7 +479,19 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           <span style={{ fontSize: 12, color: "#64748B", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 1 && <div style={{ marginTop: 12 }}>
-          <div className="ta-field"><label>Article URL *</label><input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." maxLength={2000} /></div>
+          <div className="ta-field">
+            <label>Article URL *</label>
+            <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+              <input value={form.url} onChange={e => handleUrlChange(e.target.value)} placeholder="https://..." maxLength={2000} style={{ flex: 1 }} />
+              <button type="button" disabled={importing || !form.url.trim()} onClick={() => importArticleMeta(form.url)} style={{
+                padding: "0 12px", fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600,
+                background: importing ? "#F1F5F9" : "#EFF6FF", color: importing ? "#94A3B8" : "#2563EB",
+                border: "1.5px solid", borderColor: importing ? "#CBD5E1" : "#2563EB",
+                borderRadius: 8, cursor: importing ? "default" : "pointer", whiteSpace: "nowrap",
+              }}>{importing ? "Importing..." : "Import"}</button>
+            </div>
+            {importMsg && <div style={{ fontSize: 11, marginTop: 4, color: importMsg.includes("Imported") ? "#059669" : importMsg.includes("skipped") ? "#64748B" : "#DC2626" }}>{importMsg}</div>}
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
             <div className="ta-field"><label>Author(s) <span style={{ fontWeight: 400, color: "#64748B" }}>(optional — up to 10)</span></label>
