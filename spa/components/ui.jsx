@@ -184,7 +184,7 @@ export function AuditTrail({ entries }) {
     <div style={{ marginTop: 10 }}>
       <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", padding: 0 }}>{open ? "▾" : "▸"} Audit Trail ({entries.length})</button>
       {open && <div style={{ marginTop: 6, padding: 10, background: "#EFF6FF", borderLeft: "3px solid #2563EB", fontSize: 10, fontFamily: "var(--mono)", maxHeight: 180, overflowY: "auto" }}>
-        {entries.map((e, i) => <div key={i} style={{ marginBottom: 3, color: "#1E293B", lineHeight: 1.6 }}><span style={{ color: "#475569" }}>{fDate(e.time)}</span> — {e.action}</div>)}
+        {entries.map((e, i) => <div key={i} style={{ marginBottom: 3, color: "#1E293B", lineHeight: 1.6 }}><span style={{ color: "#475569" }}>{fDate(e.time)}</span> — {typeof e.action === "object" ? JSON.stringify(e.action) : e.action}</div>)}
       </div>}
     </div>
   );

@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import { sDate } from "../lib/utils";
 import { SubHeadline, StatusPill, AuditTrail, Empty } from "./ui";
 
+const safe = (v) => {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+};
+
 export default function DIPanelContent({ user, subs, onReload }) {
   const [diReqs, setDiReqs] = useState({});
   const [confirmAll, setConfirmAll] = useState(false);
@@ -154,14 +162,14 @@ export default function DIPanelContent({ user, subs, onReload }) {
       {diQueue.length === 0 ? <Empty text="No DI submissions awaiting your pre-approval." /> : diQueue.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>🤖 @{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>🤖 @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>
             <StatusPill status="di_pending" />
           </div>
           <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
           <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
             <SubHeadline sub={sub} />
           </div>
-          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{sub.reasoning}</div>
+          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{safe(sub.reasoning)}</div>
           {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#0D9488" }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button className="ta-btn-primary" style={{ background: "#4F46E5", fontSize: 12 }} onClick={() => approveDISub(sub.id)}>✓ Approve for Review</button>

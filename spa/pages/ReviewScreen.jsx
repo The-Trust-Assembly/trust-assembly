@@ -11,10 +11,30 @@ import DIPanelContent from "../components/DIPanelContent";
 
 const DRAFT_DEBOUNCE = 500;
 
+// Guard: prevent React error #310 by ensuring only primitives are rendered.
+// If a value is an object/array/Date, convert to string representation.
+const safe = (v) => {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === "object") {
+    console.warn("[ReviewScreen] Object rendered as child:", v);
+    return JSON.stringify(v);
+  }
+  return String(v);
+};
+
 class ReviewErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error("[ReviewScreen] Render error:", error, info); }
+  componentDidCatch(error, info) {
+    console.error("[ReviewScreen] Render error:", error);
+    console.error("[ReviewScreen] Component stack:", info?.componentStack);
+    // Log the specific error type for #310 debugging
+    if (error?.message?.includes("object") || error?.message?.includes("310")) {
+      console.error("[ReviewScreen] Likely object-as-child error. Check console warnings for 'Object rendered as child' from safe() helper.");
+    }
+  }
   render() {
     if (this.state.hasError) {
       return <div style={{ padding: 24, textAlign: "center" }}>
@@ -86,6 +106,15 @@ function ReviewScreenInner({ user }) {
         console.warn("[ReviewScreen] /api/submissions/di-queue returned", diRes.status);
       }
     } catch (e) { console.warn("Failed to fetch review queue:", e); }
+    // Debug: log any submission fields that are objects (would cause React #310)
+    for (const [id, sub] of Object.entries(allSubs)) {
+      const textFields = ["reasoning", "orgName", "originalHeadline", "replacement", "author", "url", "submittedBy", "diPartner"];
+      for (const f of textFields) {
+        if (sub[f] && typeof sub[f] === "object") {
+          console.error(`[ReviewScreen] #310 risk: sub ${id.slice(0,8)}… field "${f}" is object:`, sub[f]);
+        }
+      }
+    }
     setSubs(allSubs); setDisputes(allDisputes);
     // Load DI link requests from relational API
     try {
@@ -286,7 +315,7 @@ function ReviewScreenInner({ user }) {
     return (
     <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.orgName} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
+        <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", background: "#F1F5F9", padding: "1px 5px", borderRadius: 8 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />
@@ -297,12 +326,12 @@ function ReviewScreenInner({ user }) {
       <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
         <SubHeadline sub={sub} />
       </div>
-      <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
+      <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{safe(sub.reasoning)}</div>
 
       {sub.evidence && sub.evidence.length > 0 && (
         <div style={{ marginTop: 12, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
-          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569", marginTop: 2 }}>↳ {e.explanation}</div>}</div>)}
+          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "#475569", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
         </div>
       )}
 
@@ -312,8 +341,8 @@ function ReviewScreenInner({ user }) {
           {sub.inlineEdits.map((e, i) => (
             <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid #E2E8F0" : "none" }}>
               <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
-                <span style={{ textDecoration: "line-through", color: "#64748B" }}>{e.original}</span> → <span style={{ color: "#DC2626", fontWeight: 600 }}>{e.replacement}</span>
-                {e.reasoning && <div style={{ fontSize: 12, color: "#475569", marginTop: 1 }}>↳ {e.reasoning}</div>}
+                <span style={{ textDecoration: "line-through", color: "#64748B" }}>{safe(e.original)}</span> → <span style={{ color: "#DC2626", fontWeight: 600 }}>{safe(e.replacement)}</span>
+                {e.reasoning && <div style={{ fontSize: 12, color: "#475569", marginTop: 1 }}>↳ {safe(e.reasoning)}</div>}
               </div>
               {reviewingId === sub.id && (
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
@@ -332,22 +361,22 @@ function ReviewScreenInner({ user }) {
       {sub.standingCorrection && (
         <div style={{ marginTop: 14, padding: 12, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
-          <div style={{ color: "#1E293B", fontWeight: 600 }}>{sub.standingCorrection.assertion}</div>
-          {sub.standingCorrection.evidence && <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>Source: {sub.standingCorrection.evidence}</div>}
+          <div style={{ color: "#1E293B", fontWeight: 600 }}>{safe(sub.standingCorrection.assertion)}</div>
+          {sub.standingCorrection.evidence && <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>Source: {safe(sub.standingCorrection.evidence)}</div>}
         </div>
       )}
 
       {sub.argumentEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 3 }}>⚔️ Argument Proposed</div>
-          <div style={{ color: "#1E293B", lineHeight: 1.6 }}>{sub.argumentEntry.content}</div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6 }}>{safe(sub.argumentEntry.content)}</div>
         </div>
       )}
 
       {sub.beliefEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 8, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief Proposed</div>
-          <div style={{ color: "#1E293B", lineHeight: 1.6, fontStyle: "italic" }}>{sub.beliefEntry.content}</div>
+          <div style={{ color: "#1E293B", lineHeight: 1.6, fontStyle: "italic" }}>{safe(sub.beliefEntry.content)}</div>
         </div>
       )}
 
@@ -355,9 +384,9 @@ function ReviewScreenInner({ user }) {
         <div style={{ marginTop: 8, padding: 10, background: "#FFFBEB", border: "1px solid #B4530980", borderRadius: 8, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation Proposed — {sub.translationEntry.type}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ textDecoration: "line-through", color: "#475569" }}>{sub.translationEntry.original}</span>
+            <span style={{ textDecoration: "line-through", color: "#475569" }}>{safe(sub.translationEntry.original)}</span>
             <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
-            <span style={{ color: "#B45309", fontWeight: 700 }}>{sub.translationEntry.translated}</span>
+            <span style={{ color: "#B45309", fontWeight: 700 }}>{safe(sub.translationEntry.translated)}</span>
           </div>
         </div>
       )}
@@ -371,8 +400,8 @@ function ReviewScreenInner({ user }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{tc[0]} Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
               </div>
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{e.label}</div>
-              {e.detail && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Source: {e.detail}</div>}
+              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{safe(e.label)}</div>
+              {e.detail && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Source: {safe(e.detail)}</div>}
               {reviewingId === sub.id && (
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                   <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === true ? "#059669" : "#CBD5E1", background: vaultVotes[e.id] === true ? "#ECFDF5" : "#fff", color: vaultVotes[e.id] === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Still Applies</button>
@@ -446,7 +475,7 @@ function ReviewScreenInner({ user }) {
       </div>
 
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #991B1B", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#991B1B", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
-      {isDIUser(user) && <div style={{ padding: 10, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#4F46E5", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{user.diPartner} handles review duties.</div>}
+      {isDIUser(user) && <div style={{ padding: 10, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#4F46E5", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
         {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
@@ -461,18 +490,18 @@ function ReviewScreenInner({ user }) {
         {dQ.map(d => (
           <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>⚖ {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {d.orgName} · {sDate(d.createdAt)}</span>
+              <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>⚖ {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
               <span style={{ fontSize: 10, padding: "2px 7px", background: "#FFF7ED", color: "#EA580C", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
             </div>
             <div style={{ padding: 10, background: "#F9FAFB", borderRadius: 8, marginBottom: 8 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 3 }}>ORIGINAL SUBMISSION BY {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)}</div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{d.submissionHeadline}</div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 6, lineHeight: 1.8 }}>{d.submissionReasoning}</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{safe(d.submissionHeadline)}</div>
+              <div style={{ fontSize: 12, color: "#475569", marginTop: 6, lineHeight: 1.8 }}>{safe(d.submissionReasoning)}</div>
             </div>
             <div style={{ padding: 12, background: "#FFF7ED", border: "1px solid #EA580C", borderRadius: 8, marginBottom: 10 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 4 }}>DISPUTE BY {anonName(d.disputedBy, d.anonMap, d.resolvedAt)}</div>
-              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8 }}>{d.reasoning}</div>
-              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {e.explanation}</div>}</div>)}</div>}
+              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8 }}>{safe(d.reasoning)}</div>
+              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
             </div>
             {reviewingId === d.id ? (
               <div style={{ padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8 }}>
@@ -515,13 +544,13 @@ function ReviewScreenInner({ user }) {
               </div>
               <div style={{ padding: 10, background: "#F9FAFB", borderRadius: 8, marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 3 }}>ORIGINAL SUBMISSION</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{d.submissionHeadline}</div>
-                <div style={{ fontSize: 12, color: "#475569", marginTop: 4, lineHeight: 1.6 }}>{d.submissionReasoning}</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{safe(d.submissionHeadline)}</div>
+                <div style={{ fontSize: 12, color: "#475569", marginTop: 4, lineHeight: 1.6 }}>{safe(d.submissionReasoning)}</div>
               </div>
               <div style={{ padding: 10, background: "#FFF7ED", border: "1px solid #EA580C40", borderRadius: 8, marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 3 }}>DISPUTE REASONING</div>
-                <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{d.reasoning}</div>
-                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {e.explanation}</div>}</div>)}</div>}
+                <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{safe(d.reasoning)}</div>
+                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
               </div>
               {d.status !== "pending_review" && <div style={{ padding: 10, background: d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", borderRadius: 8, marginBottom: 6 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: statusColor, marginBottom: 3 }}>OUTCOME</div>
@@ -532,7 +561,7 @@ function ReviewScreenInner({ user }) {
               {jurorNotes.length > 0 && <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>Juror Notes</div>
                 {jurorNotes.map((jn, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: jn.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${jn.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
-                  <span style={{ fontSize: 10, color: jn.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{jn.approve ? "UPHOLD" : "DISMISS"}</span> — {jn.note}
+                  <span style={{ fontSize: 10, color: jn.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{jn.approve ? "UPHOLD" : "DISMISS"}</span> — {safe(jn.note)}
                 </div>)}
               </div>}
               <AuditTrail entries={d.auditTrail} />
@@ -565,7 +594,7 @@ function ReviewScreenInner({ user }) {
               <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
                 <SubHeadline sub={s} />
               </div>
-              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 8 }}>{s.reasoning}</div>
+              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 8 }}>{safe(s.reasoning)}</div>
 
               {/* Juror rejection notes */}
               {rejectionNotes.length > 0 && (
@@ -573,7 +602,7 @@ function ReviewScreenInner({ user }) {
                   <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#DC2626", marginBottom: 6, fontWeight: 700 }}>JUROR REJECTION NOTES</div>
                   {rejectionNotes.map((jn, i) => (
                     <div key={i} style={{ fontSize: 12, color: "#1E293B", padding: "6px 0", borderTop: i > 0 ? "1px solid #FECACA" : "none", lineHeight: 1.6 }}>
-                      {jn.note}
+                      {safe(jn.note)}
                     </div>
                   ))}
                 </div>
@@ -646,8 +675,8 @@ function ReviewScreenInner({ user }) {
                 <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sp.submittedBy} · {sp.orgName} · {sDate(sp.createdAt)}</span>
                 <span style={{ fontSize: 10, padding: "2px 7px", background: "#F5F3FF", color: "#7C3AED", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Story Proposal</span>
               </div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "#0F172A", marginBottom: 8 }}>{sp.title}</div>
-              <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, marginBottom: 10, whiteSpace: "pre-wrap" }}>{sp.description}</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "#0F172A", marginBottom: 8 }}>{safe(sp.title)}</div>
+              <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, marginBottom: 10, whiteSpace: "pre-wrap" }}>{safe(sp.description)}</div>
               <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 8 }}>
                 Jurors: {(sp.jurors || []).length} assigned · Votes: {Object.keys(sp.votes || {}).length}/{sp.jurySeats || "?"}
               </div>
