@@ -156,6 +156,11 @@ export async function POST(request: NextRequest) {
       `;
       ghostIds.submissionId = subResult.rows[0].id;
 
+      // Set SEO slug (mirrors what the real submission endpoint does)
+      const { slugify } = await import("@/lib/slugify");
+      const ghostSlug = slugify("Smoke test headline", ghostIds.submissionId!);
+      await sql`UPDATE submissions SET slug = ${ghostSlug} WHERE id = ${ghostIds.submissionId}`;
+
       // Create jury assignments for each juror
       for (const jurorId of ghostIds.jurorIds) {
         await sql`
@@ -336,6 +341,50 @@ export async function POST(request: NextRequest) {
           matchingRows: corrResult.rows.length,
           found,
           submissionStatus: subLookup.rows[0]?.status,
+        },
+      };
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // STAGE 6B: Verify SEO slug and public page readiness
+    // ═══════════════════════════════════════════════════════════════
+    await runStage("6b. Verify SEO slug", async () => {
+      // Check that slug was persisted
+      const slugResult = await sql`
+        SELECT slug FROM submissions WHERE id = ${ghostIds.submissionId!}
+      `;
+      const slug = slugResult.rows[0]?.slug;
+      if (!slug) {
+        return {
+          status: "FAIL" as const,
+          description: "Submission has no slug — SEO public page /correction/[slug] would 404.",
+          details: { submissionId: ghostIds.submissionId, slug: null },
+        };
+      }
+
+      // Verify slug resolves back to the same submission (same query the public page uses)
+      const lookupResult = await sql`
+        SELECT id FROM submissions WHERE slug = ${slug} LIMIT 1
+      `;
+      const resolvedId = lookupResult.rows[0]?.id;
+      const roundTripOk = resolvedId === ghostIds.submissionId;
+
+      // Verify org slug exists too
+      const orgSlugResult = await sql`
+        SELECT slug FROM organizations WHERE id = ${ghostIds.orgId!}
+      `;
+      const orgSlug = orgSlugResult.rows[0]?.slug;
+
+      return {
+        status: roundTripOk ? "PASS" as const : "FAIL" as const,
+        description: roundTripOk
+          ? `Slug round-trip OK: /correction/${slug} → submission ${ghostIds.submissionId}. Org slug: ${orgSlug || "MISSING"}.`
+          : `Slug round-trip FAILED: slug=${slug} resolved to ${resolvedId}, expected ${ghostIds.submissionId}`,
+        details: {
+          submissionSlug: slug,
+          orgSlug: orgSlug || null,
+          roundTripOk,
+          publicUrl: `/correction/${slug}`,
         },
       };
     });

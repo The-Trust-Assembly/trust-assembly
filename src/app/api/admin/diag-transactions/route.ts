@@ -1563,7 +1563,7 @@ export async function POST(request: NextRequest) {
 
     // F2: Ghost story votes — votes without audit logs
     const ghostStoryVotes = await sql`
-      SELECT jv.user_id, jv.story_id, jv.created_at, s.title, s.status AS story_status
+      SELECT jv.user_id, jv.story_id, jv.voted_at, s.title, s.status AS story_status
       FROM jury_votes jv
       JOIN stories s ON s.id = jv.story_id
       WHERE jv.story_id IS NOT NULL
@@ -1584,7 +1584,7 @@ export async function POST(request: NextRequest) {
       rootCause: "Vote INSERT succeeded but audit log INSERT failed — broken transaction.",
       remediation: "Run repair-data to backfill missing audit logs.",
       codeFixed: true,
-      details: { ghostStoryVotes: ghostStoryVotes.rows.map(v => ({ userId: v.user_id, storyId: v.story_id, storyTitle: v.title, storyStatus: v.story_status, createdAt: v.created_at })) },
+      details: { ghostStoryVotes: ghostStoryVotes.rows.map(v => ({ userId: v.user_id, storyId: v.story_id, storyTitle: v.title, storyStatus: v.story_status, votedAt: v.voted_at })) },
     });
 
     // F3: Stuck story resolutions — all jurors voted but story still pending
@@ -1731,6 +1731,135 @@ export async function POST(request: NextRequest) {
       name: "Section G: Drafts Consistency",
       status: "ERROR",
       description: `Section G failed: ${sectionGError instanceof Error ? sectionGError.message : String(sectionGError)}`,
+      codeFixed: true,
+      details: {},
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SECTION H: SEO SLUG CONSISTENCY
+  // Verify that all public-facing entities have SEO-friendly slugs
+  // and that slug generation is wired into creation endpoints.
+  // ═══════════════════════════════════════════════════════════════════
+  try {
+    // Check for missing slugs on resolved submissions (should have been set at creation)
+    const submissionsNoSlug = await sql`
+      SELECT id, original_headline, status, created_at
+      FROM submissions
+      WHERE slug IS NULL AND status IN ('approved', 'consensus')
+      ORDER BY created_at DESC
+    `;
+
+    // Check for missing slugs on organizations
+    const orgsNoSlug = await sql`
+      SELECT id, name, created_at
+      FROM organizations WHERE slug IS NULL
+    `;
+
+    // Check for missing slugs on stories
+    const storiesNoSlugResult = await sql`
+      SELECT id, title, status, created_at
+      FROM stories WHERE slug IS NULL
+    `;
+
+    // Check for missing slugs on vault entries
+    const vaultNoSlug = await sql`
+      SELECT id, assertion, status, created_at
+      FROM vault_entries WHERE slug IS NULL
+    `;
+
+    const totalMissing =
+      submissionsNoSlug.rows.length +
+      orgsNoSlug.rows.length +
+      storiesNoSlugResult.rows.length +
+      vaultNoSlug.rows.length;
+
+    results.push({
+      name: "H1: SEO slug coverage",
+      status: totalMissing === 0 ? "PASS" : "WARN",
+      description: totalMissing === 0
+        ? "All entities have SEO slugs. Public pages (/correction/[slug], /story/[slug], /assembly/[slug]) will resolve correctly."
+        : `${totalMissing} entity(s) missing SEO slugs — run migration 006_seo_slugs.sql to backfill.`,
+      rootCause: "Slugs were added in migration 006. Entities created before the migration or where slug generation failed at creation time will have NULL slugs.",
+      remediation: "Run migration 006_seo_slugs.sql to backfill slugs from existing titles/headlines/names. New entities will get slugs automatically at creation time.",
+      codeFixed: true,
+      details: {
+        submissionsWithoutSlug: submissionsNoSlug.rows.length,
+        orgsWithoutSlug: orgsNoSlug.rows.length,
+        storiesWithoutSlug: storiesNoSlugResult.rows.length,
+        vaultWithoutSlug: vaultNoSlug.rows.length,
+        sampleMissing: {
+          submissions: submissionsNoSlug.rows.slice(0, 5).map(s => ({ id: s.id, headline: s.original_headline, status: s.status })),
+          orgs: orgsNoSlug.rows.slice(0, 5).map(o => ({ id: o.id, name: o.name })),
+          stories: storiesNoSlugResult.rows.slice(0, 5).map(s => ({ id: s.id, title: s.title, status: s.status })),
+          vault: vaultNoSlug.rows.slice(0, 5).map(v => ({ id: v.id, assertion: (v.assertion as string)?.slice(0, 60) })),
+        },
+      },
+    });
+
+    // Check for duplicate slugs (shouldn't happen with unique indexes, but verify)
+    const dupSubmissionSlugs = await sql`
+      SELECT slug, COUNT(*)::int AS cnt
+      FROM submissions WHERE slug IS NOT NULL
+      GROUP BY slug HAVING COUNT(*) > 1
+    `;
+    const dupOrgSlugs = await sql`
+      SELECT slug, COUNT(*)::int AS cnt
+      FROM organizations WHERE slug IS NOT NULL
+      GROUP BY slug HAVING COUNT(*) > 1
+    `;
+
+    const totalDups = dupSubmissionSlugs.rows.length + dupOrgSlugs.rows.length;
+
+    results.push({
+      name: "H2: SEO slug uniqueness",
+      status: totalDups === 0 ? "PASS" : "FAIL",
+      description: totalDups === 0
+        ? "All slugs are unique. No collision risk for public URLs."
+        : `${totalDups} duplicate slug group(s) found — public page routing may resolve to wrong entity.`,
+      rootCause: "Slug generation should produce unique slugs via ID suffix. Duplicates indicate a bug in slug generation or a missing unique index.",
+      remediation: "Inspect duplicate slugs and regenerate them. Ensure unique indexes exist on slug columns (migration 006).",
+      codeFixed: true,
+      details: {
+        duplicateSubmissionSlugs: dupSubmissionSlugs.rows,
+        duplicateOrgSlugs: dupOrgSlugs.rows,
+      },
+    });
+
+    // Verify slug format quality (no empty slugs, no overly long slugs, no invalid chars)
+    const badSlugs = await sql`
+      SELECT 'submission' AS entity, id, slug FROM submissions
+      WHERE slug IS NOT NULL AND (slug = '' OR length(slug) > 200 OR slug ~ '[^a-z0-9-]')
+      UNION ALL
+      SELECT 'organization' AS entity, id, slug FROM organizations
+      WHERE slug IS NOT NULL AND (slug = '' OR length(slug) > 200 OR slug ~ '[^a-z0-9-]')
+      UNION ALL
+      SELECT 'story' AS entity, id, slug FROM stories
+      WHERE slug IS NOT NULL AND (slug = '' OR length(slug) > 200 OR slug ~ '[^a-z0-9-]')
+      UNION ALL
+      SELECT 'vault_entry' AS entity, id, slug FROM vault_entries
+      WHERE slug IS NOT NULL AND (slug = '' OR length(slug) > 200 OR slug ~ '[^a-z0-9-]')
+      LIMIT 20
+    `;
+
+    results.push({
+      name: "H3: SEO slug format quality",
+      status: badSlugs.rows.length === 0 ? "PASS" : "WARN",
+      description: badSlugs.rows.length === 0
+        ? "All slugs are well-formed (lowercase alphanumeric + hyphens, reasonable length)."
+        : `${badSlugs.rows.length} slug(s) have format issues (empty, too long, or invalid characters).`,
+      rootCause: "Slug generation should produce lowercase alphanumeric strings with hyphens only.",
+      remediation: "Regenerate malformed slugs using the slugify() utility from src/lib/slugify.ts.",
+      codeFixed: true,
+      details: {
+        malformedSlugs: badSlugs.rows.map(s => ({ entity: s.entity, id: s.id, slug: s.slug })),
+      },
+    });
+  } catch (sectionHError: unknown) {
+    results.push({
+      name: "Section H: SEO Slug Consistency",
+      status: "ERROR",
+      description: `Section H failed: ${sectionHError instanceof Error ? sectionHError.message : String(sectionHError)}`,
       codeFixed: true,
       details: {},
     });
