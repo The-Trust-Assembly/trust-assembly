@@ -1,21 +1,14 @@
 import { SK } from "./constants";
 
-const MAX_SIGNUPS_PER_IP_PER_HOUR = 3;
 const WILD_WEST_THRESHOLD = 100;
 
+// checkSignupRate is a no-op — rate limiting is handled server-side.
 export async function checkSignupRate(ipHash) {
-  const key = `ta-rate-${ipHash}`;
-  const existing = (await sG(key)) || [];
-  const oneHourAgo = Date.now() - 3600000;
-  const recent = existing.filter(t => t > oneHourAgo);
-  if (recent.length >= MAX_SIGNUPS_PER_IP_PER_HOUR) return "Too many signups from this connection. Please try again later.";
-  recent.push(Date.now());
-  await sS(key, recent);
   return null;
 }
 
 // --- Storage (relational API-backed) ---
-// sG dispatches reads to relational API endpoints instead of the deprecated KV store.
+// sG dispatches reads to relational API endpoints.
 // Data is returned in the same format the SPA expects (objects keyed by ID).
 export async function sG(k) {
   let url;
@@ -141,20 +134,14 @@ export async function sG(k) {
   return data;
 }
 
-// sS is now a no-op for most cases since writes go through dedicated API endpoints.
-// Retained for backward compatibility — logs deprecation warnings.
+// sS is a no-op — all writes go through dedicated POST/PATCH endpoints.
 export async function sS(k, v) {
-  // All writes should go through dedicated POST/PATCH endpoints.
-  // This function is retained only for edge cases during the transition period.
-  console.warn(`[DEPRECATED] sS called for key "${k}" — writes should use dedicated API endpoints`);
+  console.warn(`[NO-OP] sS called for key "${k}" — writes should use dedicated API endpoints`);
   return true;
 }
 
+// createNotification is a no-op — notifications are created server-side as side effects.
 export async function createNotification(username, type, data) {
-  // Server-side notification creation — no longer uses KV store
-  // Notifications are created by server endpoints as side effects of actions
-  // This is kept as a no-op for any remaining call sites
-  console.warn(`[DEPRECATED] createNotification called for @${username} — notifications are now created server-side`);
 }
 
 export async function ensureGeneralPublic() {

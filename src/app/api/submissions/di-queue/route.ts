@@ -5,8 +5,7 @@ import { ok, unauthorized } from "@/lib/api-utils";
 
 // GET /api/submissions/di-queue — returns di_pending submissions
 // where the current user is the DI partner (pre-approval queue).
-// Also returns any relational submissions that haven't been synced
-// to the legacy KV store, so the DI review panel can display them.
+// Returns submissions from the relational database for the DI review panel.
 
 export async function GET(request: NextRequest) {
   const session = await getCurrentUserFromRequest(request);

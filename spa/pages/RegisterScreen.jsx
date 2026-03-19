@@ -101,7 +101,11 @@ export default function RegisterScreen({ onRegister }) {
     // Fetch the full user profile from the server (has correct UUID, org memberships, etc.)
     let user;
     try {
-      const allUsers = (await sG(SK.USERS)) || {};
+      const fetchWithTimeout = Promise.race([
+        sG(SK.USERS),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+      ]);
+      const allUsers = (await fetchWithTimeout) || {};
       user = allUsers[uname];
     } catch (e) { console.warn("Failed to fetch user profile after registration:", e); }
 

@@ -23,10 +23,6 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [repairResult, setRepairResult] = useState(null);
   const [adminFlagRunning, setAdminFlagRunning] = useState(false);
   const [adminFlagResult, setAdminFlagResult] = useState(null);
-  const [migrateKvRunning, setMigrateKvRunning] = useState(false);
-  const [migrateKvResult, setMigrateKvResult] = useState(null);
-  const [purgeKvRunning, setPurgeKvRunning] = useState(false);
-  const [purgeKvResult, setPurgeKvResult] = useState(null);
   const [diagRunning, setDiagRunning] = useState(false);
   const [diagResult, setDiagResult] = useState(null);
 
@@ -117,31 +113,6 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
     setAdminFlagRunning(false);
   };
 
-  const runMigrateKv = async () => {
-    setMigrateKvRunning(true); setMigrateKvResult(null);
-    try {
-      const res = await fetch("/api/reconcile", { method: "POST" });
-      const data = await res.json();
-      setMigrateKvResult(data);
-    } catch (e) {
-      setMigrateKvResult({ success: false, report: [`Error: ${e.message}`] });
-    }
-    setMigrateKvRunning(false);
-  };
-
-  const runPurgeKv = async () => {
-    if (!confirm("This will DELETE all KV store records after migration. Continue?")) return;
-    setPurgeKvRunning(true); setPurgeKvResult(null);
-    try {
-      const res = await fetch("/api/reconcile?purge=true", { method: "POST" });
-      const data = await res.json();
-      setPurgeKvResult(data);
-    } catch (e) {
-      setPurgeKvResult({ success: false, report: [`Error: ${e.message}`] });
-    }
-    setPurgeKvRunning(false);
-  };
-
   const runDiagTransactions = async () => {
     setDiagRunning(true); setDiagResult(null);
     try {
@@ -199,7 +170,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
             <button className="ta-btn-primary" onClick={runRecomputeStats} disabled={recomputeRunning} style={{ background: "#B45309", fontSize: 12 }}>
               {recomputeRunning ? "Running..." : "Recompute User Stats"}
             </button>
-            <span style={{ fontSize: 11, color: "var(--stone)" }}>Recalculates wins/losses/streak from submissions + KV store</span>
+            <span style={{ fontSize: 11, color: "var(--stone)" }}>Recalculates wins/losses/streak from submissions and disputes</span>
           </div>
           {recomputeResult && (
             <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: recomputeResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
@@ -237,35 +208,6 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
             </div>
           )}
 
-          {/* Migrate KV → Relational */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-            <button className="ta-btn-primary" onClick={runMigrateKv} disabled={migrateKvRunning} style={{ background: "#0369A1", fontSize: 12 }}>
-              {migrateKvRunning ? "Migrating..." : "Migrate KV → Relational"}
-            </button>
-            <span style={{ fontSize: 11, color: "var(--stone)" }}>Copies all KV store records into relational tables (non-destructive)</span>
-          </div>
-          {migrateKvResult && (
-            <div style={{ marginTop: 0, marginBottom: 12, padding: 10, background: migrateKvResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Migrated: {migrateKvResult.migratedCount || 0} records</div>
-              {(migrateKvResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
-              {!migrateKvResult.success && migrateKvResult.error && <div style={{ color: "var(--fired-clay)" }}>{migrateKvResult.error}</div>}
-            </div>
-          )}
-
-          {/* Purge KV Store */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <button className="ta-btn-primary" onClick={runPurgeKv} disabled={purgeKvRunning} style={{ background: "#DC2626", fontSize: 12 }}>
-              {purgeKvRunning ? "Purging..." : "Migrate + Purge KV Store"}
-            </button>
-            <span style={{ fontSize: 11, color: "var(--stone)" }}>Migrates then DELETES all KV rows (irreversible)</span>
-          </div>
-          {purgeKvResult && (
-            <div style={{ marginTop: 12, padding: 10, background: purgeKvResult.success ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", maxHeight: 200, overflowY: "auto" }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Migrated: {purgeKvResult.migratedCount || 0} records | Purged: {purgeKvResult.purged ? "Yes" : "No"}</div>
-              {(purgeKvResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
-              {!purgeKvResult.success && purgeKvResult.error && <div style={{ color: "var(--fired-clay)" }}>{purgeKvResult.error}</div>}
-            </div>
-          )}
         </div>
       )}
 

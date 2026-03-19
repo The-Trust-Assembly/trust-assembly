@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { slugify } from "@/lib/slugify";
 
 // GET /api/vault — list vault entries (filterable by type)
 export async function GET(request: NextRequest) {
@@ -196,6 +197,9 @@ export async function POST(request: NextRequest) {
           VALUES (${targetOrgId}, ${session.sub}, ${assertion}, ${evidence}, ${submissionId || null})
           RETURNING id, org_id, assertion, evidence, status, submission_id, created_at
         `;
+        const vaultSlug = slugify(assertion, result.rows[0].id);
+        await sql`UPDATE vault_entries SET slug = ${vaultSlug} WHERE id = ${result.rows[0].id}`;
+        result.rows[0].slug = vaultSlug;
         results.push(result.rows[0]);
         break;
       }

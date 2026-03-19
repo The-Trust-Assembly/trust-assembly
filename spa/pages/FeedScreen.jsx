@@ -94,7 +94,23 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
 
   if (loading) return <Loader />;
   if (loadError) return <div className="ta-error" style={{ margin: 20 }}>{loadError} <button className="ta-link-btn" onClick={load}>Retry</button></div>;
-  const all = Object.values(subs || {}).sort((a, b) => hotScore(b) - hotScore(a));
+  // Deduplicate submissions by URL — group cross-posted submissions, show highest-scored with assembly badges
+  const sorted = Object.values(subs || {}).sort((a, b) => hotScore(b) - hotScore(a));
+  const seenUrls = new Map();
+  const all = [];
+  for (const sub of sorted) {
+    const key = sub.url ? sub.url.replace(/\/$/, "").toLowerCase() : sub.id;
+    if (seenUrls.has(key)) {
+      const existing = seenUrls.get(key);
+      if (!existing._otherAssemblies) existing._otherAssemblies = [];
+      if (sub.orgName && !existing._otherAssemblies.includes(sub.orgName) && sub.orgName !== existing.orgName) {
+        existing._otherAssemblies.push(sub.orgName);
+      }
+    } else {
+      seenUrls.set(key, sub);
+      all.push(sub);
+    }
+  }
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Assembly Record</h2>
@@ -151,7 +167,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
         <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : sub.status === "rejected" || sub.status === "disputed" ? "#DC2626" : "#D97706"}` }}>
           {!isExpanded && <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
+            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName}{sub._otherAssemblies && sub._otherAssemblies.length > 0 && <>{sub._otherAssemblies.map((a, i) => <span key={i} style={{ background: "#EFF6FF", color: "#2563EB", padding: "1px 5px", borderRadius: 6, fontSize: 9, marginLeft: 4 }}>{a}</span>)}</>} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}

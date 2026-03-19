@@ -193,15 +193,6 @@ export default function DiagnosticScreen() {
             ) : <div className="ta-error">Could not load distribution</div>}
           </div>
 
-          {/* Deprecated KV usage */}
-          {report.deprecatedKvHits > 0 && (
-            <div className="ta-card" style={{ borderColor: "#D97706" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 8px", color: "#92400E" }}>Deprecated KV Store Hits</h3>
-              <p style={{ fontSize: 13, color: "#92400E", margin: 0 }}>
-                {report.deprecatedKvHits} KV store access{report.deprecatedKvHits > 1 ? "es" : ""} in the last {hours}h. These should be migrated to relational endpoints.
-              </p>
-            </div>
-          )}
         </div>
       )}
 

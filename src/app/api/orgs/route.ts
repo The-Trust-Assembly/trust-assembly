@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { slugifyOrg } from "@/lib/slugify";
 
 // GET /api/orgs — list all assemblies
 export async function GET(request: NextRequest) {
@@ -71,11 +72,12 @@ export async function POST(request: NextRequest) {
     return err("An assembly with this name already exists", 409);
   }
 
-  // Create org
+  // Create org with SEO-friendly slug
+  const orgSlug = slugifyOrg(name.trim());
   const result = await sql`
-    INSERT INTO organizations (name, description, charter, created_by)
-    VALUES (${name.trim()}, ${description || null}, ${charter || null}, ${session.sub})
-    RETURNING id, name, description, charter, enrollment_mode, created_at
+    INSERT INTO organizations (name, description, charter, created_by, slug)
+    VALUES (${name.trim()}, ${description || null}, ${charter || null}, ${session.sub}, ${orgSlug})
+    RETURNING id, name, description, charter, enrollment_mode, slug, created_at
   `;
 
   const org = result.rows[0];

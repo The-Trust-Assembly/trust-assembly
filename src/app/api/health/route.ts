@@ -52,7 +52,7 @@ export async function GET() {
   }
 
   // 3. Table row counts (quick check that data exists)
-  const tables = ["users", "organizations", "submissions", "jury_assignments", "jury_votes", "disputes", "vault_entries", "arguments", "beliefs", "translations", "membership_applications", "di_requests", "audit_log", "kv_store"];
+  const tables = ["users", "organizations", "submissions", "jury_assignments", "jury_votes", "disputes", "vault_entries", "arguments", "beliefs", "translations", "membership_applications", "di_requests", "audit_log"];
   checks.tables = {};
   for (const table of tables) {
     try {
@@ -134,19 +134,6 @@ export async function GET() {
     }));
   } catch (e) {
     checks.all_usernames = `ERROR: ${(e as Error).message}`;
-  }
-
-  // 8. Check KV store for legacy user data
-  try {
-    const kvUsers = await sql`
-      SELECT key, LENGTH(value::text) AS value_length
-      FROM kv_store
-      WHERE key LIKE '%user%' OR key LIKE '%User%'
-      ORDER BY key
-    `;
-    checks.kv_user_keys = kvUsers.rows.map(r => ({ key: r.key, valueLength: parseInt(r.value_length) }));
-  } catch (e) {
-    checks.kv_user_keys = `ERROR: ${(e as Error).message}`;
   }
 
   return ok({

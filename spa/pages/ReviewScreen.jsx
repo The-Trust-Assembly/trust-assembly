@@ -260,7 +260,23 @@ function ReviewScreenInner({ user }) {
   const hasDIPartnership = !!user.diPartner || all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
 
   // My Results: user's rejected submissions that they can concede or dispute
-  const myRejected = all.filter(s => s.submittedBy === user.username && s.status === "rejected");
+  // Deduplicate cross-assembly duplicates — keep the first (highest priority) and merge assembly names
+  const myRejectedRaw = all.filter(s => s.submittedBy === user.username && s.status === "rejected");
+  const rejectedByUrl = new Map();
+  const myRejected = [];
+  for (const s of myRejectedRaw) {
+    const key = s.url ? s.url.replace(/\/$/, "").toLowerCase() : s.id;
+    if (rejectedByUrl.has(key)) {
+      const existing = rejectedByUrl.get(key);
+      if (!existing._otherAssemblies) existing._otherAssemblies = [];
+      if (s.orgName && s.orgName !== existing.orgName && !existing._otherAssemblies.includes(s.orgName)) {
+        existing._otherAssemblies.push(s.orgName);
+      }
+    } else {
+      rejectedByUrl.set(key, s);
+      myRejected.push(s);
+    }
+  }
   const myDisputedSubs = new Set(Object.values(disputes || {}).filter(d => d.originalSubmitter === user.username || d.disputedBy === user.username).map(d => d.submissionId));
 
   const submitConcession = async (subId) => {
@@ -587,7 +603,7 @@ function ReviewScreenInner({ user }) {
             <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #DC2626" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
-                  {safe(s.orgName)} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
+                  {safe(s.orgName)}{s._otherAssemblies && s._otherAssemblies.length > 0 && s._otherAssemblies.map((a, i) => <span key={i} style={{ background: "#EFF6FF", color: "#2563EB", padding: "1px 5px", borderRadius: 6, fontSize: 9, marginLeft: 4 }}>{a}</span>)} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
                 </span>
                 <StatusPill status={s.status} />
               </div>

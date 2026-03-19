@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/data/orgs — returns ALL organizations keyed by ID
 // with member username arrays, in the format the v5 SPA expects.
-// This replaces sG(SK.ORGS) reads from the deprecated KV store.
+// Serves sG(SK.ORGS) reads from the relational database.
 export async function GET() {
   try {
   const result = await sql`

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { SK, ADMIN_USERNAME, HERO_SLIDES, CREST_IMG } from "./lib/constants";
 import { sG } from "./lib/storage";
 import { computeProfile } from "./lib/scoring";
@@ -31,13 +31,19 @@ import { isDIUser } from "./lib/permissions";
 import { trackAction } from "./lib/action-tracker";
 import { Badge, Loader, CitizenCounter } from "./components/ui";
 
-const NAV_TOP = [
-  { key: "feed", label: "Home" }, { key: "orgs", label: "Assemblies" }, { key: "submit", label: "Submit", bold: true }, { key: "review", label: "Review", bold: true }, { key: "extensions", label: "Extension" },
+const NAV_PRIMARY = [
+  { key: "feed", label: "Home" }, { key: "submit", label: "Submit", bold: true }, { key: "review", label: "Review", bold: true }, { key: "orgs", label: "Assemblies" },
 ];
-const NAV_BOT = [
-  { key: "profile", label: "Citizen" }, { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" },
-  { key: "vision", label: "Vision" }, { key: "about", label: "About" },
-  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" },
+const NAV_DROPDOWNS = [
+  { label: "Learn", items: [
+    { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "vision", label: "Vision" }, { key: "about", label: "About" },
+  ]},
+  { label: "Explore", items: [
+    { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
+  ]},
+  { label: "Account", items: [
+    { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
+  ]},
 ];
 
 function formatNotification(n) {
@@ -57,6 +63,45 @@ function formatNotification(n) {
     case "trusted_lost": return { text: "Your Trusted Contributor status was revoked after a rejection.", screen: null };
     default: return { text: d.message || "New notification", screen: null };
   }
+}
+
+function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFeedback }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const allItems = [...items];
+  // Inject feedback into Account dropdown
+  if (label === "Account" && (isAdmin || hasSubmittedFeedback)) {
+    allItems.push({ key: "feedback", label: "Feedback" });
+  }
+  // Inject admin items
+  if (label === "Account" && isAdmin) {
+    allItems.push({ key: "diagnostic", label: "Diagnostic" });
+  }
+  const isActive = allItems.some(i => i.key === screen);
+  useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handleKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    if (open) { document.addEventListener("mousedown", handleClick); document.addEventListener("keydown", handleKey); }
+    return () => { document.removeEventListener("mousedown", handleClick); document.removeEventListener("keydown", handleKey); };
+  }, [open]);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button className={`ta-nav-row-item ta-nav-dropdown-trigger ${isActive ? "active" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="true">
+        {label} <span style={{ fontSize: 8, marginLeft: 3, opacity: 0.6 }}>{open ? "\u25B4" : "\u25BE"}</span>
+      </button>
+      {open && (
+        <div className="ta-nav-dropdown-menu" role="menu">
+          {allItems.map(n => (
+            <a key={n.key} href={`#${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
+              style={n.key === "diagnostic" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
+              onClick={(e) => { e.preventDefault(); setScreen(n.key); setOpen(false); }}>
+              {n.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 async function loadSyntheticData() {
@@ -87,6 +132,8 @@ export default function TrustAssembly() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [navProfile, setNavProfile] = useState({ trustScore: 100, profile: "New Citizen" });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const notifRef = useRef(null);
 
   // Load full profile data for navbar trust score (matches citizen page)
   useEffect(() => {
@@ -209,7 +256,7 @@ export default function TrustAssembly() {
                 ratingsReceived: [], reviewHistory: [], retractions: [], notifications: [],
               };
             }
-            if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }
+            if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; const h = window.location.hash.slice(1); const hasDeepLink = h && h !== "login" && h !== "register"; if (!hasDeepLink) setScreen(isNew ? "orgs" : "feed"); }
           }
         }
       } catch (e) { console.error("Init error:", e); }
@@ -243,7 +290,11 @@ export default function TrustAssembly() {
   }, [user, screen]);
 
   const refreshUser = async () => { try { if (!user) return; const users = (await sG(SK.USERS)) || {}; const u = users[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); } } catch {} };
-  useEffect(() => { if (user) refreshUser(); }, [screen]);
+  useEffect(() => {
+    if (user) refreshUser();
+    // Mark review-related notifications as read when the Review tab is opened
+    if (user && screen === "review") markNotifsRead();
+  }, [screen]);
 
   // Check if user has submitted feedback (to show Feedback nav item)
   useEffect(() => {
@@ -258,6 +309,16 @@ export default function TrustAssembly() {
       } catch {}
     })();
   }, [user?.username]);
+
+  // Notification dropdown: dismiss on outside click or Escape
+  useEffect(() => {
+    if (!showNotifDropdown) return;
+    const handleClick = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifDropdown(false); };
+    const handleKey = (e) => { if (e.key === "Escape") setShowNotifDropdown(false); };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => { document.removeEventListener("mousedown", handleClick); document.removeEventListener("keydown", handleKey); };
+  }, [showNotifDropdown]);
 
   // Mark notifications as read
   const markNotifsRead = async () => {
@@ -365,6 +426,28 @@ export default function TrustAssembly() {
         .ta-success { background:#ECFDF5; border:1px solid var(--evergreen); color:var(--evergreen); padding:8px 12px; margin-bottom:14px; font-size:12px; border-radius:6px; }
         .ta-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--stone); font-family:var(--font); }
         @media(max-width:640px) { .ta-masthead h1{font-size:20px} .ta-content{padding:14px} .ta-nav button{padding:7px 7px;font-size:9px} .ta-section-head{font-size:20px} }
+        /* ── NAV DROPDOWN MENUS ── */
+        .ta-nav-dropdown-trigger { background:none; border:none; font-family:var(--font); cursor:pointer; padding:10px 0; margin-right:20px; font-size:13.5px; font-weight:400; color:#999; border-bottom:2px solid transparent; transition:all 0.12s; white-space:nowrap; }
+        .ta-nav-dropdown-trigger:hover { color:#1a1a1a; }
+        .ta-nav-dropdown-trigger.active { font-weight:600; color:#1a1a1a; border-bottom-color:#1a1a1a; }
+        .ta-nav-dropdown-menu { position:absolute; top:100%; left:0; min-width:180px; background:#fff; border:1px solid #E2E8F0; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.1); z-index:110; padding:4px 0; margin-top:2px; }
+        .ta-nav-dropdown-item { display:block; width:100%; padding:8px 16px; font-size:13px; color:#475569; text-decoration:none; cursor:pointer; border:none; background:none; text-align:left; font-family:var(--font); transition:background 0.1s; box-sizing:border-box; }
+        .ta-nav-dropdown-item:hover { background:#F1F5F9; color:#1a1a1a; }
+        .ta-nav-dropdown-item.active { color:#1a1a1a; font-weight:600; background:#F8FAFC; }
+        /* ── MOBILE NAV ── */
+        .ta-nav-mobile { display:none; background:#fff; padding:8px 24px; border-bottom:1px solid #eee; position:relative; }
+        .ta-hamburger { background:none; border:none; cursor:pointer; padding:6px 2px; display:flex; flex-direction:column; gap:4px; }
+        .ta-hamburger-line { display:block; width:22px; height:2px; background:#333; border-radius:2px; transition:transform 0.2s, opacity 0.2s; }
+        .ta-hamburger-line.open:nth-child(1) { transform:translateY(6px) rotate(45deg); }
+        .ta-hamburger-line.open:nth-child(2) { opacity:0; }
+        .ta-hamburger-line.open:nth-child(3) { transform:translateY(-6px) rotate(-45deg); }
+        .ta-mobile-menu { position:absolute; top:100%; left:0; right:0; background:#fff; border-bottom:1px solid #E2E8F0; box-shadow:0 4px 16px rgba(0,0,0,0.1); z-index:110; padding:8px 0; max-height:70vh; overflow-y:auto; }
+        .ta-mobile-menu-item { display:block; padding:10px 24px; font-size:14px; color:#475569; text-decoration:none; font-family:var(--font); transition:background 0.1s; }
+        .ta-mobile-menu-item:hover { background:#F1F5F9; }
+        .ta-mobile-menu-item.active { color:#1a1a1a; font-weight:600; background:#F8FAFC; }
+        .ta-mobile-menu-divider { height:1px; background:#E2E8F0; margin:6px 0; }
+        .ta-mobile-menu-group { padding:8px 24px 4px; font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.1em; color:#94A3B8; font-weight:600; }
+        @media(max-width:768px) { .ta-nav-desktop{display:none !important;} .ta-nav-mobile{display:block;} }
         .ta-notif-bell { position:relative; color:var(--stone); padding:4px; cursor:pointer; }
         .ta-notif-bell:hover { color:var(--charcoal); }
         .ta-notif-badge { position:absolute; top:-2px; right:-4px; background:var(--fired-clay); color:#fff; font-size:8px; min-width:14px; height:14px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-weight:700; padding:0 3px; }
@@ -561,26 +644,50 @@ export default function TrustAssembly() {
             </div>
           </div>
 
-          {/* NAV ROW 1 — primary workflow */}
-          <div className="ta-nav-row">
-            {NAV_TOP.map(n => (
-              <div key={n.key} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={() => setScreen(n.key)} style={n.bold ? { fontWeight: 700 } : undefined}>
+          {/* NAV — consolidated with dropdowns */}
+          <div className="ta-nav-row ta-nav-desktop">
+            {NAV_PRIMARY.map(n => (
+              <a key={n.key} href={`#${n.key}`} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); }} style={n.bold ? { fontWeight: 700 } : undefined}>
                 {n.label}
                 {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ position: "relative", top: -1, marginLeft: 4, background: "var(--fired-clay)", color: "#fff", fontSize: 8, width: 13, height: 13, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{reviewCount + crossCount + disputeCount}</span>}
-              </div>
+              </a>
+            ))}
+            {NAV_DROPDOWNS.map(dd => (
+              <NavDropdown key={dd.label} label={dd.label} items={dd.items} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
             ))}
           </div>
 
-          {/* NAV ROW 2 — all reference pages */}
-          <div className="ta-nav-row ta-nav-row-secondary" style={{ flexWrap: "wrap" }}>
-            {NAV_BOT.map(n => (
-              <div key={n.key} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={() => setScreen(n.key)}>{n.label}</div>
-            ))}
-            {(isAdmin || hasSubmittedFeedback) && (
-              <div className={`ta-nav-row-item ${screen === "feedback" ? "active" : ""}`} onClick={() => setScreen("feedback")} style={{ color: isAdmin ? "var(--sienna)" : undefined, fontWeight: isAdmin ? 600 : undefined }}>Feedback</div>
-            )}
-            {isAdmin && (
-              <div className={`ta-nav-row-item ${screen === "diagnostic" ? "active" : ""}`} onClick={() => setScreen("diagnostic")} style={{ color: "var(--purple)", fontWeight: 600 }}>Diagnostic</div>
+          {/* MOBILE HAMBURGER */}
+          <div className="ta-nav-mobile">
+            <button className="ta-hamburger" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle navigation menu" aria-expanded={mobileMenuOpen}>
+              <span className={`ta-hamburger-line ${mobileMenuOpen ? "open" : ""}`} />
+              <span className={`ta-hamburger-line ${mobileMenuOpen ? "open" : ""}`} />
+              <span className={`ta-hamburger-line ${mobileMenuOpen ? "open" : ""}`} />
+            </button>
+            {mobileMenuOpen && (
+              <div className="ta-mobile-menu">
+                {NAV_PRIMARY.map(n => (
+                  <a key={n.key} href={`#${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>
+                    {n.label}
+                    {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ marginLeft: 6 }}>{reviewCount + crossCount + disputeCount}</span>}
+                  </a>
+                ))}
+                <div className="ta-mobile-menu-divider" />
+                {NAV_DROPDOWNS.map(dd => (
+                  <React.Fragment key={dd.label}>
+                    <div className="ta-mobile-menu-group">{dd.label}</div>
+                    {dd.items.map(n => (
+                      <a key={n.key} href={`#${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
+                    ))}
+                  </React.Fragment>
+                ))}
+                {(isAdmin || hasSubmittedFeedback) && (
+                  <a href="#feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
+                )}
+                {isAdmin && (
+                  <a href="#diagnostic" className={`ta-mobile-menu-item ${screen === "diagnostic" ? "active" : ""}`} style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); setScreen("diagnostic"); setMobileMenuOpen(false); }}>Diagnostic</a>
+                )}
+              </div>
             )}
           </div>
 
@@ -593,14 +700,17 @@ export default function TrustAssembly() {
               <Badge profile={navProfile.profile} score={navProfile.trustScore} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ position: "relative" }}>
-                <button className="ta-btn-ghost ta-notif-bell" onClick={() => { setShowNotifDropdown(v => !v); if (!showNotifDropdown) markNotifsRead(); }} title="Notifications">
+              <div ref={notifRef} style={{ position: "relative" }}>
+                <button className="ta-btn-ghost ta-notif-bell" onClick={() => { setShowNotifDropdown(v => !v); if (!showNotifDropdown) markNotifsRead(); }} title="Notifications" aria-label="Notifications">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                   {notifications.filter(n => !n.read).length > 0 && <span className="ta-notif-badge">{notifications.filter(n => !n.read).length}</span>}
                 </button>
                 {showNotifDropdown && (
                   <div className="ta-notif-dropdown">
-                    <div className="ta-notif-header">Notifications</div>
+                    <div className="ta-notif-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>Notifications</span>
+                      <button onClick={() => setShowNotifDropdown(false)} style={{ background: "none", border: "none", fontSize: 16, color: "#999", cursor: "pointer", lineHeight: 1, padding: 0 }} aria-label="Close notifications">&times;</button>
+                    </div>
                     {notifications.length === 0 ? (
                       <div className="ta-notif-empty">No notifications yet</div>
                     ) : (
@@ -624,7 +734,7 @@ export default function TrustAssembly() {
           </div>
 
           <div className="ta-content">
-            <CitizenCounter />
+            {screen === "feed" && !viewingRecord && !viewingCitizen && <CitizenCounter />}
             {viewingRecord ? (
               <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : viewingCitizen ? (
