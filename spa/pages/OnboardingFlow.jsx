@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput } from "../components/ui";
 import { NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
+import { W } from "../lib/scoring";
 
 const OB_STEPS = ["submit", "review", "compare", "launch", "additional"];
 const OB_STEP_LABELS = ["1. Submit", "2. Review", "3. Results", "4. Begin", "5. Deep Dive"];
