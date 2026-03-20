@@ -439,8 +439,40 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
                       </div>
                     )}
 
+                    {/* Ghost registration pipeline steps — rich rendering */}
+                    {test.details?.pipelineSteps && Array.isArray(test.details.pipelineSteps) && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: test.details.issueCount > 0 ? "#DC2626" : "#059669", marginBottom: 4 }}>
+                          Registration Pipeline ({test.details.issueCount === 0 ? "All steps passed" : `${test.details.issueCount} issue(s)`}):
+                        </div>
+                        <table style={{ width: "100%", fontSize: 10, borderCollapse: "collapse" }}>
+                          <tbody>
+                            {test.details.pipelineSteps.map((step, pi) => (
+                              <tr key={pi} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                                <td style={{ padding: "3px 6px", width: 50 }}>
+                                  <span style={{
+                                    fontSize: 8, fontWeight: 700, color: "#fff", padding: "0px 4px", borderRadius: 2,
+                                    background: stepStatusColors[step.status] || "#64748B",
+                                  }}>{step.status}</span>
+                                </td>
+                                <td style={{ padding: "3px 6px", fontWeight: 500, color: "var(--charcoal)", whiteSpace: "nowrap" }}>{step.step}</td>
+                                <td style={{ padding: "3px 6px", color: "var(--stone)" }}>{step.actual}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {test.details.issues && test.details.issues.length > 0 && (
+                          <div style={{ marginTop: 6, padding: "6px 8px", background: "#FEF2F2", borderRadius: 4, border: "1px solid #FECACA" }}>
+                            {test.details.issues.map((issue, ii) => (
+                              <div key={ii} style={{ fontSize: 10, color: "#DC2626", lineHeight: 1.5 }}>• {issue}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Fallback raw details for tests without rich rendering */}
-                    {test.details && !hasSubmissions && !test.details.ghostVotes && !test.details.ghostStoryVotes && !test.details.storiesWithoutJury && !test.details.stuckStories && !test.details.mismatches && (
+                    {test.details && !hasSubmissions && !test.details.ghostVotes && !test.details.ghostStoryVotes && !test.details.storiesWithoutJury && !test.details.stuckStories && !test.details.mismatches && !test.details.pipelineSteps && (
                       <details style={{ marginTop: 6 }}>
                         <summary style={{ fontSize: 10, color: "var(--stone)", cursor: "pointer", fontFamily: "var(--mono)" }}>Raw details</summary>
                         <pre style={{ fontSize: 10, color: "var(--stone)", marginTop: 4, overflow: "auto", maxHeight: 200, background: "rgba(0,0,0,0.03)", padding: 8, borderRadius: 4 }}>

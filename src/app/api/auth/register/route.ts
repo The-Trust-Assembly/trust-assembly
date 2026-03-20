@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
@@ -58,55 +58,57 @@ export async function POST(request: NextRequest) {
   // Hash password
   const { hash, salt } = await hashPassword(password);
 
-  // Insert user
-  const result = await sql`
-    INSERT INTO users (
-      username, display_name, real_name, email, password_hash, salt,
-      gender, age, country, state, political_affiliation, is_di
-    ) VALUES (
-      ${uname}, ${displayName}, ${realName || null}, ${email.toLowerCase()}, ${hash}, ${salt},
-      ${gender || "Undisclosed"}, ${age || "Undisclosed"}, ${country || null}, ${state || null},
-      ${politicalAffiliation || null}, ${isDI}
-    ) RETURNING id, username, display_name, created_at
-  `;
-
-  const user = result.rows[0];
-
-  // Create session
-  const token = await createToken({ sub: user.id, username: user.username });
-  await setSessionCookie(token);
-
-  // Auto-join General Public assembly if it exists.
-  // Use sql.connect() for a dedicated client where transactions work.
-  // The sql`` tagged template (neon HTTP driver) is stateless — each call
-  // goes to a different connection, so multi-step writes can partially fail.
-  const gp = await sql`SELECT id FROM organizations WHERE is_general_public = TRUE LIMIT 1`;
-  if (gp.rows.length > 0) {
-    const client = await sql.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query(
-        "INSERT INTO organization_members (org_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-        [gp.rows[0].id, user.id]
+  // Insert user AND auto-join General Public in a single transaction.
+  // This prevents orphaned users if org enrollment fails.
+  let user: Record<string, unknown>;
+  try {
+    user = await withTransaction(async (client) => {
+      const result = await client.query(
+        `INSERT INTO users (
+          username, display_name, real_name, email, password_hash, salt,
+          gender, age, country, state, political_affiliation, is_di
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING id, username, display_name, created_at`,
+        [
+          uname, displayName, realName || null, email.toLowerCase(), hash, salt,
+          gender || "Undisclosed", age || "Undisclosed", country || null, state || null,
+          politicalAffiliation || null, isDI,
+        ]
       );
-      await client.query(
-        "UPDATE users SET primary_org_id = $1 WHERE id = $2",
-        [gp.rows[0].id, user.id]
+
+      const newUser = result.rows[0];
+
+      // Auto-join General Public assembly if it exists
+      const gp = await client.query(
+        "SELECT id FROM organizations WHERE is_general_public = TRUE LIMIT 1"
       );
-      await client.query("COMMIT");
-    } catch (e) {
-      await client.query("ROLLBACK");
-      console.error("Registration org enrollment failed, rolled back:", e);
-      throw e;
-    } finally {
-      client.release();
-    }
+      if (gp.rows.length > 0) {
+        await client.query(
+          "INSERT INTO organization_members (org_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [gp.rows[0].id, newUser.id]
+        );
+        await client.query(
+          "UPDATE users SET primary_org_id = $1 WHERE id = $2",
+          [gp.rows[0].id, newUser.id]
+        );
+      }
+
+      return newUser;
+    });
+  } catch (e) {
+    console.error("Registration failed:", e);
+    return err("Registration failed. Please try again.", 500);
   }
+
+  // Create session — only after the transaction commits successfully
+  const token = await createToken({ sub: user.id as string, username: user.username as string });
+  await setSessionCookie(token);
 
   return ok({
     id: user.id,
     username: user.username,
     displayName: user.display_name,
     createdAt: user.created_at,
+    token, // Returned for browser extension (cross-origin bearer auth)
   }, 201);
 }
