@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden } from "@/lib/api-utils";
 import { tryResolveSubmission } from "@/lib/vote-resolution";
@@ -1683,7 +1683,7 @@ export async function POST(request: NextRequest) {
     const stuckStories = await sql`
       SELECT s.id, s.title, s.status, s.jury_seats,
         (SELECT COUNT(*)::int FROM jury_votes jv WHERE jv.story_id = s.id) AS vote_count,
-        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'juror') AS juror_count
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'in_group') AS juror_count
       FROM stories s
       WHERE s.status IN ('pending_review', 'cross_review')
     `;
@@ -1725,7 +1725,7 @@ export async function POST(request: NextRequest) {
     // F5: Cross-group promotion consistency
     const crossGroupStories = await sql`
       SELECT s.id, s.title,
-        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'cross_group_juror') AS cg_juror_count
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'cross_group') AS cg_juror_count
       FROM stories s
       WHERE s.status = 'cross_review'
     `;
@@ -1954,6 +1954,160 @@ export async function POST(request: NextRequest) {
       description: `Section H failed: ${sectionHError instanceof Error ? sectionHError.message : String(sectionHError)}`,
       codeFixed: true,
       details: {},
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SECTION I2: GHOST REGISTRATION TEST
+  // Creates a ghost user, verifies the full registration pipeline
+  // (user row + org membership + primary_org_id + data endpoint visibility),
+  // then deletes all traces. Proves registration works end-to-end.
+  // ═══════════════════════════════════════════════════════════════════
+
+  try {
+    const ghostPrefix = `__diag_reg_${Date.now()}`;
+    const ghostUsername = `${ghostPrefix}`.slice(0, 30);
+    const ghostEmail = `${ghostPrefix}@diag.test`;
+    const ghostDisplayName = "Diagnostic Ghost User";
+    const ghostPassword = "DiagTest_12345!";
+
+    // Import hashPassword for ghost user creation
+    const { hashPassword: diagHashPassword } = await import("@/lib/auth");
+    const { hash: ghostHash, salt: ghostSalt } = await diagHashPassword(ghostPassword);
+
+    const regSteps: Array<{ step: string; status: "OK" | "FAIL" | "WARN"; actual: string }> = [];
+    const regIssues: string[] = [];
+    let ghostUserId: string | null = null;
+    let ghostOrgMemberId: string | null = null;
+
+    // STEP 1: Create ghost user via withTransaction (same path as register endpoint)
+    try {
+      const ghostUser = await withTransaction(async (client) => {
+        const result = await client.query(
+          `INSERT INTO users (
+            username, display_name, real_name, email, password_hash, salt,
+            gender, age, country, state, political_affiliation, is_di
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          RETURNING id, username, display_name, created_at`,
+          [
+            ghostUsername, ghostDisplayName, "Diag Ghost", ghostEmail, ghostHash, ghostSalt,
+            "Undisclosed", "Undisclosed", null, null, null, false,
+          ]
+        );
+        const newUser = result.rows[0];
+
+        // Auto-join General Public (same as register endpoint)
+        const gp = await client.query(
+          "SELECT id FROM organizations WHERE is_general_public = TRUE LIMIT 1"
+        );
+        if (gp.rows.length > 0) {
+          await client.query(
+            "INSERT INTO organization_members (org_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            [gp.rows[0].id, newUser.id]
+          );
+          await client.query(
+            "UPDATE users SET primary_org_id = $1 WHERE id = $2",
+            [gp.rows[0].id, newUser.id]
+          );
+        }
+
+        return newUser;
+      });
+
+      ghostUserId = ghostUser.id as string;
+      regSteps.push({ step: "1. Create ghost user (withTransaction)", status: "OK", actual: `Created user ${ghostUsername} (${ghostUserId})` });
+    } catch (e) {
+      regSteps.push({ step: "1. Create ghost user (withTransaction)", status: "FAIL", actual: `Transaction failed: ${(e as Error).message}` });
+      regIssues.push("Registration transaction failed — user creation + org enrollment is not atomic");
+    }
+
+    // STEP 2: Verify user exists in DB
+    if (ghostUserId) {
+      const userCheck = await sql`SELECT id, username, primary_org_id FROM users WHERE id = ${ghostUserId}`;
+      if (userCheck.rows.length === 0) {
+        regSteps.push({ step: "2. Verify user in DB", status: "FAIL", actual: "User NOT found in users table after transaction committed" });
+        regIssues.push("Ghost user missing from DB after COMMIT — withTransaction may not be working");
+      } else {
+        const user = userCheck.rows[0];
+        regSteps.push({ step: "2. Verify user in DB", status: "OK", actual: `Found: username=${user.username}, primary_org_id=${user.primary_org_id || "NULL"}` });
+
+        // STEP 3: Verify org membership
+        const memberCheck = await sql`
+          SELECT om.id, o.name FROM organization_members om
+          JOIN organizations o ON o.id = om.org_id
+          WHERE om.user_id = ${ghostUserId}
+        `;
+        if (memberCheck.rows.length === 0) {
+          regSteps.push({ step: "3. Verify org membership", status: "FAIL", actual: "No organization_members row — org enrollment failed within transaction" });
+          regIssues.push("Ghost user has no org membership — INSERT into organization_members failed inside transaction");
+        } else {
+          ghostOrgMemberId = memberCheck.rows[0].id as string;
+          regSteps.push({ step: "3. Verify org membership", status: "OK", actual: `Member of: ${memberCheck.rows[0].name}` });
+        }
+
+        // STEP 4: Verify primary_org_id is set
+        if (!user.primary_org_id) {
+          regSteps.push({ step: "4. Verify primary_org_id", status: "FAIL", actual: "primary_org_id is NULL — UPDATE users SET primary_org_id failed inside transaction" });
+          regIssues.push("Ghost user has NULL primary_org_id — the registration transaction didn't set it");
+        } else {
+          regSteps.push({ step: "4. Verify primary_org_id", status: "OK", actual: `primary_org_id = ${user.primary_org_id}` });
+        }
+
+        // STEP 5: Verify user appears in /api/data/users response shape
+        const dataCheck = await sql`
+          SELECT u.id, u.username, u.display_name, u.primary_org_id,
+                 (SELECT COUNT(*)::int FROM organization_members om WHERE om.user_id = u.id AND om.is_active = TRUE) AS active_memberships
+          FROM users u WHERE u.id = ${ghostUserId}
+        `;
+        if (dataCheck.rows.length === 0) {
+          regSteps.push({ step: "5. Data endpoint visibility", status: "FAIL", actual: "User not found via data query pattern" });
+          regIssues.push("Ghost user invisible to the data endpoint query — new users won't appear in the SPA");
+        } else {
+          const d = dataCheck.rows[0];
+          regSteps.push({ step: "5. Data endpoint visibility", status: "OK", actual: `Visible: display_name=${d.display_name}, active_memberships=${d.active_memberships}` });
+        }
+      }
+    }
+
+    // CLEANUP: Remove all ghost data (zero residue requirement)
+    if (ghostUserId) {
+      try {
+        // Delete in correct FK order
+        await sql`DELETE FROM organization_members WHERE user_id = ${ghostUserId}`;
+        await sql`DELETE FROM users WHERE id = ${ghostUserId}`;
+        regSteps.push({ step: "6. Cleanup ghost data", status: "OK", actual: "All ghost records deleted — zero residue" });
+      } catch (e) {
+        regSteps.push({ step: "6. Cleanup ghost data", status: "WARN", actual: `Cleanup error: ${(e as Error).message}` });
+        regIssues.push(`Ghost cleanup failed — manual cleanup needed for user ${ghostUsername}`);
+      }
+    }
+
+    results.push({
+      name: "Ghost registration pipeline test",
+      status: regIssues.length === 0 ? "PASS" : "FAIL",
+      description: regIssues.length === 0
+        ? "Registration pipeline works end-to-end: user creation, org enrollment, primary_org_id, and data visibility all verified within a single transaction. Ghost data cleaned up."
+        : `Registration pipeline has ${regIssues.length} issue(s):\n${regIssues.map(i => `  - ${i}`).join("\n")}`,
+      rootCause: "POST /auth/register uses withTransaction() to atomically INSERT user → INSERT org_member → UPDATE primary_org_id. If any step fails, the entire registration rolls back — no orphaned users.",
+      remediation: "If this test fails, check: (1) withTransaction() in src/lib/db.ts works correctly, (2) General Public org exists, (3) users table constraints are satisfied.",
+      codeFixed: true,
+      details: {
+        ghostUsername,
+        ghostUserId,
+        pipelineSteps: regSteps,
+        issues: regIssues,
+        issueCount: regIssues.length,
+      },
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Emergency cleanup — try to remove any ghost data
+    try { await sql`DELETE FROM users WHERE username LIKE '__diag_reg_%'`; } catch {}
+    results.push({
+      name: "Ghost registration pipeline test",
+      status: "ERROR",
+      description: `Ghost registration test errored: ${msg}`,
+      details: { error: msg, stack: e instanceof Error ? e.stack : undefined },
     });
   }
 

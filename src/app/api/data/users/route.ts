@@ -152,12 +152,12 @@ export async function GET() {
     };
   }
 
-  // Attach debug info directly to response (key starts with _ to avoid collision with usernames)
-  (users as Record<string, unknown>).__debug = {
+  // Return debug info under a reserved key that won't collide with usernames
+  // (usernames must be 3+ chars of [a-z0-9_-], so "_meta" is impossible)
+  (users as Record<string, unknown>)._meta = {
     queryRowCount: _debug.queryRowCount,
-    keyCount: Object.keys(users).length,
+    keyCount: Object.keys(users).length - 1, // subtract _meta itself
     duplicates: _debug.duplicates,
-    allUsernamesFromQuery: result.rows.map((r: Record<string, unknown>) => r.username),
   };
 
   return ok(users);

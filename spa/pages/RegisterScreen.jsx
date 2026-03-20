@@ -51,7 +51,7 @@ export default function RegisterScreen({ onRegister }) {
     const isDigitalIntelligence = !!(form.isDI || form.gender === "di");
 
     // Email uniqueness — Digital Intelligences may share their partner's email
-    if (!isDigitalIntelligence && Object.values(users).some(u => normalizeEmail(u.email) === normEmail)) { setError("Email already registered."); setLoading(false); return; }
+    if (!isDigitalIntelligence && Object.values(users).some(u => u && u.email && normalizeEmail(u.email) === normEmail)) { setError("Email already registered."); setLoading(false); return; }
 
     // DI partner validation
     let diPartnerUsername = null;
