@@ -1,6 +1,13 @@
+import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { ok, serverError } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "Surrogate-Control": "no-store",
+  "CDN-Cache-Control": "no-store",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +105,7 @@ export async function GET() {
   `;
 
   const subIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  if (subIds.length === 0) return ok({});
+  if (subIds.length === 0) return NextResponse.json({}, { status: 200, headers: NO_CACHE_HEADERS });
 
   // Batch load evidence
   const ev = await sql.query(
@@ -254,7 +261,7 @@ export async function GET() {
     };
   }
 
-  return ok(subs);
+  return NextResponse.json(subs, { status: 200, headers: NO_CACHE_HEADERS });
   } catch (error) {
     return serverError("GET /api/data/submissions", error);
   }

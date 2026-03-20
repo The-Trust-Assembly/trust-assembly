@@ -1,5 +1,6 @@
+import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, serverError } from "@/lib/api-utils";
+import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,14 @@ export const dynamic = "force-dynamic";
 // Serves sG(SK.USERS) reads from the relational database.
 export async function GET() {
   try {
+  // Belt-and-suspenders: explicit no-cache headers prevent Vercel edge/CDN
+  // from serving stale user data (supplements middleware Cache-Control).
+  const headers = {
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    "Surrogate-Control": "no-store",
+    "CDN-Cache-Control": "no-store",
+  };
+
   const result = await sql`
     SELECT
       u.id, u.username, u.display_name, u.real_name, u.email,
@@ -160,7 +169,7 @@ export async function GET() {
     duplicates: _debug.duplicates,
   };
 
-  return ok(users);
+  return NextResponse.json(users, { status: 200, headers });
   } catch (error) {
     return serverError("GET /api/data/users", error);
   }

@@ -2,6 +2,12 @@ import { SK } from "./constants";
 
 const WILD_WEST_THRESHOLD = 100;
 
+// Append a cache-busting timestamp to any URL to prevent CDN/browser stale responses.
+function noCacheFetch(url, opts) {
+  const sep = url.includes("?") ? "&" : "?";
+  return fetch(url + sep + "_t=" + Date.now(), { cache: "no-store", ...opts });
+}
+
 // checkSignupRate is a no-op — rate limiting is handled server-side.
 export async function checkSignupRate(ipHash) {
   return null;
@@ -25,13 +31,13 @@ export async function sG(k) {
     case SK.TRANSLATIONS: url = "/api/vault?type=translation&limit=1000"; break;
     case SK.APPS: {
       // Applications are stored per-org; fetch all via orgs the user knows about
-      const res = await fetch("/api/orgs?limit=1000");
+      const res = await noCacheFetch("/api/orgs?limit=1000");
       if (!res.ok) return {};
       const data = await res.json();
       const allApps = {};
       for (const org of (data.organizations || data.data || [])) {
         try {
-          const appRes = await fetch(`/api/orgs/${org.id}/applications`);
+          const appRes = await noCacheFetch(`/api/orgs/${org.id}/applications`);
           if (appRes.ok) {
             const appData = await appRes.json();
             for (const app of (appData.applications || appData.data || [])) {
@@ -52,7 +58,7 @@ export async function sG(k) {
     }
     case SK.GP: {
       // Find General Public org ID from the orgs data
-      const res = await fetch("/api/data/orgs");
+      const res = await noCacheFetch("/api/data/orgs");
       if (!res.ok) return null;
       const orgs = await res.json();
       for (const [id, o] of Object.entries(orgs)) {
@@ -63,7 +69,7 @@ export async function sG(k) {
     default: {
       // Handle non-SK keys: ta-di-requests, ta-concessions, rate-limit keys
       if (k === "ta-di-requests" || k.startsWith("ta-di-")) {
-        const res = await fetch("/api/di-requests");
+        const res = await noCacheFetch("/api/di-requests");
         if (!res.ok) return {};
         const data = await res.json();
         const map = {};
@@ -79,7 +85,7 @@ export async function sG(k) {
         return map;
       }
       if (k === "ta-concessions" || k.startsWith("ta-con")) {
-        const res = await fetch("/api/concessions?limit=1000");
+        const res = await noCacheFetch("/api/concessions?limit=1000");
         if (!res.ok) return {};
         const data = await res.json();
         const map = {};
@@ -96,7 +102,7 @@ export async function sG(k) {
     }
   }
 
-  const res = await fetch(url);
+  const res = await noCacheFetch(url);
   if (!res.ok) {
     console.error(`[sG] Storage read failed for ${k}: ${res.status} ${res.statusText}`);
     try { const errBody = await res.text(); console.error(`[sG] Response body:`, errBody.slice(0, 500)); } catch {}
