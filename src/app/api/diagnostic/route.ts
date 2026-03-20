@@ -234,6 +234,73 @@ export async function GET(request: NextRequest) {
     report.clientActionLogs = { error: (e as Error).message };
   }
 
+  // ── Section H: Tutorial / Onboarding Flow Health ──
+  const tutorialIssues: Array<{ check: string; severity: string; details: string }> = [];
+  try {
+    // Check for users who started but never completed onboarding
+    const stuckOnboarding = await sql`
+      SELECT COUNT(*) as cnt FROM users
+      WHERE onboarding_complete IS NOT TRUE
+        AND created_at >= ${cutoff}
+    `;
+    const stuckCount = parseInt(stuckOnboarding.rows[0].cnt);
+    if (stuckCount > 0) {
+      tutorialIssues.push({
+        check: "users_stuck_in_onboarding",
+        severity: stuckCount > 5 ? "critical" : "warning",
+        details: `${stuckCount} user(s) created in the last ${hoursBack}h have not completed onboarding — may indicate tutorial flow is broken or confusing`,
+      });
+    }
+
+    // Check for onboarding-related errors in audit log
+    const obErrors = await sql`
+      SELECT COUNT(*) as cnt FROM audit_log
+      WHERE created_at >= ${cutoff}
+        AND (action ILIKE '%onboard%' OR action ILIKE '%tutorial%')
+        AND metadata::text LIKE '%"status":"error"%'
+    `;
+    const obErrorCount = parseInt(obErrors.rows[0].cnt);
+    if (obErrorCount > 0) {
+      tutorialIssues.push({
+        check: "onboarding_errors_in_audit_log",
+        severity: "critical",
+        details: `${obErrorCount} onboarding-related error(s) logged in the last ${hoursBack}h`,
+      });
+    }
+
+    // Check for client-reported tutorial crashes
+    const clientTutorialErrors = await sql`
+      SELECT COUNT(*) as cnt FROM audit_log
+      WHERE entity_type = 'client_action_log'
+        AND created_at >= ${cutoff}
+        AND metadata::text ILIKE '%onboarding%'
+        AND metadata::text LIKE '%"ok":false%'
+    `;
+    const clientCrashCount = parseInt(clientTutorialErrors.rows[0].cnt);
+    if (clientCrashCount > 0) {
+      tutorialIssues.push({
+        check: "client_tutorial_crashes",
+        severity: "critical",
+        details: `${clientCrashCount} client-side tutorial crash(es) reported via action tracker in the last ${hoursBack}h`,
+      });
+    }
+
+    if (tutorialIssues.length === 0) {
+      tutorialIssues.push({
+        check: "tutorial_flow_ok",
+        severity: "info",
+        details: "No tutorial-related issues detected in the last " + hoursBack + "h",
+      });
+    }
+  } catch (e) {
+    tutorialIssues.push({
+      check: "tutorial_diagnostic_query_failed",
+      severity: "warning",
+      details: (e as Error).message,
+    });
+  }
+  report.tutorialHealth = tutorialIssues;
+
   report.generatedAt = new Date().toISOString();
   report.periodHours = hoursBack;
 

@@ -49,6 +49,7 @@ export default function DiagnosticScreen() {
     { key: "actions", label: "Action Log" },
     { key: "client", label: "Client Log" },
     { key: "slow", label: "Slow Queries" },
+    { key: "tutorial", label: "Tutorial Health" },
   ];
 
   const severity = (s) => ({
@@ -67,6 +68,7 @@ export default function DiagnosticScreen() {
 
   const totalErrors = Array.isArray(report?.recentErrors) ? report.recentErrors.length : 0;
   const criticalIssues = Array.isArray(report?.dataIssues) ? report.dataIssues.filter(i => i.severity === "critical").length : 0;
+  const tutorialIssues = Array.isArray(report?.tutorialHealth) ? report.tutorialHealth.filter(i => i.severity === "critical" || i.severity === "warning").length : 0;
 
   return (
     <div>
@@ -155,6 +157,9 @@ export default function DiagnosticScreen() {
             )}
             {t.key === "data" && criticalIssues > 0 && (
               <span style={{ marginLeft: 4, background: "#DC2626", color: "#fff", fontSize: 9, padding: "1px 5px", borderRadius: 8, fontWeight: 700 }}>{criticalIssues}</span>
+            )}
+            {t.key === "tutorial" && tutorialIssues > 0 && (
+              <span style={{ marginLeft: 4, background: "#DC2626", color: "#fff", fontSize: 9, padding: "1px 5px", borderRadius: 8, fontWeight: 700 }}>{tutorialIssues}</span>
             )}
           </button>
         ))}
@@ -339,6 +344,35 @@ export default function DiagnosticScreen() {
                   {entry.component && <span style={{ fontSize: 10, color: "var(--stone)", marginLeft: 8 }}>component: {entry.component}</span>}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tutorial Health Tab ── */}
+      {tab === "tutorial" && report && (
+        <div>
+          <p style={{ fontSize: 12, color: "var(--stone)", marginBottom: 12 }}>
+            Tutorial / onboarding flow health checks for the last {hours}h.
+          </p>
+          {Array.isArray(report.tutorialHealth) && report.tutorialHealth.length > 0 ? (
+            report.tutorialHealth.map((issue, i) => {
+              const s = severity(issue.severity);
+              return (
+                <div key={i} className="ta-card" style={{ borderLeft: `3px solid ${s.border}`, background: s.bg }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: s.color }}>{issue.check.replace(/_/g, " ")}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: s.color, background: `${s.border}22`, padding: "2px 6px", borderRadius: 4 }}>
+                      {issue.severity}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: s.color, lineHeight: 1.5 }}>{issue.details}</div>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ textAlign: "center", padding: 32, color: "var(--evergreen)" }}>
+              No tutorial health data available
             </div>
           )}
         </div>
