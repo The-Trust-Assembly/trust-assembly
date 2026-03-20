@@ -1683,7 +1683,7 @@ export async function POST(request: NextRequest) {
     const stuckStories = await sql`
       SELECT s.id, s.title, s.status, s.jury_seats,
         (SELECT COUNT(*)::int FROM jury_votes jv WHERE jv.story_id = s.id) AS vote_count,
-        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'juror') AS juror_count
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'in_group') AS juror_count
       FROM stories s
       WHERE s.status IN ('pending_review', 'cross_review')
     `;
@@ -1725,7 +1725,7 @@ export async function POST(request: NextRequest) {
     // F5: Cross-group promotion consistency
     const crossGroupStories = await sql`
       SELECT s.id, s.title,
-        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'cross_group_juror') AS cg_juror_count
+        (SELECT COUNT(*)::int FROM jury_assignments ja WHERE ja.story_id = s.id AND ja.role = 'cross_group') AS cg_juror_count
       FROM stories s
       WHERE s.status = 'cross_review'
     `;
