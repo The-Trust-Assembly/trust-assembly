@@ -93,6 +93,18 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Audit log — record the registration so it appears on the Transparency Ledger
+      await client.query(
+        `INSERT INTO audit_log (action, user_id, entity_type, entity_id, metadata)
+         VALUES ($1, $2, 'user', $3, $4)`,
+        [
+          `@${newUser.username} registered as a Digital ${isDI ? "Intelligence" : "Citizen"}`,
+          newUser.id,
+          newUser.id,
+          JSON.stringify({ username: newUser.username, isDI }),
+        ]
+      );
+
       return newUser;
     });
   } catch (e) {

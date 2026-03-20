@@ -612,6 +612,49 @@ async function promoteStoryToCrossGroup(
   return true;
 }
 
+// ============================================================
+// Stalled Resolution Reconciliation
+// Finds pending_review/cross_review submissions that already
+// have enough votes for majority but were never resolved
+// (e.g., tryResolveSubmission threw during the broken sql`` era).
+// Safe to call frequently — only acts when stalled items exist.
+// ============================================================
+
+export async function reconcileStalledSubmissions(): Promise<number> {
+  const stalled = await sql`
+    SELECT s.id, s.status, s.jury_seats, s.cross_group_jury_size,
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = TRUE)::int AS approve_count,
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = FALSE)::int AS reject_count,
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group')::int AS total_votes
+    FROM submissions s
+    WHERE s.status IN ('pending_review', 'cross_review')
+  `;
+
+  let resolved = 0;
+  for (const sub of stalled.rows) {
+    const isCross = sub.status === "cross_review";
+    const seats = isCross
+      ? ((sub.cross_group_jury_size as number) || 3)
+      : ((sub.jury_seats as number) || 3);
+    const majority = getMajority(seats);
+    const role = isCross ? "cross_group" : "in_group";
+
+    if (
+      (sub.approve_count as number) >= majority ||
+      (sub.reject_count as number) >= majority ||
+      (sub.total_votes as number) >= seats
+    ) {
+      try {
+        const result = await tryResolveSubmission(sub.id as string, role);
+        if (result.resolved) resolved++;
+      } catch {
+        // Already logged inside tryResolveSubmission
+      }
+    }
+  }
+  return resolved;
+}
+
 // ---- Helpers ----
 
 function getVaultTable(entryType: string): string | null {

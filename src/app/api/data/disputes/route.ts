@@ -1,5 +1,6 @@
+import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, serverError } from "@/lib/api-utils";
+import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,12 @@ export async function GET() {
   `;
 
   const disputeIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  if (disputeIds.length === 0) return ok({});
+  const noCacheHeaders = {
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    "Surrogate-Control": "no-store",
+    "CDN-Cache-Control": "no-store",
+  };
+  if (disputeIds.length === 0) return NextResponse.json({}, { status: 200, headers: noCacheHeaders });
 
   // Batch load jurors
   const jurors = await sql.query(
@@ -106,7 +112,7 @@ export async function GET() {
     };
   }
 
-  return ok(disputes);
+  return NextResponse.json(disputes, { status: 200, headers: noCacheHeaders });
   } catch (error) {
     return serverError("GET /api/data/disputes", error);
   }

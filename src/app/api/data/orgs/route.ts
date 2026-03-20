@@ -1,5 +1,6 @@
+import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, serverError } from "@/lib/api-utils";
+import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,12 @@ export async function GET() {
   `;
 
   const orgIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  if (orgIds.length === 0) return ok({});
+  const noCacheHeaders = {
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    "Surrogate-Control": "no-store",
+    "CDN-Cache-Control": "no-store",
+  };
+  if (orgIds.length === 0) return NextResponse.json({}, { status: 200, headers: noCacheHeaders });
 
   // Batch load all active members for all orgs
   const members = await sql.query(
@@ -63,7 +69,14 @@ export async function GET() {
     };
   }
 
-  return ok(orgs);
+  return NextResponse.json(orgs, {
+    status: 200,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Surrogate-Control": "no-store",
+      "CDN-Cache-Control": "no-store",
+    },
+  });
   } catch (error) {
     return serverError("GET /api/data/orgs", error);
   }

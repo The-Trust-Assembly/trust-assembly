@@ -1,5 +1,6 @@
+import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, serverError } from "@/lib/api-utils";
+import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,14 @@ export async function GET() {
     action: row.action as string,
   }));
 
-  return ok(entries);
+  return NextResponse.json(entries, {
+    status: 200,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Surrogate-Control": "no-store",
+      "CDN-Cache-Control": "no-store",
+    },
+  });
   } catch (error) {
     return serverError("GET /api/data/audit", error);
   }

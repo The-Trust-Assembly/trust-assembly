@@ -144,8 +144,12 @@ export async function POST(
   try {
     resolution = await tryResolveSubmission(id, juryRole);
   } catch (e) {
-    console.error(`Resolution failed for submission ${id} after vote was committed:`, e);
-    // Vote was saved — return success. Resolution can be retried via admin tools.
+    console.error(`Resolution attempt 1 failed for ${id}, retrying:`, e);
+    try {
+      resolution = await tryResolveSubmission(id, juryRole);
+    } catch (e2) {
+      console.error(`Resolution attempt 2 failed for ${id}:`, e2);
+    }
   }
 
   return ok({
