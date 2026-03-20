@@ -5,6 +5,7 @@ import { ok, err, unauthorized } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
+import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
 
 function normalizeUrl(raw: string): string {
   try {
@@ -80,6 +81,10 @@ export async function GET(request: NextRequest) {
       org_name: row.org_name || "Unknown Org",
     };
   });
+
+  // Fire-and-forget: resolve any submissions stuck due to historical
+  // transaction failures. Non-blocking — does not delay the response.
+  reconcileStalledSubmissions().catch(() => {});
 
   return ok({
     submissions,
