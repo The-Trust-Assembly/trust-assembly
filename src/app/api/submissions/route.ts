@@ -191,6 +191,20 @@ export async function POST(request: NextRequest) {
     try {
       await client.query("BEGIN");
 
+      // Double-click prevention: reject duplicate (same URL + org + user) within 30 seconds
+      const dupeCheck = await client.query(
+        `SELECT id FROM submissions
+         WHERE normalized_url = $1 AND org_id = $2 AND submitted_by = $3
+           AND created_at > NOW() - INTERVAL '30 seconds'
+         LIMIT 1`,
+        [normalizedUrl, targetOrg, session.sub]
+      );
+      if (dupeCheck.rows.length > 0) {
+        await client.query("ROLLBACK");
+        client.release();
+        return err("Duplicate submission detected. This submission was already created moments ago.", 409);
+      }
+
       // Create submission (with normalized_url for indexed lookups)
       // Generate slug from headline; ID suffix added after INSERT via a two-step approach
       const result = await client.query(

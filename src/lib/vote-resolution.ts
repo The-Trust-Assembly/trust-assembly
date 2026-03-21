@@ -396,14 +396,18 @@ async function promoteToCrossGroup(
   if (qualifyingOrgs.rows.length < 1) return false;
 
   // Select cross-group jurors from other assemblies (exclude DI accounts)
+  // Wrap in subquery: SELECT DISTINCT + ORDER BY RANDOM() is invalid in PostgreSQL
+  // because ORDER BY expressions must appear in the SELECT list for DISTINCT.
   const crossPool = await client.query(
-    `SELECT DISTINCT om.user_id
-     FROM organization_members om
-     JOIN users u ON u.id = om.user_id
-     WHERE om.org_id != $1
-       AND om.is_active = TRUE
-       AND u.is_di = FALSE
-       AND om.user_id != $2
+    `SELECT user_id FROM (
+       SELECT DISTINCT om.user_id
+       FROM organization_members om
+       JOIN users u ON u.id = om.user_id
+       WHERE om.org_id != $1
+         AND om.is_active = TRUE
+         AND u.is_di = FALSE
+         AND om.user_id != $2
+     ) pool
      ORDER BY RANDOM()
      LIMIT 15`,
     [orgId, submittedBy]
@@ -631,14 +635,17 @@ async function promoteStoryToCrossGroup(
   if (qualifyingOrgs.rows.length < 1) return false;
 
   // Select cross-group jurors from other assemblies (exclude DI accounts)
+  // Wrap in subquery: SELECT DISTINCT + ORDER BY RANDOM() is invalid in PostgreSQL
   const crossPool = await client.query(
-    `SELECT DISTINCT om.user_id
-     FROM organization_members om
-     JOIN users u ON u.id = om.user_id
-     WHERE om.org_id != $1
-       AND om.is_active = TRUE
-       AND u.is_di = FALSE
-       AND om.user_id != $2
+    `SELECT user_id FROM (
+       SELECT DISTINCT om.user_id
+       FROM organization_members om
+       JOIN users u ON u.id = om.user_id
+       WHERE om.org_id != $1
+         AND om.is_active = TRUE
+         AND u.is_di = FALSE
+         AND om.user_id != $2
+     ) pool
      ORDER BY RANDOM()
      LIMIT 15`,
     [orgId, submittedBy]
@@ -695,13 +702,13 @@ export async function reconcileStalledSubmissions(): Promise<number> {
   const stalled = await sql`
     SELECT s.id, s.status, s.jury_seats, s.cross_group_jury_size,
       (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
-         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group' ELSE 'in_group' END
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group'::jury_role ELSE 'in_group'::jury_role END
          AND jv.approve = TRUE)::int AS approve_count,
       (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
-         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group' ELSE 'in_group' END
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group'::jury_role ELSE 'in_group'::jury_role END
          AND jv.approve = FALSE)::int AS reject_count,
       (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
-         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group' ELSE 'in_group' END)::int AS total_votes
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group'::jury_role ELSE 'in_group'::jury_role END)::int AS total_votes
     FROM submissions s
     WHERE s.status IN ('pending_review', 'cross_review')
   `;
