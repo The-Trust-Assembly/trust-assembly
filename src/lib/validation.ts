@@ -25,6 +25,12 @@ export const MAX_LENGTHS = {
   story_description: 5000,
 } as const;
 
+// UUID v4 format validation
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isValidUUID(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
 /**
  * Validate that a string field does not exceed the max length.
  * Returns an error message if invalid, or null if valid.

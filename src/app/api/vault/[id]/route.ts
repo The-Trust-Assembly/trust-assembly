@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, err } from "@/lib/api-utils";
+import { ok, err, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // GET /api/vault/[id] — get single vault entry by id
 export async function GET(
@@ -8,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") || "vault";
 

@@ -4,7 +4,7 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { tryResolveSubmission } from "@/lib/vote-resolution";
 import { isWildWestMode } from "@/lib/jury-rules";
-import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { validateFields, MAX_LENGTHS, isValidUUID } from "@/lib/validation";
 import { logError } from "@/lib/error-logger";
 
 const SOURCE_FILE = "src/app/api/submissions/[id]/vote/route.ts";
@@ -19,6 +19,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   let body: Record<string, unknown>;
   try {
     body = await request.json();

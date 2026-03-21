@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/api-utils";
+import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // PATCH /api/di-requests/[id] — approve or reject a DI request
 export async function PATCH(
@@ -12,6 +13,7 @@ export async function PATCH(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { action } = body;
 

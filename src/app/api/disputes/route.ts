@@ -4,6 +4,7 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { logError } from "@/lib/error-logger";
+import { createNotification } from "@/lib/notifications";
 
 const SOURCE_FILE = "src/app/api/disputes/route.ts";
 
@@ -184,6 +185,16 @@ export async function POST(request: NextRequest) {
   } finally {
     client.release();
   }
+
+  // Notify the original submitter about the dispute (fire-and-forget)
+  await createNotification({
+    userId: submitted_by as string,
+    type: "dispute_filed",
+    title: "Your submission has been disputed",
+    body: `A ${resolvedType === "challenge_rejection" ? "challenge to rejection" : "challenge to approval"} was filed`,
+    entityType: "dispute",
+    entityId: dispute.id as string,
+  });
 
   return ok(dispute, 201);
 }

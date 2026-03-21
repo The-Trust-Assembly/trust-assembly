@@ -19,6 +19,7 @@
 import { sql } from "@/lib/db";
 import type { VercelPoolClient } from "@vercel/postgres";
 import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT, isWildWestMode } from "@/lib/jury-rules";
+import { createNotification } from "@/lib/notifications";
 
 interface VoteRow {
   approve: boolean;
@@ -161,10 +162,21 @@ export async function tryResolveSubmission(
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Vote resolution transaction failed, rolled back:", e);
-    throw e;
+    return { resolved: false };
   } finally {
     client.release();
   }
+
+  // Notify the submitter (fire-and-forget, never throws)
+  const isApproved = outcome === "approved" || outcome === "consensus";
+  await createNotification({
+    userId: sub.submitted_by,
+    type: "submission_resolved",
+    title: `Your submission was ${isApproved ? "approved" : "rejected"}`,
+    body: `in ${sub.org_name}`,
+    entityType: "submission",
+    entityId: submissionId,
+  });
 
   return { resolved: true, outcome, promotedToCrossGroup };
 }
@@ -531,10 +543,20 @@ export async function tryResolveStory(
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Story resolution transaction failed:", e);
-    throw e;
+    return { resolved: false };
   } finally {
     client.release();
   }
+
+  // Notify the story submitter (fire-and-forget)
+  const storyApproved = outcome === "approved" || outcome === "consensus";
+  await createNotification({
+    userId: story.submitted_by,
+    type: "story_resolved",
+    title: `Your story proposal was ${storyApproved ? "approved" : "rejected"}`,
+    entityType: "story",
+    entityId: storyId,
+  });
 
   return { resolved: true, outcome, promotedToCrossGroup };
 }
@@ -623,9 +645,14 @@ async function promoteStoryToCrossGroup(
 export async function reconcileStalledSubmissions(): Promise<number> {
   const stalled = await sql`
     SELECT s.id, s.status, s.jury_seats, s.cross_group_jury_size,
-      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = TRUE)::int AS approve_count,
-      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = FALSE)::int AS reject_count,
-      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group')::int AS total_votes
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group' ELSE 'in_group' END
+         AND jv.approve = TRUE)::int AS approve_count,
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group' ELSE 'in_group' END
+         AND jv.approve = FALSE)::int AS reject_count,
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group' ELSE 'in_group' END)::int AS total_votes
     FROM submissions s
     WHERE s.status IN ('pending_review', 'cross_review')
   `;

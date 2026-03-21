@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // POST /api/submissions/[id]/recuse — juror recuses from a submission
 export async function POST(
@@ -12,6 +13,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   // Check submission exists and is pending review
   const sub = await sql`

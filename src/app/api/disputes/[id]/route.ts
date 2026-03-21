@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, err } from "@/lib/api-utils";
+import { ok, err, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // GET /api/disputes/[id] — get dispute details with evidence and votes
 export async function GET(
@@ -8,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   // Get dispute with disputed_by user info
   const disputeResult = await sql`

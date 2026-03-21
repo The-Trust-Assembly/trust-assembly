@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/api-utils";
+import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // POST /api/jury/[id]/accept — accept a jury assignment
 export async function POST(
@@ -12,6 +13,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   // Verify assignment exists and belongs to user
   const assignment = await sql`
