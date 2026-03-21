@@ -12,7 +12,8 @@ export async function GET() {
   // Belt-and-suspenders: explicit no-cache headers prevent Vercel edge/CDN
   // from serving stale user data (supplements middleware Cache-Control).
   const headers = {
-    "Cache-Control": "no-store, no-cache, must-revalidate",
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
     "Surrogate-Control": "no-store",
     "CDN-Cache-Control": "no-store",
   };
