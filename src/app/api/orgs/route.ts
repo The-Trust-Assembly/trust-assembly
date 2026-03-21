@@ -5,6 +5,7 @@ import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugifyOrg } from "@/lib/slugify";
 import { logError } from "@/lib/error-logger";
+import { ensureSlugsExist } from "@/lib/ensure-schema";
 
 const SOURCE_FILE = "src/app/api/orgs/route.ts";
 
@@ -82,30 +83,25 @@ export async function POST(request: NextRequest) {
     return err("An assembly with this name already exists", 409);
   }
 
+  // Ensure slug columns exist (runtime migration 006)
+  await ensureSlugsExist();
+
   // Create org with SEO-friendly slug — use real transaction via sql.connect()
   // The sql`` tagged template is stateless (neon HTTP driver), so each call hits
   // a different connection — BEGIN/COMMIT/ROLLBACK are no-ops across calls.
   const client = await sql.connect();
   try {
+    const orgSlug = slugifyOrg(name.trim());
     await client.query("BEGIN");
 
     const result = await client.query(
-      `INSERT INTO organizations (name, description, charter, created_by)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name, description, charter, enrollment_mode, created_at`,
-      [name.trim(), description || null, charter || null, session.sub]
+      `INSERT INTO organizations (name, description, charter, created_by, slug)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, description, charter, enrollment_mode, slug, created_at`,
+      [name.trim(), description || null, charter || null, session.sub, orgSlug]
     );
 
     const org = result.rows[0];
-
-    // Set SEO-friendly slug (best-effort — column may not exist yet)
-    try {
-      const orgSlug = slugifyOrg(name.trim());
-      await client.query("UPDATE organizations SET slug = $1 WHERE id = $2", [orgSlug, org.id]);
-      org.slug = orgSlug;
-    } catch {
-      // slug column doesn't exist yet — migration 006 not applied
-    }
 
     // Add creator as founder member
     await client.query(

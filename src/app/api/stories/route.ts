@@ -6,6 +6,7 @@ import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-ru
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
 import { logError } from "@/lib/error-logger";
+import { ensureSlugsExist } from "@/lib/ensure-schema";
 
 const SOURCE_FILE = "src/app/api/stories/route.ts";
 
@@ -114,6 +115,9 @@ export async function POST(request: NextRequest) {
   const count = parseInt(memberCount.rows[0].count);
   const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
+  // Ensure slug columns exist (runtime migration 006)
+  await ensureSlugsExist();
+
   // Create story in transaction
   const client = await sql.connect();
   let story: Record<string, unknown>;
@@ -129,14 +133,10 @@ export async function POST(request: NextRequest) {
     );
     story = result.rows[0];
 
-    // Set SEO-friendly slug (best-effort — column may not exist yet)
-    try {
-      const storySlug = slugify(title.trim(), story.id as string);
-      await client.query("UPDATE stories SET slug = $1 WHERE id = $2", [storySlug, story.id]);
-      story.slug = storySlug;
-    } catch {
-      // slug column doesn't exist yet — migration 006 not applied
-    }
+    // Set SEO-friendly slug
+    const storySlug = slugify(title.trim(), story.id as string);
+    await client.query("UPDATE stories SET slug = $1 WHERE id = $2", [storySlug, story.id]);
+    story.slug = storySlug;
 
     // Audit log
     await client.query(

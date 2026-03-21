@@ -7,6 +7,7 @@ import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
 import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
 import { logError } from "@/lib/error-logger";
+import { ensureSlugsExist } from "@/lib/ensure-schema";
 
 const SOURCE_FILE = "src/app/api/submissions/route.ts";
 
@@ -167,6 +168,9 @@ export async function POST(request: NextRequest) {
 
   const createdSubs: Record<string, unknown>[] = [];
 
+  // Ensure slug columns exist (runtime migration 006)
+  await ensureSlugsExist();
+
   for (const targetOrg of targetOrgIds) {
     // Check member count for initial status
     const memberCount = await sql`
@@ -199,16 +203,11 @@ export async function POST(request: NextRequest) {
          replacement || null, reasoning, author || null,
          session.sub, targetOrg, trustedSkip, submitterIsDI, user.rows[0].di_partner_id || null, jurySeats]
       );
+      // Set slug now that we have the ID
+      const subSlug = slugify(originalHeadline, result.rows[0].id);
+      await client.query("UPDATE submissions SET slug = $1 WHERE id = $2", [subSlug, result.rows[0].id]);
+      result.rows[0].slug = subSlug;
       sub = result.rows[0];
-
-      // Set SEO slug (best-effort — column may not exist yet)
-      try {
-        const subSlug = slugify(originalHeadline, sub.id as string);
-        await client.query("UPDATE submissions SET slug = $1 WHERE id = $2", [subSlug, sub.id]);
-        sub.slug = subSlug;
-      } catch {
-        // slug column doesn't exist yet — migration 006 not applied
-      }
 
       // Insert evidence if provided
       if (evidence && Array.isArray(evidence)) {
