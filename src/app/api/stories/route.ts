@@ -129,10 +129,14 @@ export async function POST(request: NextRequest) {
     );
     story = result.rows[0];
 
-    // Set SEO-friendly slug
-    const storySlug = slugify(title.trim(), story.id as string);
-    await client.query("UPDATE stories SET slug = $1 WHERE id = $2", [storySlug, story.id]);
-    story.slug = storySlug;
+    // Set SEO-friendly slug (best-effort — column may not exist yet)
+    try {
+      const storySlug = slugify(title.trim(), story.id as string);
+      await client.query("UPDATE stories SET slug = $1 WHERE id = $2", [storySlug, story.id]);
+      story.slug = storySlug;
+    } catch {
+      // slug column doesn't exist yet — migration 006 not applied
+    }
 
     // Audit log
     await client.query(

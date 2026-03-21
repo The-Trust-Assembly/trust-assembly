@@ -87,17 +87,25 @@ export async function POST(request: NextRequest) {
   // a different connection — BEGIN/COMMIT/ROLLBACK are no-ops across calls.
   const client = await sql.connect();
   try {
-    const orgSlug = slugifyOrg(name.trim());
     await client.query("BEGIN");
 
     const result = await client.query(
-      `INSERT INTO organizations (name, description, charter, created_by, slug)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, name, description, charter, enrollment_mode, slug, created_at`,
-      [name.trim(), description || null, charter || null, session.sub, orgSlug]
+      `INSERT INTO organizations (name, description, charter, created_by)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, description, charter, enrollment_mode, created_at`,
+      [name.trim(), description || null, charter || null, session.sub]
     );
 
     const org = result.rows[0];
+
+    // Set SEO-friendly slug (best-effort — column may not exist yet)
+    try {
+      const orgSlug = slugifyOrg(name.trim());
+      await client.query("UPDATE organizations SET slug = $1 WHERE id = $2", [orgSlug, org.id]);
+      org.slug = orgSlug;
+    } catch {
+      // slug column doesn't exist yet — migration 006 not applied
+    }
 
     // Add creator as founder member
     await client.query(

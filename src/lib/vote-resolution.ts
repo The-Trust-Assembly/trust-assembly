@@ -44,6 +44,7 @@ export async function tryResolveSubmission(
   submissionId: string,
   juryRole: string,
 ): Promise<ResolutionResult> {
+ try {
   // ── Pre-transaction reads (stateless is fine) ──
 
   // Get submission with org info
@@ -61,6 +62,12 @@ export async function tryResolveSubmission(
     cross_group_jury_size: number | null; jury_seats: number | null;
     cross_group_seed: number | null; deliberate_lie_finding: boolean;
   };
+
+  // Already resolved — nothing to do
+  const reviewableStatuses = ["pending_review", "cross_review"];
+  if (!reviewableStatuses.includes(sub.status)) {
+    return { resolved: false };
+  }
 
   const isCross = juryRole === "cross_group";
 
@@ -192,6 +199,23 @@ export async function tryResolveSubmission(
   });
 
   return { resolved: true, outcome, promotedToCrossGroup };
+ } catch (outerError) {
+    // Catch errors from pre-transaction reads (submission/vote queries)
+    console.error("tryResolveSubmission outer error:", outerError);
+    await logError({
+      errorType: "transaction_error",
+      error: outerError instanceof Error ? outerError : String(outerError),
+      apiRoute: "/lib/vote-resolution",
+      sourceFile: "src/lib/vote-resolution.ts",
+      sourceFunction: "tryResolveSubmission (outer)",
+      lineContext: `Outer catch for submission ${submissionId}, role=${juryRole}`,
+      entityType: "submission",
+      entityId: submissionId,
+      httpMethod: "POST",
+      httpStatus: 500,
+    });
+    return { resolved: false };
+  }
 }
 
 // ---- Inline Edit Resolution ----

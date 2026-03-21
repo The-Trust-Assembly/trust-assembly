@@ -1,6 +1,8 @@
 import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
+import { getMajority } from "@/lib/jury-rules";
+import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
 
 export const dynamic = "force-dynamic";
 
@@ -208,6 +210,63 @@ export async function GET() {
     checks.recentErrors = recentErrors.rows;
   } catch (e) {
     checks.recentErrors = `ERROR: ${(e as Error).message}`;
+  }
+
+  // 11. Stalled submission resolution diagnostic
+  try {
+    const stalledSubs = await sql`
+      SELECT
+        s.id, s.status, s.jury_seats, s.cross_group_jury_size,
+        s.created_at, s.resolved_at,
+        o.name AS org_name,
+        (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group')::int AS in_group_votes,
+        (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = TRUE)::int AS in_group_approves,
+        (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'cross_group')::int AS cross_group_votes,
+        (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id)::int AS total_votes,
+        (SELECT COUNT(*) FROM jury_assignments ja WHERE ja.submission_id = s.id)::int AS jury_assignments
+      FROM submissions s
+      LEFT JOIN organizations o ON o.id = s.org_id
+      WHERE s.status IN ('pending_review', 'cross_review')
+      ORDER BY s.created_at DESC
+      LIMIT 10
+    `;
+    checks.stalledSubmissions = stalledSubs.rows.map((s: Record<string, unknown>) => {
+      const isCross = s.status === "cross_review";
+      const expectedJurors = isCross
+        ? ((s.cross_group_jury_size as number) || 3)
+        : ((s.jury_seats as number) || 3);
+      const majority = getMajority(expectedJurors);
+      const approves = s.in_group_approves as number;
+      const rejects = (s.in_group_votes as number) - approves;
+      const shouldResolve = approves >= majority || rejects >= majority || (s.in_group_votes as number) >= expectedJurors;
+      return {
+        id: s.id,
+        status: s.status,
+        org_name: s.org_name,
+        jury_seats: s.jury_seats,
+        expectedJurors,
+        majority,
+        in_group_votes: s.in_group_votes,
+        in_group_approves: approves,
+        in_group_rejects: rejects,
+        cross_group_votes: s.cross_group_votes,
+        total_votes: s.total_votes,
+        jury_assignments: s.jury_assignments,
+        shouldResolve,
+        whyNot: shouldResolve ? "SHOULD RESOLVE — check tryResolveSubmission errors" : `Need ${majority} votes for majority, have ${Math.max(approves, rejects)}`,
+        created_at: s.created_at,
+      };
+    });
+  } catch (e) {
+    checks.stalledSubmissions = `ERROR: ${(e as Error).message}`;
+  }
+
+  // 12. Attempt reconciliation and report result
+  try {
+    const resolvedCount = await reconcileStalledSubmissions();
+    checks.reconciliation = { ran: true, resolved: resolvedCount };
+  } catch (e) {
+    checks.reconciliation = { ran: false, error: (e as Error).message };
   }
 
   return ok({

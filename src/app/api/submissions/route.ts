@@ -199,11 +199,16 @@ export async function POST(request: NextRequest) {
          replacement || null, reasoning, author || null,
          session.sub, targetOrg, trustedSkip, submitterIsDI, user.rows[0].di_partner_id || null, jurySeats]
       );
-      // Set slug now that we have the ID
-      const subSlug = slugify(originalHeadline, result.rows[0].id);
-      await client.query("UPDATE submissions SET slug = $1 WHERE id = $2", [subSlug, result.rows[0].id]);
-      result.rows[0].slug = subSlug;
       sub = result.rows[0];
+
+      // Set SEO slug (best-effort — column may not exist yet)
+      try {
+        const subSlug = slugify(originalHeadline, sub.id as string);
+        await client.query("UPDATE submissions SET slug = $1 WHERE id = $2", [subSlug, sub.id]);
+        sub.slug = subSlug;
+      } catch {
+        // slug column doesn't exist yet — migration 006 not applied
+      }
 
       // Insert evidence if provided
       if (evidence && Array.isArray(evidence)) {
