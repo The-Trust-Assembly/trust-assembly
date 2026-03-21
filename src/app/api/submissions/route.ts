@@ -6,6 +6,9 @@ import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-ru
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
 import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
+import { logError } from "@/lib/error-logger";
+
+const SOURCE_FILE = "src/app/api/submissions/route.ts";
 
 function normalizeUrl(raw: string): string {
   try {
@@ -238,6 +241,21 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       await client.query("ROLLBACK");
       console.error("Submission creation transaction failed, rolled back:", e);
+      await logError({
+        userId: session.sub,
+        sessionInfo: session.username,
+        errorType: "transaction_error",
+        error: e instanceof Error ? e : String(e),
+        apiRoute: "/api/submissions",
+        sourceFile: SOURCE_FILE,
+        sourceFunction: "POST handler",
+        lineContext: `Submission creation transaction for org ${targetOrg}`,
+        entityType: "submission",
+        httpMethod: "POST",
+        httpStatus: 500,
+        requestUrl: request.url,
+        requestBody: { submissionType, url, orgId: targetOrg },
+      });
       throw e;
     } finally {
       client.release();
@@ -299,6 +317,21 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         await approveClient.query("ROLLBACK");
         console.error("Trusted auto-approve transaction failed, rolled back:", e);
+        await logError({
+          userId: session.sub,
+          sessionInfo: session.username,
+          errorType: "transaction_error",
+          error: e instanceof Error ? e : String(e),
+          apiRoute: "/api/submissions",
+          sourceFile: SOURCE_FILE,
+          sourceFunction: "POST handler — trusted auto-approve",
+          lineContext: `Trusted auto-approve for submission ${sub.id}`,
+          entityType: "submission",
+          entityId: sub.id as string,
+          httpMethod: "POST",
+          httpStatus: 500,
+          requestUrl: request.url,
+        });
         throw e;
       } finally {
         approveClient.release();
@@ -349,6 +382,21 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         await juryClient.query("ROLLBACK");
         console.error("Jury assignment transaction failed, rolled back:", e);
+        await logError({
+          userId: session.sub,
+          sessionInfo: session.username,
+          errorType: "transaction_error",
+          error: e instanceof Error ? e : String(e),
+          apiRoute: "/api/submissions",
+          sourceFile: SOURCE_FILE,
+          sourceFunction: "POST handler — jury assignment",
+          lineContext: `Jury assignment for submission ${sub.id} in org ${targetOrg}`,
+          entityType: "submission",
+          entityId: sub.id as string,
+          httpMethod: "POST",
+          httpStatus: 500,
+          requestUrl: request.url,
+        });
         throw e;
       } finally {
         juryClient.release();
