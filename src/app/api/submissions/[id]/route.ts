@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, notFound, unauthorized, forbidden } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 const GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -16,6 +17,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   const result = await sql`
     SELECT
@@ -111,6 +113,7 @@ export async function DELETE(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   const result = await sql`
     SELECT id, submitted_by, created_at, status
@@ -147,6 +150,7 @@ export async function PATCH(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   const result = await sql`
     SELECT id, submitted_by, created_at, status

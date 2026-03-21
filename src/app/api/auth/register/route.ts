@@ -3,6 +3,7 @@ import { sql, withTransaction } from "@/lib/db";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
+import { logError } from "@/lib/error-logger";
 
 // Email is intentionally NOT unique in the schema — DIs may share their
 // partner's email. Uniqueness for non-DI accounts is enforced in
@@ -13,7 +14,11 @@ import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 const REGISTER_RATE_LIMIT = 3;
 const REGISTER_WINDOW_MS = 60 * 60 * 1000;
 
+const SOURCE_FILE = "src/app/api/auth/register/route.ts";
+
 export async function POST(request: NextRequest) {
+  const requestUrl = request.url;
+
   // Rate limit by IP
   const ip = getClientIP(request);
   const limit = checkRateLimit(`register:${ip}`, REGISTER_RATE_LIMIT, REGISTER_WINDOW_MS);
@@ -27,9 +32,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return err("Invalid JSON body");
+  }
 
-  const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation } = body;
+  const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation } = body as Record<string, string>;
   const isDI = gender === "di";
 
   // Validate required fields
@@ -107,8 +117,20 @@ export async function POST(request: NextRequest) {
 
       return newUser;
     });
-  } catch (e) {
-    console.error("Registration failed:", e);
+  } catch (error) {
+    await logError({
+      sessionInfo: uname,
+      errorType: "transaction_error",
+      error: error instanceof Error ? error : String(error),
+      apiRoute: "/api/auth/register",
+      sourceFile: SOURCE_FILE,
+      sourceFunction: "POST handler",
+      lineContext: "Registration transaction (INSERT user → INSERT org_member → UPDATE primary_org)",
+      httpMethod: "POST",
+      httpStatus: 500,
+      requestUrl,
+      requestBody: { username: uname, isDI },
+    });
     return err("Registration failed. Please try again.", 500);
   }
 

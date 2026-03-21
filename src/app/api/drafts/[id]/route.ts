@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/api-utils";
+import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // GET /api/drafts/[id] — get single draft with full data
 export async function GET(
@@ -12,6 +13,7 @@ export async function GET(
   if (!user) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const result = await sql`
     SELECT id, url, title, draft_data, updated_at, created_at
     FROM submission_drafts
@@ -42,6 +44,7 @@ export async function DELETE(
   if (!user) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const result = await sql`
     DELETE FROM submission_drafts
     WHERE id = ${id} AND user_id = ${user.sub}

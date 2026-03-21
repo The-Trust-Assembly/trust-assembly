@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { TRUSTED_STREAK } from "@/lib/jury-rules";
+import { isValidUUID } from "@/lib/validation";
 
 // POST /api/stories/[id]/tag — tag a submission to a story
 export async function POST(
@@ -13,6 +14,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { submissionId } = body;
 
@@ -92,6 +94,7 @@ export async function PATCH(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { submissionId } = body;
 
@@ -134,6 +137,7 @@ export async function DELETE(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { submissionId } = body;
 

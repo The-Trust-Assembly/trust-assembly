@@ -5,6 +5,10 @@ import { ok, err, unauthorized } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
+import { logError } from "@/lib/error-logger";
+import { ensureSlugsExist } from "@/lib/ensure-schema";
+
+const SOURCE_FILE = "src/app/api/stories/route.ts";
 
 // GET /api/stories — list stories (filterable, searchable)
 export async function GET(request: NextRequest) {
@@ -111,6 +115,9 @@ export async function POST(request: NextRequest) {
   const count = parseInt(memberCount.rows[0].count);
   const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
+  // Ensure slug columns exist (runtime migration 006)
+  await ensureSlugsExist();
+
   // Create story in transaction
   const client = await sql.connect();
   let story: Record<string, unknown>;
@@ -141,7 +148,22 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Story creation transaction failed:", e);
-    throw e;
+    await logError({
+      userId: session.sub,
+      sessionInfo: session.username,
+      errorType: "transaction_error",
+      error: e instanceof Error ? e : String(e),
+      apiRoute: "/api/stories",
+      sourceFile: SOURCE_FILE,
+      sourceFunction: "POST handler",
+      lineContext: "Story creation transaction",
+      entityType: "story",
+      httpMethod: "POST",
+      httpStatus: 500,
+      requestUrl: request.url,
+      requestBody: { title, orgId },
+    });
+    return err(`Failed to create story: ${e instanceof Error ? e.message : String(e)}`, 500);
   } finally {
     client.release();
   }
@@ -184,7 +206,22 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       await juryClient.query("ROLLBACK");
       console.error("Story jury assignment failed:", e);
-      throw e;
+      await logError({
+        userId: session.sub,
+        sessionInfo: session.username,
+        errorType: "transaction_error",
+        error: e instanceof Error ? e : String(e),
+        apiRoute: "/api/stories",
+        sourceFile: SOURCE_FILE,
+        sourceFunction: "POST handler — jury assignment",
+        lineContext: `Jury assignment for story ${story.id}`,
+        entityType: "story",
+        entityId: story.id as string,
+        httpMethod: "POST",
+        httpStatus: 500,
+        requestUrl: request.url,
+      });
+      return err(`Story created but jury assignment failed: ${e instanceof Error ? e.message : String(e)}`, 500);
     } finally {
       juryClient.release();
     }

@@ -2,7 +2,11 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, forbidden, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
+import { logError } from "@/lib/error-logger";
+
+const SOURCE_FILE = "src/app/api/submissions/[id]/di-review/route.ts";
 
 // POST /api/submissions/[id]/di-review — DI partner pre-approval or rejection
 // Body: { action: "approve" | "reject" }
@@ -15,6 +19,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { action, reason } = body;
 
@@ -83,7 +88,22 @@ export async function POST(
     } catch (e) {
       await client.query("ROLLBACK");
       console.error("DI reject transaction failed, rolled back:", e);
-      throw e;
+      await logError({
+        userId: session.sub,
+        sessionInfo: session.username,
+        errorType: "transaction_error",
+        error: e instanceof Error ? e : String(e),
+        apiRoute: "/api/submissions/[id]/di-review",
+        sourceFile: SOURCE_FILE,
+        sourceFunction: "POST handler — DI reject",
+        lineContext: `DI rejection for submission ${id}`,
+        entityType: "submission",
+        entityId: id,
+        httpMethod: "POST",
+        httpStatus: 500,
+        requestUrl: request.url,
+      });
+      return err("Failed to process DI rejection. Please try again.", 500);
     } finally {
       client.release();
     }
@@ -163,7 +183,22 @@ export async function POST(
   } catch (e) {
     await approveClient.query("ROLLBACK");
     console.error("DI approve transaction failed, rolled back:", e);
-    throw e;
+    await logError({
+      userId: session.sub,
+      sessionInfo: session.username,
+      errorType: "transaction_error",
+      error: e instanceof Error ? e : String(e),
+      apiRoute: "/api/submissions/[id]/di-review",
+      sourceFile: SOURCE_FILE,
+      sourceFunction: "POST handler — DI approve",
+      lineContext: `DI approval for submission ${id}`,
+      entityType: "submission",
+      entityId: id,
+      httpMethod: "POST",
+      httpStatus: 500,
+      requestUrl: request.url,
+    });
+    return err("Failed to process DI approval. Please try again.", 500);
   } finally {
     approveClient.release();
   }

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // POST /api/orgs/[id]/follow — follow an assembly (view corrections without membership)
 export async function POST(
@@ -12,6 +13,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   // Verify org exists
   const orgResult = await sql`
@@ -45,6 +47,7 @@ export async function DELETE(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   await sql`
     DELETE FROM organization_follows

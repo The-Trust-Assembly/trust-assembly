@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { ok, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // GET /api/orgs/[id]/members — list members
 export async function GET(
@@ -8,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
   const offset = parseInt(searchParams.get("offset") || "0");

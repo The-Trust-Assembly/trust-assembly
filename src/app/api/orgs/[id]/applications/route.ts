@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
-import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { ok, err, unauthorized, forbidden, notFound } from "@/lib/api-utils";
+import { validateFields, MAX_LENGTHS, isValidUUID } from "@/lib/validation";
 
 // GET /api/orgs/[id]/applications — list applications for an org (founder only)
 export async function GET(
@@ -13,6 +13,7 @@ export async function GET(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
 
   // Check that user is founder
   const founder = await sql`
@@ -52,6 +53,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { reason, link } = body;
 

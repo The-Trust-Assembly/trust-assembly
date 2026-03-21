@@ -4,7 +4,10 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { tryResolveStory } from "@/lib/vote-resolution";
 import { isWildWestMode } from "@/lib/jury-rules";
-import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { validateFields, MAX_LENGTHS, isValidUUID } from "@/lib/validation";
+import { logError } from "@/lib/error-logger";
+
+const SOURCE_FILE = "src/app/api/stories/[id]/vote/route.ts";
 
 // POST /api/stories/[id]/vote — cast a jury vote on a story proposal
 export async function POST(
@@ -15,6 +18,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { approve, note, role } = body;
 
@@ -109,7 +113,23 @@ export async function POST(
     await client.query("COMMIT");
   } catch (e) {
     await client.query("ROLLBACK");
-    throw e;
+    await logError({
+      userId: session.sub,
+      sessionInfo: session.username,
+      errorType: "transaction_error",
+      error: e instanceof Error ? e : String(e),
+      apiRoute: "/api/stories/[id]/vote",
+      sourceFile: SOURCE_FILE,
+      sourceFunction: "POST handler",
+      lineContext: "Story vote insertion transaction",
+      entityType: "story",
+      entityId: id,
+      httpMethod: "POST",
+      httpStatus: 500,
+      requestUrl: request.url,
+      requestBody: { approve, role: juryRole, storyId: id },
+    });
+    return err("Failed to cast vote. Please try again.", 500);
   } finally {
     client.release();
   }

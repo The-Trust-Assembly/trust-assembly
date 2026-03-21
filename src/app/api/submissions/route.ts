@@ -6,6 +6,10 @@ import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-ru
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
 import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
+import { logError } from "@/lib/error-logger";
+import { ensureSlugsExist } from "@/lib/ensure-schema";
+
+const SOURCE_FILE = "src/app/api/submissions/route.ts";
 
 function normalizeUrl(raw: string): string {
   try {
@@ -164,6 +168,9 @@ export async function POST(request: NextRequest) {
 
   const createdSubs: Record<string, unknown>[] = [];
 
+  // Ensure slug columns exist (runtime migration 006)
+  await ensureSlugsExist();
+
   for (const targetOrg of targetOrgIds) {
     // Check member count for initial status
     const memberCount = await sql`
@@ -183,6 +190,20 @@ export async function POST(request: NextRequest) {
 
     try {
       await client.query("BEGIN");
+
+      // Double-click prevention: reject duplicate (same URL + org + user) within 30 seconds
+      const dupeCheck = await client.query(
+        `SELECT id FROM submissions
+         WHERE normalized_url = $1 AND org_id = $2 AND submitted_by = $3
+           AND created_at > NOW() - INTERVAL '30 seconds'
+         LIMIT 1`,
+        [normalizedUrl, targetOrg, session.sub]
+      );
+      if (dupeCheck.rows.length > 0) {
+        await client.query("ROLLBACK");
+        client.release();
+        return err("Duplicate submission detected. This submission was already created moments ago.", 409);
+      }
 
       // Create submission (with normalized_url for indexed lookups)
       // Generate slug from headline; ID suffix added after INSERT via a two-step approach
@@ -238,7 +259,22 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       await client.query("ROLLBACK");
       console.error("Submission creation transaction failed, rolled back:", e);
-      throw e;
+      await logError({
+        userId: session.sub,
+        sessionInfo: session.username,
+        errorType: "transaction_error",
+        error: e instanceof Error ? e : String(e),
+        apiRoute: "/api/submissions",
+        sourceFile: SOURCE_FILE,
+        sourceFunction: "POST handler",
+        lineContext: `Submission creation transaction for org ${targetOrg}`,
+        entityType: "submission",
+        httpMethod: "POST",
+        httpStatus: 500,
+        requestUrl: request.url,
+        requestBody: { submissionType, url, orgId: targetOrg },
+      });
+      return err(`Failed to create submission: ${e instanceof Error ? e.message : String(e)}`, 500);
     } finally {
       client.release();
     }
@@ -299,7 +335,22 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         await approveClient.query("ROLLBACK");
         console.error("Trusted auto-approve transaction failed, rolled back:", e);
-        throw e;
+        await logError({
+          userId: session.sub,
+          sessionInfo: session.username,
+          errorType: "transaction_error",
+          error: e instanceof Error ? e : String(e),
+          apiRoute: "/api/submissions",
+          sourceFile: SOURCE_FILE,
+          sourceFunction: "POST handler — trusted auto-approve",
+          lineContext: `Trusted auto-approve for submission ${sub.id}`,
+          entityType: "submission",
+          entityId: sub.id as string,
+          httpMethod: "POST",
+          httpStatus: 500,
+          requestUrl: request.url,
+        });
+        return err(`Submission created but auto-approval failed: ${e instanceof Error ? e.message : String(e)}`, 500);
       } finally {
         approveClient.release();
       }
@@ -349,7 +400,22 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         await juryClient.query("ROLLBACK");
         console.error("Jury assignment transaction failed, rolled back:", e);
-        throw e;
+        await logError({
+          userId: session.sub,
+          sessionInfo: session.username,
+          errorType: "transaction_error",
+          error: e instanceof Error ? e : String(e),
+          apiRoute: "/api/submissions",
+          sourceFile: SOURCE_FILE,
+          sourceFunction: "POST handler — jury assignment",
+          lineContext: `Jury assignment for submission ${sub.id} in org ${targetOrg}`,
+          entityType: "submission",
+          entityId: sub.id as string,
+          httpMethod: "POST",
+          httpStatus: 500,
+          requestUrl: request.url,
+        });
+        return err(`Submission created but jury assignment failed: ${e instanceof Error ? e.message : String(e)}`, 500);
       } finally {
         juryClient.release();
       }

@@ -4,6 +4,10 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugifyOrg } from "@/lib/slugify";
+import { logError } from "@/lib/error-logger";
+import { ensureSlugsExist } from "@/lib/ensure-schema";
+
+const SOURCE_FILE = "src/app/api/orgs/route.ts";
 
 // GET /api/orgs — list all assemblies
 export async function GET(request: NextRequest) {
@@ -40,10 +44,17 @@ export async function GET(request: NextRequest) {
 
 // POST /api/orgs — create an assembly
 export async function POST(request: NextRequest) {
+  const requestUrl = request.url;
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
-  const body = await request.json();
+  let body: Record<string, string>;
+  try {
+    body = await request.json();
+  } catch {
+    return err("Invalid JSON body");
+  }
+
   const { name, description, charter } = body;
 
   if (!name || name.trim().length < 3) {
@@ -72,27 +83,61 @@ export async function POST(request: NextRequest) {
     return err("An assembly with this name already exists", 409);
   }
 
-  // Create org with SEO-friendly slug
-  const orgSlug = slugifyOrg(name.trim());
-  const result = await sql`
-    INSERT INTO organizations (name, description, charter, created_by, slug)
-    VALUES (${name.trim()}, ${description || null}, ${charter || null}, ${session.sub}, ${orgSlug})
-    RETURNING id, name, description, charter, enrollment_mode, slug, created_at
-  `;
+  // Ensure slug columns exist (runtime migration 006)
+  await ensureSlugsExist();
 
-  const org = result.rows[0];
+  // Create org with SEO-friendly slug — use real transaction via sql.connect()
+  // The sql`` tagged template is stateless (neon HTTP driver), so each call hits
+  // a different connection — BEGIN/COMMIT/ROLLBACK are no-ops across calls.
+  const client = await sql.connect();
+  try {
+    const orgSlug = slugifyOrg(name.trim());
+    await client.query("BEGIN");
 
-  // Add creator as founder member
-  await sql`
-    INSERT INTO organization_members (org_id, user_id, is_founder)
-    VALUES (${org.id}, ${session.sub}, TRUE)
-  `;
+    const result = await client.query(
+      `INSERT INTO organizations (name, description, charter, created_by, slug)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, description, charter, enrollment_mode, slug, created_at`,
+      [name.trim(), description || null, charter || null, session.sub, orgSlug]
+    );
 
-  // Log to member history
-  await sql`
-    INSERT INTO organization_member_history (org_id, user_id, action)
-    VALUES (${org.id}, ${session.sub}, 'joined')
-  `;
+    const org = result.rows[0];
 
-  return ok(org, 201);
+    // Add creator as founder member
+    await client.query(
+      `INSERT INTO organization_members (org_id, user_id, is_founder)
+       VALUES ($1, $2, TRUE)`,
+      [org.id, session.sub]
+    );
+
+    // Log to member history
+    await client.query(
+      `INSERT INTO organization_member_history (org_id, user_id, action)
+       VALUES ($1, $2, 'joined')`,
+      [org.id, session.sub]
+    );
+
+    await client.query("COMMIT");
+    return ok(org, 201);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    await logError({
+      userId: session.sub,
+      sessionInfo: session.username,
+      errorType: "transaction_error",
+      error: error instanceof Error ? error : String(error),
+      apiRoute: "/api/orgs",
+      sourceFile: SOURCE_FILE,
+      sourceFunction: "POST handler",
+      lineContext: "Assembly creation (INSERT organization → INSERT org_member → INSERT member_history)",
+      entityType: "organization",
+      httpMethod: "POST",
+      httpStatus: 500,
+      requestUrl,
+      requestBody: { name: name.trim() },
+    });
+    return err(`Failed to create assembly: ${error instanceof Error ? error.message : String(error)}`, 500);
+  } finally {
+    client.release();
+  }
 }

@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
+import { ok, err, unauthorized, forbidden, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // POST /api/concessions/[id]/vote — vote on a concession
 export async function POST(
@@ -12,6 +13,7 @@ export async function POST(
   if (!session) return unauthorized();
 
   const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
   const body = await request.json();
   const { approve } = body;
 

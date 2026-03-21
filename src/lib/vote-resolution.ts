@@ -19,6 +19,8 @@
 import { sql } from "@/lib/db";
 import type { VercelPoolClient } from "@vercel/postgres";
 import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT, isWildWestMode } from "@/lib/jury-rules";
+import { createNotification } from "@/lib/notifications";
+import { logError } from "@/lib/error-logger";
 
 interface VoteRow {
   approve: boolean;
@@ -42,6 +44,7 @@ export async function tryResolveSubmission(
   submissionId: string,
   juryRole: string,
 ): Promise<ResolutionResult> {
+ try {
   // ── Pre-transaction reads (stateless is fine) ──
 
   // Get submission with org info
@@ -59,6 +62,12 @@ export async function tryResolveSubmission(
     cross_group_jury_size: number | null; jury_seats: number | null;
     cross_group_seed: number | null; deliberate_lie_finding: boolean;
   };
+
+  // Already resolved — nothing to do
+  const reviewableStatuses = ["pending_review", "cross_review"];
+  if (!reviewableStatuses.includes(sub.status)) {
+    return { resolved: false };
+  }
 
   const isCross = juryRole === "cross_group";
 
@@ -161,12 +170,52 @@ export async function tryResolveSubmission(
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Vote resolution transaction failed, rolled back:", e);
-    throw e;
+    await logError({
+      errorType: "transaction_error",
+      error: e instanceof Error ? e : String(e),
+      apiRoute: "/lib/vote-resolution",
+      sourceFile: "src/lib/vote-resolution.ts",
+      sourceFunction: "tryResolveSubmission",
+      lineContext: `Resolution transaction for submission ${submissionId}, outcome=${outcome}`,
+      entityType: "submission",
+      entityId: submissionId,
+      httpMethod: "POST",
+      httpStatus: 500,
+    });
+    return { resolved: false };
   } finally {
     client.release();
   }
 
+  // Notify the submitter (fire-and-forget, never throws)
+  const isApproved = outcome === "approved" || outcome === "consensus";
+  await createNotification({
+    userId: sub.submitted_by,
+    type: "submission_resolved",
+    title: `Your submission was ${isApproved ? "approved" : "rejected"}`,
+    body: `in ${sub.org_name}`,
+    entityType: "submission",
+    entityId: submissionId,
+  });
+
   return { resolved: true, outcome, promotedToCrossGroup };
+ } catch (outerError) {
+    // Catch errors from pre-transaction reads (submission/vote queries)
+    console.error("tryResolveSubmission outer error:", outerError);
+    await logError({
+      errorType: "transaction_error",
+      error: outerError instanceof Error ? outerError : String(outerError),
+      apiRoute: "/lib/vote-resolution",
+      sourceFile: "src/lib/vote-resolution.ts",
+      sourceFunction: "tryResolveSubmission (outer)",
+      lineContext: `Outer catch for submission ${submissionId}, role=${juryRole}`,
+      entityType: "submission",
+      entityId: submissionId,
+      httpMethod: "POST",
+      httpStatus: 500,
+    });
+    return { resolved: false };
+  }
 }
 
 // ---- Inline Edit Resolution ----
@@ -347,14 +396,18 @@ async function promoteToCrossGroup(
   if (qualifyingOrgs.rows.length < 1) return false;
 
   // Select cross-group jurors from other assemblies (exclude DI accounts)
+  // Wrap in subquery: SELECT DISTINCT + ORDER BY RANDOM() is invalid in PostgreSQL
+  // because ORDER BY expressions must appear in the SELECT list for DISTINCT.
   const crossPool = await client.query(
-    `SELECT DISTINCT om.user_id
-     FROM organization_members om
-     JOIN users u ON u.id = om.user_id
-     WHERE om.org_id != $1
-       AND om.is_active = TRUE
-       AND u.is_di = FALSE
-       AND om.user_id != $2
+    `SELECT user_id FROM (
+       SELECT DISTINCT om.user_id
+       FROM organization_members om
+       JOIN users u ON u.id = om.user_id
+       WHERE om.org_id != $1
+         AND om.is_active = TRUE
+         AND u.is_di = FALSE
+         AND om.user_id != $2
+     ) pool
      ORDER BY RANDOM()
      LIMIT 15`,
     [orgId, submittedBy]
@@ -531,10 +584,32 @@ export async function tryResolveStory(
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Story resolution transaction failed:", e);
-    throw e;
+    await logError({
+      errorType: "transaction_error",
+      error: e instanceof Error ? e : String(e),
+      apiRoute: "/lib/vote-resolution",
+      sourceFile: "src/lib/vote-resolution.ts",
+      sourceFunction: "tryResolveStory",
+      lineContext: `Story resolution transaction for story ${storyId}, outcome=${outcome}`,
+      entityType: "story",
+      entityId: storyId,
+      httpMethod: "POST",
+      httpStatus: 500,
+    });
+    return { resolved: false };
   } finally {
     client.release();
   }
+
+  // Notify the story submitter (fire-and-forget)
+  const storyApproved = outcome === "approved" || outcome === "consensus";
+  await createNotification({
+    userId: story.submitted_by,
+    type: "story_resolved",
+    title: `Your story proposal was ${storyApproved ? "approved" : "rejected"}`,
+    entityType: "story",
+    entityId: storyId,
+  });
 
   return { resolved: true, outcome, promotedToCrossGroup };
 }
@@ -560,14 +635,17 @@ async function promoteStoryToCrossGroup(
   if (qualifyingOrgs.rows.length < 1) return false;
 
   // Select cross-group jurors from other assemblies (exclude DI accounts)
+  // Wrap in subquery: SELECT DISTINCT + ORDER BY RANDOM() is invalid in PostgreSQL
   const crossPool = await client.query(
-    `SELECT DISTINCT om.user_id
-     FROM organization_members om
-     JOIN users u ON u.id = om.user_id
-     WHERE om.org_id != $1
-       AND om.is_active = TRUE
-       AND u.is_di = FALSE
-       AND om.user_id != $2
+    `SELECT user_id FROM (
+       SELECT DISTINCT om.user_id
+       FROM organization_members om
+       JOIN users u ON u.id = om.user_id
+       WHERE om.org_id != $1
+         AND om.is_active = TRUE
+         AND u.is_di = FALSE
+         AND om.user_id != $2
+     ) pool
      ORDER BY RANDOM()
      LIMIT 15`,
     [orgId, submittedBy]
@@ -623,9 +701,14 @@ async function promoteStoryToCrossGroup(
 export async function reconcileStalledSubmissions(): Promise<number> {
   const stalled = await sql`
     SELECT s.id, s.status, s.jury_seats, s.cross_group_jury_size,
-      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = TRUE)::int AS approve_count,
-      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group' AND jv.approve = FALSE)::int AS reject_count,
-      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id AND jv.role = 'in_group')::int AS total_votes
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group'::jury_role ELSE 'in_group'::jury_role END
+         AND jv.approve = TRUE)::int AS approve_count,
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group'::jury_role ELSE 'in_group'::jury_role END
+         AND jv.approve = FALSE)::int AS reject_count,
+      (SELECT COUNT(*) FROM jury_votes jv WHERE jv.submission_id = s.id
+         AND jv.role = CASE WHEN s.status = 'cross_review' THEN 'cross_group'::jury_role ELSE 'in_group'::jury_role END)::int AS total_votes
     FROM submissions s
     WHERE s.status IN ('pending_review', 'cross_review')
   `;

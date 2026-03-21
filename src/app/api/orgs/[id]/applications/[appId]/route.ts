@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized, forbidden } from "@/lib/api-utils";
+import { ok, err, unauthorized, forbidden, notFound } from "@/lib/api-utils";
+import { isValidUUID } from "@/lib/validation";
 
 // PATCH /api/orgs/[id]/applications/[appId] — approve or reject an application
 export async function PATCH(
@@ -12,6 +13,7 @@ export async function PATCH(
   if (!session) return unauthorized();
 
   const { id, appId } = await params;
+  if (!isValidUUID(id) || !isValidUUID(appId)) return notFound("Not found");
   const body = await request.json();
   const { action } = body;
 

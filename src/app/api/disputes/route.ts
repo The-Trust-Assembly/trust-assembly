@@ -3,6 +3,10 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { logError } from "@/lib/error-logger";
+import { createNotification } from "@/lib/notifications";
+
+const SOURCE_FILE = "src/app/api/disputes/route.ts";
 
 // GET /api/disputes — list disputes (filterable)
 export async function GET(request: NextRequest) {
@@ -17,6 +21,7 @@ export async function GET(request: NextRequest) {
     SELECT
       d.id, d.submission_id, d.org_id, d.reasoning, d.status,
       d.deliberate_lie_finding, d.created_at, d.resolved_at,
+      d.dispute_type, d.field_responses,
       u.username AS disputed_by_username, u.display_name AS disputed_by_display_name
     FROM disputes d
     LEFT JOIN users u ON u.id = d.disputed_by
@@ -58,18 +63,25 @@ export async function GET(request: NextRequest) {
 
 // POST /api/disputes — create a dispute
 export async function POST(request: NextRequest) {
+  const requestUrl = request.url;
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
-  const body = await request.json();
-  const { submissionId, reasoning, evidence, fieldResponses, disputeType } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return err("Invalid JSON body");
+  }
+
+  const { submissionId, reasoning, evidence, fieldResponses, disputeType } = body as Record<string, unknown>;
 
   if (!submissionId || !reasoning) {
     return err("submissionId and reasoning are required");
   }
 
   const lengthError = validateFields([
-    ["reasoning", reasoning, MAX_LENGTHS.reasoning],
+    ["reasoning", reasoning as string, MAX_LENGTHS.reasoning],
   ]);
   if (lengthError) return err(lengthError);
 
@@ -85,7 +97,7 @@ export async function POST(request: NextRequest) {
 
   // Look up submission to get org_id, original submitter, and status
   const sub = await sql`
-    SELECT id, org_id, submitted_by, status FROM submissions WHERE id = ${submissionId}
+    SELECT id, org_id, submitted_by, status FROM submissions WHERE id = ${submissionId as string}
   `;
   if (sub.rows.length === 0) {
     return err("Submission not found", 404);
@@ -100,7 +112,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Determine dispute type from body or infer from submission status
-  const resolvedType = disputeType || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
+  const resolvedType = (disputeType as string) || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
 
   // Use sql.connect() for a dedicated client where transactions work.
   const client = await sql.connect();
@@ -122,6 +134,16 @@ export async function POST(request: NextRequest) {
     );
     dispute = result.rows[0];
 
+    // Update dispute tracking on submissions table
+    await client.query(
+      `UPDATE submissions
+       SET dispute_count = dispute_count + 1,
+           first_disputed_at = COALESCE(first_disputed_at, now()),
+           last_disputed_at = now()
+       WHERE id = $1`,
+      [submissionId]
+    );
+
     // Insert evidence if provided
     if (evidence && Array.isArray(evidence)) {
       for (let i = 0; i < evidence.length; i++) {
@@ -142,13 +164,38 @@ export async function POST(request: NextRequest) {
     );
 
     await client.query("COMMIT");
-  } catch (e) {
+  } catch (error) {
     await client.query("ROLLBACK");
-    console.error("Dispute creation transaction failed, rolled back:", e);
-    throw e;
+    await logError({
+      userId: session.sub,
+      sessionInfo: session.username,
+      errorType: "transaction_error",
+      error: error instanceof Error ? error : String(error),
+      apiRoute: "/api/disputes",
+      sourceFile: SOURCE_FILE,
+      sourceFunction: "POST handler",
+      lineContext: "Dispute creation transaction (INSERT dispute → INSERT evidence → INSERT audit_log)",
+      entityType: "dispute",
+      entityId: submissionId as string,
+      httpMethod: "POST",
+      httpStatus: 500,
+      requestUrl,
+      requestBody: { submissionId, disputeType: resolvedType },
+    });
+    return err("Failed to create dispute. Please try again.", 500);
   } finally {
     client.release();
   }
+
+  // Notify the original submitter about the dispute (fire-and-forget)
+  await createNotification({
+    userId: submitted_by as string,
+    type: "dispute_filed",
+    title: "Your submission has been disputed",
+    body: `A ${resolvedType === "challenge_rejection" ? "challenge to rejection" : "challenge to approval"} was filed`,
+    entityType: "dispute",
+    entityId: dispute.id as string,
+  });
 
   return ok(dispute, 201);
 }
