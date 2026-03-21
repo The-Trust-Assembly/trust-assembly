@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       requestUrl,
       requestBody: { name: name.trim() },
     });
-    return err("Failed to create assembly. Please try again.", 500);
+    return err(`Failed to create assembly: ${error instanceof Error ? error.message : String(error)}`, 500);
   } finally {
     client.release();
   }

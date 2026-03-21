@@ -20,6 +20,7 @@ import { sql } from "@/lib/db";
 import type { VercelPoolClient } from "@vercel/postgres";
 import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT, isWildWestMode } from "@/lib/jury-rules";
 import { createNotification } from "@/lib/notifications";
+import { logError } from "@/lib/error-logger";
 
 interface VoteRow {
   approve: boolean;
@@ -162,6 +163,18 @@ export async function tryResolveSubmission(
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Vote resolution transaction failed, rolled back:", e);
+    await logError({
+      errorType: "transaction_error",
+      error: e instanceof Error ? e : String(e),
+      apiRoute: "/lib/vote-resolution",
+      sourceFile: "src/lib/vote-resolution.ts",
+      sourceFunction: "tryResolveSubmission",
+      lineContext: `Resolution transaction for submission ${submissionId}, outcome=${outcome}`,
+      entityType: "submission",
+      entityId: submissionId,
+      httpMethod: "POST",
+      httpStatus: 500,
+    });
     return { resolved: false };
   } finally {
     client.release();
@@ -543,6 +556,18 @@ export async function tryResolveStory(
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Story resolution transaction failed:", e);
+    await logError({
+      errorType: "transaction_error",
+      error: e instanceof Error ? e : String(e),
+      apiRoute: "/lib/vote-resolution",
+      sourceFile: "src/lib/vote-resolution.ts",
+      sourceFunction: "tryResolveStory",
+      lineContext: `Story resolution transaction for story ${storyId}, outcome=${outcome}`,
+      entityType: "story",
+      entityId: storyId,
+      httpMethod: "POST",
+      httpStatus: 500,
+    });
     return { resolved: false };
   } finally {
     client.release();

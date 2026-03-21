@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     SELECT
       d.id, d.submission_id, d.org_id, d.reasoning, d.status,
       d.deliberate_lie_finding, d.created_at, d.resolved_at,
+      d.dispute_type, d.field_responses,
       u.username AS disputed_by_username, u.display_name AS disputed_by_display_name
     FROM disputes d
     LEFT JOIN users u ON u.id = d.disputed_by

@@ -31,7 +31,7 @@ export interface LogErrorParams {
   entityId?: string;
   httpMethod: string;
   httpStatus: number;
-  requestUrl: string;
+  requestUrl?: string;
 }
 
 /**

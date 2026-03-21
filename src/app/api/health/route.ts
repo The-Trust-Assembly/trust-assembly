@@ -136,6 +136,80 @@ export async function GET() {
     checks.all_usernames = `ERROR: ${(e as Error).message}`;
   }
 
+  // 8. Write-test: attempt INSERT+ROLLBACK on critical tables to diagnose write failures
+  checks.writeTest = {};
+  const writeTables = [
+    {
+      name: "organizations",
+      sql: `INSERT INTO organizations (name, description, created_by) VALUES ('__write_test__', 'test', (SELECT id FROM users LIMIT 1)) RETURNING id`,
+    },
+    {
+      name: "submissions",
+      sql: `INSERT INTO submissions (submission_type, url, original_headline, reasoning, submitted_by, org_id) VALUES ('correction', 'http://test', 'test', 'test', (SELECT id FROM users LIMIT 1), (SELECT id FROM organizations LIMIT 1)) RETURNING id`,
+    },
+    {
+      name: "stories",
+      sql: `INSERT INTO stories (title, description, submitted_by, org_id) VALUES ('test story title', 'test description for the story that is long enough', (SELECT id FROM users LIMIT 1), (SELECT id FROM organizations LIMIT 1)) RETURNING id`,
+    },
+  ];
+  for (const wt of writeTables) {
+    try {
+      const client = await sql.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(wt.sql);
+        await client.query("ROLLBACK");
+        (checks.writeTest as Record<string, unknown>)[wt.name] = { ok: true };
+      } catch (e) {
+        await client.query("ROLLBACK");
+        (checks.writeTest as Record<string, unknown>)[wt.name] = { ok: false, error: (e as Error).message };
+        errors.push(`Write ${wt.name}: ${(e as Error).message}`);
+      } finally {
+        client.release();
+      }
+    } catch (e) {
+      (checks.writeTest as Record<string, unknown>)[wt.name] = { ok: false, error: `connect failed: ${(e as Error).message}` };
+      errors.push(`Write ${wt.name} connect: ${(e as Error).message}`);
+    }
+  }
+
+  // 9. Schema check: verify critical columns exist
+  checks.schemaCheck = {};
+  const columnChecks = [
+    { table: "organizations", column: "slug" },
+    { table: "submissions", column: "slug" },
+    { table: "submissions", column: "dispute_count" },
+    { table: "stories", column: "slug" },
+    { table: "jury_assignments", column: "story_id" },
+    { table: "jury_votes", column: "story_id" },
+    { table: "client_errors", column: "id" },
+  ];
+  for (const cc of columnChecks) {
+    try {
+      await sql.query(
+        `SELECT ${cc.column} FROM ${cc.table} LIMIT 0`
+      );
+      (checks.schemaCheck as Record<string, unknown>)[`${cc.table}.${cc.column}`] = true;
+    } catch (e) {
+      (checks.schemaCheck as Record<string, unknown>)[`${cc.table}.${cc.column}`] = `MISSING: ${(e as Error).message}`;
+      errors.push(`Schema ${cc.table}.${cc.column}: ${(e as Error).message}`);
+    }
+  }
+
+  // 10. Recent client_errors (last 5 unresolved) — shows actual error messages
+  try {
+    const recentErrors = await sql`
+      SELECT error_type, error_message, api_route, source_function, line_context, created_at
+      FROM client_errors
+      WHERE resolved = FALSE
+      ORDER BY created_at DESC
+      LIMIT 5
+    `;
+    checks.recentErrors = recentErrors.rows;
+  } catch (e) {
+    checks.recentErrors = `ERROR: ${(e as Error).message}`;
+  }
+
   return ok({
     healthy: errors.length === 0,
     errors,

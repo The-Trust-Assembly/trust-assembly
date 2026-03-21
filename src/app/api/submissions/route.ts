@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
         requestUrl: request.url,
         requestBody: { submissionType, url, orgId: targetOrg },
       });
-      return err("Failed to create submission. Please try again.", 500);
+      return err(`Failed to create submission: ${e instanceof Error ? e.message : String(e)}`, 500);
     } finally {
       client.release();
     }
@@ -332,7 +332,7 @@ export async function POST(request: NextRequest) {
           httpStatus: 500,
           requestUrl: request.url,
         });
-        return err("Submission created but auto-approval failed. It will be processed shortly.", 500);
+        return err(`Submission created but auto-approval failed: ${e instanceof Error ? e.message : String(e)}`, 500);
       } finally {
         approveClient.release();
       }
@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
           httpStatus: 500,
           requestUrl: request.url,
         });
-        return err("Submission created but jury assignment failed. It will be processed shortly.", 500);
+        return err(`Submission created but jury assignment failed: ${e instanceof Error ? e.message : String(e)}`, 500);
       } finally {
         juryClient.release();
       }

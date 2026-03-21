@@ -16,6 +16,7 @@ export async function GET(
     SELECT
       d.id, d.submission_id, d.org_id, d.reasoning, d.status,
       d.deliberate_lie_finding, d.created_at, d.resolved_at,
+      d.dispute_type, d.field_responses,
       u.username AS disputed_by_username, u.display_name AS disputed_by_display_name,
       ou.username AS original_submitter_username
     FROM disputes d

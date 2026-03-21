@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       requestUrl: request.url,
       requestBody: { title, orgId },
     });
-    return err("Failed to create story. Please try again.", 500);
+    return err(`Failed to create story: ${e instanceof Error ? e.message : String(e)}`, 500);
   } finally {
     client.release();
   }
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
         httpStatus: 500,
         requestUrl: request.url,
       });
-      return err("Story created but jury assignment failed. It will be processed shortly.", 500);
+      return err(`Story created but jury assignment failed: ${e instanceof Error ? e.message : String(e)}`, 500);
     } finally {
       juryClient.release();
     }
