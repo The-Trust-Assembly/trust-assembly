@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized, forbidden, notFound } from "@/lib/api-utils";
+import { ok, err, unauthorized, forbidden, notFound, serverError } from "@/lib/api-utils";
 import { isValidUUID } from "@/lib/validation";
 
 // POST /api/disputes/[id]/vote — vote on a dispute
@@ -46,34 +46,25 @@ export async function POST(
     return err("You have already voted on this dispute", 409);
   }
 
-  // Use sql.connect() for a dedicated client where transactions work.
-  const client = await sql.connect();
-  let vote: Record<string, unknown>;
-
   try {
-    await client.query("BEGIN");
+    const vote = await withTransaction(async (client) => {
+      const result = await client.query(
+        `INSERT INTO jury_votes (dispute_id, user_id, role, approve, note, deliberate_lie)
+         VALUES ($1, $2, 'dispute', $3, $4, $5)
+         RETURNING id, dispute_id, approve, voted_at`,
+        [id, session.sub, approve, note || null, deliberateLie || false]
+      );
 
-    const result = await client.query(
-      `INSERT INTO jury_votes (dispute_id, user_id, role, approve, note, deliberate_lie)
-       VALUES ($1, $2, 'dispute', $3, $4, $5)
-       RETURNING id, dispute_id, approve, voted_at`,
-      [id, session.sub, approve, note || null, deliberateLie || false]
-    );
-    vote = result.rows[0];
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+        ["Dispute vote cast", session.sub, dispute.rows[0].org_id, "dispute", id]
+      );
 
-    await client.query(
-      "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
-      ["Dispute vote cast", session.sub, dispute.rows[0].org_id, "dispute", id]
-    );
+      return result.rows[0];
+    });
 
-    await client.query("COMMIT");
+    return ok(vote, 201);
   } catch (e) {
-    await client.query("ROLLBACK");
-    console.error("Dispute vote transaction failed, rolled back:", e);
-    throw e;
-  } finally {
-    client.release();
+    return serverError("POST /api/disputes/[id]/vote", e);
   }
-
-  return ok(vote, 201);
 }

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized, forbidden, notFound } from "@/lib/api-utils";
+import { ok, err, unauthorized, forbidden, notFound, serverError } from "@/lib/api-utils";
 import { isValidUUID } from "@/lib/validation";
 
 // PATCH /api/orgs/[id]/applications/[appId] — approve or reject an application
@@ -44,38 +44,30 @@ export async function PATCH(
 
   const newStatus = action === "approve" ? "approved" : "rejected";
 
-  // Use sql.connect() for a dedicated client where transactions work.
-  const client = await sql.connect();
   try {
-    await client.query("BEGIN");
-
-    await client.query(
-      "UPDATE membership_applications SET status = $1, founder_approved = $2 WHERE id = $3",
-      [newStatus, action === "approve", appId]
-    );
-
-    // If approved, add user to organization members atomically
-    if (action === "approve") {
+    await withTransaction(async (client) => {
       await client.query(
-        `INSERT INTO organization_members (org_id, user_id)
-         VALUES ($1, $2)
-         ON CONFLICT (org_id, user_id) DO UPDATE SET is_active = TRUE, left_at = NULL`,
-        [id, app.rows[0].user_id]
+        "UPDATE membership_applications SET status = $1, founder_approved = $2 WHERE id = $3",
+        [newStatus, action === "approve", appId]
       );
 
-      await client.query(
-        "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
-        [id, app.rows[0].user_id, "joined"]
-      );
-    }
+      // If approved, add user to organization members atomically
+      if (action === "approve") {
+        await client.query(
+          `INSERT INTO organization_members (org_id, user_id)
+           VALUES ($1, $2)
+           ON CONFLICT (org_id, user_id) DO UPDATE SET is_active = TRUE, left_at = NULL`,
+          [id, app.rows[0].user_id]
+        );
 
-    await client.query("COMMIT");
+        await client.query(
+          "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
+          [id, app.rows[0].user_id, "joined"]
+        );
+      }
+    });
   } catch (e) {
-    await client.query("ROLLBACK");
-    console.error("Application approval transaction failed, rolled back:", e);
-    throw e;
-  } finally {
-    client.release();
+    return serverError("/api/orgs/[id]/applications/[appId]", e);
   }
 
   return ok({ id: appId, status: newStatus });

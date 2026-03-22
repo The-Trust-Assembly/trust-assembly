@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { ok, err } from "@/lib/api-utils";
 import { escapeHtml } from "@/lib/sanitize";
+import { normalizeUrl } from "@/lib/normalize-url";
 
 // GET /api/corrections?url=<url> — browser extension endpoint
 // Returns corrections, affirmations, and translations for a given URL.
@@ -21,28 +22,6 @@ import { escapeHtml } from "@/lib/sanitize";
 // The only URLs stored on our servers are article URLs that submitters
 // voluntarily publish when creating corrections. A reader's browsing
 // activity must never be observable by Trust Assembly.
-
-function normalizeUrl(raw: string): string {
-  try {
-    const parsed = new URL(raw);
-    // Strip www. prefix so www.bbc.com and bbc.com match
-    parsed.hostname = parsed.hostname.replace(/^www\./, "");
-    // Strip fragment and trailing slash from pathname
-    parsed.hash = "";
-    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
-      parsed.pathname = parsed.pathname.slice(0, -1);
-    }
-    // Remove common tracking query params but keep meaningful ones
-    const trackingParams = [
-      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-      "fbclid", "gclid", "ref", "source",
-    ];
-    trackingParams.forEach((p) => parsed.searchParams.delete(p));
-    return parsed.toString();
-  } catch {
-    return raw;
-  }
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

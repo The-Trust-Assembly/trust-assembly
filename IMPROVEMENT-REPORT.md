@@ -20,6 +20,8 @@ This report organizes findings by severity: Critical, High, Medium, and Improvem
 
 ### C1. Admin Endpoints Have No Authentication or Authorization
 
+**Status: FIXED** — All 14 admin routes now use `requireAdmin()` from `src/lib/auth.ts`, which checks both authentication and `is_admin` flag on the users table. Audit logging with user attribution is included on all admin actions.
+
 **Location:** `src/app/api/admin/approve-pending/route.ts`, `src/app/api/admin/wild-west-backfill/route.ts`
 
 **Finding:** Both admin endpoints (`POST /api/admin/approve-pending` and `POST /api/admin/wild-west-backfill`) have no authentication check whatsoever. Any unauthenticated HTTP client can call these endpoints and bulk-approve every pending submission in both the SQL database and the KV store.
@@ -35,6 +37,8 @@ This report organizes findings by severity: Critical, High, Medium, and Improvem
 
 ### C2. KV Store Write Endpoint Lacks Authorization Scoping
 
+**Status: FIXED** — `POST /api/kv` now requires `requireAdmin()`. The endpoint is deprecated with `Sunset: 2026-06-01` headers. All production read paths use relational tables directly; KV is retained only for legacy SPA compatibility.
+
 **Location:** `src/app/api/kv/route.ts`
 
 **Finding:** The `POST /api/kv` endpoint requires authentication (good) but allows any authenticated user to write to any KV key, including `ta-s-v5` (all submissions), `ta-u-v5` (all users), and `ta-o-v5` (all organizations). A single compromised or malicious account can overwrite the entire submissions cache, forging verdicts, deception findings, and audit trails that the browser extension serves to every user.
@@ -48,6 +52,8 @@ This report organizes findings by severity: Critical, High, Medium, and Improvem
 4. Add integrity checks: the KV store should be a derived view that can be reconstructed from the relational tables, never the source of truth for anything the extension displays
 
 ### C3. No Database Transactions Around Vote Resolution
+
+**Status: FIXED** — All 29 multi-step write endpoints now use `sql.connect()` with real `BEGIN/COMMIT/ROLLBACK` transactions, or the `withTransaction()` helper from `src/lib/db.ts`. A comprehensive diagnostic (`GET /api/admin/diag-transactions`) audits transaction integrity across all resolved submissions, and `POST /api/admin/repair-data` fixes historical damage from the broken `sql\`\`` era.
 
 **Location:** `src/lib/vote-resolution.ts`
 
@@ -67,6 +73,8 @@ This report organizes findings by severity: Critical, High, Medium, and Improvem
 
 ### H1. No Rate Limiting on Any Endpoint
 
+**Status: PARTIALLY FIXED** — `src/lib/rate-limit.ts` implements an in-memory sliding-window rate limiter applied to auth endpoints (login, register). Single-instance only; needs Redis/Vercel KV for multi-instance deployments. Submission creation and voting endpoints are not yet rate-limited.
+
 **Finding:** No rate limiting exists anywhere in the application — not on authentication, not on submission creation, not on voting, not on the public corrections endpoint.
 
 **Impact:**
@@ -81,6 +89,8 @@ This report organizes findings by severity: Critical, High, Medium, and Improvem
 3. Consider IP-based and user-based rate limiting in combination
 
 ### H2. JWT Tokens Never Expire in Practice
+
+**Status: FIXED** — Token lifetime reduced to 7 days (`TOKEN_EXPIRY = "7d"` in `src/lib/auth.ts`). Session cookie `maxAge` matches. Refresh token and revocation mechanisms remain unimplemented.
 
 **Location:** `src/lib/auth.ts`
 
@@ -158,6 +168,8 @@ The `table` variable comes from `getVaultTable()` which maps from a controlled e
 
 ### M2. No Input Sanitization on User-Generated Content
 
+**Status: FIXED** — `src/lib/sanitize.ts` provides `escapeHtml()` and `sanitizeRecord()` for XSS prevention. `src/lib/validation.ts` provides `MAX_LENGTHS`, `validateFields()`, and `validateLength()` applied across ~48 route handlers. The corrections endpoint HTML-encodes all output served to the browser extension.
+
 **Finding:** User-submitted content (headlines, reasoning, evidence URLs, display names, etc.) passes through to the database and back to the API without sanitization. While SQL injection is prevented by parameterized queries, there is no protection against stored XSS — malicious JavaScript in a headline or reasoning field will be served to the browser extension and rendered in the content script overlay.
 
 **Impact:** Stored XSS via the browser extension. An attacker submits a correction with a headline containing `<script>` tags or event handlers; once approved, the extension injects this into every page the URL matches.
@@ -224,17 +236,23 @@ The schema has good basic indexes but is missing some for common API query patte
 
 ### I2. Implement Structured Logging
 
+**Status: FIXED** — `src/lib/error-logger.ts` provides structured error logging to a `client_errors` table with deduplication (100-instance cap), field sanitization, and never-throw guarantees. `src/lib/activity-logger.ts` provides audit trail logging with auto-timing via `withActionLog()`.
+
 **Finding:** Error handling uses `console.error` throughout. There is no structured logging, no request tracing, and no way to correlate a failed KV sync with the submission that triggered it.
 
 **Recommendation:** Add a structured logger (Pino or similar) with request IDs, and pipe to a log aggregation service.
 
 ### I3. Add Health Check and Monitoring
 
+**Status: FIXED** — `GET /api/health` (278 lines) checks database connectivity, schema validation, table row counts, submission status distribution, slow actions, client errors, and tutorial health. `GET /api/admin/diag-transactions` provides deep transaction integrity auditing. `POST /api/admin/smoke-test` runs end-to-end pipeline tests.
+
 **Finding:** No health check endpoint exists. If the database connection fails or the KV store becomes corrupted, there is no automated detection.
 
 **Recommendation:** Add `GET /api/health` that checks database connectivity and KV store integrity. Wire it to an uptime monitor.
 
 ### I4. Implement Database Migrations
+
+**Status: PARTIALLY FIXED** — 7 versioned SQL migration files exist in `db/migrations/` (001-007), covering KV elimination, reputation backfill, story pages, drafts, SEO slugs, and error logging. However, there is no automated migration runner or tracking table — migrations are applied manually.
 
 **Finding:** Schema changes are managed by editing `schema.sql` directly. There is no migration framework, no version tracking, and no rollback capability. The registration route's runtime constraint drop is a symptom of this gap.
 
@@ -257,6 +275,8 @@ The schema has good basic indexes but is missing some for common API query patte
 
 ### I7. Add Request Validation Middleware
 
+**Status: PARTIALLY FIXED** — `src/lib/validation.ts` provides centralized `MAX_LENGTHS` constants, `validateFields()`, `validateLength()`, and `isValidUUID()` used across ~48 route handlers. Not a full schema validation library (like Zod) but provides consistent length/format enforcement.
+
 **Finding:** Each route handler manually validates request body fields with inline checks. There is no shared validation layer.
 
 **Recommendation:** Adopt Zod or a similar schema validation library. Define request schemas per route and validate in middleware, providing consistent error messages and reducing per-route boilerplate.
@@ -272,6 +292,8 @@ The schema has good basic indexes but is missing some for common API query patte
 4. Consider signing correction data server-side so the extension can verify integrity
 
 ### I9. Formalize the Notification Query
+
+**Status: FIXED** — The notification query has been rewritten to correctly join `jury_assignments` with `jury_votes` via `submission_id + user_id + role`, and the shared logic extracted to `src/lib/notifications-query.ts` used by both `/api/notifications` and `/api/users/me/notifications`.
 
 **Location:** `src/app/api/users/me/notifications/route.ts`
 
@@ -293,21 +315,21 @@ The schema has good basic indexes but is missing some for common API query patte
 
 ## Summary of Priorities
 
-| ID | Finding | Severity | Effort |
-|----|---------|----------|--------|
-| C1 | Admin endpoints unauthenticated | Critical | Low |
-| C2 | KV store write endpoint unscoped | Critical | Low |
-| C3 | No transactions in vote resolution | Critical | Medium |
-| H1 | No rate limiting | High | Medium |
-| H2 | JWT never expires / no revocation | High | Medium |
-| H3 | No password reset or email verification | High | Medium |
-| H4 | CORS allows any origin for GET | High | Low |
-| H5 | Dynamic SQL patterns | High | Medium |
-| M1 | KV blob scalability bottleneck | Medium | High |
-| M2 | No XSS sanitization | Medium | Medium |
-| M3 | Submitter anonymity leak in KV | Medium | Low |
-| M4 | Runtime schema migration | Medium | Low |
-| M5 | Audit log unrestricted | Medium | Low |
-| M6 | No CSRF protection | Medium | Low |
+| ID | Finding | Severity | Effort | Status |
+|----|---------|----------|--------|--------|
+| C1 | Admin endpoints unauthenticated | Critical | Low | **FIXED** |
+| C2 | KV store write endpoint unscoped | Critical | Low | **FIXED** |
+| C3 | No transactions in vote resolution | Critical | Medium | **FIXED** |
+| H1 | No rate limiting | High | Medium | **Partial** |
+| H2 | JWT never expires / no revocation | High | Medium | **FIXED** |
+| H3 | No password reset or email verification | High | Medium | Open |
+| H4 | CORS allows any origin for GET | High | Low | Open |
+| H5 | Dynamic SQL patterns | High | Medium | Open |
+| M1 | KV blob scalability bottleneck | Medium | High | Mitigated (deprecated) |
+| M2 | No XSS sanitization | Medium | Medium | **FIXED** |
+| M3 | Submitter anonymity leak in KV | Medium | Low | Mitigated (deprecated) |
+| M4 | Runtime schema migration | Medium | Low | Open |
+| M5 | Audit log unrestricted | Medium | Low | Open |
+| M6 | No CSRF protection | Medium | Low | Open |
 
-**Recommended immediate action:** Fix C1 (admin auth) and C2 (KV write scoping). These are low-effort, critical-severity fixes that close the most dangerous attack vectors. Then address C3 (transactions) and H1 (rate limiting) in the next development cycle.
+**Status (March 2026):** All three critical findings (C1, C2, C3) are fixed. The KV store is deprecated with a sunset date of June 2026, mitigating M1 and M3. Rate limiting is partially implemented on auth endpoints. **Remaining priorities:** H3 (password reset), H4 (CORS tightening), and extending rate limiting to submission/voting endpoints.

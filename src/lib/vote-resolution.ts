@@ -379,9 +379,13 @@ async function updateSubmitterReputation(
 
 // ---- Cross-Group Promotion ----
 
-async function promoteToCrossGroup(
+// Unified cross-group promotion for both submissions and stories.
+// The logic is identical: find qualifying orgs, draw pool, assign jury.
+// Only the target table, FK column, and audit entity_type differ.
+async function promoteEntityToCrossGroup(
   client: VercelPoolClient,
-  submissionId: string,
+  entityType: "submission" | "story",
+  entityId: string,
   orgId: string,
   submittedBy: string,
   now: string,
@@ -420,40 +424,57 @@ async function promoteToCrossGroup(
   if (crossPool.rows.length < 3) return false;
 
   const crossJurySize = Math.min(crossPool.rows.length, 5);
+  const seed = Math.floor(Math.random() * 100000);
 
-  // Validate and update submission for cross-group review
-  assertTransition("approved", "cross_review");
-  await client.query(
-    `UPDATE submissions SET
-       status = 'cross_review',
-       resolved_at = NULL,
-       cross_group_jury_size = $1,
-       cross_group_seed = $2
-     WHERE id = $3`,
-    [crossJurySize, Math.floor(Math.random() * 100000), submissionId]
-  );
-
-  // Create jury assignments for cross-group
-  for (const juror of crossPool.rows.slice(0, crossJurySize * 3)) {
+  // Update entity for cross-group review
+  if (entityType === "submission") {
+    assertTransition("approved", "cross_review");
     await client.query(
-      `INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
-       VALUES ($1, $2, 'cross_group', TRUE, FALSE)
-       ON CONFLICT DO NOTHING`,
-      [submissionId, juror.user_id]
+      `UPDATE submissions SET
+         status = 'cross_review', resolved_at = NULL,
+         cross_group_jury_size = $1, cross_group_seed = $2
+       WHERE id = $3`,
+      [crossJurySize, seed, entityId]
+    );
+  } else {
+    await client.query(
+      `UPDATE stories SET
+         status = 'cross_review', approved_at = $1, resolved_at = NULL,
+         cross_group_jury_size = $2, cross_group_seed = $3
+       WHERE id = $4`,
+      [now, crossJurySize, seed, entityId]
     );
   }
 
+  // Create jury assignments for cross-group
+  const fkColumn = entityType === "submission" ? "submission_id" : "story_id";
+  for (const juror of crossPool.rows.slice(0, crossJurySize * 3)) {
+    await client.query(
+      `INSERT INTO jury_assignments (${fkColumn}, user_id, role, in_pool, accepted)
+       VALUES ($1, $2, 'cross_group', TRUE, FALSE)
+       ON CONFLICT DO NOTHING`,
+      [entityId, juror.user_id]
+    );
+  }
+
+  const actionLabel = entityType === "submission" ? "Promoted to cross-group review" : "Story promoted to cross-group review";
   await client.query(
     `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
-     VALUES ($1, $2, 'submission', $3, $4)`,
+     VALUES ($1, $2, $3, $4, $5)`,
     [
-      "Promoted to cross-group review",
-      orgId, submissionId,
+      actionLabel, orgId, entityType, entityId,
       JSON.stringify({ qualifyingOrgs: qualifyingOrgs.rows.length, poolSize: crossPool.rows.length, jurySize: crossJurySize }),
     ]
   );
 
   return true;
+}
+
+// Legacy wrappers for backward compatibility with existing callers
+async function promoteToCrossGroup(
+  client: VercelPoolClient, submissionId: string, orgId: string, submittedBy: string, now: string,
+): Promise<boolean> {
+  return promoteEntityToCrossGroup(client, "submission", submissionId, orgId, submittedBy, now);
 }
 
 // ---- Cross-Group Result Recording ----
@@ -620,79 +641,9 @@ export async function tryResolveStory(
 }
 
 async function promoteStoryToCrossGroup(
-  client: VercelPoolClient,
-  storyId: string,
-  orgId: string,
-  submittedBy: string,
-  now: string,
+  client: VercelPoolClient, storyId: string, orgId: string, submittedBy: string, now: string,
 ): Promise<boolean> {
-  // Count qualifying assemblies (5+ members, excluding origin)
-  const qualifyingOrgs = await client.query(
-    `SELECT o.id, COUNT(om.id) AS member_count
-     FROM organizations o
-     JOIN organization_members om ON om.org_id = o.id AND om.is_active = TRUE
-     WHERE o.id != $1
-     GROUP BY o.id
-     HAVING COUNT(om.id) >= 5`,
-    [orgId]
-  );
-
-  if (qualifyingOrgs.rows.length < 1) return false;
-
-  // Select cross-group jurors from other assemblies (exclude DI accounts)
-  // Wrap in subquery: SELECT DISTINCT + ORDER BY RANDOM() is invalid in PostgreSQL
-  const crossPool = await client.query(
-    `SELECT user_id FROM (
-       SELECT DISTINCT om.user_id
-       FROM organization_members om
-       JOIN users u ON u.id = om.user_id
-       WHERE om.org_id != $1
-         AND om.is_active = TRUE
-         AND u.is_di = FALSE
-         AND om.user_id != $2
-     ) pool
-     ORDER BY RANDOM()
-     LIMIT 15`,
-    [orgId, submittedBy]
-  );
-
-  if (crossPool.rows.length < 3) return false;
-
-  const crossJurySize = Math.min(crossPool.rows.length, 5);
-
-  // Update story for cross-group review
-  await client.query(
-    `UPDATE stories SET
-       status = 'cross_review',
-       approved_at = $1,
-       resolved_at = NULL,
-       cross_group_jury_size = $2,
-       cross_group_seed = $3
-     WHERE id = $4`,
-    [now, crossJurySize, Math.floor(Math.random() * 100000), storyId]
-  );
-
-  // Create jury assignments
-  for (const juror of crossPool.rows.slice(0, crossJurySize * 3)) {
-    await client.query(
-      `INSERT INTO jury_assignments (story_id, user_id, role, in_pool, accepted)
-       VALUES ($1, $2, 'cross_group', TRUE, FALSE)
-       ON CONFLICT DO NOTHING`,
-      [storyId, juror.user_id]
-    );
-  }
-
-  await client.query(
-    `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
-     VALUES ($1, $2, 'story', $3, $4)`,
-    [
-      "Story promoted to cross-group review",
-      orgId, storyId,
-      JSON.stringify({ qualifyingOrgs: qualifyingOrgs.rows.length, poolSize: crossPool.rows.length, jurySize: crossJurySize }),
-    ]
-  );
-
-  return true;
+  return promoteEntityToCrossGroup(client, "story", storyId, orgId, submittedBy, now);
 }
 
 // ============================================================

@@ -43,3 +43,16 @@ export async function withTransaction<T>(
     client.release();
   }
 }
+
+/**
+ * Check if a user is an active member of an organization.
+ * Returns true if the membership exists and is active.
+ */
+export async function checkOrgMembership(orgId: string, userId: string): Promise<boolean> {
+  const result = await sql`
+    SELECT id FROM organization_members
+    WHERE org_id = ${orgId} AND user_id = ${userId} AND is_active = TRUE
+    LIMIT 1
+  `;
+  return result.rows.length > 0;
+}

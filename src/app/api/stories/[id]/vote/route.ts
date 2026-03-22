@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { tryResolveStory } from "@/lib/vote-resolution";
@@ -80,39 +80,40 @@ export async function POST(
   }
 
   // Atomic vote insertion
-  const client = await sql.connect();
   try {
-    await client.query("BEGIN");
+    const dupeDetected = await withTransaction(async (client) => {
+      // Lock the story row
+      await client.query("SELECT id FROM stories WHERE id = $1 FOR UPDATE", [id]);
 
-    // Lock the story row
-    await client.query("SELECT id FROM stories WHERE id = $1 FOR UPDATE", [id]);
+      // Re-check duplicate inside transaction
+      const dupeCheck = await client.query(
+        "SELECT id FROM jury_votes WHERE story_id = $1 AND user_id = $2 AND role = $3",
+        [id, session.sub, juryRole]
+      );
+      if (dupeCheck.rows.length > 0) {
+        return true;
+      }
 
-    // Re-check duplicate inside transaction
-    const dupeCheck = await client.query(
-      "SELECT id FROM jury_votes WHERE story_id = $1 AND user_id = $2 AND role = $3",
-      [id, session.sub, juryRole]
-    );
-    if (dupeCheck.rows.length > 0) {
-      await client.query("ROLLBACK");
+      // Cast vote (simplified: no ratings, no deliberate_lie)
+      await client.query(
+        `INSERT INTO jury_votes (story_id, user_id, role, approve, note)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, session.sub, juryRole, approve, note || null]
+      );
+
+      // Audit log
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, entity_type, entity_id) VALUES ($1, $2, $3, $4)",
+        ["Story vote cast", session.sub, "story", id]
+      );
+
+      return false;
+    });
+
+    if (dupeDetected) {
       return err("You have already voted on this story", 409);
     }
-
-    // Cast vote (simplified: no ratings, no deliberate_lie)
-    await client.query(
-      `INSERT INTO jury_votes (story_id, user_id, role, approve, note)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [id, session.sub, juryRole, approve, note || null]
-    );
-
-    // Audit log
-    await client.query(
-      "INSERT INTO audit_log (action, user_id, entity_type, entity_id) VALUES ($1, $2, $3, $4)",
-      ["Story vote cast", session.sub, "story", id]
-    );
-
-    await client.query("COMMIT");
   } catch (e) {
-    await client.query("ROLLBACK");
     await logError({
       userId: session.sub,
       sessionInfo: session.username,
@@ -130,8 +131,6 @@ export async function POST(
       requestBody: { approve, role: juryRole, storyId: id },
     });
     return err("Failed to cast vote. Please try again.", 500);
-  } finally {
-    client.release();
   }
 
   // Resolution runs outside the vote transaction

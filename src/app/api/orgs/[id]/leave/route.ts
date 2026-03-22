@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
+import { ok, err, unauthorized, notFound, serverError } from "@/lib/api-utils";
 import { isValidUUID } from "@/lib/validation";
 
 // POST /api/orgs/[id]/leave — leave an assembly
@@ -28,36 +28,28 @@ export async function POST(
     return err("Cannot leave the General Public assembly");
   }
 
-  // Use sql.connect() for a dedicated client where transactions work.
-  const client = await sql.connect();
   try {
-    await client.query("BEGIN");
+    await withTransaction(async (client) => {
+      // Deactivate membership
+      await client.query(
+        "UPDATE organization_members SET is_active = FALSE, left_at = now() WHERE org_id = $1 AND user_id = $2",
+        [id, session.sub]
+      );
 
-    // Deactivate membership
-    await client.query(
-      "UPDATE organization_members SET is_active = FALSE, left_at = now() WHERE org_id = $1 AND user_id = $2",
-      [id, session.sub]
-    );
+      // Log to history
+      await client.query(
+        "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
+        [id, session.sub, "left"]
+      );
 
-    // Log to history
-    await client.query(
-      "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
-      [id, session.sub, "left"]
-    );
-
-    // If this was primary org, clear it
-    await client.query(
-      "UPDATE users SET primary_org_id = NULL WHERE id = $1 AND primary_org_id = $2",
-      [session.sub, id]
-    );
-
-    await client.query("COMMIT");
+      // If this was primary org, clear it
+      await client.query(
+        "UPDATE users SET primary_org_id = NULL WHERE id = $1 AND primary_org_id = $2",
+        [session.sub, id]
+      );
+    });
   } catch (e) {
-    await client.query("ROLLBACK");
-    console.error("Org leave transaction failed, rolled back:", e);
-    throw e;
-  } finally {
-    client.release();
+    return serverError("/api/orgs/[id]/leave", e);
   }
 
   return ok({ status: "left" });

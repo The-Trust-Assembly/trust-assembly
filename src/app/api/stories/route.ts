@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
@@ -116,34 +116,32 @@ export async function POST(request: NextRequest) {
   const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
 
   // Create story in transaction
-  const client = await sql.connect();
   let story: Record<string, unknown>;
 
   try {
-    await client.query("BEGIN");
+    story = await withTransaction(async (client) => {
+      const result = await client.query(
+        `INSERT INTO stories (title, description, status, submitted_by, org_id)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, title, status, created_at`,
+        [title.trim(), description.trim(), initialStatus, session.sub, orgId]
+      );
+      const s = result.rows[0];
 
-    const result = await client.query(
-      `INSERT INTO stories (title, description, status, submitted_by, org_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, title, status, created_at`,
-      [title.trim(), description.trim(), initialStatus, session.sub, orgId]
-    );
-    story = result.rows[0];
+      // Set SEO-friendly slug
+      const storySlug = slugify(title.trim(), s.id as string);
+      await client.query("UPDATE stories SET slug = $1 WHERE id = $2", [storySlug, s.id]);
+      s.slug = storySlug;
 
-    // Set SEO-friendly slug
-    const storySlug = slugify(title.trim(), story.id as string);
-    await client.query("UPDATE stories SET slug = $1 WHERE id = $2", [storySlug, story.id]);
-    story.slug = storySlug;
+      // Audit log
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+        ["Story proposal filed", session.sub, orgId, "story", s.id]
+      );
 
-    // Audit log
-    await client.query(
-      "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
-      ["Story proposal filed", session.sub, orgId, "story", story.id]
-    );
-
-    await client.query("COMMIT");
+      return s;
+    });
   } catch (e) {
-    await client.query("ROLLBACK");
     console.error("Story creation transaction failed:", e);
     await logError({
       userId: session.sub,
@@ -161,8 +159,6 @@ export async function POST(request: NextRequest) {
       requestBody: { title, orgId },
     });
     return err(`Failed to create story: ${e instanceof Error ? e.message : String(e)}`, 500);
-  } finally {
-    client.release();
   }
 
   // Jury assignment (if enough members)
@@ -170,38 +166,34 @@ export async function POST(request: NextRequest) {
     const jurySize = wildWest ? 1 : getJurySize(count);
     const poolSize = wildWest ? count : jurySize * JURY_POOL_MULTIPLIER;
 
-    const juryClient = await sql.connect();
     try {
-      await juryClient.query("BEGIN");
-
-      await juryClient.query(
-        "UPDATE stories SET jury_seats = $1 WHERE id = $2",
-        [jurySize, story.id]
-      );
-
-      const pool = await juryClient.query(
-        `SELECT om.user_id
-         FROM organization_members om
-         WHERE om.org_id = $1
-           AND om.is_active = TRUE
-           AND om.user_id != $2
-         ORDER BY RANDOM()
-         LIMIT $3`,
-        [orgId, session.sub, poolSize]
-      );
-
-      for (const juror of pool.rows) {
+      await withTransaction(async (juryClient) => {
         await juryClient.query(
-          `INSERT INTO jury_assignments (story_id, user_id, role, in_pool, accepted)
-           VALUES ($1, $2, 'in_group', TRUE, FALSE)
-           ON CONFLICT DO NOTHING`,
-          [story.id, juror.user_id]
+          "UPDATE stories SET jury_seats = $1 WHERE id = $2",
+          [jurySize, story.id]
         );
-      }
 
-      await juryClient.query("COMMIT");
+        const pool = await juryClient.query(
+          `SELECT om.user_id
+           FROM organization_members om
+           WHERE om.org_id = $1
+             AND om.is_active = TRUE
+             AND om.user_id != $2
+           ORDER BY RANDOM()
+           LIMIT $3`,
+          [orgId, session.sub, poolSize]
+        );
+
+        for (const juror of pool.rows) {
+          await juryClient.query(
+            `INSERT INTO jury_assignments (story_id, user_id, role, in_pool, accepted)
+             VALUES ($1, $2, 'in_group', TRUE, FALSE)
+             ON CONFLICT DO NOTHING`,
+            [story.id, juror.user_id]
+          );
+        }
+      });
     } catch (e) {
-      await juryClient.query("ROLLBACK");
       console.error("Story jury assignment failed:", e);
       await logError({
         userId: session.sub,
@@ -219,8 +211,6 @@ export async function POST(request: NextRequest) {
         requestUrl: request.url,
       });
       return err(`Story created but jury assignment failed: ${e instanceof Error ? e.message : String(e)}`, 500);
-    } finally {
-      juryClient.release();
     }
   }
 

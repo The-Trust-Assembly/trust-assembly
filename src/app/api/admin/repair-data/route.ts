@@ -3,25 +3,7 @@ import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, err } from "@/lib/api-utils";
 import { tryResolveSubmission } from "@/lib/vote-resolution";
-
-function normalizeUrl(raw: string): string {
-  try {
-    const parsed = new URL(raw);
-    parsed.hostname = parsed.hostname.replace(/^www\./, "");
-    parsed.hash = "";
-    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
-      parsed.pathname = parsed.pathname.slice(0, -1);
-    }
-    const trackingParams = [
-      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-      "fbclid", "gclid", "ref", "source",
-    ];
-    trackingParams.forEach((p) => parsed.searchParams.delete(p));
-    return parsed.toString();
-  } catch {
-    return raw;
-  }
-}
+import { normalizeUrl } from "@/lib/normalize-url";
 
 // POST /api/admin/repair-data
 // Repairs historical data damage caused by broken sql`` transactions.
