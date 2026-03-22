@@ -562,21 +562,36 @@ export async function POST(request: NextRequest) {
     `;
 
     // Find duplicate votes (same user, same submission, same role)
+    // Only check submission votes (submission_id IS NOT NULL).
+    // Dispute votes have submission_id=NULL and different dispute_ids,
+    // so grouping by (NULL, user_id, role) would falsely flag them.
     const dupeVotes = await sql`
       SELECT submission_id, user_id, role, COUNT(*)::int AS vote_count
       FROM jury_votes
+      WHERE submission_id IS NOT NULL
       GROUP BY submission_id, user_id, role
+      HAVING COUNT(*) > 1
+    `;
+
+    // Also check duplicate dispute votes separately
+    const dupeDisputeVotes = await sql`
+      SELECT dispute_id, user_id, role, COUNT(*)::int AS vote_count
+      FROM jury_votes
+      WHERE dispute_id IS NOT NULL
+      GROUP BY dispute_id, user_id, role
       HAVING COUNT(*) > 1
     `;
 
     const ghostCount = ghostVotes.rows.length;
     const postResCount = postResolutionVotes.rows.length;
     const dupeCount = dupeVotes.rows.length;
+    const dupeDisputeCount = dupeDisputeVotes.rows.length;
     const voteIssues: string[] = [];
 
     if (ghostCount > 0) voteIssues.push(`${ghostCount} vote(s) saved to DB but missing "Vote cast" audit log — these users likely received a 500 error despite their vote being recorded`);
     if (postResCount > 0) voteIssues.push(`${postResCount} vote(s) cast after the submission was already resolved — race condition (broken FOR UPDATE lock)`);
-    if (dupeCount > 0) voteIssues.push(`${dupeCount} duplicate vote(s) found — same user voted twice on same submission with same role (broken dupe check)`);
+    if (dupeCount > 0) voteIssues.push(`${dupeCount} duplicate submission vote(s) found — same user voted twice on same submission with same role (broken dupe check)`);
+    if (dupeDisputeCount > 0) voteIssues.push(`${dupeDisputeCount} duplicate dispute vote(s) found — same user voted twice on same dispute with same role`);
 
     results.push({
       name: "Vote-level forensics",
@@ -599,6 +614,7 @@ export async function POST(request: NextRequest) {
           diagnosis: "SELECT FOR UPDATE was a no-op (separate HTTP connection), so this vote bypassed the lock",
         })),
         duplicateVotes: dupeVotes.rows,
+        duplicateDisputeVotes: dupeDisputeVotes.rows,
       },
     });
   } catch (e: unknown) {
@@ -1182,7 +1198,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check: submitter should be a DI
-      if (!sub.submitter_is_di) issues.push("submitter is_di is FALSE — not recognized as DI user");
+      if (!sub.submitter_is_di) issues.push("submitter is_di is FALSE — not recognized as DI user (human-submitted di_pending should be converted to pending_jury via repair-data)");
 
       if (issues.length > 0) {
         stuckSubs.push({
