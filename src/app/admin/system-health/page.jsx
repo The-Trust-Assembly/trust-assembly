@@ -84,6 +84,15 @@ export default function SystemHealthPage() {
   const [repairResult, setRepairResult] = useState(null);
   const [diLinkResult, setDiLinkResult] = useState(null);
   const [adminFlagResult, setAdminFlagResult] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const [userTotal, setUserTotal] = useState(0);
+  const [userPages, setUserPages] = useState(0);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteMsg, setDeleteMsg] = useState(null);
 
   const getAuthHeaders = useCallback(() => {
     const cookies = document.cookie.split(";").map(c => c.trim());
@@ -226,6 +235,52 @@ export default function SystemHealthPage() {
     }
   }, [getAuthHeaders]);
 
+  const fetchUsers = useCallback(async (search, page) => {
+    setUsersLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "50" });
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/admin/users?${params}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setUsers(data.users);
+      setUserTotal(data.total);
+      setUserPages(data.pages);
+      setUserPage(data.page);
+    } catch (e) {
+      alert(`Failed to load users: ${e}`);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  const deleteUser = useCallback(async (userId, username) => {
+    if (deleteConfirm !== username) {
+      setDeleteMsg({ ok: false, text: "Type the username to confirm" });
+      return;
+    }
+    setDeleteMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteMsg({ ok: false, text: data.error || "Failed" });
+        return;
+      }
+      setDeleteMsg({ ok: true, text: data.message });
+      setDeletingUserId(null);
+      setDeleteConfirm("");
+      // Refresh the list
+      fetchUsers(userSearch, userPage);
+    } catch (e) {
+      setDeleteMsg({ ok: false, text: `Error: ${e}` });
+    }
+  }, [getAuthHeaders, deleteConfirm, fetchUsers, userSearch, userPage]);
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 1200, margin: "0 auto", padding: 24, color: "#e2e8f0", background: "#0f172a", minHeight: "100vh" }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Trust Assembly System Health</h1>
@@ -336,6 +391,157 @@ export default function SystemHealthPage() {
           <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: "#e2e8f0", background: "#0f172a", marginBottom: 6, maxHeight: 150, overflowY: "auto" }}>
             {(diLinkResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
             {!diLinkResult.success && diLinkResult.error && <div style={{ color: "#ef4444" }}>{diLinkResult.error}</div>}
+          </div>
+        )}
+      </div>
+
+      {/* ── User Management ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #8b5cf6" }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#8b5cf6" }}>User Management</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px" }}>
+          Search and manage all registered users. Delete removes PII and deactivates the account (submissions and votes are preserved for audit).
+        </p>
+
+        {/* Search bar */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <input
+            type="text"
+            value={userSearch}
+            onChange={e => setUserSearch(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") fetchUsers(userSearch, 1); }}
+            placeholder="Search by username, display name, or email..."
+            style={{ flex: 1, padding: "8px 12px", fontSize: 13, background: "#0f172a", color: "#e2e8f0", border: "1px solid #334155", borderRadius: 6, fontFamily: "system-ui, sans-serif" }}
+          />
+          <button onClick={() => fetchUsers(userSearch, 1)} disabled={usersLoading} style={btnStyle}>
+            {usersLoading ? "Loading..." : "Search"}
+          </button>
+          {users.length > 0 && (
+            <button onClick={() => { setUserSearch(""); setUsers([]); setUserTotal(0); }} style={{ ...btnStyle, background: "#334155" }}>
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* Results summary */}
+        {userTotal > 0 && (
+          <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>
+            Showing {users.length} of {userTotal} user{userTotal !== 1 ? "s" : ""} (page {userPage}/{userPages})
+          </div>
+        )}
+
+        {/* Delete message */}
+        {deleteMsg && (
+          <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: deleteMsg.ok ? "#22c55e" : "#ef4444", background: "#0f172a", marginBottom: 8, border: `1px solid ${deleteMsg.ok ? "#22c55e" : "#ef4444"}` }}>
+            {deleteMsg.text}
+          </div>
+        )}
+
+        {/* User table */}
+        {users.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #334155" }}>
+                  <th style={thStyle}>Username</th>
+                  <th style={thStyle}>Display Name</th>
+                  <th style={thStyle}>Email</th>
+                  <th style={thStyle}>Joined</th>
+                  <th style={{ ...thStyle, textAlign: "center" }}>Subs</th>
+                  <th style={{ ...thStyle, textAlign: "center" }}>Votes</th>
+                  <th style={{ ...thStyle, textAlign: "center" }}>Orgs</th>
+                  <th style={{ ...thStyle, textAlign: "center" }}>W/L</th>
+                  <th style={thStyle}>Flags</th>
+                  <th style={thStyle}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id} style={{ borderBottom: "1px solid #1e293b" }}>
+                    <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12 }}>
+                      {u.username}
+                    </td>
+                    <td style={{ ...tdStyle, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {u.display_name}
+                    </td>
+                    <td style={{ ...tdStyle, fontSize: 11, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {u.email}
+                    </td>
+                    <td style={{ ...tdStyle, fontSize: 11, whiteSpace: "nowrap" }}>
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>{u.submission_count}</td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>{u.vote_count}</td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>{u.org_count}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>
+                      <span style={{ color: "#22c55e" }}>{u.total_wins}</span>/<span style={{ color: "#ef4444" }}>{u.total_losses}</span>
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {u.is_admin && <span style={{ fontSize: 9, background: "#6b21a8", color: "#fff", padding: "1px 4px", borderRadius: 3, fontWeight: 700 }}>ADMIN</span>}
+                        {u.is_di && <span style={{ fontSize: 9, background: "#4f46e5", color: "#fff", padding: "1px 4px", borderRadius: 3, fontWeight: 700 }}>DI</span>}
+                        {u.deliberate_lies > 0 && <span style={{ fontSize: 9, background: "#dc2626", color: "#fff", padding: "1px 4px", borderRadius: 3, fontWeight: 700 }}>LIES:{u.deliberate_lies}</span>}
+                      </div>
+                    </td>
+                    <td style={tdStyle}>
+                      {deletingUserId === u.id ? (
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          <input
+                            type="text"
+                            value={deleteConfirm}
+                            onChange={e => setDeleteConfirm(e.target.value)}
+                            placeholder={`Type "${u.username}"`}
+                            style={{ width: 120, padding: "3px 6px", fontSize: 11, background: "#0f172a", color: "#e2e8f0", border: "1px solid #ef4444", borderRadius: 3 }}
+                          />
+                          <button
+                            onClick={() => deleteUser(u.id, u.username)}
+                            style={{ ...smallBtnStyle, background: "#dc2626", color: "#fff", fontSize: 10 }}
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => { setDeletingUserId(null); setDeleteConfirm(""); setDeleteMsg(null); }}
+                            style={{ ...smallBtnStyle, fontSize: 10 }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setDeletingUserId(u.id); setDeleteConfirm(""); setDeleteMsg(null); }}
+                          disabled={u.is_admin}
+                          style={{ ...smallBtnStyle, background: u.is_admin ? "#334155" : "#dc2626", color: u.is_admin ? "#64748b" : "#fff", fontSize: 10, cursor: u.is_admin ? "not-allowed" : "pointer" }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            {userPages > 1 && (
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
+                <button
+                  onClick={() => fetchUsers(userSearch, userPage - 1)}
+                  disabled={userPage <= 1 || usersLoading}
+                  style={{ ...smallBtnStyle, opacity: userPage <= 1 ? 0.4 : 1 }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: 12, color: "#94a3b8", lineHeight: "28px" }}>
+                  Page {userPage} of {userPages}
+                </span>
+                <button
+                  onClick={() => fetchUsers(userSearch, userPage + 1)}
+                  disabled={userPage >= userPages || usersLoading}
+                  style={{ ...smallBtnStyle, opacity: userPage >= userPages ? 0.4 : 1 }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
