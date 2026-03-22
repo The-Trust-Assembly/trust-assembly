@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SK } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { useDraft, clearDraft } from "../lib/hooks";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrustedProgress, getDISubmissionLimit } from "../lib/permissions";
 import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer } from "../components/ui";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded }) {
+  const qc = useQueryClient();
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [authors, setAuthors] = useState([]);
   const [authorInput, setAuthorInput] = useState("");
@@ -373,6 +376,11 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
     setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
     setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setAuthors([]); setAuthorInput(""); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrections([{ assertion: "", evidence: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArgs([""]); setSubmitArg(""); setSubmitBeliefs([""]); setSubmitBelief(""); setSubmitTranslations([{ original: "", translated: "", type: "clarity" }]); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setLinkedSubs([]); setSubSearch(""); setSubResults([]); setShowSubSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
     clearDraft("ta_draft_submit");
+    // Invalidate TanStack Query caches so other screens see fresh data
+    qc.invalidateQueries({ queryKey: queryKeys.submissions });
+    qc.invalidateQueries({ queryKey: queryKeys.users });
+    qc.invalidateQueries({ queryKey: queryKeys.vault });
+    qc.invalidateQueries({ queryKey: queryKeys.drafts });
     // Delete server draft for this URL if one exists
     const matchingDraft = savedDrafts.find(d => d.url === form.url.trim());
     if (matchingDraft) { try { await fetch(`/api/drafts/${matchingDraft.id}`, { method: "DELETE" }); } catch {} fetchDrafts(); }

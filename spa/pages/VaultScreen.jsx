@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SK, ADMIN_USERNAME } from "../lib/constants";
 import { sDate } from "../lib/utils";
 import { sG } from "../lib/storage";
 import { Loader, Empty, StatusPill, LegalDisclaimer } from "../components/ui";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function VaultScreen({ user }) {
+  const qc = useQueryClient();
   const [tab, setTab] = useState("vault");
   const [vault, setVault] = useState([]); const [args, setArgs] = useState([]); const [beliefs, setBeliefs] = useState([]); const [translations, setTranslations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,9 +37,9 @@ export default function VaultScreen({ user }) {
   };
   useEffect(() => { load(); }, [user.orgId, user.orgIds]);
 
-  const addArg = async () => { if (!newArg.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "argument", orgId: oid, content: newArg.trim() }) }); } catch {} } setNewArg(""); load(); };
-  const addBelief = async () => { if (!newBelief.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "belief", orgId: oid, content: newBelief.trim() }) }); } catch {} } setNewBelief(""); load(); };
-  const addTrans = async () => { if (!newTrans.original.trim() || !newTrans.translated.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "translation", orgId: oid, original: newTrans.original.trim(), translated: newTrans.translated.trim(), translationType: newTrans.type }) }); } catch {} } setNewTrans({ original: "", translated: "", type: "clarity" }); load(); };
+  const addArg = async () => { if (!newArg.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "argument", orgId: oid, content: newArg.trim() }) }); } catch {} } setNewArg(""); load(); qc.invalidateQueries({ queryKey: queryKeys.vault }); };
+  const addBelief = async () => { if (!newBelief.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "belief", orgId: oid, content: newBelief.trim() }) }); } catch {} } setNewBelief(""); load(); qc.invalidateQueries({ queryKey: queryKeys.vault }); };
+  const addTrans = async () => { if (!newTrans.original.trim() || !newTrans.translated.trim() || selectedOrgIds.length === 0) return; for (const oid of selectedOrgIds) { try { await fetch("/api/vault", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "translation", orgId: oid, original: newTrans.original.trim(), translated: newTrans.translated.trim(), translationType: newTrans.type }) }); } catch {} } setNewTrans({ original: "", translated: "", type: "clarity" }); load(); qc.invalidateQueries({ queryKey: queryKeys.vault }); };
 
   const OrgLabel = ({ orgId }) => { const o = orgsMap[orgId]; if (!o) return null; return <span style={{ fontSize: 9, padding: "1px 5px", fontFamily: "var(--mono)", borderRadius: 8, background: o.isGeneralPublic ? "#F0FDFA" : "#F1F5F9", color: o.isGeneralPublic ? "#0D9488" : "#475569", marginRight: 4 }}>{o.isGeneralPublic ? "\u{1F3DB}" : "\u2B21"} {o.name}</span>; };
 

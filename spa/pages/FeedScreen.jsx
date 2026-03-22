@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SK, ADMIN_USERNAME } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { anonName, sDate, hotScore } from "../lib/utils";
 import { fileDispute } from "../lib/jury";
 import { Loader, Empty, StatusPill, SubHeadline, UsernameLink, EvidenceFields, LegalDisclaimer } from "../components/ui";
 import RecordDetailView from "../components/RecordDetailView";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
+  const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
   const [expandedId, setExpandedId] = useState(null);
@@ -71,6 +74,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
       }
     } catch { setApproveMsg("Network error."); }
     load();
+    qc.invalidateQueries({ queryKey: queryKeys.submissions }); qc.invalidateQueries({ queryKey: queryKeys.users });
   };
 
   const submitDispute = async (subId) => {
@@ -142,7 +146,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
                   <button className="ta-btn-primary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={() => onNavigate && onNavigate("submit", d.id)}>Continue</button>
                   <button className="ta-link-btn" style={{ fontSize: 10, color: "#DC2626" }} onClick={async () => {
-                    try { await fetch(`/api/drafts/${d.id}`, { method: "DELETE" }); setSavedDrafts(prev => prev.filter(x => x.id !== d.id)); } catch {}
+                    try { await fetch(`/api/drafts/${d.id}`, { method: "DELETE" }); setSavedDrafts(prev => prev.filter(x => x.id !== d.id)); qc.invalidateQueries({ queryKey: queryKeys.drafts }); } catch {}
                   }}>Discard</button>
                 </div>
               </div>
@@ -215,7 +219,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
                         <button className="ta-link-btn" style={{ fontSize: 10, color: "#7C3AED" }} onClick={async () => {
                           const res = await fetch(`/api/stories/${s.id}/tag`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId: sub.id }) });
                           const data = await res.json();
-                          if (res.ok) { setTagMsg(data.status === "approved" ? "Tagged (auto-approved)." : "Tag submitted for approval."); } else { setTagMsg("Error: " + (data.error || "Failed")); }
+                          if (res.ok) { setTagMsg(data.status === "approved" ? "Tagged (auto-approved)." : "Tag submitted for approval."); qc.invalidateQueries({ queryKey: queryKeys.stories }); } else { setTagMsg("Error: " + (data.error || "Failed")); }
                         }}>Tag</button>
                       </div>
                     ))}

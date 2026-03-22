@@ -121,10 +121,6 @@ export async function POST(request: NextRequest) {
   try {
     await client.query("BEGIN");
 
-    // Ensure dispute_type and field_responses columns exist
-    await client.query("ALTER TABLE disputes ADD COLUMN IF NOT EXISTS dispute_type TEXT DEFAULT 'challenge_approval'");
-    await client.query("ALTER TABLE disputes ADD COLUMN IF NOT EXISTS field_responses JSONB");
-
     const result = await client.query(
       `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses)
        VALUES ($1, $2, $3, $4, $5, $6, $7)

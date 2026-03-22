@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden } from "@/lib/api-utils";
+import { assertTransition } from "@/lib/submission-states";
 
 // All non-terminal statuses that should be flushed to approved
 const PENDING_STATUSES = [
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
   for (const sub of pending.rows) {
     // cross_review submissions were already in-group approved — give them consensus
     const resolvedStatus = sub.prev_status === 'cross_review' ? 'consensus' : 'approved';
+    assertTransition(sub.prev_status, resolvedStatus, { admin: true });
 
     // Credit the win to the submitter (or DI partner)
     const targetUserId = (sub.is_di && sub.di_partner_id) ? sub.di_partner_id : sub.submitted_by;

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { sDate } from "../lib/utils";
 import { SubHeadline, StatusPill, AuditTrail, Empty } from "./ui";
+import { queryKeys } from "../lib/queryKeys";
 
 const safe = (v) => {
   if (v === null || v === undefined) return "";
@@ -11,6 +13,8 @@ const safe = (v) => {
 };
 
 export default function DIPanelContent({ user, subs, onReload }) {
+  const qc = useQueryClient();
+  const invalidateDI = () => { qc.invalidateQueries({ queryKey: queryKeys.submissions }); qc.invalidateQueries({ queryKey: queryKeys.users }); qc.invalidateQueries({ queryKey: queryKeys.diRequests }); };
   const [diReqs, setDiReqs] = useState({});
   const [confirmAll, setConfirmAll] = useState(false);
   const [error, setError] = useState("");
@@ -63,6 +67,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
         }
       }
     } catch (e) { console.error("Failed to approve DI link:", e); }
+    invalidateDI();
   };
 
   const rejectDILink = async (diUsername) => {
@@ -87,6 +92,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
         }
       }
     } catch (e) { console.error("Failed to reject DI link:", e); }
+    invalidateDI();
   };
 
   const approveDISub = async (subId) => {
@@ -99,7 +105,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
       });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to approve"); return; }
     } catch (e) { setError("Network error approving submission"); return; }
-    onReload();
+    onReload(); invalidateDI();
   };
 
   const rejectDISub = async (subId) => {
@@ -114,7 +120,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
       });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.error || "Failed to reject"); return; }
     } catch (e) { setError("Network error rejecting submission"); return; }
-    onReload();
+    onReload(); invalidateDI();
   };
 
   const approveAllDI = async () => {

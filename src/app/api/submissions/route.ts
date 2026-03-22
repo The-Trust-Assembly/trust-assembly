@@ -7,7 +7,7 @@ import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
 import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
 import { logError } from "@/lib/error-logger";
-import { ensureSlugsExist } from "@/lib/ensure-schema";
+import { assertTransition } from "@/lib/submission-states";
 
 const SOURCE_FILE = "src/app/api/submissions/route.ts";
 
@@ -168,9 +168,6 @@ export async function POST(request: NextRequest) {
 
   const createdSubs: Record<string, unknown>[] = [];
 
-  // Ensure slug columns exist (runtime migration 006)
-  await ensureSlugsExist();
-
   for (const targetOrg of targetOrgIds) {
     // Check member count for initial status
     const memberCount = await sql`
@@ -284,6 +281,7 @@ export async function POST(request: NextRequest) {
     // maintain a complete audit trail, update reputation consistently,
     // graduate vault entries, and trigger cross-group promotion.
     if (trustedSkip) {
+      assertTransition(initialStatus, "approved", { trusted: true });
       const now = new Date().toISOString();
       const approveClient = await sql.connect();
 

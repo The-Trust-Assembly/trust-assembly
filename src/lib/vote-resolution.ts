@@ -21,6 +21,7 @@ import type { VercelPoolClient } from "@vercel/postgres";
 import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT, isWildWestMode } from "@/lib/jury-rules";
 import { createNotification } from "@/lib/notifications";
 import { logError } from "@/lib/error-logger";
+import { assertTransition } from "@/lib/submission-states";
 
 interface VoteRow {
   approve: boolean;
@@ -124,6 +125,9 @@ export async function tryResolveSubmission(
 
   try {
     await client.query("BEGIN");
+
+    // Validate state transition before updating
+    assertTransition(sub.status, outcome);
 
     // Update submission status
     await client.query(
@@ -417,7 +421,8 @@ async function promoteToCrossGroup(
 
   const crossJurySize = Math.min(crossPool.rows.length, 5);
 
-  // Update submission for cross-group review
+  // Validate and update submission for cross-group review
+  assertTransition("approved", "cross_review");
   await client.query(
     `UPDATE submissions SET
        status = 'cross_review',

@@ -6,7 +6,7 @@ import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-ru
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
 import { logError } from "@/lib/error-logger";
-import { ensureSlugsExist } from "@/lib/ensure-schema";
+
 
 const SOURCE_FILE = "src/app/api/stories/route.ts";
 
@@ -114,9 +114,6 @@ export async function POST(request: NextRequest) {
   `;
   const count = parseInt(memberCount.rows[0].count);
   const initialStatus = count < (wildWest ? 2 : 5) ? "pending_jury" : "pending_review";
-
-  // Ensure slug columns exist (runtime migration 006)
-  await ensureSlugsExist();
 
   // Create story in transaction
   const client = await sql.connect();

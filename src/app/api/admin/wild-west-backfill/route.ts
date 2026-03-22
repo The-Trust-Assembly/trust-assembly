@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, err, forbidden } from "@/lib/api-utils";
 import { isWildWestMode } from "@/lib/jury-rules";
+import { assertTransition } from "@/lib/submission-states";
 
 // POST /api/admin/wild-west-backfill
 // Resolves all pending_review AND pending_jury submissions.
@@ -33,6 +34,8 @@ export async function POST(request: NextRequest) {
   let resolved = 0;
 
   for (const sub of pending.rows) {
+    assertTransition(sub.prev_status, "approved", { admin: true });
+
     // Credit the win to the submitter (or DI partner)
     const targetUserId = (sub.is_di && sub.di_partner_id) ? sub.di_partner_id : sub.submitted_by;
 
