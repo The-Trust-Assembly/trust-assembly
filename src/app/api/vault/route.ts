@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/api-utils";
+import { ok, err, unauthorized, serverError } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
 
@@ -134,78 +134,101 @@ export async function POST(request: NextRequest) {
   }
 
   const entryType = type || "vault";
-  const results: unknown[] = [];
 
-  for (const targetOrgId of targetOrgIds) {
-    switch (entryType) {
-      case "argument": {
-        const { content } = body;
-        if (!content) return err("content is required for arguments");
-        const argError = validateFields([["content", content, MAX_LENGTHS.vault_content]]);
-        if (argError) return err(argError);
-        const result = await sql`
-          INSERT INTO arguments (org_id, submitted_by, content, submission_id)
-          VALUES (${targetOrgId}, ${session.sub}, ${content}, ${submissionId || null})
-          RETURNING id, org_id, content, status, submission_id, created_at
-        `;
-        results.push(result.rows[0]);
-        break;
+  // Validate inputs before starting the transaction
+  switch (entryType) {
+    case "argument":
+    case "belief": {
+      const { content } = body;
+      if (!content) return err(`content is required for ${entryType}s`);
+      const fieldErr = validateFields([["content", content, MAX_LENGTHS.vault_content]]);
+      if (fieldErr) return err(fieldErr);
+      break;
+    }
+    case "translation": {
+      const { original, translated, translationType } = body;
+      if (!original || !translated || !translationType) {
+        return err("original, translated, and translationType are required for translations");
       }
-      case "belief": {
-        const { content } = body;
-        if (!content) return err("content is required for beliefs");
-        const beliefError = validateFields([["content", content, MAX_LENGTHS.vault_content]]);
-        if (beliefError) return err(beliefError);
-        const result = await sql`
-          INSERT INTO beliefs (org_id, submitted_by, content, submission_id)
-          VALUES (${targetOrgId}, ${session.sub}, ${content}, ${submissionId || null})
-          RETURNING id, org_id, content, status, submission_id, created_at
-        `;
-        results.push(result.rows[0]);
-        break;
+      const transErr = validateFields([
+        ["original", original, MAX_LENGTHS.translation_text],
+        ["translated", translated, MAX_LENGTHS.translation_text],
+      ]);
+      if (transErr) return err(transErr);
+      break;
+    }
+    default: {
+      const { assertion, evidence } = body;
+      if (!assertion || !evidence) {
+        return err("assertion and evidence are required for vault entries");
       }
-      case "translation": {
-        const { original, translated, translationType } = body;
-        if (!original || !translated || !translationType) {
-          return err("original, translated, and translationType are required for translations");
-        }
-        const transError = validateFields([
-          ["original", original, MAX_LENGTHS.translation_text],
-          ["translated", translated, MAX_LENGTHS.translation_text],
-        ]);
-        if (transError) return err(transError);
-        const result = await sql`
-          INSERT INTO translations (org_id, submitted_by, original_text, translated_text, translation_type, submission_id)
-          VALUES (${targetOrgId}, ${session.sub}, ${original}, ${translated}, ${translationType}, ${submissionId || null})
-          RETURNING id, org_id, original_text, translated_text, translation_type, status, submission_id, created_at
-        `;
-        results.push(result.rows[0]);
-        break;
-      }
-      default: {
-        const { assertion, evidence } = body;
-        if (!assertion || !evidence) {
-          return err("assertion and evidence are required for vault entries");
-        }
-        const vaultError = validateFields([
-          ["assertion", assertion, MAX_LENGTHS.vault_assertion],
-          ["evidence", evidence, MAX_LENGTHS.vault_evidence],
-        ]);
-        if (vaultError) return err(vaultError);
-        const result = await sql`
-          INSERT INTO vault_entries (org_id, submitted_by, assertion, evidence, submission_id)
-          VALUES (${targetOrgId}, ${session.sub}, ${assertion}, ${evidence}, ${submissionId || null})
-          RETURNING id, org_id, assertion, evidence, status, submission_id, created_at
-        `;
-        const vaultSlug = slugify(assertion, result.rows[0].id);
-        await sql`UPDATE vault_entries SET slug = ${vaultSlug} WHERE id = ${result.rows[0].id}`;
-        result.rows[0].slug = vaultSlug;
-        results.push(result.rows[0]);
-        break;
-      }
+      const vaultErr = validateFields([
+        ["assertion", assertion, MAX_LENGTHS.vault_assertion],
+        ["evidence", evidence, MAX_LENGTHS.vault_evidence],
+      ]);
+      if (vaultErr) return err(vaultErr);
+      break;
     }
   }
 
-  // Return single entry for backward compatibility, or array for multi-org
-  return ok(results.length === 1 ? results[0] : { entries: results, count: results.length }, 201);
+  try {
+    const results = await withTransaction(async (client) => {
+      const txResults: unknown[] = [];
+
+      for (const targetOrgId of targetOrgIds) {
+        switch (entryType) {
+          case "argument": {
+            const result = await client.query(
+              `INSERT INTO arguments (org_id, submitted_by, content, submission_id)
+               VALUES ($1, $2, $3, $4)
+               RETURNING id, org_id, content, status, submission_id, created_at`,
+              [targetOrgId, session.sub, body.content, submissionId || null]
+            );
+            txResults.push(result.rows[0]);
+            break;
+          }
+          case "belief": {
+            const result = await client.query(
+              `INSERT INTO beliefs (org_id, submitted_by, content, submission_id)
+               VALUES ($1, $2, $3, $4)
+               RETURNING id, org_id, content, status, submission_id, created_at`,
+              [targetOrgId, session.sub, body.content, submissionId || null]
+            );
+            txResults.push(result.rows[0]);
+            break;
+          }
+          case "translation": {
+            const result = await client.query(
+              `INSERT INTO translations (org_id, submitted_by, original_text, translated_text, translation_type, submission_id)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               RETURNING id, org_id, original_text, translated_text, translation_type, status, submission_id, created_at`,
+              [targetOrgId, session.sub, body.original, body.translated, body.translationType, submissionId || null]
+            );
+            txResults.push(result.rows[0]);
+            break;
+          }
+          default: {
+            const result = await client.query(
+              `INSERT INTO vault_entries (org_id, submitted_by, assertion, evidence, submission_id)
+               VALUES ($1, $2, $3, $4, $5)
+               RETURNING id, org_id, assertion, evidence, status, submission_id, created_at`,
+              [targetOrgId, session.sub, body.assertion, body.evidence, submissionId || null]
+            );
+            const vaultSlug = slugify(body.assertion, result.rows[0].id);
+            await client.query("UPDATE vault_entries SET slug = $1 WHERE id = $2", [vaultSlug, result.rows[0].id]);
+            result.rows[0].slug = vaultSlug;
+            txResults.push(result.rows[0]);
+            break;
+          }
+        }
+      }
+
+      return txResults;
+    });
+
+    // Return single entry for backward compatibility, or array for multi-org
+    return ok(results.length === 1 ? results[0] : { entries: results, count: results.length }, 201);
+  } catch (error) {
+    return serverError("POST /api/vault", error);
+  }
 }

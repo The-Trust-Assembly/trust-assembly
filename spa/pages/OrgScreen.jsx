@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SK, MAX_ORGS, ADMIN_USERNAME, CROSS_GROUP_DECEPTION_MULT } from "../lib/constants";
 import { sDate } from "../lib/utils";
 import { sG } from "../lib/storage";
@@ -7,6 +8,7 @@ import { checkEnrollment } from "../lib/permissions";
 import { getJurySize, getSuperJurySize, getConcessionRecovery } from "../lib/jury";
 import { UsernameLink, SubHeadline, StatusPill, InviteCTA, Empty, Loader } from "../components/ui";
 import AssemblyGuide from "../components/AssemblyGuide";
+import { queryKeys } from "../lib/queryKeys";
 
 async function proposeConcession(orgId, proposerUsername, subId, reasoning) {
   try {
@@ -45,6 +47,8 @@ async function voteConcession(concessionId, voterUsername, approve) {
 }
 
 export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
+  const qc = useQueryClient();
+  const invalidateOrgs = () => { qc.invalidateQueries({ queryKey: queryKeys.orgs }); qc.invalidateQueries({ queryKey: queryKeys.users }); qc.invalidateQueries({ queryKey: queryKeys.applications }); };
   const [orgs, setOrgs] = useState(null); const [subs, setSubs] = useState(null); const [apps, setApps] = useState(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false); const [newOrg, setNewOrg] = useState({ name: "", description: "", charter: "" });
@@ -58,6 +62,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
   const load = useCallback(async () => {
     const [o, s, a, c] = await Promise.all([sG(SK.ORGS), sG(SK.SUBS), sG(SK.APPS), sG("ta-concessions")]);
     setOrgs(o || {}); setSubs(s || {}); setApps(a || {}); setConcessions(c || {}); setLoading(false);
+    invalidateOrgs();
   }, []);
   useEffect(() => { load(); }, [load]);
 

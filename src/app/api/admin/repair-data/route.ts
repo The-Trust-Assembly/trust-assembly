@@ -455,6 +455,27 @@ export async function POST(request: NextRequest) {
     totalRepaired += diPendingNoPartner.rows.length;
 
     // ── 15. Fix di_pending submissions with is_di=FALSE ──
+    // First, handle inverted DI submissions: if a non-DI user (human partner)
+    // created a di_pending submission, convert it to pending_jury since it
+    // should go through normal review flow, not DI pre-approval.
+    report.push("\n--- Fix inverted DI submissions (human-submitted di_pending) ---");
+    const invertedDiSubs = await sql`
+      UPDATE submissions s
+      SET status = 'pending_jury', is_di = FALSE
+      FROM users u
+      WHERE s.submitted_by = u.id
+        AND s.status = 'di_pending'
+        AND u.is_di = FALSE
+      RETURNING s.id, u.username
+    `;
+    for (const row of invertedDiSubs.rows) {
+      report.push(`OK submission ${(row.id as string).slice(0, 8)}… by @${row.username}: converted inverted di_pending → pending_jury (submitter is human, not DI)`);
+    }
+    report.push(`Fixed ${invertedDiSubs.rows.length} inverted DI submission(s)`);
+    totalRepaired += invertedDiSubs.rows.length;
+
+    // Then, for remaining di_pending with is_di=FALSE on the submission (but
+    // submitter IS a DI), fix the submission flag.
     report.push("\n--- Fix di_pending submissions with is_di=FALSE ---");
     const diPendingNotMarked = await sql`
       UPDATE submissions

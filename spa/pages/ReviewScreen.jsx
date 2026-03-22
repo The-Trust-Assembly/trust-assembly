@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Component } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SK, MAX_SHARED_ASSEMBLIES, NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
 import { sDate, anonName } from "../lib/utils";
 import { sG, isWildWestMode } from "../lib/storage";
@@ -6,6 +7,7 @@ import { getMajority, W, computeJuryScore } from "../lib/scoring";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining } from "../lib/permissions";
 import { recuseJuror, getConcessionRecovery, fileDispute } from "../lib/jury";
 import { clearDraft } from "../lib/hooks";
+import { queryKeys } from "../lib/queryKeys";
 import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader } from "../components/ui";
 import DIPanelContent from "../components/DIPanelContent";
 
@@ -53,6 +55,8 @@ export default function ReviewScreen({ user }) {
 }
 
 function ReviewScreenInner({ user }) {
+  const qc = useQueryClient();
+  const invalidateAll = () => { qc.invalidateQueries({ queryKey: queryKeys.submissions }); qc.invalidateQueries({ queryKey: queryKeys.users }); qc.invalidateQueries({ queryKey: queryKeys.disputes }); };
   const [subs, setSubs] = useState(null); const [disputes, setDisputes] = useState(null); const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState(null); const [voteNote, setVoteNote] = useState("");
   const [newsRating, setNewsRating] = useState(5); const [funRating, setFunRating] = useState(5);
@@ -197,7 +201,7 @@ function ReviewScreenInner({ user }) {
         if (!acceptRes.ok) { const d = await acceptRes.json().catch(() => ({})); alert(d.error || "Failed to accept seat"); return; }
       }
     } catch (e) { alert("Network error accepting jury seat"); return; }
-    setReviewingId(subId); load();
+    setReviewingId(subId); load(); invalidateAll();
   };
 
   const castVote = async (subId, approve, isCross) => {
@@ -222,7 +226,7 @@ function ReviewScreenInner({ user }) {
       if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.error || "Vote failed"); return; }
     } catch (e) { alert("Network error casting vote"); return; }
     clearDraft(`ta_draft_vote_${subId}`); voteInitSkip.current = true; lastRestoredId.current = null;
-    setReviewingId(null); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false); setEditVotes({}); setVaultVotes({}); load();
+    setReviewingId(null); setVoteNote(""); setNewsRating(5); setFunRating(5); setLieChecked(false); setEditVotes({}); setVaultVotes({}); load(); invalidateAll();
   };
 
   if (loading) return <Loader />;
@@ -292,7 +296,7 @@ function ReviewScreenInner({ user }) {
     } catch { setConcedeError("Network error."); return; }
     setConcedingId(null); setConcedeReason("");
     setConcedeSuccess("Concession submitted. Your reputation recovery is being calculated.");
-    load();
+    load(); invalidateAll();
   };
 
   const submitResultDispute = async (subId) => {
@@ -306,7 +310,7 @@ function ReviewScreenInner({ user }) {
     if (result.error) return setResultDisputeError(result.error);
     setDisputingResultId(null); setResultDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
     setConcedeSuccess("Dispute filed. A new jury will review.");
-    load();
+    load(); invalidateAll();
   };
 
   const castDisputeVote = async (disputeId, upheld) => {
@@ -320,7 +324,7 @@ function ReviewScreenInner({ user }) {
       if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.error || "Dispute vote failed"); return; }
     } catch (e) { alert("Network error casting dispute vote"); return; }
     clearDraft(`ta_draft_vote_${disputeId}`); voteInitSkip.current = true; lastRestoredId.current = null;
-    setReviewingId(null); setVoteNote(""); setLieChecked(false); load();
+    setReviewingId(null); setVoteNote(""); setLieChecked(false); load(); invalidateAll();
   };
 
   const renderItem = (sub, isCross) => {

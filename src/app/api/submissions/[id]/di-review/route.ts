@@ -5,6 +5,7 @@ import { ok, err, unauthorized, forbidden, notFound } from "@/lib/api-utils";
 import { isValidUUID } from "@/lib/validation";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { logError } from "@/lib/error-logger";
+import { assertTransition } from "@/lib/submission-states";
 
 const SOURCE_FILE = "src/app/api/submissions/[id]/di-review/route.ts";
 
@@ -165,6 +166,7 @@ export async function POST(
       }
     }
 
+    assertTransition("di_pending", newStatus);
     await approveClient.query(
       "UPDATE submissions SET status = $1 WHERE id = $2",
       [newStatus, id]

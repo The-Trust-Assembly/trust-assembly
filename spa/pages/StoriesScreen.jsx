@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { SK } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { sDate } from "../lib/utils";
 import { Loader, Empty, StatusPill } from "../components/ui";
 import StoryDetailView from "../components/StoryDetailView";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
+  const qc = useQueryClient();
   const [stories, setStories] = useState(null);
   const [orgs, setOrgs] = useState({});
   const [loading, setLoading] = useState(true);
@@ -62,7 +65,7 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
       setCreateSuccess("Story proposal submitted. It will be reviewed by a jury before appearing.");
       setCreateForm({ title: "", description: "", orgId: "" });
       setShowCreate(false);
-      load();
+      load(); qc.invalidateQueries({ queryKey: queryKeys.stories });
     } catch (e) { setCreateError("Network error"); }
     setCreating(false);
   };

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { ok, serverError } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
+import { assertTransition } from "@/lib/submission-states";
 
 const NO_CACHE_HEADERS = {
   "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -36,43 +37,51 @@ export async function GET() {
         `;
         const count = parseInt(memberCount.rows[0].count);
         if (count >= threshold) {
-          const jurySize = wildWest ? 1 : getJurySize(count);
-          const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+          assertTransition("pending_jury", "pending_review");
+          await withTransaction(async (client) => {
+            const jurySize = wildWest ? 1 : getJurySize(count);
+            const poolSize = jurySize * JURY_POOL_MULTIPLIER;
 
-          const excluded = [sub.submitted_by];
-          if (sub.di_partner_id) excluded.push(sub.di_partner_id);
+            const excluded = [sub.submitted_by];
+            if (sub.di_partner_id) excluded.push(sub.di_partner_id);
 
-          const pool = await sql.query(
-            `SELECT om.user_id
-             FROM organization_members om
-             JOIN users u ON u.id = om.user_id
-             WHERE om.org_id = $1
-               AND om.is_active = TRUE
-               AND u.is_di = FALSE
-               AND om.user_id != ALL($2::uuid[])
-             ORDER BY RANDOM()
-             LIMIT $3`,
-            [sub.org_id, excluded, poolSize]
-          );
+            const pool = await client.query(
+              `SELECT om.user_id
+               FROM organization_members om
+               JOIN users u ON u.id = om.user_id
+               WHERE om.org_id = $1
+                 AND om.is_active = TRUE
+                 AND u.is_di = FALSE
+                 AND om.user_id != ALL($2::uuid[])
+               ORDER BY RANDOM()
+               LIMIT $3`,
+              [sub.org_id, excluded, poolSize]
+            );
 
-          for (const juror of pool.rows) {
-            await sql`
-              INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
-              VALUES (${sub.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
-              ON CONFLICT DO NOTHING
-            `;
-          }
+            for (const juror of pool.rows) {
+              await client.query(
+                `INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+                 VALUES ($1, $2, 'in_group', TRUE, FALSE)
+                 ON CONFLICT DO NOTHING`,
+                [sub.id, juror.user_id]
+              );
+            }
 
-          await sql`
-            UPDATE submissions SET status = 'pending_review', jury_seats = ${jurySize}
-            WHERE id = ${sub.id}
-          `;
+            await client.query(
+              "UPDATE submissions SET status = 'pending_review', jury_seats = $1 WHERE id = $2",
+              [jurySize, sub.id]
+            );
 
-          await sql`
-            INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
-            VALUES ('Submission promoted from pending_jury to pending_review (auto)', ${sub.org_id}, 'submission', ${sub.id},
-                    ${JSON.stringify({ memberCount: count, jurySize, wildWest })})
-          `;
+            await client.query(
+              `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [
+                "Submission promoted from pending_jury to pending_review (auto)",
+                sub.org_id, "submission", sub.id,
+                JSON.stringify({ memberCount: count, jurySize, wildWest }),
+              ]
+            );
+          });
         }
       } catch (promoteErr) {
         // Log but don't crash — this submission stays pending_jury

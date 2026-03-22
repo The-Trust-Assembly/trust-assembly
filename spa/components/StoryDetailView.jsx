@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { sDate } from "../lib/utils";
 import { StatusPill, SubHeadline, UsernameLink, Empty } from "./ui";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse, onReload, onViewCitizen, onViewRecord }) {
+  const qc = useQueryClient();
+  const invalidateStories = () => qc.invalidateQueries({ queryKey: queryKeys.stories });
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tagSearch, setTagSearch] = useState("");
@@ -39,6 +43,7 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
       const refreshRes = await fetch(`/api/stories/${story.id}`);
       if (refreshRes.ok) setDetail(await refreshRes.json());
       if (onReload) onReload();
+      invalidateStories();
     } catch { setTagError("Network error"); }
   };
 
@@ -53,6 +58,7 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
         const refreshRes = await fetch(`/api/stories/${story.id}`);
         if (refreshRes.ok) setDetail(await refreshRes.json());
         if (onReload) onReload();
+        invalidateStories();
       }
     } catch (e) { console.error("Failed to approve tag:", e); }
   };
@@ -68,6 +74,7 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
         const refreshRes = await fetch(`/api/stories/${story.id}`);
         if (refreshRes.ok) setDetail(await refreshRes.json());
         if (onReload) onReload();
+        invalidateStories();
       }
     } catch (e) { console.error("Failed to remove tag:", e); }
   };

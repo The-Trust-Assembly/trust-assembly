@@ -5,7 +5,7 @@ import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { slugifyOrg } from "@/lib/slugify";
 import { logError } from "@/lib/error-logger";
-import { ensureSlugsExist } from "@/lib/ensure-schema";
+
 
 const SOURCE_FILE = "src/app/api/orgs/route.ts";
 
@@ -82,9 +82,6 @@ export async function POST(request: NextRequest) {
   if (existing.rows.length > 0) {
     return err("An assembly with this name already exists", 409);
   }
-
-  // Ensure slug columns exist (runtime migration 006)
-  await ensureSlugsExist();
 
   // Create org with SEO-friendly slug — use real transaction via sql.connect()
   // The sql`` tagged template is stateless (neon HTTP driver), so each call hits
