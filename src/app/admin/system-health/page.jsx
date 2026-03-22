@@ -75,6 +75,15 @@ export default function SystemHealthPage() {
   const [loading, setLoading] = useState(null);
   const [expandedError, setExpandedError] = useState(null);
   const [diagResult, setDiagResult] = useState(null);
+  const [processResult, setProcessResult] = useState(null);
+  const [announcementText, setAnnouncementText] = useState("");
+  const [announcementLoaded, setAnnouncementLoaded] = useState(false);
+  const [announcementSaving, setAnnouncementSaving] = useState(false);
+  const [announcementMsg, setAnnouncementMsg] = useState(null);
+  const [recomputeResult, setRecomputeResult] = useState(null);
+  const [repairResult, setRepairResult] = useState(null);
+  const [diLinkResult, setDiLinkResult] = useState(null);
+  const [adminFlagResult, setAdminFlagResult] = useState(null);
 
   const getAuthHeaders = useCallback(() => {
     const cookies = document.cookie.split(";").map(c => c.trim());
@@ -156,6 +165,67 @@ export default function SystemHealthPage() {
     URL.revokeObjectURL(url);
   }, [report]);
 
+  const processRecords = useCallback(async () => {
+    setLoading("process");
+    setProcessResult(null);
+    try {
+      const res = await fetch("/api/admin/process-records", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setProcessResult(data);
+    } catch (e) {
+      setProcessResult({ success: false, message: `Failed: ${e}` });
+    } finally {
+      setLoading(null);
+    }
+  }, [getAuthHeaders]);
+
+  const loadAnnouncement = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/announcement");
+      if (res.ok) {
+        const data = await res.json();
+        setAnnouncementText(data.announcement || "");
+        setAnnouncementLoaded(true);
+      }
+    } catch {}
+  }, []);
+
+  const saveAnnouncement = useCallback(async () => {
+    setAnnouncementSaving(true);
+    setAnnouncementMsg(null);
+    try {
+      const res = await fetch("/api/admin/announcement", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ text: announcementText }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setAnnouncementMsg({ ok: true, text: announcementText ? "Announcement updated" : "Announcement cleared" });
+    } catch (e) {
+      setAnnouncementMsg({ ok: false, text: `Failed: ${e}` });
+    } finally {
+      setAnnouncementSaving(false);
+    }
+  }, [getAuthHeaders, announcementText]);
+
+  // Load announcement on mount
+  useState(() => { loadAnnouncement(); });
+
+  const runAdminAction = useCallback(async (endpoint, setter) => {
+    setter({ loading: true });
+    try {
+      const res = await fetch(endpoint, { method: "POST", headers: getAuthHeaders() });
+      const data = await res.json();
+      setter(data);
+    } catch (e) {
+      setter({ success: false, error: e.message });
+    }
+  }, [getAuthHeaders]);
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 1200, margin: "0 auto", padding: 24, color: "#e2e8f0", background: "#0f172a", minHeight: "100vh" }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Trust Assembly System Health</h1>
@@ -165,13 +235,119 @@ export default function SystemHealthPage() {
         </p>
       )}
 
-      {/* Action Buttons */}
+      {/* ── Admin Announcement ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #f59e0b" }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 16, color: "#f59e0b" }}>Site Announcement</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>
+          This text appears on the home page for all users. Clear the box and save to remove it.
+        </p>
+        <textarea
+          value={announcementText}
+          onChange={e => { if (e.target.value.length <= 2000) setAnnouncementText(e.target.value); }}
+          rows={4}
+          placeholder="Enter announcement text for all users..."
+          style={{ width: "100%", padding: "10px 12px", fontSize: 14, background: "#0f172a", color: "#e2e8f0", border: "1px solid #334155", borderRadius: 6, resize: "vertical", boxSizing: "border-box", fontFamily: "system-ui, sans-serif" }}
+        />
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+          <button onClick={saveAnnouncement} disabled={announcementSaving} style={{ ...btnStyle, background: "#f59e0b", color: "#000" }}>
+            {announcementSaving ? "Saving..." : "Update Announcement"}
+          </button>
+          {announcementText && (
+            <button onClick={() => { setAnnouncementText(""); }} style={{ ...btnStyle, background: "#334155" }}>
+              Clear
+            </button>
+          )}
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>{announcementText.length}/2000</span>
+          {announcementMsg && (
+            <span style={{ fontSize: 12, color: announcementMsg.ok ? "#22c55e" : "#ef4444" }}>
+              {announcementMsg.text}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Process Stuck Records ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #22c55e" }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#22c55e" }}>Process Stuck Records</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>
+          Scans all in-flight submissions, stories, disputes, and concessions. Advances any that have enough votes but were never resolved due to older process bugs.
+        </p>
+        <button onClick={processRecords} disabled={loading !== null} style={{ ...btnStyle, background: "#22c55e", color: "#000" }}>
+          {loading === "process" ? "Processing..." : "Process All Stuck Records"}
+        </button>
+        {processResult && (
+          <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 6, border: `1px solid ${processResult.success ? "#22c55e" : "#ef4444"}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: processResult.success ? "#22c55e" : "#ef4444", marginBottom: 6 }}>
+              {processResult.message}
+            </div>
+            {processResult.results && Object.entries(processResult.results).map(([type, data]) => (
+              <div key={type} style={{ marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: "#94a3b8", textTransform: "capitalize" }}>{type}: </span>
+                <span style={{ fontSize: 12, color: "#e2e8f0" }}>{data.scanned} scanned, {data.advanced} advanced</span>
+                {data.details.length > 0 && (
+                  <div style={{ marginTop: 4, paddingLeft: 12 }}>
+                    {data.details.map((d, i) => (
+                      <div key={i} style={{ fontSize: 11, color: "#22c55e", fontFamily: "monospace" }}>{d}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Admin Tools ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #334155" }}>
+        <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Admin Tools</h3>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <button onClick={() => runAdminAction("/api/admin/set-admin-flag", setAdminFlagResult)} disabled={adminFlagResult?.loading} style={{ ...btnStyle, background: "#6b21a8" }}>
+            {adminFlagResult?.loading ? "Setting..." : "Set Admin Flag"}
+          </button>
+          <button onClick={() => runAdminAction("/api/admin/recompute-stats", setRecomputeResult)} disabled={recomputeResult?.loading} style={{ ...btnStyle, background: "#b45309" }}>
+            {recomputeResult?.loading ? "Running..." : "Recompute Stats"}
+          </button>
+          <button onClick={() => runAdminAction("/api/admin/repair-data", setRepairResult)} disabled={repairResult?.loading} style={{ ...btnStyle, background: "#0891b2" }}>
+            {repairResult?.loading ? "Repairing..." : "Repair Historical Data"}
+          </button>
+          <button onClick={() => runAdminAction("/api/admin/force-di-partner", setDiLinkResult)} disabled={diLinkResult?.loading} style={{ ...btnStyle, background: "#ea580c" }}>
+            {diLinkResult?.loading ? "Running..." : "Force-Link DI Partners"}
+          </button>
+        </div>
+        {adminFlagResult && !adminFlagResult.loading && (
+          <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: adminFlagResult.success ? "#22c55e" : "#ef4444", background: "#0f172a", marginBottom: 6 }}>
+            {adminFlagResult.success ? adminFlagResult.message : (adminFlagResult.error || "Failed")}
+          </div>
+        )}
+        {recomputeResult && !recomputeResult.loading && (
+          <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: "#e2e8f0", background: "#0f172a", marginBottom: 6, maxHeight: 150, overflowY: "auto" }}>
+            {(recomputeResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+            {!recomputeResult.success && recomputeResult.error && <div style={{ color: "#ef4444" }}>{recomputeResult.error}</div>}
+          </div>
+        )}
+        {repairResult && !repairResult.loading && (
+          <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: "#e2e8f0", background: "#0f172a", marginBottom: 6, maxHeight: 200, overflowY: "auto" }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Repaired: {repairResult.totalRepaired || 0} item(s)</div>
+            {(repairResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+            {!repairResult.success && repairResult.error && <div style={{ color: "#ef4444" }}>{repairResult.error}</div>}
+          </div>
+        )}
+        {diLinkResult && !diLinkResult.loading && (
+          <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: "#e2e8f0", background: "#0f172a", marginBottom: 6, maxHeight: 150, overflowY: "auto" }}>
+            {(diLinkResult.report || []).map((line, i) => <div key={i}>{line}</div>)}
+            {!diLinkResult.success && diLinkResult.error && <div style={{ color: "#ef4444" }}>{diLinkResult.error}</div>}
+          </div>
+        )}
+      </div>
+
+      {/* ── Diagnostics & Reconciliation ── */}
+      <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Diagnostics &amp; Reconciliation</h2>
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <button onClick={fetchReport} disabled={loading !== null} style={btnStyle}>
           {loading === "report" ? "Loading..." : "Run Reconciliation Report"}
         </button>
         <button onClick={() => runDiagnostic()} disabled={loading !== null} style={btnStyle}>
-          {loading === "diagnostic" ? "Running..." : "Run Full Diagnostic"}
+          {loading === "diagnostic" ? "Running..." : "Run Transaction Diagnostics"}
         </button>
         <button onClick={() => runDiagnostic("?ghostOnly=true")} disabled={loading !== null} style={btnStyle}>
           Run Ghost Tests Only

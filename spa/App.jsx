@@ -24,7 +24,7 @@ import RecordScreen from "./pages/RecordScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
-import DiagnosticScreen from "./pages/DiagnosticScreen";
+// DiagnosticScreen moved to /admin/system-health page
 
 import { ensureGeneralPublic } from "./lib/storage";
 import { isDIUser } from "./lib/permissions";
@@ -75,7 +75,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
   }
   // Inject admin items
   if (label === "Account" && isAdmin) {
-    allItems.push({ key: "diagnostic", label: "Diagnostic" });
+    allItems.push({ key: "admin", label: "Admin Dashboard" });
   }
   const isActive = allItems.some(i => i.key === screen);
   useEffect(() => {
@@ -93,8 +93,8 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
         <div className="ta-nav-dropdown-menu" role="menu">
           {allItems.map(n => (
             <a key={n.key} href={`#${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
-              style={n.key === "diagnostic" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
-              onClick={(e) => { e.preventDefault(); setScreen(n.key); setOpen(false); }}>
+              style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
+              onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
               {n.label}
             </a>
           ))}
@@ -133,6 +133,7 @@ export default function TrustAssembly() {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [navProfile, setNavProfile] = useState({ trustScore: 100, profile: "New Citizen" });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [siteAnnouncement, setSiteAnnouncement] = useState(null);
   const notifRef = useRef(null);
 
   // Load full profile data for navbar trust score (matches citizen page)
@@ -305,6 +306,20 @@ export default function TrustAssembly() {
         if (res.ok) {
           const data = await res.json();
           setHasSubmittedFeedback((data.feedback || []).length > 0);
+        }
+      } catch {}
+    })();
+  }, [user?.username]);
+
+  // Fetch site announcement
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/announcement");
+        if (res.ok) {
+          const data = await res.json();
+          setSiteAnnouncement(data.announcement || null);
         }
       } catch {}
     })();
@@ -685,7 +700,7 @@ export default function TrustAssembly() {
                   <a href="#feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
                 )}
                 {isAdmin && (
-                  <a href="#diagnostic" className={`ta-mobile-menu-item ${screen === "diagnostic" ? "active" : ""}`} style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); setScreen("diagnostic"); setMobileMenuOpen(false); }}>Diagnostic</a>
+                  <a href="/admin/system-health" className="ta-mobile-menu-item" style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); window.open("/admin/system-health", "_blank"); setMobileMenuOpen(false); }}>Admin Dashboard</a>
                 )}
               </div>
             )}
@@ -735,6 +750,29 @@ export default function TrustAssembly() {
 
           <div className="ta-content">
             {screen === "feed" && !viewingRecord && !viewingCitizen && <CitizenCounter />}
+            {siteAnnouncement && !viewingRecord && !viewingCitizen && screen === "feed" && (
+              <div style={{
+                background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+                border: "1.5px solid #f59e0b",
+                borderRadius: 8,
+                padding: "12px 16px",
+                marginBottom: 16,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "#f59e0b", letterSpacing: "0.08em", textTransform: "uppercase" }}>Admin Update</span>
+                </div>
+                <div style={{
+                  fontSize: 13,
+                  color: "#e2e8f0",
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  maxHeight: 120,
+                  overflowY: "auto",
+                }}>
+                  {siteAnnouncement}
+                </div>
+              </div>
+            )}
             {viewingRecord ? (
               <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : viewingCitizen ? (
@@ -755,7 +793,6 @@ export default function TrustAssembly() {
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
-            {screen === "diagnostic" && isAdmin && <DiagnosticScreen />}
             </>}
           </div>
 
