@@ -8,27 +8,9 @@ import { slugify } from "@/lib/slugify";
 import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
 import { logError } from "@/lib/error-logger";
 import { assertTransition } from "@/lib/submission-states";
+import { normalizeUrl } from "@/lib/normalize-url";
 
 const SOURCE_FILE = "src/app/api/submissions/route.ts";
-
-function normalizeUrl(raw: string): string {
-  try {
-    const parsed = new URL(raw);
-    parsed.hostname = parsed.hostname.replace(/^www\./, "");
-    parsed.hash = "";
-    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
-      parsed.pathname = parsed.pathname.slice(0, -1);
-    }
-    const trackingParams = [
-      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-      "fbclid", "gclid", "ref", "source",
-    ];
-    trackingParams.forEach((p) => parsed.searchParams.delete(p));
-    return parsed.toString();
-  } catch {
-    return raw;
-  }
-}
 
 // GET /api/submissions — list submissions (filterable)
 export async function GET(request: NextRequest) {

@@ -13,7 +13,7 @@ Trust Assembly is a structured reputation system for media correction, fact veri
 - **Corrections & Affirmations** — Citizens identify misleading headlines and propose factual replacements (corrections), or affirm accurate headlines with supporting evidence (affirmations). Both go through the same jury review process.
 - **Jury Review** — Randomly selected jurors rate submissions on accuracy, newsworthiness, and interestingness. Jury size scales from 3 to 13 based on Assembly membership.
 - **Cross-Group Consensus** — Corrections that pass in-group review advance to cross-group juries drawn from *other* Assemblies. What survives both achieves Consensus — the highest trust signal.
-- **Asymmetric Scoring** — `Trust Score = √(Points) × Quality / Drag + Cassandra Bonus`. Volume has diminishing returns. Quality multiplies everything. Lies bypass the diminishing curve and devastate scores. All weights are community-votable.
+- **Asymmetric Scoring** — `Trust Score = 100 + √(Points) × Quality / Drag + Cassandra Bonus + Badge Bonus`. Base reputation of 100. Volume has diminishing returns. Quality multiplies everything. Lies bypass the diminishing curve and devastate scores. All weights are community-votable.
 - **The Cassandra Rule** — If you're rejected repeatedly but refuse to concede because you're right, and are eventually vindicated, you earn a massive additive bonus that scales with impact and persistence. Named for the prophet nobody believed.
 - **Translations** — A vault artifact that strips propaganda, jargon, and euphemisms from language. "Enhanced interrogation techniques" → "Torture". Approved translations are applied automatically by the browser extension across all articles.
 - **Assembly Vaults** — Shared knowledge bases per Assembly: Standing Corrections (reusable facts), Arguments (rhetorical tools), Foundational Beliefs (axioms), and Translations (language replacements).
@@ -23,20 +23,27 @@ Trust Assembly is a structured reputation system for media correction, fact veri
 
 ## Architecture
 
-Trust Assembly is a **Next.js 14 App Router** application deployed on Vercel with a PostgreSQL database (Vercel Postgres). The frontend is a large single-file React SPA (`trust-assembly-v5.jsx`, ~7,100 lines) that handles all UI, with server-side API routes for authentication, data persistence, and the browser extension API.
+Trust Assembly is a **Next.js 14 App Router** application deployed on Vercel with a PostgreSQL database (Vercel Postgres). The frontend is a modular React SPA organized under `spa/` with 21 screen components, 6 shared components, and 12 utility files. Server-side API routes handle authentication, data persistence, vote resolution, and the browser extension API.
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `trust-assembly-v5.jsx` | Complete frontend — all components, business logic, scoring, and UI |
-| `src/app/page.tsx` | Next.js page that renders the TrustAssembly component |
-| `src/app/api/` | Server-side API routes (auth, submissions, voting, corrections, etc.) |
+| File / Directory | Purpose |
+|------------------|---------|
+| `spa/App.jsx` | Main SPA shell — routing, auth state, navigation |
+| `spa/pages/` | 21 screen components (Feed, Submit, Review, Vault, Assemblies, Profile, etc.) |
+| `spa/components/` | 6 shared components (UI primitives, AssemblyGuide, RecordDetailView, etc.) |
+| `spa/lib/` | Client utilities (queries, scoring, validation, jury logic, storage) |
+| `src/app/api/` | Server-side API routes (25+ endpoint families) |
 | `src/lib/auth.ts` | JWT authentication, bcrypt hashing, session management |
-| `src/lib/db.ts` | Database connection (Vercel Postgres) |
+| `src/lib/db.ts` | Database connection, `withTransaction()` helper for real transactions |
 | `src/lib/vote-resolution.ts` | Vote counting, reputation updates, cross-group promotion |
+| `src/lib/submission-states.ts` | Centralized state machine for submission status transitions |
+| `src/lib/validation.ts` | Input validation (`MAX_LENGTHS`, `validateFields()`, `isValidUUID()`) |
 | `src/lib/sanitize.ts` | XSS output sanitization for browser extension content |
+| `src/lib/rate-limit.ts` | In-memory sliding-window rate limiter for auth endpoints |
 | `db/schema.sql` | PostgreSQL schema (20+ tables) |
+| `db/migrations/` | 7 versioned SQL migration files |
+| `tests/uat/` | 8 UAT test scripts for Chrome extension testing |
 | `extensions/chrome/` | Chrome extension (MV3) — popup, content script, background worker |
 | `extensions/firefox/` | Firefox extension (MV2) |
 | `extensions/safari/` | Safari extension (MV3) |
@@ -46,6 +53,7 @@ Trust Assembly is a **Next.js 14 App Router** application deployed on Vercel wit
 - **Next.js 14** (App Router) on **Vercel**
 - **Vercel Postgres** (PostgreSQL 16+) with `@vercel/postgres`
 - **React** (functional components with hooks)
+- **TanStack Query** (v5) for server state management and cache invalidation
 - **JWT** (HS256 via `jose`, 7-day expiry, HTTP-only cookies + Bearer tokens)
 - **bcryptjs** (cost factor 12 for password hashing)
 - **Fonts**: Newsreader (serif), IBM Plex Mono (mono), Inter (system)
@@ -55,31 +63,61 @@ Trust Assembly is a **Next.js 14 App Router** application deployed on Vercel wit
 ### API Endpoints
 
 ```
-POST   /api/auth/register         Create citizen account
-POST   /api/auth/login            Authenticate (sets cookie, returns token)
-POST   /api/auth/logout           Clear session
-GET    /api/auth/me               Current user from session
+Authentication
+POST   /api/auth/register             Create citizen account
+POST   /api/auth/login                Authenticate (sets cookie, returns token)
+POST   /api/auth/logout               Clear session
+GET    /api/auth/me                   Current user from session
 
-POST   /api/submissions           Create correction or affirmation
-GET    /api/submissions/:id       Get submission with votes and audit trail
-POST   /api/submissions/:id/vote  Cast jury vote
+Submissions
+POST   /api/submissions               Create correction or affirmation
+GET    /api/submissions/:id           Get submission with votes and audit trail
+POST   /api/submissions/:id/vote      Cast jury vote
+POST   /api/submissions/:id/di-review DI partner pre-approval
+POST   /api/submissions/:id/recuse    Jury member recusal
+GET    /api/submissions/di-queue      DI partner review queue
 
-POST   /api/disputes              File dispute
-POST   /api/concessions           Propose concession
+Stories
+GET    /api/stories                   List story proposals
+POST   /api/stories                   Create story proposal
+POST   /api/stories/:id/vote          Vote on story
 
-GET    /api/orgs                  List assemblies
-POST   /api/orgs                  Create assembly
-GET    /api/users/:id/profile     Trust Score breakdown
+Disputes & Concessions
+POST   /api/disputes                  File dispute
+POST   /api/disputes/:id/vote         Vote on dispute
+POST   /api/concessions               Propose concession
+POST   /api/concessions/:id/vote      Vote on concession
 
-GET    /api/corrections?url=      Corrections for a URL (extension endpoint, stateless)
-GET    /api/audit                 Audit log (auth required, RBAC)
-POST   /api/admin/approve-pending Admin: bulk-approve submissions
-POST   /api/admin/wild-west-backfill Admin: backfill submissions
+Assemblies
+GET    /api/orgs                      List assemblies
+POST   /api/orgs                      Create assembly
+POST   /api/orgs/:id/join             Join assembly
+POST   /api/orgs/:id/leave            Leave assembly
 
-GET    /api/kv?key=               Read KV cache
-POST   /api/kv                    Write KV cache (auth required, protected keys need admin)
+Vault
+GET    /api/vault                     List vault entries (corrections, arguments, beliefs, translations)
+POST   /api/vault                     Create vault entry
 
-POST   /api/feedback              Submit beta feedback
+Users & Notifications
+GET    /api/users/:username           Public profile and Trust Score breakdown
+DELETE /api/users/me/delete           Delete own account
+GET    /api/notifications             Pending items for current user
+PATCH  /api/notifications             Mark notifications read
+
+Drafts
+GET    /api/drafts                    List saved drafts
+POST   /api/drafts                    Save draft
+
+Browser Extension
+GET    /api/corrections?url=          Corrections for a URL (stateless, privacy-first)
+
+Transparency & Admin
+GET    /api/audit                     Audit log
+GET    /api/health                    System health check
+POST   /api/feedback                  Submit beta feedback
+POST   /api/admin/approve-pending     Admin: bulk-approve submissions
+POST   /api/admin/repair-data         Admin: repair historical data inconsistencies
+GET    /api/admin/diag-transactions   Admin: transaction integrity diagnostic
 ```
 
 ### Privacy
@@ -89,14 +127,17 @@ The `GET /api/corrections?url=` endpoint is **stateless and blind by design**. I
 ### Security
 
 - Admin endpoints require `is_admin` role check via `requireAdmin()`
-- KV store writes to protected keys (submissions cache) require admin
-- KV store reads strip submitter identity from in-review submissions for unauthenticated requests
-- Vote resolution pipeline runs in database transactions (BEGIN/COMMIT/ROLLBACK)
-- All user-generated text served to browser extensions is HTML-entity-encoded on output
-- CORS policy restricts credentialed requests to same-origin and extension origins; public read-only endpoints allow any origin without credentials
+- All multi-step write operations use `sql.connect()` or `withTransaction()` for real database transactions
+- State machine validation (`src/lib/submission-states.ts`) prevents invalid submission status transitions
+- Rate limiting on auth endpoints via in-memory sliding-window (`src/lib/rate-limit.ts`)
+- All user-generated text served to browser extensions is HTML-entity-encoded on output (`src/lib/sanitize.ts`)
+- Input validation via centralized `MAX_LENGTHS` and `validateFields()` across ~48 route handlers
+- CORS policy restricts credentialed requests to same-origin and extension origins
 - All API routes support both cookie and Bearer token authentication via `getCurrentUserFromRequest()`
-- JWT expiry reduced to 7 days (from 365 days)
+- JWT expiry set to 7 days with HTTP-only cookies
+- Structured error logging to `client_errors` table with deduplication
 - Audit logging on admin actions with user attribution
+- Comprehensive diagnostic suite (`GET /api/admin/diag-transactions`) audits transaction integrity, vote forensics, reputation consistency, and data health
 
 ### Navigation
 

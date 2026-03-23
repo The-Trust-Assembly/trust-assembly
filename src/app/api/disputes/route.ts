@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
@@ -114,54 +114,51 @@ export async function POST(request: NextRequest) {
   // Determine dispute type from body or infer from submission status
   const resolvedType = (disputeType as string) || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
 
-  // Use sql.connect() for a dedicated client where transactions work.
-  const client = await sql.connect();
   let dispute: Record<string, unknown>;
 
   try {
-    await client.query("BEGIN");
+    dispute = await withTransaction(async (client) => {
+      const result = await client.query(
+        `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, submission_id, org_id, status, dispute_type, created_at`,
+        [submissionId, org_id, session.sub, submitted_by, reasoning, resolvedType,
+         fieldResponses ? JSON.stringify(fieldResponses) : null]
+      );
+      const d = result.rows[0];
 
-    const result = await client.query(
-      `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, submission_id, org_id, status, dispute_type, created_at`,
-      [submissionId, org_id, session.sub, submitted_by, reasoning, resolvedType,
-       fieldResponses ? JSON.stringify(fieldResponses) : null]
-    );
-    dispute = result.rows[0];
+      // Update dispute tracking on submissions table
+      await client.query(
+        `UPDATE submissions
+         SET dispute_count = dispute_count + 1,
+             first_disputed_at = COALESCE(first_disputed_at, now()),
+             last_disputed_at = now()
+         WHERE id = $1`,
+        [submissionId]
+      );
 
-    // Update dispute tracking on submissions table
-    await client.query(
-      `UPDATE submissions
-       SET dispute_count = dispute_count + 1,
-           first_disputed_at = COALESCE(first_disputed_at, now()),
-           last_disputed_at = now()
-       WHERE id = $1`,
-      [submissionId]
-    );
-
-    // Insert evidence if provided
-    if (evidence && Array.isArray(evidence)) {
-      for (let i = 0; i < evidence.length; i++) {
-        const e = evidence[i];
-        if (e.url && e.explanation) {
-          await client.query(
-            "INSERT INTO dispute_evidence (dispute_id, url, explanation, sort_order) VALUES ($1, $2, $3, $4)",
-            [dispute.id, e.url, e.explanation, i]
-          );
+      // Insert evidence if provided
+      if (evidence && Array.isArray(evidence)) {
+        for (let i = 0; i < evidence.length; i++) {
+          const e = evidence[i];
+          if (e.url && e.explanation) {
+            await client.query(
+              "INSERT INTO dispute_evidence (dispute_id, url, explanation, sort_order) VALUES ($1, $2, $3, $4)",
+              [d.id, e.url, e.explanation, i]
+            );
+          }
         }
       }
-    }
 
-    // Audit log
-    await client.query(
-      "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
-      ["Dispute filed", session.sub, org_id, "dispute", dispute.id]
-    );
+      // Audit log
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, $4, $5)",
+        ["Dispute filed", session.sub, org_id, "dispute", d.id]
+      );
 
-    await client.query("COMMIT");
+      return d;
+    });
   } catch (error) {
-    await client.query("ROLLBACK");
     await logError({
       userId: session.sub,
       sessionInfo: session.username,
@@ -179,8 +176,6 @@ export async function POST(request: NextRequest) {
       requestBody: { submissionId, disputeType: resolvedType },
     });
     return err("Failed to create dispute. Please try again.", 500);
-  } finally {
-    client.release();
   }
 
   // Notify the original submitter about the dispute (fire-and-forget)

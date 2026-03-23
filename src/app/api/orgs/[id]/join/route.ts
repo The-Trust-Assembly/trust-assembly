@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { ok, err, unauthorized, notFound } from "@/lib/api-utils";
+import { ok, err, unauthorized, notFound, serverError } from "@/lib/api-utils";
 import { isValidUUID } from "@/lib/validation";
 
 // POST /api/orgs/[id]/join — join or apply to an assembly
@@ -44,36 +44,28 @@ export async function POST(
 
   // Handle based on enrollment mode
   if (org.enrollment_mode === "open") {
-    // Use sql.connect() for a dedicated client where transactions work.
-    const client = await sql.connect();
     try {
-      await client.query("BEGIN");
+      await withTransaction(async (client) => {
+        if (membership.rows.length > 0) {
+          // Re-activate
+          await client.query(
+            "UPDATE organization_members SET is_active = TRUE, left_at = NULL, joined_at = now() WHERE org_id = $1 AND user_id = $2",
+            [id, session.sub]
+          );
+        } else {
+          await client.query(
+            "INSERT INTO organization_members (org_id, user_id) VALUES ($1, $2)",
+            [id, session.sub]
+          );
+        }
 
-      if (membership.rows.length > 0) {
-        // Re-activate
         await client.query(
-          "UPDATE organization_members SET is_active = TRUE, left_at = NULL, joined_at = now() WHERE org_id = $1 AND user_id = $2",
-          [id, session.sub]
+          "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
+          [id, session.sub, "joined"]
         );
-      } else {
-        await client.query(
-          "INSERT INTO organization_members (org_id, user_id) VALUES ($1, $2)",
-          [id, session.sub]
-        );
-      }
-
-      await client.query(
-        "INSERT INTO organization_member_history (org_id, user_id, action) VALUES ($1, $2, $3)",
-        [id, session.sub, "joined"]
-      );
-
-      await client.query("COMMIT");
+      });
     } catch (e) {
-      await client.query("ROLLBACK");
-      console.error("Org join transaction failed, rolled back:", e);
-      throw e;
-    } finally {
-      client.release();
+      return serverError("/api/orgs/[id]/join", e);
     }
 
     return ok({ status: "joined", orgId: id, orgName: org.name }, 201);
