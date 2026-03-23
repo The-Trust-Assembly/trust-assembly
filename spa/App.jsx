@@ -697,7 +697,7 @@ export default function TrustAssembly() {
                   </React.Fragment>
                 ))}
                 {(isAdmin || hasSubmittedFeedback) && (
-                  <a href="#feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
+                  <a href="/feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
                 )}
                 {isAdmin && (
                   <a href="/admin/system-health" className="ta-mobile-menu-item" style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); window.open("/admin/system-health", "_blank"); setMobileMenuOpen(false); }}>Admin Dashboard</a>
