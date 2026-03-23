@@ -132,7 +132,7 @@ export async function POST(
     if (hasEnough) {
       // Assign jury
       const jurySize = wildWest ? 1 : getJurySize(count);
-      const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+      const poolSize = wildWest ? count : jurySize * JURY_POOL_MULTIPLIER;
 
       await approveClient.query(
         "UPDATE submissions SET jury_seats = $1 WHERE id = $2",

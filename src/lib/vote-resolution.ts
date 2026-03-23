@@ -390,6 +390,10 @@ async function promoteEntityToCrossGroup(
   submittedBy: string,
   now: string,
 ): Promise<boolean> {
+  // Cross-group review is disabled in Wild West mode (<100 users)
+  const wildWest = await isWildWestMode();
+  if (wildWest) return false;
+
   // Count qualifying assemblies (those with 5+ members, excluding the origin)
   const qualifyingOrgs = await client.query(
     `SELECT o.id, COUNT(om.id) AS member_count

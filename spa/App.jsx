@@ -92,7 +92,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
       {open && (
         <div className="ta-nav-dropdown-menu" role="menu">
           {allItems.map(n => (
-            <a key={n.key} href={`#${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
+            <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
               style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
               onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
               {n.label}
@@ -156,7 +156,7 @@ export default function TrustAssembly() {
     setScreenRaw(s);
     setViewingRecord(null);
     if (!skipPush.current) {
-      window.history.pushState({ screen: s, citizen: null, record: null }, "", "#" + s);
+      window.history.pushState({ screen: s, citizen: null, record: null }, "", "/" + s);
     }
     skipPush.current = false;
   }, []);
@@ -168,14 +168,14 @@ export default function TrustAssembly() {
     if (!username) { window.history.back(); return; }
     setViewingCitizen(username);
     setViewingRecord(null);
-    window.history.pushState({ screen: screenRef.current, citizen: username, record: null }, "", "#citizen/" + encodeURIComponent(username));
+    window.history.pushState({ screen: screenRef.current, citizen: username, record: null }, "", "/citizen/" + encodeURIComponent(username));
   }, []);
 
   const navigateToRecord = useCallback((recordId) => {
     if (!recordId) { window.history.back(); return; }
     setViewingRecord(recordId);
     setViewingCitizen(null);
-    window.history.pushState({ screen: screenRef.current, citizen: null, record: recordId }, "", "#record/" + encodeURIComponent(recordId));
+    window.history.pushState({ screen: screenRef.current, citizen: null, record: recordId }, "", "/record/" + encodeURIComponent(recordId));
   }, []);
 
   useEffect(() => {
@@ -194,30 +194,30 @@ export default function TrustAssembly() {
           if (e.state.screen) setScreenRaw(e.state.screen);
         }
       } else {
-        // Handle initial/hashless state — parse from URL hash
+        // Handle initial state — parse from URL pathname
         setViewingCitizen(null);
         setViewingRecord(null);
-        const hash = window.location.hash.slice(1);
-        if (hash && !hash.startsWith("citizen/") && !hash.startsWith("record/")) setScreenRaw(hash);
+        const path = window.location.pathname.slice(1);
+        if (path && !path.startsWith("citizen/") && !path.startsWith("record/")) setScreenRaw(path);
       }
       skipPush.current = false;
     };
     window.addEventListener("popstate", onPop);
 
-    // On mount: restore from hash if present (deep link / reload support)
-    const hash = window.location.hash.slice(1);
-    if (hash.startsWith("citizen/")) {
-      const username = decodeURIComponent(hash.slice(8));
+    // On mount: restore from pathname if present (deep link / reload support)
+    const path = window.location.pathname.slice(1);
+    if (path.startsWith("citizen/")) {
+      const username = decodeURIComponent(path.slice(8));
       setViewingCitizen(username);
-    } else if (hash.startsWith("record/")) {
-      const recordId = decodeURIComponent(hash.slice(7));
+    } else if (path.startsWith("record/")) {
+      const recordId = decodeURIComponent(path.slice(7));
       setViewingRecord(recordId);
-    } else if (hash && hash !== "login" && hash !== "register") {
-      setScreenRaw(hash);
+    } else if (path && path !== "login" && path !== "register") {
+      setScreenRaw(path);
     }
 
     // Seed initial history entry
-    window.history.replaceState({ screen, citizen: null, record: null }, "", window.location.hash || "#" + screen);
+    window.history.replaceState({ screen, citizen: null, record: null }, "", window.location.pathname !== "/" ? window.location.pathname : "/" + screen);
     return () => window.removeEventListener("popstate", onPop);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -257,7 +257,7 @@ export default function TrustAssembly() {
                 ratingsReceived: [], reviewHistory: [], retractions: [], notifications: [],
               };
             }
-            if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; const h = window.location.hash.slice(1); const hasDeepLink = h && h !== "login" && h !== "register"; if (!hasDeepLink) setScreen(isNew ? "orgs" : "feed"); }
+            if (u) { setUser(u); setNotifications(u.notifications || []); const isNew = !u.orgIds || u.orgIds.length <= 1; const p = window.location.pathname.slice(1); const hasDeepLink = p && p !== "login" && p !== "register"; if (!hasDeepLink) setScreen(isNew ? "orgs" : "feed"); }
           }
         }
       } catch (e) { console.error("Init error:", e); }
@@ -662,7 +662,7 @@ export default function TrustAssembly() {
           {/* NAV — consolidated with dropdowns */}
           <div className="ta-nav-row ta-nav-desktop">
             {NAV_PRIMARY.map(n => (
-              <a key={n.key} href={`#${n.key}`} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); }} style={n.bold ? { fontWeight: 700 } : undefined}>
+              <a key={n.key} href={`/${n.key}`} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); }} style={n.bold ? { fontWeight: 700 } : undefined}>
                 {n.label}
                 {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ position: "relative", top: -1, marginLeft: 4, background: "var(--fired-clay)", color: "#fff", fontSize: 8, width: 13, height: 13, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{reviewCount + crossCount + disputeCount}</span>}
               </a>
@@ -682,7 +682,7 @@ export default function TrustAssembly() {
             {mobileMenuOpen && (
               <div className="ta-mobile-menu">
                 {NAV_PRIMARY.map(n => (
-                  <a key={n.key} href={`#${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>
+                  <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>
                     {n.label}
                     {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ marginLeft: 6 }}>{reviewCount + crossCount + disputeCount}</span>}
                   </a>
@@ -692,12 +692,12 @@ export default function TrustAssembly() {
                   <React.Fragment key={dd.label}>
                     <div className="ta-mobile-menu-group">{dd.label}</div>
                     {dd.items.map(n => (
-                      <a key={n.key} href={`#${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
+                      <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
                     ))}
                   </React.Fragment>
                 ))}
                 {(isAdmin || hasSubmittedFeedback) && (
-                  <a href="#feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
+                  <a href="/feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
                 )}
                 {isAdmin && (
                   <a href="/admin/system-health" className="ta-mobile-menu-item" style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); window.open("/admin/system-health", "_blank"); setMobileMenuOpen(false); }}>Admin Dashboard</a>
