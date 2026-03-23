@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 const STATUS_COLORS = { green: "#22c55e", yellow: "#eab308", red: "#ef4444" };
 const CHAIN_LABELS = {
@@ -70,6 +70,7 @@ function StatCard({ label, value, alert }) {
 }
 
 export default function SystemHealthPage() {
+  const [authState, setAuthState] = useState("loading"); // "loading" | "authorized" | "unauthorized"
   const [report, setReport] = useState(null);
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(null);
@@ -93,12 +94,32 @@ export default function SystemHealthPage() {
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteMsg, setDeleteMsg] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const getAuthHeaders = useCallback(() => {
     const cookies = document.cookie.split(";").map(c => c.trim());
     const sessionCookie = cookies.find(c => c.startsWith("session="));
     const token = sessionCookie?.split("=")[1];
     return token ? { Authorization: `Bearer ${token}` } : {};
+  }, []);
+
+  // Admin auth guard — verify the user is an admin on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const cookies = document.cookie.split(";").map(c => c.trim());
+        const sessionCookie = cookies.find(c => c.startsWith("session="));
+        const token = sessionCookie?.split("=")[1];
+        if (!token) { setAuthState("unauthorized"); return; }
+        // Hit an admin-only endpoint to verify admin status
+        const res = await fetch("/api/admin/users?limit=1", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setAuthState(res.ok ? "authorized" : "unauthorized");
+      } catch {
+        setAuthState("unauthorized");
+      }
+    })();
   }, []);
 
   const fetchReport = useCallback(async () => {
@@ -281,13 +302,93 @@ export default function SystemHealthPage() {
     }
   }, [getAuthHeaders, deleteConfirm, fetchUsers, userSearch, userPage]);
 
+  // Loading state
+  if (authState === "loading") {
+    return (
+      <div style={{ fontFamily: "system-ui, sans-serif", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "#0f172a", color: "#94a3b8" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Verifying admin access...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Unauthorized state
+  if (authState === "unauthorized") {
+    return (
+      <div style={{ fontFamily: "system-ui, sans-serif", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "#0f172a", color: "#e2e8f0" }}>
+        <div style={{ textAlign: "center", background: "#1e293b", borderRadius: 12, padding: 40, border: "1px solid #ef4444", maxWidth: 440 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>&#128683;</div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: "#ef4444" }}>Unauthorized</h1>
+          <p style={{ color: "#94a3b8", marginBottom: 20, fontSize: 14 }}>
+            You do not have admin privileges to access this page. Please log in with an admin account.
+          </p>
+          <a href="/" style={{ ...btnStyle, textDecoration: "none", display: "inline-block" }}>Return to Home</a>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 1200, margin: "0 auto", padding: 24, color: "#e2e8f0", background: "#0f172a", minHeight: "100vh" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Trust Assembly System Health</h1>
+    <div style={{ fontFamily: "system-ui, sans-serif", background: "#0f172a", minHeight: "100vh", color: "#e2e8f0" }}>
+      {/* ── Navigation Bar ── */}
+      <nav style={{ background: "#1e293b", borderBottom: "1px solid #334155", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 48 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <a href="/" style={{ color: "#e2e8f0", textDecoration: "none", fontWeight: 700, fontSize: 15 }}>Trust Assembly</a>
+          <span style={{ color: "#334155" }}>|</span>
+          <span style={{ color: "#8b5cf6", fontSize: 13, fontWeight: 600 }}>Admin Panel</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => setShowHelp(!showHelp)} style={{ ...smallBtnStyle, background: showHelp ? "#3b82f6" : "#334155" }}>
+            {showHelp ? "Hide Help" : "Help"}
+          </button>
+          <a href="/" style={{ ...smallBtnStyle, textDecoration: "none", display: "inline-block" }}>Home</a>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: 24 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>System Health Dashboard</h1>
       {report && (
         <p style={{ color: "#94a3b8", marginBottom: 24 }}>
           Last report: {new Date(report.generated_at).toLocaleString()} ({report.duration_ms}ms)
         </p>
+      )}
+
+      {/* ── Help Panel ── */}
+      {showHelp && (
+        <div style={{ background: "#1e293b", borderRadius: 8, padding: 20, marginBottom: 24, border: "1px solid #3b82f6" }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 18, color: "#3b82f6" }}>Admin Panel Reference</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 13, color: "#cbd5e1" }}>
+            <div>
+              <h4 style={{ color: "#f59e0b", margin: "0 0 4px", fontSize: 14 }}>Site Announcement</h4>
+              <p style={{ margin: "0 0 12px" }}>Set a banner message that appears on the home page for all users. Clear the text and save to remove it. Max 2000 characters.</p>
+
+              <h4 style={{ color: "#22c55e", margin: "0 0 4px", fontSize: 14 }}>Process Stuck Records</h4>
+              <p style={{ margin: "0 0 12px" }}>Scans all in-flight submissions, stories, disputes, and concessions. If any have enough votes to be resolved but were never finalized (due to past bugs), this will advance them to their correct outcome. Safe to run repeatedly.</p>
+
+              <h4 style={{ color: "#8b5cf6", margin: "0 0 4px", fontSize: 14 }}>User Management</h4>
+              <p style={{ margin: "0 0 12px" }}>Search all registered users by username, display name, or email. View activity stats (submissions, votes, org memberships, win/loss record). Delete accounts to anonymize PII &mdash; submissions and votes are preserved for audit integrity. Admin accounts cannot be deleted.</p>
+            </div>
+            <div>
+              <h4 style={{ color: "#e2e8f0", margin: "0 0 4px", fontSize: 14 }}>Admin Tools</h4>
+              <ul style={{ margin: "0 0 12px", paddingLeft: 16 }}>
+                <li style={{ marginBottom: 4 }}><strong>Set Admin Flag</strong> &mdash; Bootstrap your admin privileges if your is_admin column was not set during migration. Only works for the hardcoded admin username.</li>
+                <li style={{ marginBottom: 4 }}><strong>Recompute Stats</strong> &mdash; Recalculates all user reputation stats (wins, losses, streaks, deliberate lies, dispute outcomes) from source data. Idempotent and safe to run anytime.</li>
+                <li style={{ marginBottom: 4 }}><strong>Repair Historical Data</strong> &mdash; Runs 21 repair operations: fixes NULL org IDs, duplicate votes, missing audit logs, DI partnerships, stalled submissions, and more. Includes rollback on failure.</li>
+                <li style={{ marginBottom: 4 }}><strong>Force-Link DI Partners</strong> &mdash; One-shot migration tool that approves all registered DI users as partners and backfills di_partner_id on pending submissions.</li>
+              </ul>
+
+              <h4 style={{ color: "#e2e8f0", margin: "0 0 4px", fontSize: 14 }}>Diagnostics &amp; Reconciliation</h4>
+              <ul style={{ margin: "0 0 12px", paddingLeft: 16 }}>
+                <li style={{ marginBottom: 4 }}><strong>Run Reconciliation Report</strong> &mdash; Generates a full system health snapshot: transaction chain status, error counts, stuck records, orphaned data, and reputation drift.</li>
+                <li style={{ marginBottom: 4 }}><strong>Run Transaction Diagnostics</strong> &mdash; Tests all transaction chains end-to-end to verify they complete without errors.</li>
+                <li style={{ marginBottom: 4 }}><strong>Run Ghost Tests Only</strong> &mdash; Checks specifically for ghost users (exist in DB but filtered out of data endpoints).</li>
+                <li style={{ marginBottom: 4 }}><strong>Auto-Repair</strong> &mdash; Runs diagnostics and automatically fixes any issues found. Use with caution.</li>
+                <li style={{ marginBottom: 4 }}><strong>Export Debug Report</strong> &mdash; Downloads the latest reconciliation report as a JSON file for offline analysis.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Admin Announcement ── */}
@@ -749,6 +850,7 @@ export default function SystemHealthPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
