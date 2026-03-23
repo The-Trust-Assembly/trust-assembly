@@ -190,7 +190,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
               <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                 <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#2563EB" }} onClick={() => setExpandedId(sub.id)}>Expand</button>
                 {onViewRecord && <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#0D9488" }} onClick={() => onViewRecord(sub.id)}>Open Full Record</button>}
-                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "/record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
               </div>
             </div>
           </>}
@@ -299,7 +299,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => setExpandedId(null)}>Collapse</button>
                 {onViewRecord && <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#0D9488" }} onClick={() => onViewRecord(sub.id)}>Open Full Record</button>}
-                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "#record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
+                <button className="ta-btn-ghost" style={{ fontSize: 10, color: "#64748B" }} onClick={() => { const url = window.location.origin + window.location.pathname + "/record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
               </div>
             </div>
           )}
