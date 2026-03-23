@@ -104,23 +104,21 @@ export default function SystemHealthPage() {
   }, []);
 
   // Admin auth guard — verify the user is an admin on mount
+  // The ta-session cookie is httpOnly so we can't read it client-side;
+  // just make the request and let the browser send it automatically.
   useEffect(() => {
     (async () => {
       try {
-        const cookies = document.cookie.split(";").map(c => c.trim());
-        const sessionCookie = cookies.find(c => c.startsWith("session="));
-        const token = sessionCookie?.split("=")[1];
-        if (!token) { setAuthState("unauthorized"); return; }
-        // Hit an admin-only endpoint to verify admin status
         const res = await fetch("/api/admin/users?limit=1", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
+          credentials: "same-origin",
         });
         setAuthState(res.ok ? "authorized" : "unauthorized");
       } catch {
         setAuthState("unauthorized");
       }
     })();
-  }, []);
+  }, [getAuthHeaders]);
 
   const fetchReport = useCallback(async () => {
     setLoading("report");
