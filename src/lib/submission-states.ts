@@ -17,7 +17,7 @@ const ADMIN_TRANSITIONS: Record<string, string[]> = {
   pending_jury:   ["approved"],
   pending_review: ["approved"],
   di_pending:     ["approved"],
-  cross_review:   ["consensus"],
+  cross_review:   ["consensus", "approved"],
 };
 
 // Trusted auto-approve (10+ streak, non-DI) skips jury

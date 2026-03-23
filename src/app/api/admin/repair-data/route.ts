@@ -26,6 +26,7 @@ import { normalizeUrl } from "@/lib/normalize-url";
 // 14. di_pending submissions missing di_partner_id
 // 15. di_pending submissions with is_di=FALSE
 // 16. NULL normalized_url on submissions (invisible to corrections API)
+// 22. Demote Wild-West cross_review submissions/stories back to approved
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -696,6 +697,87 @@ export async function POST(request: NextRequest) {
     }
     report.push(`Re-resolved ${stalledResolved} stalled submission(s)`);
     totalRepaired += stalledResolved;
+
+    // ── 22. Demote Wild-West cross_review back to approved ──
+    // In Wild West mode (<100 users), cross-group promotion should never have happened.
+    // This step reverts cross_review submissions/stories to approved, deletes their
+    // cross-group jury assignments and votes, and clears cross-group fields.
+    report.push("\n--- Demote Wild-West cross_review to approved ---");
+
+    const crossSubs = await sql`
+      SELECT id, org_id, submitted_by FROM submissions WHERE status = 'cross_review'
+    `;
+    for (const sub of crossSubs.rows) {
+      const client = await sql.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(
+          "DELETE FROM jury_votes WHERE submission_id = $1 AND role = 'cross_group'",
+          [sub.id]
+        );
+        await client.query(
+          "DELETE FROM jury_assignments WHERE submission_id = $1 AND role = 'cross_group'",
+          [sub.id]
+        );
+        await client.query(
+          `UPDATE submissions SET status = 'approved', resolved_at = NOW(),
+             cross_group_jury_size = NULL, cross_group_seed = NULL
+           WHERE id = $1`,
+          [sub.id]
+        );
+        await client.query(
+          `INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+           VALUES ('Admin repair: demoted cross_review to approved (Wild West)', $1, $2, 'submission', $3, '{}')`,
+          [sub.submitted_by, sub.org_id, sub.id]
+        );
+        await client.query("COMMIT");
+        report.push(`OK: Submission ${(sub.id as string).slice(0, 8)}… demoted to approved`);
+        totalRepaired++;
+      } catch (e) {
+        await client.query("ROLLBACK");
+        report.push(`ERR: Submission ${(sub.id as string).slice(0, 8)}…: ${(e as Error).message}`);
+      } finally {
+        client.release();
+      }
+    }
+
+    const crossStories = await sql`
+      SELECT id, org_id, submitted_by FROM stories WHERE status = 'cross_review'
+    `;
+    for (const story of crossStories.rows) {
+      const client = await sql.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(
+          "DELETE FROM jury_votes WHERE story_id = $1 AND role = 'cross_group'",
+          [story.id]
+        );
+        await client.query(
+          "DELETE FROM jury_assignments WHERE story_id = $1 AND role = 'cross_group'",
+          [story.id]
+        );
+        await client.query(
+          `UPDATE stories SET status = 'approved', resolved_at = NOW(),
+             cross_group_jury_size = NULL, cross_group_seed = NULL
+           WHERE id = $1`,
+          [story.id]
+        );
+        await client.query(
+          `INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+           VALUES ('Admin repair: demoted story cross_review to approved (Wild West)', $1, $2, 'story', $3, '{}')`,
+          [story.submitted_by, story.org_id, story.id]
+        );
+        await client.query("COMMIT");
+        report.push(`OK: Story ${(story.id as string).slice(0, 8)}… demoted to approved`);
+        totalRepaired++;
+      } catch (e) {
+        await client.query("ROLLBACK");
+        report.push(`ERR: Story ${(story.id as string).slice(0, 8)}…: ${(e as Error).message}`);
+      } finally {
+        client.release();
+      }
+    }
+    report.push(`Demoted ${crossSubs.rows.length} submission(s) and ${crossStories.rows.length} story(s) from cross_review`);
 
     // ── Audit the repair itself ──
     await sql`
