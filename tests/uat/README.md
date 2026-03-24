@@ -2,7 +2,7 @@
 
 These scripts are designed to be executed by the Claude Chrome Extension against the Vercel preview deployment.
 
-**Target URL:** `https://trust-assembly-h3b8utunl-melvinsninkles-projects.vercel.app/#login`
+**Target URL:** `https://trust-assembly-h3b8utunl-melvinsninkles-projects.vercel.app/login`
 
 ## Script Index
 
@@ -16,6 +16,9 @@ These scripts are designed to be executed by the Claude Chrome Extension against
 | 06 - Transaction Hardening | `06-transaction-hardening.md` | Delete/patch safety, state machine guards, error handling |
 | 07 - Profile & Reputation | `07-profile-reputation.md` | Profile display, trust scores, streak tracking |
 | 08 - Stories & Consensus | `08-stories-consensus.md` | Story creation, cross-group review |
+| 09 - Pathname Routing | `09-pathname-routing.md` | Clean URLs, deep links, back/forward, refresh persistence |
+| 10 - Wild West Jury | `10-wild-west-jury.md` | Single reviewer, no cross-group, jury size, lie flag disabled |
+| 11 - Cross-Review Demotion | `11-cross-review-demotion.md` | Repair data demotion, idempotency, audit trail |
 
 ## How to Run
 
