@@ -103,7 +103,7 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
           <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
             <StatusPill status={story.status} />
             {story.submissionCount > 0 && (
-              <span style={{ fontSize: 9, padding: "2px 6px", background: "#F1F5F9", color: "#475569", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 600 }}>
+              <span style={{ fontSize: 9, padding: "2px 6px", background: "var(--card-bg)", color: "var(--text-sec)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 600 }}>
                 {story.submissionCount} submission{story.submissionCount !== 1 ? "s" : ""}
               </span>
             )}
@@ -117,17 +117,17 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
         {story.description}
       </div>
 
-      <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 16 }}>
+      <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 16 }}>
         Proposed by <UsernameLink username={story.submittedBy} onClick={onViewCitizen} /> · {story.orgName} · {sDate(story.createdAt)}
       </div>
 
       {loading ? (
-        <div style={{ fontSize: 12, color: "#94A3B8", padding: 12 }}>Loading linked submissions...</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", padding: 12 }}>Loading linked submissions...</div>
       ) : detail ? (
         <>
           {/* Linked submissions */}
           <div style={{ marginBottom: 16 }}>
-            <h4 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", marginBottom: 8 }}>
+            <h4 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", marginBottom: 8 }}>
               LINKED SUBMISSIONS ({detail.submissions?.length || 0})
             </h4>
             {(!detail.submissions || detail.submissions.length === 0) ? (
@@ -136,25 +136,25 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
               const isPending = sub.tag_status === "pending";
               return (
                 <div key={sub.id} style={{
-                  padding: "10px 12px", background: isPending ? "#FFFBEB" : "#F9FAFB", borderRadius: 8, marginBottom: 6,
-                  border: isPending ? "1px solid #FDE68A" : "1px solid #E2E8F0",
+                  padding: "10px 12px", background: isPending ? "#FFFBEB" : "#F9FAFB", borderRadius: 0, marginBottom: 6,
+                  border: isPending ? "1px solid #FDE68A" : "1px solid var(--border)",
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
                         {sub.original_headline}
                       </div>
                       <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
                     </div>
                     <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0, marginLeft: 8 }}>
                       {isPending && (
-                        <button className="ta-link-btn" style={{ fontSize: 10, color: "#059669" }} onClick={() => handleApproveTag(sub.id)}>Approve</button>
+                        <button className="ta-link-btn" style={{ fontSize: 10, color: "var(--green)" }} onClick={() => handleApproveTag(sub.id)}>Approve</button>
                       )}
-                      <button className="ta-link-btn" style={{ fontSize: 10, color: "#94A3B8" }} onClick={() => handleRemoveTag(sub.id)}>Remove</button>
+                      <button className="ta-link-btn" style={{ fontSize: 10, color: "var(--text-muted)" }} onClick={() => handleRemoveTag(sub.id)}>Remove</button>
                       <StatusPill status={sub.status} />
                     </div>
                   </div>
-                  <div style={{ fontSize: 10, color: "#94A3B8" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
                     {isPending && <span style={{ color: "#D97706", fontWeight: 600 }}>Pending approval · </span>}
                     {sub.submitted_by} · {sub.org_name} · {sDate(sub.created_at)}
                     {sub.tagged_by && ` · Tagged by ${sub.tagged_by}`}
@@ -167,11 +167,11 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
           {/* Vault artifacts */}
           {detail.vaultArtifacts && detail.vaultArtifacts.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <h4 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", marginBottom: 8 }}>
+              <h4 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", marginBottom: 8 }}>
                 VAULT ARTIFACTS ({detail.vaultArtifacts.length})
               </h4>
               {detail.vaultArtifacts.map((a, i) => (
-                <div key={i} style={{ padding: "8px 10px", background: "#F9FAFB", borderRadius: 6, marginBottom: 4, border: "1px solid #E2E8F0" }}>
+                <div key={i} style={{ padding: "8px 10px", background: "#F9FAFB", borderRadius: 0, marginBottom: 4, border: "1px solid var(--border)" }}>
                   <span style={{ fontSize: 9, padding: "1px 4px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 4, fontFamily: "var(--mono)", fontWeight: 600, marginRight: 6 }}>{a.entry_type}</span>
                   <span style={{ fontSize: 12, color: "#334155" }}>{a.label || a.detail || "Linked artifact"}</span>
                 </div>
@@ -183,12 +183,12 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
 
       {/* Tag a submission */}
       {["approved", "consensus", "cross_review"].includes(story.status) && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #E2E8F0" }}>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
           {!showTagUI ? (
             <button className="ta-link-btn" style={{ fontSize: 11 }} onClick={() => setShowTagUI(true)}>+ Tag a submission to this story</button>
           ) : (
             <div>
-              <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 4, display: "block" }}>SEARCH SUBMISSIONS TO TAG</label>
+              <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>SEARCH SUBMISSIONS TO TAG</label>
               <input
                 className="ta-input"
                 style={{ width: "100%", padding: "8px 12px", fontSize: 13, marginBottom: 8 }}
@@ -199,17 +199,17 @@ export default function StoryDetailView({ story, user, orgs, allSubs, onCollapse
               {tagError && <div className="ta-error" style={{ marginBottom: 6, fontSize: 12 }}>{tagError}</div>}
               {tagSuccess && <div className="ta-success" style={{ marginBottom: 6, fontSize: 12 }}>{tagSuccess}</div>}
               {taggableSubmissions.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#94A3B8" }}>No matching submissions found.</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No matching submissions found.</div>
               ) : taggableSubmissions.map(sub => (
-                <div key={sub.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", borderRadius: 6, marginBottom: 4, background: "#F9FAFB" }}>
+                <div key={sub.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", borderRadius: 0, marginBottom: 4, background: "#F9FAFB" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub.originalHeadline}</div>
-                    <div style={{ fontSize: 10, color: "#94A3B8" }}>{sub.orgName} · {sDate(sub.createdAt)}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub.originalHeadline}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{sub.orgName} · {sDate(sub.createdAt)}</div>
                   </div>
                   <button className="ta-link-btn" style={{ fontSize: 10, flexShrink: 0, marginLeft: 8 }} onClick={() => handleTag(sub.id)}>Tag</button>
                 </div>
               ))}
-              <button className="ta-link-btn" style={{ fontSize: 11, marginTop: 8, color: "#94A3B8" }} onClick={() => { setShowTagUI(false); setTagSearch(""); setTagError(""); setTagSuccess(""); }}>Cancel</button>
+              <button className="ta-link-btn" style={{ fontSize: 11, marginTop: 8, color: "var(--text-muted)" }} onClick={() => { setShowTagUI(false); setTagSearch(""); setTagError(""); setTagSuccess(""); }}>Cancel</button>
             </div>
           )}
         </div>

@@ -55,7 +55,7 @@ export default function DiagnosticScreen() {
   const severity = (s) => ({
     critical: { bg: "#FEF2F2", border: "#DC2626", color: "#991B1B" },
     warning: { bg: "#FFFBEB", border: "#D97706", color: "#92400E" },
-    info: { bg: "#EFF6FF", border: "#2563EB", color: "#1E40AF" },
+    info: { bg: "#EFF6FF", border: "var(--gold)", color: "#1E40AF" },
   }[s] || { bg: "#F8FAFC", border: "#94A3B8", color: "#475569" });
 
   if (loading && !report) {
@@ -138,7 +138,7 @@ export default function DiagnosticScreen() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #E2E8F0", marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", marginBottom: 16 }}>
         {TABS.map(t => (
           <button
             key={t.key}
@@ -189,7 +189,7 @@ export default function DiagnosticScreen() {
             {Array.isArray(report.submissionStatusDistribution) ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {report.submissionStatusDistribution.map(r => (
-                  <div key={r.status} style={{ background: "#F8FAFC", borderRadius: 6, padding: "8px 12px", border: "1px solid #E2E8F0" }}>
+                  <div key={r.status} style={{ background: "#F8FAFC", borderRadius: 6, padding: "8px 12px", border: "1px solid var(--border)" }}>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{r.count}</span>
                     <span style={{ fontSize: 12, color: "var(--stone)", marginLeft: 6 }}>{r.status || "null"}</span>
                   </div>
@@ -221,7 +221,7 @@ export default function DiagnosticScreen() {
                 {err.errorStack && (
                   <details style={{ fontSize: 11 }}>
                     <summary style={{ cursor: "pointer", color: "var(--stone)" }}>Stack trace</summary>
-                    <pre style={{ background: "#1E293B", color: "#E2E8F0", padding: 10, borderRadius: 4, fontSize: 10, overflow: "auto", maxHeight: 200, marginTop: 4 }}>{err.errorStack}</pre>
+                    <pre style={{ background: "var(--text)", color: "var(--border)", padding: 10, borderRadius: 4, fontSize: 10, overflow: "auto", maxHeight: 200, marginTop: 4 }}>{err.errorStack}</pre>
                   </details>
                 )}
                 {err.durationMs && <div style={{ fontSize: 11, color: "var(--stone)", marginTop: 4 }}>Duration: {err.durationMs}ms</div>}
@@ -270,7 +270,7 @@ export default function DiagnosticScreen() {
           {Array.isArray(report.actionSummary) ? (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr style={{ borderBottom: "2px solid #E2E8F0" }}>
+                <tr style={{ borderBottom: "2px solid var(--border)" }}>
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--stone)", fontWeight: 600 }}>Action</th>
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--stone)", fontWeight: 600 }}>Entity</th>
                   <th style={{ textAlign: "right", padding: "8px 6px", color: "var(--stone)", fontWeight: 600 }}>Total</th>
@@ -281,7 +281,7 @@ export default function DiagnosticScreen() {
               </thead>
               <tbody>
                 {report.actionSummary.map((r, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                  <tr key={i} style={{ borderBottom: "1px solid var(--card-bg)" }}>
                     <td style={{ padding: "6px", fontFamily: "var(--mono)", fontSize: 11 }}>{r.action}</td>
                     <td style={{ padding: "6px", color: "var(--stone)" }}>{r.entity_type}</td>
                     <td style={{ padding: "6px", textAlign: "right", fontWeight: 600 }}>{r.total}</td>

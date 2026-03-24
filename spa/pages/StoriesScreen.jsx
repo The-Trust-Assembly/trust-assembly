@@ -91,7 +91,7 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
     <div>
       <div className="ta-section-rule" />
       <h2 className="ta-section-head">Stories</h2>
-      <p style={{ fontSize: 13, color: "#64748B", marginBottom: 16, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.6 }}>
         Stories track real-world events across multiple submissions. Create a story page to group related corrections and affirmations together.
       </p>
 
@@ -105,7 +105,7 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
           className="ta-input"
           style={{ width: "100%", padding: "10px 14px", fontSize: 14 }}
         />
-        {searching && <span style={{ fontSize: 11, color: "#94A3B8", marginTop: 4, display: "block" }}>Searching...</span>}
+        {searching && <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "block" }}>Searching...</span>}
       </div>
 
       {/* Create button */}
@@ -115,13 +115,13 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
           + Propose a Story
         </button>
       ) : (
-        <div style={{ padding: 16, background: "#fff", border: "1.5px solid #CA8A04", borderRadius: 8, marginBottom: 20 }}>
+        <div style={{ padding: 16, background: "var(--card-bg)", border: "1.5px solid #CA8A04", borderRadius: 0, marginBottom: 20 }}>
           <h3 style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "var(--navy)", marginBottom: 12 }}>Propose a New Story</h3>
-          <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, lineHeight: 1.5 }}>
             A jury from your assembly will review this proposal. Describe the real-world event or topic this story tracks.
           </p>
 
-          <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 4, display: "block" }}>TITLE (10-300 chars)</label>
+          <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>TITLE (10-300 chars)</label>
           <input
             className="ta-input"
             style={{ width: "100%", marginBottom: 10, padding: "8px 12px", fontSize: 14 }}
@@ -131,7 +131,7 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
             maxLength={300}
           />
 
-          <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 4, display: "block" }}>DESCRIPTION (50-5000 chars)</label>
+          <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>DESCRIPTION (50-5000 chars)</label>
           <textarea
             className="ta-input"
             style={{ width: "100%", marginBottom: 10, padding: "8px 12px", fontSize: 13, minHeight: 100, resize: "vertical" }}
@@ -140,9 +140,9 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
             onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
             maxLength={5000}
           />
-          <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 10, textAlign: "right" }}>{createForm.description.length}/5000</div>
+          <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 10, textAlign: "right" }}>{createForm.description.length}/5000</div>
 
-          <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 4, display: "block" }}>ASSEMBLY</label>
+          <label style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>ASSEMBLY</label>
           <select
             className="ta-input"
             style={{ width: "100%", marginBottom: 12, padding: "8px 12px", fontSize: 13 }}
@@ -167,22 +167,22 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
       {/* Pending stories (for awareness) */}
       {pendingStories.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <h3 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", marginBottom: 8 }}>PENDING PROPOSALS ({pendingStories.length})</h3>
+          <h3 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", marginBottom: 8 }}>PENDING PROPOSALS ({pendingStories.length})</h3>
           {pendingStories.map(s => (
             <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #D97706", opacity: 0.7 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <span style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "var(--navy)" }}>{s.title}</span>
                 <StatusPill status={s.status} />
               </div>
-              <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5 }}>{s.description.length > 150 ? s.description.slice(0, 150) + "..." : s.description}</div>
-              <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 6 }}>Proposed by {s.submittedBy} · {s.orgName} · {sDate(s.createdAt)}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{s.description.length > 150 ? s.description.slice(0, 150) + "..." : s.description}</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 6 }}>Proposed by {s.submittedBy} · {s.orgName} · {sDate(s.createdAt)}</div>
             </div>
           ))}
         </div>
       )}
 
       {/* Approved/consensus stories */}
-      <h3 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", marginBottom: 8 }}>
+      <h3 style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", marginBottom: 8 }}>
         {searchResults ? `SEARCH RESULTS (${displayStories.length})` : `ACTIVE STORIES (${displayStories.length})`}
       </h3>
       {displayStories.length === 0 ? (
@@ -201,18 +201,18 @@ export default function StoriesScreen({ user, onViewCitizen, onViewRecord }) {
                   </span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     {s.submissionCount > 0 && (
-                      <span style={{ fontSize: 9, padding: "2px 6px", background: "#F1F5F9", color: "#475569", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 600 }}>
+                      <span style={{ fontSize: 9, padding: "2px 6px", background: "var(--card-bg)", color: "var(--text-sec)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 600 }}>
                         {s.submissionCount} submission{s.submissionCount !== 1 ? "s" : ""}
                       </span>
                     )}
                     <StatusPill status={s.status} />
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 6 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 6 }}>
                   {s.description.length > 200 ? s.description.slice(0, 200) + "..." : s.description}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, color: "#94A3B8" }}>{s.submittedBy} · {s.orgName} · {sDate(s.createdAt)}</span>
+                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{s.submittedBy} · {s.orgName} · {sDate(s.createdAt)}</span>
                   <button className="ta-link-btn" style={{ fontSize: 11 }} onClick={() => setExpandedId(s.id)}>View details →</button>
                 </div>
               </>

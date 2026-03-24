@@ -1,18 +1,18 @@
 export default function VisionScreen() {
-  const S = ({ children }) => <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, margin: "24px 0 8px", borderBottom: "1px solid #E2E8F0", paddingBottom: 6 }}>{children}</h3>;
-  const Sub = ({ children }) => <h4 style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 700, margin: "16px 0 6px", color: "#0F172A" }}>{children}</h4>;
-  const P = ({ children, ...props }) => <p style={{ fontSize: 13, lineHeight: 1.7, color: "#1E293B", marginBottom: 10, ...props.style }}>{children}</p>;
-  const Note = ({ icon, color, children }) => <div style={{ padding: 14, background: color + "10", border: `1.5px solid ${color}`, borderRadius: 8, marginBottom: 14, fontSize: 13, lineHeight: 1.7, color: "#1E293B" }}><strong>{icon}</strong> {children}</div>;
+  const S = ({ children }) => <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, margin: "24px 0 8px", borderBottom: "1px solid var(--border)", paddingBottom: 6 }}>{children}</h3>;
+  const Sub = ({ children }) => <h4 style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 700, margin: "16px 0 6px", color: "var(--text)" }}>{children}</h4>;
+  const P = ({ children, ...props }) => <p style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)", marginBottom: 10, ...props.style }}>{children}</p>;
+  const Note = ({ icon, color, children }) => <div style={{ padding: 14, background: color + "10", border: `1.5px solid ${color}`, borderRadius: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.7, color: "var(--text)" }}><strong>{icon}</strong> {children}</div>;
   return (
     <div><div className="ta-section-rule" /><h2 className="ta-section-head">Future Vision</h2>
-      <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "#1E293B" }}>
-        <p style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#475569", fontStyle: "italic", marginBottom: 16 }}>A roadmap for building the credibility infrastructure of the future.</p>
+      <div className="ta-card" style={{ fontSize: 14, lineHeight: 1.7, color: "var(--text)" }}>
+        <p style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-sec)", fontStyle: "italic", marginBottom: 16 }}>A roadmap for building the credibility infrastructure of the future.</p>
 
         <Note icon="🏛" color="#059669">Trust Assembly intends to register as a <strong>nonprofit organization</strong> before accepting any revenue. We will also accept <strong>donations</strong> from individuals and foundations who share this vision. Every dollar that enters the system will be used to support its growth, with a primary focus on rewarding participants for high quality work and to build a support staff and architecture.</Note>
 
         <S>How This Will Make Money</S>
         <P>The platform is free to use. The corrections are free to read. But the process of producing verified truth at scale requires real resources — jurors who are compensated for careful review, infrastructure that runs reliably, and development that keeps the system ahead of those who would game it.</P>
-        <P style={{ fontWeight: 700, color: "#0F172A" }}>All money flows through to preserve credibility and fund it. Nobody in the system is paid to reach a specific conclusion. The money is fuel. The credibility engine runs on the math. A republic-style voting process will be introduced in later iterations so that new rules can be added as needed to protect the integrity of the system.</P>
+        <P style={{ fontWeight: 700, color: "var(--text)" }}>All money flows through to preserve credibility and fund it. Nobody in the system is paid to reach a specific conclusion. The money is fuel. The credibility engine runs on the math. A republic-style voting process will be introduced in later iterations so that new rules can be added as needed to protect the integrity of the system.</P>
         <P>We intend to pursue the following revenue streams, with a primary focus on <strong>subscriptions</strong> and <strong>bounties</strong>.</P>
 
         <Sub>Subscriptions</Sub>
@@ -31,7 +31,7 @@ export default function VisionScreen() {
         <P>The cost of disputing escalates with each successive round, weighted by the Trust Score ratio between the disputer and their target. Challenging someone with much higher credibility is expensive — you'd better be sure. Citizens vindicated through the Cassandra process receive a full refund of all dispute fees plus a premium.</P>
 
         <Sub>Where Money Applies</Sub>
-        <Note icon="⚖" color="#0F172A"><strong>Important:</strong> Disputes and cross-group reputation are the only places where money applies. Inside an Assembly, all activity is free. Any money used to accelerate in-group review is <strong>voluntarily donated by subscribers</strong> who follow the Assembly and support its work.</Note>
+        <Note icon="⚖" color="var(--text)"><strong>Important:</strong> Disputes and cross-group reputation are the only places where money applies. Inside an Assembly, all activity is free. Any money used to accelerate in-group review is <strong>voluntarily donated by subscribers</strong> who follow the Assembly and support its work.</Note>
 
         <Sub>Appeal Adjudication</Sub>
         <P>When a user is banned or moderated on a social media platform, they currently have no credible independent appeal. Trust Assembly can provide one. The <strong>person requesting the appeal pays Trust Assembly</strong>, which distributes the fee: jurors are compensated for their review, a portion is returned to the originating platform as a processing credit, and Trust Assembly retains a small administration fee. The jury evaluates the content against the platform's own stated policies — not Trust Assembly's rules. The verdict is non-binding but carries real credibility weight as an independent, auditable assessment.</P>
@@ -59,9 +59,9 @@ export default function VisionScreen() {
         <Sub>Additional Interfaces & Partnerships</Sub>
         <P>Trust Assembly's corrections and credibility data should appear everywhere information appears: browser extensions, social media integrations, RSS feeds, news aggregator widgets, CMS plugins, search engine signals, and AI training data partnerships. Every interface where a person encounters a claim is an interface where a Trust Assembly correction should be available. Our goal is to build partnerships that give benefit to any platform willing to surface credibility signals.</P>
 
-        <div style={{ padding: 16, background: "#EFF6FF", borderRadius: 8, marginTop: 20, marginBottom: 20, border: "1.5px solid #BFDBFE" }}>
-          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#2563EB", marginBottom: 6, fontWeight: 600 }}>Our Goal</div>
-          <div style={{ fontSize: 18, color: "#0F172A", lineHeight: 1.6 }}>Trust Assembly aims to become the <strong style={{ color: "#2563EB" }}>credibility bank of the future</strong> — a trusted, independent, transparent institution whose Trust Scores are recognized as the standard measure of informational reliability. The way a credit score tells a lender how much to trust a borrower, a Trust Score tells a reader how much to trust a claim.</div>
+        <div style={{ padding: 16, background: "var(--card-bg)", borderRadius: 0, marginTop: 20, marginBottom: 20, border: "1.5px solid #BFDBFE" }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>Our Goal</div>
+          <div style={{ fontSize: 18, color: "var(--text)", lineHeight: 1.6 }}>Trust Assembly aims to become the <strong style={{ color: "var(--gold)" }}>credibility bank of the future</strong> — a trusted, independent, transparent institution whose Trust Scores are recognized as the standard measure of informational reliability. The way a credit score tells a lender how much to trust a borrower, a Trust Score tells a reader how much to trust a claim.</div>
         </div>
 
         <S>The Larger Vision</S>
@@ -84,10 +84,10 @@ export default function VisionScreen() {
         <P>The Trust Score links everything. The reputation you build filing accurate corrections carries into deliberation. The jury process that evaluates media claims evaluates policy proposals. The Cassandra mechanism rewards the policy advocate who was right when everyone disagreed, just as it rewards the whistleblower.</P>
         <P>The credibility bank doesn't just tell you who to trust about what happened yesterday. It tells you who to trust about what should happen tomorrow.</P>
 
-        <div style={{ marginTop: 24, padding: 14, borderTop: "1px solid #E2E8F0", fontSize: 12, color: "#64748B", lineHeight: 1.6 }}>
+        <div style={{ marginTop: 24, padding: 14, borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
           This document represents our intentions and direction, not commitments or guarantees. We build in public because transparency is not just a feature of the system — it is the system.
         </div>
-        <div style={{ textAlign: "center", marginTop: 12, fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "#475569", fontStyle: "italic" }}>Truth Will Out.</div>
+        <div style={{ textAlign: "center", marginTop: 12, fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "var(--text-sec)", fontStyle: "italic" }}>Truth Will Out.</div>
       </div>
     </div>
   );

@@ -11,11 +11,11 @@ export default function AuditScreen() {
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Transparency Ledger</h2>
-      <p style={{ color: "#475569", marginBottom: 16, fontSize: 14, lineHeight: 1.6 }}>Every action. Nothing hidden. Nothing deleted.</p>
+      <p style={{ color: "var(--text-sec)", marginBottom: 16, fontSize: 14, lineHeight: 1.6 }}>Every action. Nothing hidden. Nothing deleted.</p>
       {(!audit || audit.length === 0) ? <Empty text="No activity." /> :
         <div style={{ fontFamily: "var(--mono)", fontSize: 10 }}>{audit.map((e, i) => (
-          <div key={i} style={{ padding: "6px 10px", background: i % 2 === 0 ? "#F1F5F9" : "#FFFFFF", borderBottom: "1px solid #E2E8F0", lineHeight: 1.4 }}>
-            <span style={{ color: "#64748B" }}>{fDate(e.time)}</span><br />{e.action}
+          <div key={i} style={{ padding: "6px 10px", background: i % 2 === 0 ? "var(--card-bg)" : "#FFFFFF", borderBottom: "1px solid var(--border)", lineHeight: 1.4 }}>
+            <span style={{ color: "var(--text-muted)" }}>{fDate(e.time)}</span><br />{e.action}
           </div>
         ))}</div>}
     </div>

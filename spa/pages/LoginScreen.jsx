@@ -54,7 +54,7 @@ export default function LoginScreen({ onLogin, onGoRegister }) {
       <div className="ta-field"><label>Username</label><input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" /></div>
       <div className="ta-field"><label>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} autoComplete="current-password" /></div>
       <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "..." : "Enter"}</button>
-      <div style={{ textAlign: "center", marginTop: 16 }}><span style={{ color: "#475569", fontSize: 13 }}>New? </span><button className="ta-link-btn" onClick={onGoRegister}>Register</button></div>
+      <div style={{ textAlign: "center", marginTop: 16 }}><span style={{ color: "var(--text-sec)", fontSize: 13 }}>New? </span><button className="ta-link-btn" onClick={onGoRegister}>Register</button></div>
     </div>
   );
 }
