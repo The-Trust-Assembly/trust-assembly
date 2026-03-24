@@ -31,15 +31,19 @@ import { isDIUser } from "./lib/permissions";
 import { trackAction } from "./lib/action-tracker";
 import { Badge, Loader, CitizenCounter } from "./components/ui";
 
-const NAV_ROW1 = [
-  { key: "feed", label: "Home" }, { key: "orgs", label: "Assemblies" }, { key: "submit", label: "Submit", bold: true }, { key: "review", label: "Review", bold: true },
+const NAV_PRIMARY = [
+  { key: "feed", label: "Home" }, { key: "submit", label: "Submit", bold: true }, { key: "review", label: "Review", bold: true }, { key: "orgs", label: "Assemblies" },
 ];
-const NAV_ROW2 = [
-  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "citizen", label: "Citizen" }, { key: "audit", label: "Ledger" },
-  { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" }, { key: "vision", label: "Vision" },
-];
-const NAV_ROW2_MORE = [
-  { key: "stories", label: "Stories" }, { key: "extensions", label: "Extension" }, { key: "profile", label: "My Profile" },
+const NAV_DROPDOWNS = [
+  { label: "Learn", items: [
+    { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "vision", label: "Vision" }, { key: "about", label: "About" },
+  ]},
+  { label: "Explore", items: [
+    { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
+  ]},
+  { label: "Account", items: [
+    { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
+  ]},
 ];
 
 function formatNotification(n) {
@@ -61,12 +65,18 @@ function formatNotification(n) {
   }
 }
 
-function MoreDropdown({ items, screen, setScreen, isAdmin, hasSubmittedFeedback }) {
+function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFeedback }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const allItems = [...items];
-  if (isAdmin || hasSubmittedFeedback) allItems.push({ key: "feedback", label: "Feedback" });
-  if (isAdmin) allItems.push({ key: "admin", label: "Admin Dashboard" });
+  // Inject feedback into Account dropdown
+  if (label === "Account" && (isAdmin || hasSubmittedFeedback)) {
+    allItems.push({ key: "feedback", label: "Feedback" });
+  }
+  // Inject admin items
+  if (label === "Account" && isAdmin) {
+    allItems.push({ key: "admin", label: "Admin Dashboard" });
+  }
   const isActive = allItems.some(i => i.key === screen);
   useEffect(() => {
     const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -77,7 +87,7 @@ function MoreDropdown({ items, screen, setScreen, isAdmin, hasSubmittedFeedback 
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button className={`ta-nav-row-item ta-nav-dropdown-trigger ${isActive ? "active" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="true">
-        More <span style={{ fontSize: 8, marginLeft: 3, opacity: 0.6 }}>{open ? "\u25B4" : "\u25BE"}</span>
+        {label} <span style={{ fontSize: 8, marginLeft: 3, opacity: 0.6 }}>{open ? "\u25B4" : "\u25BE"}</span>
       </button>
       {open && (
         <div className="ta-nav-dropdown-menu" role="menu">
@@ -522,20 +532,18 @@ export default function TrustAssembly() {
               The internet's corrections layer.
             </h1>
 
-            {/* Platform pills */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 5, marginBottom: 22, flexWrap: "wrap" }}
-              onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
-              {HERO_SLIDES.map((sl, i) => (
-                <button key={sl.id} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
-                  fontFamily: "-apple-system, sans-serif", fontSize: 11, fontWeight: heroIdx === i ? 600 : 400,
-                  color: heroIdx === i ? "#fff" : "#777",
-                  backgroundColor: heroIdx === i ? "#ffffff12" : "transparent",
-                  border: `1px solid ${heroIdx === i ? "#ffffff22" : "#ffffff0a"}`,
-                  borderRadius: 20, padding: "5px 12px", cursor: "pointer", transition: "all 0.2s",
-                }}>
-                  {sl.pills}
-                </button>
-              ))}
+            {/* CTAs */}
+            <div style={{ marginBottom: 28, display: "flex", justifyContent: "center", gap: 12 }}>
+              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a1a1a", backgroundColor: "var(--gold)", border: "none", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
+                onClick={() => setShowExtPage(true)}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#D4B45E"}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
+              >Install Extension</button>
+              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
+                onClick={() => { setScreen("register"); setLoginAccordion(true); }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
+              >Register an Account</button>
             </div>
 
             {/* Slide label */}
@@ -568,21 +576,6 @@ export default function TrustAssembly() {
             </div>
 
 
-            {/* Progress dots */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
-              {HERO_SLIDES.map((_, i) => (
-                <div key={i} onClick={() => { setHeroFading(true); setTimeout(() => { setHeroIdx(i); setHeroFading(false); }, 180); }} style={{
-                  width: heroIdx === i ? 24 : 8, height: 8, borderRadius: 4,
-                  backgroundColor: heroIdx === i ? "var(--gold)" : "#ffffff18",
-                  cursor: "pointer", transition: "all 0.3s", overflow: "hidden", position: "relative",
-                }}>
-                  {heroIdx === i && !heroPaused && (
-                    <div style={{ position: "absolute", top: 0, left: 0, height: "100%", backgroundColor: "#D4B45E", borderRadius: 4, animation: "ta-prog 8s linear" }} />
-                  )}
-                </div>
-              ))}
-            </div>
-
             {/* Descriptive text */}
             <div style={{ maxWidth: 480, margin: "28px auto 0" }}>
               <p style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14.5, color: "#888", lineHeight: 1.65 }}>
@@ -590,20 +583,6 @@ export default function TrustAssembly() {
                 Corrections appear right where the misinformation lives — in your browser,
                 on every platform. No algorithm decides what's true. People do.
               </p>
-            </div>
-
-            {/* CTAs */}
-            <div style={{ marginTop: 24, display: "flex", justifyContent: "center", gap: 12 }}>
-              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a1a1a", backgroundColor: "var(--gold)", border: "none", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => setShowExtPage(true)}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#D4B45E"}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
-              >Install Extension</button>
-              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => { setScreen("register"); setLoginAccordion(true); }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
-              >Join as Citizen</button>
             </div>
 
           </div>
@@ -628,7 +607,7 @@ export default function TrustAssembly() {
 
             {/* Closing CTA */}
             <div style={{ textAlign: "center", marginTop: 40, padding: "32px 0", borderTop: "1px solid #eee" }}>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>The truth has a browser extension.</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>Honesty has a browser extension.</div>
               <div style={{ fontSize: 13, color: "#999", marginBottom: 20 }}>Free. Open. Jury-verified. No algorithm decides what's true.</div>
               <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", backgroundColor: "#1a1a1a", border: "none", borderRadius: 6, padding: "12px 32px", cursor: "pointer" }}
                 onClick={() => setLoginAccordion(true)}
@@ -680,23 +659,17 @@ export default function TrustAssembly() {
             </div>
           </div>
 
-          {/* NAV ROW 1 — primary workflow */}
+          {/* NAV — consolidated with dropdowns */}
           <div className="ta-nav-row ta-nav-desktop">
-            {NAV_ROW1.map(n => (
+            {NAV_PRIMARY.map(n => (
               <a key={n.key} href={`/${n.key}`} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); }} style={n.bold ? { fontWeight: 700 } : undefined}>
                 {n.label}
                 {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ position: "relative", top: -1, marginLeft: 4, background: "var(--fired-clay)", color: "#fff", fontSize: 8, width: 13, height: 13, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{reviewCount + crossCount + disputeCount}</span>}
               </a>
             ))}
-          </div>
-          {/* NAV ROW 2 — reference pages */}
-          <div className="ta-nav-row ta-nav-row-secondary ta-nav-desktop">
-            {NAV_ROW2.map(n => (
-              <a key={n.key} href={`/${n.key}`} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); }}>
-                {n.label}
-              </a>
+            {NAV_DROPDOWNS.map(dd => (
+              <NavDropdown key={dd.label} label={dd.label} items={dd.items} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
             ))}
-            <MoreDropdown items={NAV_ROW2_MORE} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
           </div>
 
           {/* MOBILE HAMBURGER */}
@@ -708,22 +681,20 @@ export default function TrustAssembly() {
             </button>
             {mobileMenuOpen && (
               <div className="ta-mobile-menu">
-                <div className="ta-mobile-menu-group">Primary</div>
-                {NAV_ROW1.map(n => (
+                {NAV_PRIMARY.map(n => (
                   <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>
                     {n.label}
                     {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ marginLeft: 6 }}>{reviewCount + crossCount + disputeCount}</span>}
                   </a>
                 ))}
                 <div className="ta-mobile-menu-divider" />
-                <div className="ta-mobile-menu-group">Reference</div>
-                {NAV_ROW2.map(n => (
-                  <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
-                ))}
-                <div className="ta-mobile-menu-divider" />
-                <div className="ta-mobile-menu-group">More</div>
-                {NAV_ROW2_MORE.map(n => (
-                  <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
+                {NAV_DROPDOWNS.map(dd => (
+                  <React.Fragment key={dd.label}>
+                    <div className="ta-mobile-menu-group">{dd.label}</div>
+                    {dd.items.map(n => (
+                      <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
+                    ))}
+                  </React.Fragment>
                 ))}
                 {(isAdmin || hasSubmittedFeedback) && (
                   <a href="/feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
@@ -738,7 +709,7 @@ export default function TrustAssembly() {
           {/* USER BAR */}
           <div className="ta-user-bar-new">
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 14 }}>{isDIUser(user) ? "\u{1F916}" : "\u{1F451}"}</span>
+              <span style={{ fontSize: 14 }}>{isDIUser(user) ? "\u{1F916}" : user.username === ADMIN_USERNAME ? "\u{1F451}" : ""}</span>
               <span style={{ fontSize: 13, color: "#333", cursor: "pointer", textDecoration: "underline", textDecorationColor: "#CBD5E1" }} onClick={() => setScreen("profile")}>@{user.displayName || user.username}</span>
               <span style={{ fontSize: 13, color: "#333" }}>&middot;</span>
               <Badge profile={navProfile.profile} score={navProfile.trustScore} />
@@ -815,7 +786,6 @@ export default function TrustAssembly() {
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
             {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} />}
-            {screen === "citizen" && <CitizenLookupScreen onBack={() => setScreen("feed")} onViewCitizen={navigateToCitizen} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}

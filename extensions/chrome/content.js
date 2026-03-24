@@ -14,36 +14,9 @@
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   const COLORS = {
     navy: "#1B2A4A", linen: "#F0EDE6", vellum: "#FDFBF5",
-    gold: "#B8963E",
-    green: "#1B5E3F", greenDark: "#6EBF8B",
-    red: "#8B2D2D", redDark: "#D4766E",
-    consensus: "#7A6222", consensusDark: "#D4B45E",
+    gold: "#B8963E", green: "#1B5E3F", red: "#C4573F",
     teal: "#2A6B6B", orange: "#D4850A", purple: "#5B2D8E"
   };
-
-  // Panel tint backgrounds for detail panels
-  const PANEL_TINTS = {
-    correction: "#FDF6F6",
-    affirmation: "#F3FBF7",
-    consensus: "#FDFBF2",
-  };
-
-  // ── Dark Theme Detection ──
-  function isDarkTheme() {
-    try {
-      const bg = getComputedStyle(document.body).backgroundColor;
-      const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-      if (!match) return false;
-      const [, r, g, b] = match.map(Number);
-      // Relative luminance formula
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      return luminance < 0.5;
-    } catch { return false; }
-  }
-
-  function getCorrectionColor() { return isDarkTheme() ? COLORS.redDark : COLORS.red; }
-  function getAffirmationColor() { return isDarkTheme() ? COLORS.greenDark : COLORS.green; }
-  function getConsensusColor() { return isDarkTheme() ? COLORS.consensusDark : COLORS.consensus; }
 
   // Current settings (defaults: both on)
   let settings = { showBadge: true, showTranslations: true };
@@ -1153,65 +1126,6 @@
     return false;
   }
 
-  // ── Create Expandable Detail Panel ──
-  function createDetailPanel(sub, originalText, color) {
-    const isConsensus = sub.status === "consensus";
-    const tint = isConsensus ? PANEL_TINTS.consensus : PANEL_TINTS.correction;
-    const panel = document.createElement("div");
-    panel.className = "ta-detail-panel";
-    panel.style.cssText = `display:none!important;background:${tint}!important;border:1px solid ${color}22!important;border-radius:6px!important;padding:14px 16px!important;margin:8px 0 16px!important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important;`;
-
-    let html = "";
-
-    // Original headline (struck through)
-    if (originalText) {
-      html += `<div style="margin-bottom:10px!important;"><div style="font-family:'IBM Plex Mono',monospace!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:0.06em!important;color:${COLORS.gold}!important;margin-bottom:4px!important;">Original Headline</div>`;
-      html += `<div style="font-size:14px!important;color:#666!important;text-decoration:line-through!important;line-height:1.4!important;">${escapeHtml(originalText)}</div></div>`;
-    }
-
-    // Reasoning
-    if (sub.reasoning) {
-      html += `<div style="margin-bottom:10px!important;"><div style="font-family:'IBM Plex Mono',monospace!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:0.06em!important;color:#7A7570!important;margin-bottom:4px!important;">Reasoning</div>`;
-      html += `<div style="font-size:12px!important;color:#2B2B2B!important;line-height:1.6!important;">${escapeHtml(sub.reasoning)}</div></div>`;
-    }
-
-    // Evidence links
-    if (sub.evidenceLinks && sub.evidenceLinks.length > 0) {
-      html += `<div style="margin-bottom:10px!important;"><div style="font-family:'IBM Plex Mono',monospace!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:0.06em!important;color:#7A7570!important;margin-bottom:4px!important;">Evidence</div>`;
-      sub.evidenceLinks.forEach(link => {
-        html += `<a href="${escapeHtml(link)}" target="_blank" rel="noopener" style="display:block!important;font-size:11px!important;color:#2A6B6B!important;word-break:break-all!important;margin-bottom:2px!important;text-decoration:none!important;">${escapeHtml(link)}</a>`;
-      });
-      html += `</div>`;
-    }
-
-    // Body corrections summary
-    if (sub.inlineEdits && sub.inlineEdits.length > 0) {
-      html += `<div style="margin-bottom:10px!important;"><div style="font-family:'IBM Plex Mono',monospace!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:0.06em!important;color:#7A7570!important;margin-bottom:4px!important;">Body Corrections (${sub.inlineEdits.length})</div>`;
-      sub.inlineEdits.forEach(edit => {
-        html += `<div style="font-size:11px!important;margin-bottom:4px!important;line-height:1.5!important;"><span style="text-decoration:line-through!important;color:#8A8580!important;">${escapeHtml(edit.original)}</span> → <span style="color:${color}!important;font-weight:600!important;">${escapeHtml(edit.replacement)}</span></div>`;
-      });
-      html += `</div>`;
-    }
-
-    // Vault entries
-    if (sub.vaultEntries && sub.vaultEntries.length > 0) {
-      html += `<div style="margin-bottom:10px!important;"><div style="font-family:'IBM Plex Mono',monospace!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:0.06em!important;color:#7A7570!important;margin-bottom:4px!important;">Vault Entries</div>`;
-      sub.vaultEntries.forEach(entry => {
-        html += `<div style="font-size:11px!important;color:#2B2B2B!important;padding:4px 8px!important;background:#fff!important;border-left:3px solid ${COLORS.gold}!important;border-radius:0 3px 3px 0!important;margin-bottom:4px!important;">${escapeHtml(entry.content || entry.assertion || "")}</div>`;
-      });
-      html += `</div>`;
-    }
-
-    // Audit trail
-    const org = sub.orgName || "Assembly";
-    const profile = sub.profile?.displayName || "Citizen";
-    const score = sub.trustScore != null ? sub.trustScore : "—";
-    html += `<div style="font-size:10px!important;color:#B0A89C!important;border-top:1px solid ${color}15!important;padding-top:8px!important;margin-top:4px!important;">Submitted by <strong style="color:#1B2A4A!important;">${escapeHtml(profile)}</strong> · Trust Score ${score} · ${escapeHtml(org)}</div>`;
-
-    panel.innerHTML = html;
-    return panel;
-  }
-
   // ── Apply Corrections Inline on Headlines ──
   function applyInlineCorrections(corrections) {
     if (!corrections || corrections.length === 0) return;
@@ -1262,55 +1176,55 @@
 
         console.log("[TrustAssembly] Applying inline correction to headline element:", el.tagName, el.className);
 
-        // Store original text for restoration
+        // Store original text for hover tooltip
         const originalText = el.textContent.trim();
         el.dataset.taOriginalText = originalText;
 
-        // Hide-and-sibling pattern: hide original, insert corrected sibling
-        el.style.setProperty("display", "none", "important");
+        // Replace headline text with the corrected version
+        el.textContent = sub.replacement;
+
+        // Color-code: red for corrections
+        el.style.setProperty("color", "#C4573F", "important");
+        el.style.setProperty("position", "relative", "important");
+        el.style.setProperty("cursor", "help", "important");
         el.classList.add("ta-inline-headline-corrected");
 
-        const corrColor = getCorrectionColor();
+        // Create hover tooltip showing original headline
+        const tooltip = document.createElement("div");
+        tooltip.className = "ta-headline-tooltip";
+        tooltip.setAttribute("style",
+          "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
+          "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
+          "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
+          "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
+          "min-width:200px !important;white-space:normal !important;" +
+          "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+          "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+          "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
+        );
         const org = sub.orgName || "Assembly";
-        const voteInfo = sub.juryVotes ? `${sub.juryVotes.approve || 0}/${(sub.juryVotes.approve || 0) + (sub.juryVotes.reject || 0)}` : "";
-        const isConsensus = sub.status === "consensus";
-        const typeLabel = isConsensus ? "CONSENSUS" : "CORRECTED";
+        const profile = sub.profile?.displayName || "Citizen";
+        const score = sub.trustScore != null ? sub.trustScore : "—";
+        let tooltipHtml = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B8963E !important;margin-bottom:4px !important;">Original Headline</div>`;
+        tooltipHtml += `<div style="font-size:14px !important;color:#F0EDE6 !important;margin-bottom:8px !important;line-height:1.4 !important;">${escapeHtml(originalText)}</div>`;
+        tooltipHtml += `<div style="font-size:10px !important;color:#B0A89C !important;border-top:1px solid rgba(240,237,230,0.15) !important;padding-top:6px !important;">⚖ <strong style="color:#B8963E !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>`;
+        if (sub.reasoning) {
+          const maxLen = 150;
+          const reason = sub.reasoning.length > maxLen ? sub.reasoning.slice(0, maxLen) + "…" : sub.reasoning;
+          tooltipHtml += `<div style="font-size:11px !important;color:#D0CBC3 !important;font-style:italic !important;margin-top:4px !important;line-height:1.4 !important;">${escapeHtml(reason)}</div>`;
+        }
+        tooltip.innerHTML = tooltipHtml;
+        el.appendChild(tooltip);
 
-        // Create corrected headline sibling
-        const sibling = document.createElement(el.tagName);
-        sibling.className = "ta-inline-correction ta-correction-sibling";
-        // Copy computed styles from original for matching appearance
-        const cs = getComputedStyle(el);
-        sibling.style.cssText = `font-size:${cs.fontSize}!important;font-weight:${cs.fontWeight}!important;font-family:${cs.fontFamily}!important;line-height:${cs.lineHeight}!important;margin:${cs.margin}!important;padding:${cs.padding}!important;color:${corrColor}!important;cursor:pointer!important;`;
-        sibling.textContent = sub.replacement;
+        // Show/hide tooltip on hover
+        el.addEventListener("mouseenter", function() {
+          tooltip.style.setProperty("display", "block", "important");
+        });
+        el.addEventListener("mouseleave", function() {
+          tooltip.style.setProperty("display", "none", "important");
+        });
 
-        // Add lighthouse mark inline
-        const lhMark = document.createElement("span");
-        lhMark.innerHTML = ` <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M12 2L14 8H10L12 2Z" fill="${corrColor}" opacity="0.9"/><rect x="10" y="8" width="4" height="10" rx="0.5" fill="${corrColor}" opacity="0.8"/><path d="M7 18H17L18 22H6L7 18Z" fill="${corrColor}" opacity="0.7"/></svg>`;
-        sibling.appendChild(lhMark);
-
-        // Attribution line below corrected headline
-        const attr = document.createElement("div");
-        attr.className = "ta-correction-attribution";
-        attr.style.cssText = `font-family:'IBM Plex Mono',monospace!important;font-size:9.5px!important;color:${corrColor}!important;opacity:0.65!important;margin-top:5px!important;display:flex!important;align-items:center!important;gap:4px!important;cursor:pointer!important;`;
-        attr.innerHTML = `<span style="font-weight:600;letter-spacing:0.04em;">${typeLabel}</span><span style="opacity:0.4">·</span><span>${escapeHtml(org)}</span>${voteInfo ? `<span style="opacity:0.4">·</span><span>${voteInfo} jurors</span>` : ""}`;
-
-        // Insert sibling and attribution after original
-        el.parentNode.insertBefore(sibling, el.nextSibling);
-        sibling.parentNode.insertBefore(attr, sibling.nextSibling);
-
-        // Expandable detail panel
-        const detailPanel = createDetailPanel(sub, originalText, corrColor);
-        attr.parentNode.insertBefore(detailPanel, attr.nextSibling);
-
-        // Toggle detail panel on click
-        const togglePanel = () => {
-          detailPanel.style.display = detailPanel.style.display === "none" ? "block" : "none";
-        };
-        sibling.addEventListener("click", togglePanel);
-        attr.addEventListener("click", togglePanel);
-
-        console.log("[TrustAssembly] Correction applied — hide-and-sibling with attribution");
+        console.log("[TrustAssembly] Correction applied — headline replaced with corrected text (red)");
       });
 
       // Phase 2: If no headline element matched, do a raw text-node search
@@ -1330,47 +1244,44 @@
             if (parent && !parent.dataset.taAnnotated) {
               parent.dataset.taAnnotated = "true";
 
+              // Store original text for hover tooltip
               const originalText = node.textContent.trim();
               parent.dataset.taOriginalText = originalText;
 
-              // Hide-and-sibling pattern for text-node match
-              parent.style.setProperty("display", "none", "important");
+              // Replace text with corrected version, color-coded red
+              node.textContent = sub.replacement;
+              parent.style.setProperty("color", "#C4573F", "important");
+              parent.style.setProperty("position", "relative", "important");
+              parent.style.setProperty("cursor", "help", "important");
               parent.classList.add("ta-inline-headline-corrected");
 
-              const corrColor = getCorrectionColor();
+              // Create hover tooltip showing original
+              const tooltip = document.createElement("div");
+              tooltip.className = "ta-headline-tooltip";
+              tooltip.setAttribute("style",
+                "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
+                "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
+                "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
+                "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
+                "min-width:200px !important;white-space:normal !important;" +
+                "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+                "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+                "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
+              );
               const org2 = sub.orgName || "Assembly";
-              const voteInfo2 = sub.juryVotes ? `${sub.juryVotes.approve || 0}/${(sub.juryVotes.approve || 0) + (sub.juryVotes.reject || 0)}` : "";
-              const isConsensus2 = sub.status === "consensus";
-              const typeLabel2 = isConsensus2 ? "CONSENSUS" : "CORRECTED";
+              const profile2 = sub.profile?.displayName || "Citizen";
+              const score2 = sub.trustScore != null ? sub.trustScore : "—";
+              tooltip.innerHTML = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B8963E !important;margin-bottom:4px !important;">Original Headline</div><div style="font-size:14px !important;color:#F0EDE6 !important;margin-bottom:8px !important;">${escapeHtml(originalText)}</div><div style="font-size:10px !important;color:#B0A89C !important;border-top:1px solid rgba(240,237,230,0.15) !important;padding-top:6px !important;">⚖ <strong style="color:#B8963E !important">${escapeHtml(org2)}</strong> · ${escapeHtml(profile2)} · Trust Score ${score2}</div>`;
+              parent.appendChild(tooltip);
 
-              const sibling2 = document.createElement(parent.tagName || "div");
-              sibling2.className = "ta-inline-correction ta-correction-sibling";
-              const cs2 = getComputedStyle(parent);
-              sibling2.style.cssText = `font-size:${cs2.fontSize}!important;font-weight:${cs2.fontWeight}!important;font-family:${cs2.fontFamily}!important;line-height:${cs2.lineHeight}!important;margin:${cs2.margin}!important;padding:${cs2.padding}!important;color:${corrColor}!important;cursor:pointer!important;display:block!important;`;
-              sibling2.textContent = sub.replacement;
+              parent.addEventListener("mouseenter", function() {
+                tooltip.style.setProperty("display", "block", "important");
+              });
+              parent.addEventListener("mouseleave", function() {
+                tooltip.style.setProperty("display", "none", "important");
+              });
 
-              const lh2 = document.createElement("span");
-              lh2.innerHTML = ` <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M12 2L14 8H10L12 2Z" fill="${corrColor}" opacity="0.9"/><rect x="10" y="8" width="4" height="10" rx="0.5" fill="${corrColor}" opacity="0.8"/><path d="M7 18H17L18 22H6L7 18Z" fill="${corrColor}" opacity="0.7"/></svg>`;
-              sibling2.appendChild(lh2);
-
-              const attr2 = document.createElement("div");
-              attr2.className = "ta-correction-attribution";
-              attr2.style.cssText = `font-family:'IBM Plex Mono',monospace!important;font-size:9.5px!important;color:${corrColor}!important;opacity:0.65!important;margin-top:5px!important;display:flex!important;align-items:center!important;gap:4px!important;cursor:pointer!important;`;
-              attr2.innerHTML = `<span style="font-weight:600;letter-spacing:0.04em;">${typeLabel2}</span><span style="opacity:0.4">·</span><span>${escapeHtml(org2)}</span>${voteInfo2 ? `<span style="opacity:0.4">·</span><span>${voteInfo2} jurors</span>` : ""}`;
-
-              parent.parentNode.insertBefore(sibling2, parent.nextSibling);
-              sibling2.parentNode.insertBefore(attr2, sibling2.nextSibling);
-
-              const detailPanel2 = createDetailPanel(sub, originalText, corrColor);
-              attr2.parentNode.insertBefore(detailPanel2, attr2.nextSibling);
-
-              const togglePanel2 = () => {
-                detailPanel2.style.display = detailPanel2.style.display === "none" ? "block" : "none";
-              };
-              sibling2.addEventListener("click", togglePanel2);
-              attr2.addEventListener("click", togglePanel2);
-
-              console.log("[TrustAssembly] Phase 2: correction applied via text-node match (hide-and-sibling)");
+              console.log("[TrustAssembly] Phase 2: correction applied via text-node match (red color-coded)");
             }
             break; // only match first occurrence
           }
@@ -1989,25 +1900,27 @@
         const wrapper = document.createElement("span");
         wrapper.className = "ta-inline-body-edit";
 
-        // Replacement text only (original hidden, shown in tooltip)
-        const corrColor = getCorrectionColor();
+        // Original text with strikethrough
+        const origSpan = document.createElement("span");
+        origSpan.className = "ta-inline-body-original";
+        origSpan.textContent = originalText;
+
+        // Replacement text
         const replSpan = document.createElement("span");
         replSpan.className = "ta-inline-body-replacement";
         replSpan.textContent = edit.replacement;
-        replSpan.style.cssText = `color:${corrColor}!important;border-bottom:1.5px dotted ${corrColor}55!important;font-weight:inherit!important;background:none!important;cursor:help!important;`;
 
-        // Tooltip with dark navy background
+        // Tooltip with details
         const tooltip = document.createElement("span");
         tooltip.className = "ta-inline-body-tooltip";
         const score = edit.trustScore != null ? edit.trustScore : "—";
-        let tooltipHtml = `<div style="font-family:'IBM Plex Mono',monospace!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:0.06em!important;color:${COLORS.gold}!important;margin-bottom:4px!important;">Original Text</div>`;
-        tooltipHtml += `<div style="text-decoration:line-through!important;color:#D0CBC3!important;font-size:12px!important;margin-bottom:6px!important;">${escapeHtml(originalText)}</div>`;
+        let tooltipHtml = `<strong>⚖ ${escapeHtml(edit.orgName)}</strong> · ${escapeHtml(edit.profile)} · Trust Score ${score}`;
         if (edit.reasoning) {
-          tooltipHtml += `<div style="font-size:11px!important;color:#D0CBC3!important;font-style:italic!important;line-height:1.4!important;margin-bottom:4px!important;">${escapeHtml(edit.reasoning)}</div>`;
+          tooltipHtml += `<br><em>${escapeHtml(edit.reasoning)}</em>`;
         }
-        tooltipHtml += `<div style="font-size:10px!important;color:#B0A89C!important;border-top:1px solid rgba(240,237,230,0.15)!important;padding-top:4px!important;">⚖ <strong style="color:${COLORS.gold}!important;">${escapeHtml(edit.orgName)}</strong> · ${escapeHtml(edit.profile)} · Trust Score ${score}</div>`;
         tooltip.innerHTML = tooltipHtml;
 
+        wrapper.appendChild(origSpan);
         wrapper.appendChild(replSpan);
         wrapper.appendChild(tooltip);
 
