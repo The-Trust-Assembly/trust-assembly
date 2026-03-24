@@ -15,16 +15,17 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
   const [diAgents, setDiAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const loadData = async () => {
     try {
       const all = (await sG(SK.USERS)) || {};
+      setAllUsers(all);
+      if (!username) { setLoading(false); return; }
       const target = all[username];
       if (!target) { setNotFound(true); setLoading(false); return; }
       setU(target);
-      setAllUsers(all);
       setOrgs((await sG(SK.ORGS)) || {});
       setSubs((await sG(SK.SUBS)) || {});
-      // Find DI agents registered to this user
       const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
       setDiAgents(agents);
       setNotFound(false);
@@ -35,6 +36,44 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
   };
   useEffect(() => { loadData(); }, [username]);
   if (loading) return <Loader />;
+
+  // Search mode — no username provided
+  if (!username) {
+    const q = searchQuery.toLowerCase().replace(/^@/, "");
+    const citizens = Object.values(allUsers).filter(u => !u.isDI);
+    const filtered = q ? citizens.filter(c => (c.displayName || c.username).toLowerCase().includes(q) || c.username.toLowerCase().includes(q)) : citizens;
+    const sorted = filtered.sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username));
+    return (
+      <div>
+        <div className="ta-section-rule" />
+        <h2 className="ta-section-head">Citizen Directory</h2>
+        <div className="ta-field" style={{ marginBottom: 16 }}>
+          <input
+            type="text"
+            placeholder="Search citizens by name or username..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ fontSize: 14 }}
+          />
+        </div>
+        {sorted.length === 0 ? (
+          <Empty text={q ? `No citizens matching "${searchQuery}".` : "No citizens registered yet."} />
+        ) : (
+          <div>
+            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 10, fontFamily: "var(--mono)" }}>{sorted.length} citizen{sorted.length !== 1 ? "s" : ""}</div>
+            {sorted.slice(0, 50).map(c => (
+              <div key={c.username} style={{ padding: "8px 0", borderBottom: "1px solid #E2E8F0", cursor: "pointer" }} onClick={() => onViewCitizen(c.username)}>
+                <span style={{ fontSize: 13, color: "var(--accent)", fontWeight: 500 }}>@{c.displayName || c.username}</span>
+                {c.username !== (c.displayName || c.username) && <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 6 }}>({c.username})</span>}
+              </div>
+            ))}
+            {sorted.length > 50 && <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10, textAlign: "center" }}>Showing first 50 of {sorted.length} citizens. Use search to narrow results.</div>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (notFound) return <div><div className="ta-section-rule" /><button className="ta-btn-ghost" onClick={onBack} style={{ marginBottom: 10 }}>← Back</button><Empty text={`Citizen @${username} not found.`} /></div>;
   const p = computeProfile(u, { allUsers, allOrgs: orgs, allSubs: subs });
   const pi = PROFILES[p.profile];

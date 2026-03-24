@@ -125,7 +125,7 @@
   border: 1px solid #DCD8D0;
   background: #fff;
 }
-.ta-ext-card-correction { border-left: 4px solid #C4573F; }
+.ta-ext-card-correction { border-left: 4px solid #8B2D2D; }
 .ta-ext-card-affirmation { border-left: 4px solid #1B5E3F; }
 .ta-ext-card-translation { border-left: 4px solid #D4850A; }
 
@@ -154,7 +154,7 @@
 }
 .ta-ext-headline-replacement {
   font-size: 15px;
-  color: #C4573F;
+  color: #8B2D2D;
   font-weight: 700;
   line-height: 1.4;
   margin-bottom: 6px;
@@ -236,7 +236,7 @@
 .ta-ext-status-consensus { background: #EDE5F0; color: #5B2D8E; }
 .ta-ext-status-cross_review { background: #E5EFED; color: #2A6B6B; }
 .ta-ext-status-pending_review { background: #FDF0E4; color: #C2632A; }
-.ta-ext-status-rejected { background: #FAE8E5; color: #C4573F; }
+.ta-ext-status-rejected { background: #FAE8E5; color: #8B2D2D; }
 
 /* ── Translations ── */
 .ta-ext-section-title {
@@ -279,11 +279,12 @@
   font-weight: 700;
 }
 
-/* ── Inline Headline Corrections (color-coded replacement) ── */
+/* ── Inline Headline Corrections (hide-and-sibling pattern) ── */
 .ta-inline-headline-corrected {
-  color: #C4573F !important;
-  position: relative !important;
-  cursor: help !important;
+  display: none !important;
+}
+.ta-correction-sibling {
+  cursor: pointer !important;
   text-decoration: none !important;
 }
 
@@ -327,7 +328,7 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   margin: 8px 0 16px;
   padding: 12px 16px;
-  border-left: 4px solid #C4573F;
+  border-left: 4px solid #8B2D2D;
   background: #FDF8F7;
   border-radius: 0 4px 4px 0;
 }
@@ -360,24 +361,17 @@
   position: relative;
   display: inline;
 }
-.ta-inline-body-original {
-  text-decoration: line-through;
-  text-decoration-color: #C4573F;
-  color: #8A8580;
-  background: #FDF0EE;
-}
 .ta-inline-body-replacement {
-  color: #C4573F;
-  font-weight: 700;
-  background: #FDF8F7;
-  border-bottom: 2px solid #C4573F;
-  margin-left: 2px;
+  color: #8B2D2D;
+  font-weight: inherit;
+  background: none;
+  border-bottom: 1.5px dotted rgba(139, 45, 45, 0.35);
   cursor: help;
 }
 .ta-inline-body-replacement::after {
   content: "ᵀᴬ";
   font-size: 9px;
-  color: #C4573F;
+  color: #8B2D2D;
   font-weight: 700;
   vertical-align: super;
   margin-left: 1px;
@@ -462,7 +456,7 @@
 }
 .ta-stat-correction {
   background: #FAE8E5;
-  color: #C4573F;
+  color: #8B2D2D;
 }
 .ta-stat-affirmation {
   background: #E5F0EA;
@@ -590,7 +584,7 @@
 }
 .ta-unapplied-replacement {
   font-size: 16px;
-  color: #C4573F;
+  color: #8B2D2D;
   font-weight: 700;
   line-height: 1.4;
   margin-bottom: 6px;
@@ -614,6 +608,26 @@
   color: #5A5650;
   line-height: 1.5;
   font-style: italic;
+}
+
+/* ── Correction Detail Panel ── */
+.ta-detail-panel {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  border-radius: 6px;
+  margin: 8px 0 16px;
+  padding: 14px 16px;
+}
+.ta-correction-attribution {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  cursor: pointer;
+}
+.ta-correction-attribution:hover {
+  opacity: 1 !important;
 }
 
 /* ── Inline Translation Annotations ── */
