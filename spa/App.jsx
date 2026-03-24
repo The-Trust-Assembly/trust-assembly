@@ -32,18 +32,14 @@ import { trackAction } from "./lib/action-tracker";
 import { Badge, Loader, CitizenCounter } from "./components/ui";
 
 const NAV_PRIMARY = [
-  { key: "feed", label: "Home" }, { key: "submit", label: "Submit", bold: true }, { key: "review", label: "Review", bold: true }, { key: "orgs", label: "Assemblies" },
+  { key: "feed", label: "Record" }, { key: "orgs", label: "Assemblies" }, { key: "submit", label: "Submit", bold: true }, { key: "review", label: "Review", bold: true },
 ];
-const NAV_DROPDOWNS = [
-  { label: "Learn", items: [
-    { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "vision", label: "Vision" }, { key: "about", label: "About" },
-  ]},
-  { label: "Explore", items: [
-    { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
-  ]},
-  { label: "Account", items: [
-    { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
-  ]},
+const NAV_SECONDARY = [
+  { key: "vault", label: "Vaults" }, { key: "consensus", label: "Consensus" }, { key: "profile", label: "Citizen" }, { key: "audit", label: "Ledger" },
+  { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" }, { key: "vision", label: "Vision" },
+];
+const NAV_MORE_ITEMS = [
+  { key: "extensions", label: "Extension" }, { key: "stories", label: "Stories" },
 ];
 
 function formatNotification(n) {
@@ -659,7 +655,7 @@ export default function TrustAssembly() {
             </div>
           </div>
 
-          {/* NAV — consolidated with dropdowns */}
+          {/* NAV ROW 1 — primary workflow */}
           <div className="ta-nav-row ta-nav-desktop">
             {NAV_PRIMARY.map(n => (
               <a key={n.key} href={`/${n.key}`} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); }} style={n.bold ? { fontWeight: 700 } : undefined}>
@@ -667,9 +663,15 @@ export default function TrustAssembly() {
                 {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge" style={{ position: "relative", top: -1, marginLeft: 4, background: "var(--fired-clay)", color: "#fff", fontSize: 8, width: 13, height: 13, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{reviewCount + crossCount + disputeCount}</span>}
               </a>
             ))}
-            {NAV_DROPDOWNS.map(dd => (
-              <NavDropdown key={dd.label} label={dd.label} items={dd.items} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
+          </div>
+          {/* NAV ROW 2 — reference pages */}
+          <div className="ta-nav-row ta-nav-row-secondary ta-nav-desktop">
+            {NAV_SECONDARY.map(n => (
+              <a key={n.key} href={`/${n.key}`} className={`ta-nav-row-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); }}>
+                {n.label}
+              </a>
             ))}
+            <NavDropdown label="More" items={NAV_MORE_ITEMS} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
           </div>
 
           {/* MOBILE HAMBURGER */}
@@ -688,13 +690,14 @@ export default function TrustAssembly() {
                   </a>
                 ))}
                 <div className="ta-mobile-menu-divider" />
-                {NAV_DROPDOWNS.map(dd => (
-                  <React.Fragment key={dd.label}>
-                    <div className="ta-mobile-menu-group">{dd.label}</div>
-                    {dd.items.map(n => (
-                      <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
-                    ))}
-                  </React.Fragment>
+                <div className="ta-mobile-menu-group">Reference</div>
+                {NAV_SECONDARY.map(n => (
+                  <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
+                ))}
+                <div className="ta-mobile-menu-divider" />
+                <div className="ta-mobile-menu-group">More</div>
+                {NAV_MORE_ITEMS.map(n => (
+                  <a key={n.key} href={`/${n.key}`} className={`ta-mobile-menu-item ${screen === n.key ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setScreen(n.key); setMobileMenuOpen(false); }}>{n.label}</a>
                 ))}
                 {(isAdmin || hasSubmittedFeedback) && (
                   <a href="/feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>

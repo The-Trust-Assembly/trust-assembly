@@ -218,6 +218,94 @@ export function LighthouseIcon({ size = 12, color = "#B8963E" }) {
   );
 }
 
+export function LighthouseFullIcon({ size = 24, color = "#B8963E" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M12 54C16 50 20 50 24 54C28 58 32 58 36 54C40 50 44 50 48 54" stroke={color} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+      <path d="M16 58C19 55 22 55 25 58C28 61 31 61 34 58C37 55 40 55 43 58" stroke={color} strokeWidth="2" fill="none" opacity="0.6" strokeLinecap="round"/>
+      <path d="M26 52L24 30H40L38 52Z" fill={color}/>
+      <path d="M30 52V46C30 44.9 30.9 44 32 44C33.1 44 34 44.9 34 46V52" fill="#111"/>
+      <rect x="23" y="24" width="18" height="6" rx="1" fill={color}/>
+      <rect x="26" y="25.5" width="3" height="3" rx="0.5" fill="#111"/>
+      <rect x="30.5" y="25.5" width="3" height="3" rx="0.5" fill="#111"/>
+      <rect x="35" y="25.5" width="3" height="3" rx="0.5" fill="#111"/>
+      <rect x="21" y="23" width="22" height="1.5" rx="0.75" fill={color}/>
+      <path d="M24 23L32 14L40 23Z" fill={color}/>
+      <path d="M31 14L32 10L33 14Z" fill={color}/>
+      <path d="M21 22L12 18" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M20 25L10 24" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M21 28L13 31" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+      <path d="M43 22L52 18" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M44 25L54 24" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M43 28L51 31" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+    </svg>
+  );
+}
+
+export function RobotIcon({ size = 24, color = "#B8963E" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <line x1="32" y1="14" x2="32" y2="8" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="32" cy="6" r="3" fill={color}/>
+      <circle cx="26" cy="10" r="2" fill={color} opacity="0.7"/>
+      <line x1="28" y1="10" x2="32" y2="12" stroke={color} strokeWidth="1.5" opacity="0.7"/>
+      <circle cx="38" cy="10" r="2" fill={color} opacity="0.7"/>
+      <line x1="36" y1="10" x2="32" y2="12" stroke={color} strokeWidth="1.5" opacity="0.7"/>
+      <rect x="17" y="14" width="30" height="24" rx="8" fill={color}/>
+      <circle cx="25" cy="26" r="5" fill="#fff"/>
+      <circle cx="39" cy="26" r="5" fill="#fff"/>
+      <circle cx="25" cy="26" r="2.5" fill="#111"/>
+      <circle cx="39" cy="26" r="2.5" fill="#111"/>
+      <rect x="24" y="33" width="16" height="2.5" rx="1.25" fill="#111" opacity="0.6"/>
+      <rect x="12" y="22" width="5" height="8" rx="2.5" fill={color} opacity="0.8"/>
+      <rect x="47" y="22" width="5" height="8" rx="2.5" fill={color} opacity="0.8"/>
+      <rect x="22" y="40" width="20" height="14" rx="4" fill={color} opacity="0.85"/>
+      <rect x="28" y="44" width="8" height="2" rx="1" fill="#fff" opacity="0.5"/>
+      <rect x="28" y="48" width="8" height="2" rx="1" fill="#fff" opacity="0.3"/>
+    </svg>
+  );
+}
+
+export function ShieldBadgeIcon({ size = 24, color = "#B8963E" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <ellipse cx="14" cy="40" rx="4" ry="6" fill={color} opacity="0.8" transform="rotate(-20 14 40)"/>
+      <ellipse cx="12" cy="34" rx="3.5" ry="5.5" fill={color} opacity="0.7" transform="rotate(-10 12 34)"/>
+      <ellipse cx="13" cy="28" rx="3" ry="5" fill={color} opacity="0.6" transform="rotate(5 13 28)"/>
+      <ellipse cx="16" cy="46" rx="4" ry="5.5" fill={color} opacity="0.85" transform="rotate(-30 16 46)"/>
+      <ellipse cx="50" cy="40" rx="4" ry="6" fill={color} opacity="0.8" transform="rotate(20 50 40)"/>
+      <ellipse cx="52" cy="34" rx="3.5" ry="5.5" fill={color} opacity="0.7" transform="rotate(10 52 34)"/>
+      <ellipse cx="51" cy="28" rx="3" ry="5" fill={color} opacity="0.6" transform="rotate(-5 51 28)"/>
+      <ellipse cx="48" cy="46" rx="4" ry="5.5" fill={color} opacity="0.85" transform="rotate(30 48 46)"/>
+      <path d="M32 8L48 16V32C48 42 40 50 32 54C24 50 16 42 16 32V16L32 8Z" fill="none" stroke={color} strokeWidth="3"/>
+      <path d="M32 12L44 18V32C44 40 38 46 32 50C26 46 20 40 20 32V18L32 12Z" fill={color} opacity="0.15"/>
+      <path d="M32 16L40 20V32C40 38 36 42 32 45C28 42 24 38 24 32V20L32 16Z" fill="none" stroke={color} strokeWidth="1" opacity="0.4"/>
+      <polygon points="32,20 34.5,27 42,27 36,31.5 38,39 32,35 26,39 28,31.5 22,27 29.5,27" fill={color}/>
+    </svg>
+  );
+}
+
+export function VaultIcon({ size = 24, color = "#B8963E" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <rect x="10" y="12" width="44" height="40" rx="4" fill="none" stroke={color} strokeWidth="3"/>
+      <rect x="13" y="15" width="38" height="34" rx="2" fill={color} opacity="0.1"/>
+      <circle cx="32" cy="32" r="12" fill="none" stroke={color} strokeWidth="2.5"/>
+      <circle cx="32" cy="32" r="7" fill={color} opacity="0.3"/>
+      <circle cx="32" cy="32" r="3" fill={color}/>
+      <line x1="32" y1="20" x2="32" y2="25" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="32" y1="39" x2="32" y2="44" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="20" y1="32" x2="25" y2="32" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <line x1="39" y1="32" x2="44" y2="32" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <rect x="48" y="28" width="4" height="8" rx="1" fill={color}/>
+      <rect x="8" y="18" width="4" height="4" rx="1" fill={color} opacity="0.6"/>
+      <rect x="8" y="42" width="4" height="4" rx="1" fill={color} opacity="0.6"/>
+      <rect x="14" y="52" width="6" height="4" rx="1" fill={color} opacity="0.7"/>
+      <rect x="44" y="52" width="6" height="4" rx="1" fill={color} opacity="0.7"/>
+    </svg>
+  );
+}
+
 export function TABadge({ text, color }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
