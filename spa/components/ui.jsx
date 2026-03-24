@@ -6,25 +6,24 @@ import { W } from "../lib/scoring";
 
 export function CitizenBadges({ badges }) {
   if (!badges || badges.length === 0) return (
-    <div style={{ padding: 12, background: "#F1F5F9", borderRadius: 8, fontSize: 12, color: "#64748B", textAlign: "center" }}>
+    <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
       <div style={{ fontStyle: "italic", marginBottom: 6 }}>No badges earned yet.</div>
-      <div style={{ fontSize: 11, color: "#94A3B8" }}>Badges are earned automatically through participation: submissions, joining assemblies, earning trusted status, and more. Each badge adds +1 to your Trust Score.</div>
+      <div style={{ fontSize: 9, color: "var(--text-muted)" }}>Badges are earned automatically through participation.</div>
     </div>
   );
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
       {badges.map((b, i) => {
-        const ts = BADGE_TIER_STYLES[b.tier] || BADGE_TIER_STYLES.special;
         return (
           <div key={b.id + (b.detail || "") + i} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
             display: "inline-flex", alignItems: "center", gap: 4,
-            padding: "4px 8px", borderRadius: 8,
-            background: ts.bg, border: `1.5px solid ${ts.border}`,
-            fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600,
-            color: ts.text, letterSpacing: "0.03em", cursor: "default",
-            transition: "transform 0.15s", whiteSpace: "nowrap",
+            padding: "3px 7px",
+            background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)",
+            fontSize: 8, fontFamily: "var(--mono)", fontWeight: 700,
+            color: "var(--gold)", letterSpacing: "0.5px", cursor: "default",
+            whiteSpace: "nowrap",
           }}>
-            <span style={{ fontSize: 13, lineHeight: 1 }}>{b.icon}</span>
+            <span style={{ fontSize: 11, lineHeight: 1 }}>{b.icon}</span>
             <span>{b.label}{b.detail ? ` — ${b.detail}` : ""}</span>
           </div>
         );
@@ -139,13 +138,13 @@ export function ScoreBreakdown({ p }) {
 export function Badge({ profile, score }) {
   const p = PROFILES[profile] || PROFILES["New Citizen"];
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 8px", borderRadius: 8, border: `1.5px solid ${p.color}`, color: p.color, fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 8px", border: `1px solid rgba(212,168,67,0.27)`, color: "#d4a843", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: p.color }} />{profile} · {score}
     </span>
   );
 }
 
-export function SubHeadline({ sub, size = 14 }) {
+export function SubHeadline({ sub, size = 12 }) {
   const isAffirm = sub.submissionType === "affirmation";
   const oh = sub.originalHeadline && typeof sub.originalHeadline === "object" ? JSON.stringify(sub.originalHeadline) : sub.originalHeadline;
   const rp = sub.replacement && typeof sub.replacement === "object" ? JSON.stringify(sub.replacement) : sub.replacement;
@@ -153,29 +152,41 @@ export function SubHeadline({ sub, size = 14 }) {
   return (
     <div>
       {isAffirm ? (
-        <div style={{ fontFamily: "var(--serif)", fontSize: size, color: "#059669", fontWeight: 700, marginBottom: 2 }}>✓ {oh}</div>
+        <div className="headline-affirmed" style={{ fontSize: size }}><span className="prefix">Affirmed: </span>{oh}</div>
       ) : (
         <>
-          <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "#475569", marginBottom: 3, fontSize: size }}>{oh}</div>
-          {rp && <div style={{ fontFamily: "var(--serif)", color: "#DC2626", fontWeight: 700, fontSize: size + 2, marginTop: 1 }}>{rp}</div>}
+          <div className="headline-struck" style={{ fontSize: size }}>{oh}</div>
+          {rp && <div className="headline-corrected" style={{ fontSize: size }}>{rp}</div>}
         </>
       )}
-      {au && <div style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", marginTop: 2 }}>Author: {au}</div>}
+      {au && <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", marginTop: 2 }}>Author: {au}</div>}
     </div>
   );
 }
 
 export function StatusPill({ status }) {
-  const m = { di_pending: { bg: "#EEF2FF", c: "#4F46E5", l: "🤖 DI Pre-Review" }, pending_jury: { bg: "#FFFBEB", c: "#D97706", l: "Awaiting Jury" }, pending_review: { bg: "#FFF7ED", c: "#EA580C", l: "Under Review" }, approved: { bg: "#ECFDF5", c: "#059669", l: "Approved" }, rejected: { bg: "#FEF2F2", c: "#DC2626", l: "Rejected" }, cross_review: { bg: "#F0FDFA", c: "#0D9488", l: "Cross-Group" }, consensus: { bg: "#F5F3FF", c: "#7C3AED", l: "Consensus" }, consensus_rejected: { bg: "#EBD5D3", c: "#991B1B", l: "Consensus Rejected" }, disputed: { bg: "#FFF7ED", c: "#EA580C", l: "⚖ Disputed" }, upheld: { bg: "#EA580C", c: "#fff", l: "Dispute Upheld" }, dismissed: { bg: "#ECFDF5", c: "#059669", l: "Dispute Dismissed" } };
-  const s = m[status] || { bg: "#eee", c: "#666", l: typeof status === "string" ? status : "unknown" };
-  return <span style={{ fontSize: 10, padding: "2px 7px", background: s.bg, color: s.c, borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>{s.l}</span>;
+  const m = {
+    di_pending: { bg: "rgba(212,168,67,0.13)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "DI PRE-REVIEW" },
+    pending_jury: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "PENDING" },
+    pending_review: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "PENDING" },
+    approved: { bg: "rgba(74,158,85,0.09)", border: "rgba(74,158,85,0.27)", c: "#4a9e55", l: "APPROVED" },
+    rejected: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "REJECTED" },
+    cross_review: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "CROSS-GROUP" },
+    consensus: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "CONSENSUS" },
+    consensus_rejected: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "CONSENSUS REJECTED" },
+    disputed: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "DISPUTED" },
+    upheld: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "DISPUTE UPHELD" },
+    dismissed: { bg: "rgba(74,158,85,0.09)", border: "rgba(74,158,85,0.27)", c: "#4a9e55", l: "DISPUTE DISMISSED" },
+  };
+  const s = m[status] || { bg: "rgba(138,130,120,0.09)", border: "rgba(138,130,120,0.27)", c: "#8a8278", l: typeof status === "string" ? status.toUpperCase() : "UNKNOWN" };
+  return <span style={{ fontSize: 8, padding: "2px 6px", background: s.bg, border: `1px solid ${s.border}`, color: s.c, fontWeight: 700, letterSpacing: "1px", whiteSpace: "nowrap" }}>{s.l}</span>;
 }
 
 export function LegalDisclaimer({ short }) {
-  if (short) return <div style={{ fontSize: 10, color: "#475569", fontFamily: "var(--mono)", lineHeight: 1.6, padding: "6px 0" }}>Digital Citizens are solely responsible for the content of their submissions. The Trust Assembly makes no claims regarding the accuracy of any submission.</div>;
+  if (short) return <div style={{ fontSize: 8, color: "var(--text-muted)", fontFamily: "var(--mono)", lineHeight: 1.6, padding: "6px 0" }}>Digital Citizens are solely responsible for the content of their submissions. The Trust Assembly makes no claims regarding the accuracy of any submission.</div>;
   return (
-    <div style={{ fontSize: 10, color: "#475569", fontFamily: "var(--mono)", lineHeight: 1.5, padding: 12, background: "#F1F5F9", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-      <strong>Legal Notice:</strong> The Trust Assembly is a platform for collaborative fact-checking and editorial review. All corrections, annotations, and standing corrections are submitted by Digital Citizens and represent their individual assessments. The Trust Assembly does not independently verify submissions and makes no representations regarding the accuracy, completeness, or reliability of any user-submitted content. Digital Citizens bear sole responsibility for the content they submit. Jury decisions reflect peer consensus, not institutional endorsement.
+    <div style={{ fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", lineHeight: 1.5, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+      <strong style={{ color: "var(--gold)" }}>Legal Notice:</strong> The Trust Assembly is a platform for collaborative fact-checking and editorial review. All corrections, annotations, and standing corrections are submitted by Digital Citizens and represent their individual assessments. The Trust Assembly does not independently verify submissions and makes no representations regarding the accuracy, completeness, or reliability of any user-submitted content. Digital Citizens bear sole responsibility for the content they submit. Jury decisions reflect peer consensus, not institutional endorsement.
     </div>
   );
 }
@@ -185,9 +196,9 @@ export function AuditTrail({ entries }) {
   if (!entries || !Array.isArray(entries) || entries.length === 0) return null;
   return (
     <div style={{ marginTop: 10 }}>
-      <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#64748B", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", padding: 0 }}>{open ? "▾" : "▸"} Audit Trail ({entries.length})</button>
-      {open && <div style={{ marginTop: 6, padding: 10, background: "#EFF6FF", borderLeft: "3px solid #2563EB", fontSize: 10, fontFamily: "var(--mono)", maxHeight: 180, overflowY: "auto" }}>
-        {entries.map((e, i) => <div key={i} style={{ marginBottom: 3, color: "#1E293B", lineHeight: 1.6 }}><span style={{ color: "#475569" }}>{fDate(e.time)}</span> — {typeof e.action === "object" ? JSON.stringify(e.action) : e.action}</div>)}
+      <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", padding: 0 }}>{open ? "▾" : "▸"} Audit Trail ({entries.length})</button>
+      {open && <div style={{ marginTop: 6, padding: 10, background: "var(--card-bg)", borderLeft: "3px solid var(--gold)", fontSize: 9, fontFamily: "var(--mono)", maxHeight: 180, overflowY: "auto" }}>
+        {entries.map((e, i) => <div key={i} style={{ marginBottom: 3, color: "var(--text-sec)", lineHeight: 1.6 }}><span style={{ color: "var(--text-muted)" }}>{fDate(e.time)}</span> — {typeof e.action === "object" ? JSON.stringify(e.action) : e.action}</div>)}
       </div>}
     </div>
   );
@@ -390,21 +401,21 @@ export function InlineEditsForm({ edits, onChange }) {
 
 export function StandingCorrectionInput({ value, onChange }) {
   return (
-    <div style={{ padding: 16, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8 }}>
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 4 }}>Standing Correction (Reusable Fact)</div>
-      <p style={{ fontSize: 12, color: "#475569", marginBottom: 10, lineHeight: 1.6 }}>A Standing Correction is an assertion of verified fact that your Assembly can reuse across multiple articles. Once approved, it enters your Assembly's Fact Vault. In the future, AI will suggest applicable Standing Corrections for new articles.</p>
+    <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+      <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "1px", color: "var(--gold)", marginBottom: 4, fontWeight: 600 }}>Standing Correction (Reusable Fact)</div>
+      <p style={{ fontSize: 10, color: "var(--text-sec)", marginBottom: 10, lineHeight: 1.6 }}>A Standing Correction is an assertion of verified fact that your Assembly can reuse across multiple articles.</p>
       <div className="ta-field" style={{ marginBottom: 8 }}><label style={{ fontSize: 10 }}>Factual Assertion</label><textarea value={value.assertion || ""} onChange={(e) => onChange({ ...value, assertion: e.target.value })} rows={2} placeholder='e.g. "The XYZ recall involved a software font-size update, not a physical vehicle recall."' /></div>
       <div className="ta-field" style={{ marginBottom: 0 }}><label style={{ fontSize: 10 }}>Supporting Evidence / Source</label><input value={value.evidence || ""} onChange={(e) => onChange({ ...value, evidence: e.target.value })} placeholder="Link or citation supporting this fact" /></div>
     </div>
   );
 }
 
-export function UsernameLink({ username, onClick, style }) {
+export function UsernameLink({ username, onClick, style: userStyle }) {
   return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#2563EB", fontSize: 11, textDecoration: "underline", textDecorationColor: "#CBD5E1", ...style }}>{username === ADMIN_USERNAME ? "👑 " : ""}@{username}</button>;
 }
 
-export function Empty({ text }) { return <div style={{ textAlign: "center", padding: 36, color: "#475569", fontSize: 13 }}>{text}</div>; }
-export function Loader() { return <div style={{ textAlign: "center", padding: 36, color: "#475569", fontFamily: "var(--mono)", fontSize: 12 }}>Loading...</div>; }
+export function Empty({ text }) { return <div style={{ textAlign: "center", padding: 36, color: "var(--text-muted)", fontSize: 11 }}>{text}</div>; }
+export function Loader() { return <div style={{ textAlign: "center", padding: 36, color: "var(--text-muted)", fontFamily: "var(--mono)", fontSize: 10 }}>Loading...</div>; }
 
 export function ExplainBox({ title, children, color = "#0D9488", icon = "📘" }) {
   return (
