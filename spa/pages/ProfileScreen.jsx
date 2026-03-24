@@ -4,7 +4,7 @@ import { sG } from "../lib/storage";
 import { fDate, sDate, daysSince } from "../lib/utils";
 import { computeProfile, computeBadges, computeJuryScore } from "../lib/scoring";
 import { hasActiveDeceptionPenalty, deceptionPenaltyRemaining, isDIUser, getTrustedProgress } from "../lib/permissions";
-import { Badge, ScoreBreakdown, CitizenBadges, UsernameLink, StatusPill, SubHeadline } from "../components/ui";
+import { Badge, ScoreBreakdown, CitizenBadges, UsernameLink, StatusPill, SubHeadline, Icon } from "../components/ui";
 import JuryScoreCard from "../components/JuryScoreCard";
 
 export default function ProfileScreen({ user, onViewCitizen }) {
@@ -67,7 +67,7 @@ export default function ProfileScreen({ user, onViewCitizen }) {
       {/* Deception penalty */}
       {hasActiveDeceptionPenalty(u) && (
         <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1px solid rgba(196,74,58,0.27)", marginBottom: 10 }}>
-          <div style={{ fontSize: 9, letterSpacing: "1px", textTransform: "uppercase", color: "var(--red)", fontWeight: 700, marginBottom: 4 }}>⚠ Deception Penalty — {deceptionPenaltyRemaining(u)} days remaining</div>
+          <div style={{ fontSize: 9, letterSpacing: "1px", textTransform: "uppercase", color: "var(--red)", fontWeight: 700, marginBottom: 4 }}>Deception Penalty — {deceptionPenaltyRemaining(u)} days remaining</div>
           <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>Voting, sponsorship, and assembly creation suspended. You may still submit corrections.</div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { sDate } from "../lib/utils";
-import { SubHeadline, StatusPill, AuditTrail, Empty } from "./ui";
+import { SubHeadline, StatusPill, AuditTrail, Empty, Icon } from "./ui";
 import { queryKeys } from "../lib/queryKeys";
 
 const safe = (v) => {
@@ -133,7 +133,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
     <div>
       {/* DI Link Requests */}
       {pendingLinks.length > 0 && <div style={{ marginBottom: 16 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Link Requests</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={12} /> DI Link Requests</div>
         {pendingLinks.map(r => (
           <div key={r.diUsername} className="ta-card" style={{ borderLeft: "4px solid #4F46E5", padding: 12 }}>
             <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{safe(r.diUsername)}</strong> wants to register as your Digital Intelligence</div>
@@ -151,7 +151,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
       {error && <div className="ta-error">{error}</div>}
 
       {/* DI Pre-Review Queue */}
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Submissions Awaiting Your Approval ({diQueue.length})</div>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={12} /> DI Submissions Awaiting Your Approval ({diQueue.length})</div>
       {diQueue.length > 0 && <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
         {confirmAll ? (
           <div style={{ padding: 10, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 0, flex: 1 }}>
@@ -168,7 +168,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
       {diQueue.length === 0 ? <Empty text="No DI submissions awaiting your pre-approval." /> : diQueue.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>🤖 @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="robot" size={12} /> @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>
             <StatusPill status="di_pending" />
           </div>
           <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(sub.url)}</a>
@@ -176,7 +176,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
             <SubHeadline sub={sub} />
           </div>
           <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{safe(sub.reasoning)}</div>
-          {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#0D9488" }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
+          {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#0D9488" }}>{sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button className="ta-btn-primary" style={{ background: "#4F46E5", fontSize: 12 }} onClick={() => approveDISub(sub.id)}>✓ Approve for Review</button>
             <button className="ta-btn-ghost" style={{ color: "var(--red)", fontSize: 12 }} onClick={() => rejectDISub(sub.id)}>✗ Reject</button>

@@ -8,7 +8,7 @@ import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining } from "
 import { recuseJuror, getConcessionRecovery, fileDispute } from "../lib/jury";
 import { clearDraft } from "../lib/hooks";
 import { queryKeys } from "../lib/queryKeys";
-import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader } from "../components/ui";
+import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader, Icon } from "../components/ui";
 import DIPanelContent from "../components/DIPanelContent";
 
 const DRAFT_DEBOUNCE = 500;
@@ -336,14 +336,14 @@ function ReviewScreenInner({ user }) {
     return (
     <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={10} /> DI</>}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px", borderRadius: 0 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />
         </div>
       </div>
       <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(sub.url)}</a>
-      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", padding: "4px 8px", background: "var(--card-bg)", borderRadius: 0, marginTop: 6 }}>🌐 Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
+      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", padding: "4px 8px", background: "var(--card-bg)", borderRadius: 0, marginTop: 6 }}>Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
       <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />
       </div>
@@ -351,7 +351,7 @@ function ReviewScreenInner({ user }) {
 
       {sub.evidence && sub.evidence.length > 0 && (
         <div style={{ marginTop: 12, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence: {sub.evidence.length} Source{sub.evidence.length > 1 ? "s" : ""}</div>
           {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
         </div>
       )}
@@ -381,7 +381,7 @@ function ReviewScreenInner({ user }) {
 
       {sub.standingCorrection && (
         <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}><Icon name="vault" size={10} /> Standing Correction Proposed</div>
           <div style={{ color: "var(--text)", fontWeight: 600 }}>{safe(sub.standingCorrection.assertion)}</div>
           {sub.standingCorrection.evidence && <div style={{ color: "var(--text-sec)", fontSize: 12, marginTop: 2 }}>Source: {safe(sub.standingCorrection.evidence)}</div>}
         </div>
@@ -389,21 +389,21 @@ function ReviewScreenInner({ user }) {
 
       {sub.argumentEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}>⚔️ Argument Proposed</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}><Icon name="dispute" size={10} /> Argument Proposed</div>
           <div style={{ color: "var(--text)", lineHeight: 1.6 }}>{safe(sub.argumentEntry.content)}</div>
         </div>
       )}
 
       {sub.beliefEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief Proposed</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}><Icon name="jury" size={10} /> Foundational Belief Proposed</div>
           <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{safe(sub.beliefEntry.content)}</div>
         </div>
       )}
 
       {sub.translationEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530980", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation Proposed — {sub.translationEntry.type}</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}><Icon name="dispute" size={10} /> Translation Proposed — {sub.translationEntry.type}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{safe(sub.translationEntry.original)}</span>
             <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
@@ -414,12 +414,12 @@ function ReviewScreenInner({ user }) {
 
       {sub.linkedVaultEntries && sub.linkedVaultEntries.length > 0 && (
         <div style={{ marginTop: 10, padding: 10, background: "var(--card-bg)", borderRadius: 0, border: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>📎 {sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"} — vote on each</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>{sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"} — vote on each</div>
           {sub.linkedVaultEntries.map(e => {
-            const tc = { correction: ["🏛", "#059669", "#ECFDF5"], argument: ["⚔️", "#0D9488", "#F0FDFA"], belief: ["🧭", "#7C3AED", "#F3E8F9"] }[e.type] || ["📎", "#475569", "var(--card-bg)"];
+            const tc = { correction: ["vault", "#059669", "#ECFDF5"], argument: ["dispute", "#0D9488", "#F0FDFA"], belief: ["jury", "#7C3AED", "#F3E8F9"] }[e.type] || ["vault", "#475569", "var(--card-bg)"];
             return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{tc[0]} Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}><Icon name={tc[0]} size={10} /> Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
               </div>
               <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{safe(e.label)}</div>
               {e.detail && <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>Source: {safe(e.detail)}</div>}
@@ -449,7 +449,7 @@ function ReviewScreenInner({ user }) {
               <button className="ta-btn-primary" style={{ background: "var(--green)", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
               <button className="ta-btn-primary" style={{ background: "var(--red)", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars needed)` : ""}</button>
               <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
-              <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse</button>
+              <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>Recuse</button>
             </div>
             <LegalDisclaimer short />
           </div>
@@ -495,10 +495,10 @@ function ReviewScreenInner({ user }) {
         </div>
       </div>
 
-      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
-      {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
+      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
+      {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}><Icon name="robot" size={12} /> <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid var(--border)" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={10} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid var(--gold)" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "var(--gold)" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
             {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
@@ -511,7 +511,7 @@ function ReviewScreenInner({ user }) {
         {dQ.map(d => (
           <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>⚖ {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="jury" size={10} /> {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
               <span style={{ fontSize: 10, padding: "2px 7px", background: "rgba(212,168,67,0.09)", color: "#EA580C", borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
             </div>
             <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 8 }}>
@@ -527,12 +527,12 @@ function ReviewScreenInner({ user }) {
             {reviewingId === d.id ? (
               <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
                 <div style={{ padding: 8, background: "rgba(212,168,67,0.09)", border: "1px solid #CA8A04", borderRadius: 0, marginBottom: 10, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
-                  <strong style={{ color: "var(--gold)" }}>⚖ Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
+                  <strong style={{ color: "var(--gold)" }}>Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
                 </div>
                 <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} /></div>
                 <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => castDisputeVote(d.id, true)}>⚖ Uphold Dispute</button>
+                  <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => castDisputeVote(d.id, true)}>Uphold Dispute</button>
                   <button className="ta-btn-primary" style={{ background: "var(--green)" }} onClick={() => castDisputeVote(d.id, false)}>✓ Dismiss (Original Stands)</button>
                   <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
                 </div>
@@ -559,7 +559,7 @@ function ReviewScreenInner({ user }) {
             <div key={d.id} className="ta-card" style={{ borderLeft: `4px solid ${statusColor}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
-                  {isDisputer ? "⚖ You disputed" : "⚖ Disputed against you"} · {safe(d.orgName)} · {sDate(d.createdAt)}
+                  {isDisputer ? "You disputed" : "Disputed against you"} · {safe(d.orgName)} · {sDate(d.createdAt)}
                 </span>
                 <span style={{ fontSize: 10, padding: "2px 7px", background: d.status === "pending_review" ? "#FFFBEB" : d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", color: statusColor, borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>{statusLabel}</span>
               </div>
@@ -631,7 +631,7 @@ function ReviewScreenInner({ user }) {
 
               {/* Actions */}
               {hasDisputed ? (
-                <div style={{ fontSize: 11, color: "#EA580C", fontFamily: "var(--mono)", padding: "6px 8px", background: "rgba(212,168,67,0.09)", borderRadius: 0 }}>⚖ Dispute filed — awaiting jury review</div>
+                <div style={{ fontSize: 11, color: "#EA580C", fontFamily: "var(--mono)", padding: "6px 8px", background: "rgba(212,168,67,0.09)", borderRadius: 0 }}>Dispute filed — awaiting jury review</div>
               ) : (
                 <div>
                   {concedingId !== s.id && disputingResultId !== s.id && (
@@ -640,7 +640,7 @@ function ReviewScreenInner({ user }) {
                         Concede ({Math.round(recovery * 100)}% recovery)
                       </button>
                       <button className="ta-btn-secondary" style={{ fontSize: 11, borderColor: "#EA580C", color: "#EA580C" }} onClick={() => { setDisputingResultId(s.id); setConcedingId(null); setResultDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); setResultDisputeError(""); }}>
-                        ⚖ Dispute Rejection
+                        Dispute Rejection
                       </button>
                     </div>
                   )}
@@ -665,7 +665,7 @@ function ReviewScreenInner({ user }) {
                   {/* Dispute form */}
                   {disputingResultId === s.id && (
                     <div style={{ marginTop: 8, padding: 12, background: "rgba(212,168,67,0.09)", border: "1.5px solid #EA580C", borderRadius: 0 }}>
-                      <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#EA580C", fontWeight: 700, marginBottom: 6 }}>⚖ DISPUTE THIS REJECTION</div>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#EA580C", fontWeight: 700, marginBottom: 6 }}>DISPUTE THIS REJECTION</div>
                       <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 8, lineHeight: 1.6 }}>
                         Challenge the jury's rejection. Provide additional evidence and reasoning. A new jury will review. If upheld, your reputation is restored and the disputer gains credit.
                       </p>

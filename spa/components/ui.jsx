@@ -4,6 +4,34 @@ import { fDate } from "../lib/utils";
 import { sG } from "../lib/storage";
 import { W } from "../lib/scoring";
 
+// Icon assets mapping — replaces emoji usage throughout the app
+const ICON_MAP = {
+  correction: "/icons/correction.png",
+  affirmation: "/icons/affirmation.png",
+  vault: "/icons/vault.png",
+  robot: "/icons/robot.png",
+  jury: "/icons/jury.png",
+  dispute: "/icons/dispute.png",
+  crown: "/icons/crown.png",
+  "trust-badge": "/icons/trust-badge.png",
+  lighthouse: "/icons/lighthouse.png",
+  crest: "/icons/crest.png",
+};
+
+export function Icon({ name, size = 14, style: userStyle, title }) {
+  const src = ICON_MAP[name] || `/icons/${name}.png`;
+  return (
+    <img
+      src={src}
+      width={size}
+      height={size}
+      alt={title || name}
+      title={title}
+      style={{ display: "inline-block", verticalAlign: "middle", objectFit: "contain", ...userStyle }}
+    />
+  );
+}
+
 export function CitizenBadges({ badges }) {
   if (!badges || badges.length === 0) return (
     <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
@@ -321,7 +349,7 @@ export function DeliberateLieCheckbox({ checked, onChange }) {
       <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}>
         <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ accentColor: "#DC2626", marginTop: 3, flexShrink: 0 }} />
         <div>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#991B1B", fontWeight: 700, marginBottom: 3 }}>⚠ Deliberate Deception Finding</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#991B1B", fontWeight: 700, marginBottom: 3 }}>Deliberate Deception Finding</div>
           <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>By checking this box, I certify that I personally believe this submission to be a <strong>deliberate lie, a gross misrepresentation, or an omission of context with the intent to deceive.</strong> I understand that this is a secret ballot that will significantly impact the trust score of the submitting citizen — not the article author. A simple majority of jurors checking this box triggers a Deliberate Deception Finding.</div>
         </div>
       </label>
@@ -411,16 +439,16 @@ export function StandingCorrectionInput({ value, onChange }) {
 }
 
 export function UsernameLink({ username, onClick, style: userStyle }) {
-  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold)", fontSize: 11, textDecoration: "underline", textDecorationColor: "var(--border)", ...style }}>{username === ADMIN_USERNAME ? "👑 " : ""}@{username}</button>;
+  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold)", fontSize: 11, textDecoration: "underline", textDecorationColor: "var(--border)", ...userStyle }}>{username === ADMIN_USERNAME ? <><Icon name="crown" size={10} /> </> : ""}@{username}</button>;
 }
 
 export function Empty({ text }) { return <div style={{ textAlign: "center", padding: 36, color: "var(--text-muted)", fontSize: 11 }}>{text}</div>; }
 export function Loader() { return <div style={{ textAlign: "center", padding: 36, color: "var(--text-muted)", fontFamily: "var(--mono)", fontSize: 10 }}>Loading...</div>; }
 
-export function ExplainBox({ title, children, color = "#0D9488", icon = "📘" }) {
+export function ExplainBox({ title, children, color = "#0D9488", icon = null }) {
   return (
     <div style={{ margin: "14px 0", padding: 14, background: "#F0F4F8", border: `1.5px solid ${color}40`, borderLeft: `4px solid ${color}`, borderRadius: 0 }}>
-      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.1em", color, fontWeight: 700, marginBottom: 6 }}>{icon} {title}</div>
+      <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.1em", color, fontWeight: 700, marginBottom: 6 }}>{icon ? <>{icon} </> : ""}{title}</div>
       <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>{children}</div>
     </div>
   );

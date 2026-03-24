@@ -4,7 +4,7 @@ import { SK } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { useDraft, clearDraft } from "../lib/hooks";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrustedProgress, getDISubmissionLimit } from "../lib/permissions";
-import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer } from "../components/ui";
+import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer, Icon } from "../components/ui";
 import { queryKeys } from "../lib/queryKeys";
 
 export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded }) {
@@ -37,6 +37,8 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
+  const [bodyText, setBodyText] = useState("");
+  const [previewMode, setPreviewMode] = useState("diff"); // "clean" or "diff"
   const importTimerRef = useRef(null);
 
   // Auto-import article headline and author when a valid URL is entered
@@ -57,6 +59,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         setForm(f => ({ ...f, author: data.authors.join(", ") }));
         imported.push(data.authors.length === 1 ? "author" : "authors");
       }
+      if (data.bodyText) setBodyText(data.bodyText);
       if (imported.length > 0) {
         setImportMsg(`Imported ${imported.join(" and ")} from article.`);
       } else if (data.headline || data.authors) {
@@ -386,9 +389,51 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
     if (matchingDraft) { try { await fetch(`/api/drafts/${matchingDraft.id}`, { method: "DELETE" }); } catch {} fetchDrafts(); }
   };
 
+  // Extract domain from URL for preview byline
+  const urlDomain = (() => { try { return new URL(form.url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
+
+  // Build preview paragraphs from body text, applying inline edit diffs
+  const previewParagraphs = useMemo(() => {
+    if (!bodyText) return [];
+    return bodyText.split(/\n\n+/).filter(p => p.trim()).slice(0, 30);
+  }, [bodyText]);
+
+  // Apply inline edit highlighting to a paragraph
+  const renderPreviewParagraph = (text, idx) => {
+    if (previewMode !== "diff") return <p key={idx} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 10, fontFamily: "Georgia, serif" }}>{text}</p>;
+    // Check if any inline edit matches text in this paragraph
+    let parts = [{ text, type: "normal" }];
+    for (const edit of inlineEdits) {
+      if (!edit.original.trim()) continue;
+      const newParts = [];
+      for (const part of parts) {
+        if (part.type !== "normal") { newParts.push(part); continue; }
+        const idx2 = part.text.indexOf(edit.original);
+        if (idx2 === -1) { newParts.push(part); continue; }
+        if (idx2 > 0) newParts.push({ text: part.text.slice(0, idx2), type: "normal" });
+        newParts.push({ text: edit.original, type: "del" });
+        newParts.push({ text: edit.replacement, type: "ins" });
+        if (idx2 + edit.original.length < part.text.length) newParts.push({ text: part.text.slice(idx2 + edit.original.length), type: "normal" });
+      }
+      parts = newParts;
+    }
+    return (
+      <p key={idx} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 10, fontFamily: "Georgia, serif" }}>
+        {parts.map((p, i) => {
+          if (p.type === "del") return <span key={i} style={{ background: "rgba(196,74,58,0.12)", textDecoration: "line-through", textDecorationColor: "#9e3527", color: "#9e3527" }}>{p.text}</span>;
+          if (p.type === "ins") return <span key={i} style={{ background: "rgba(74,158,85,0.12)", borderLeft: "2px solid #4a9e55", paddingLeft: 4, color: "#2d6e34" }}>{p.text}</span>;
+          return <span key={i}>{p.text}</span>;
+        })}
+      </p>
+    );
+  };
+
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
+      <div style={{ display: "flex", minHeight: "calc(100vh - 120px)", gap: 0 }}>
+      {/* ── LEFT: FORM SIDE ── */}
+      <div style={{ flex: 1, minWidth: 0 }}>
 
       {/* Saved drafts banner */}
       {savedDrafts.length > 0 && (
@@ -438,39 +483,51 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>
       </div>
 
-      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}>⚠ <strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
+      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
 
       {/* DI Status Banner */}
       {isDIUser(user) && <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>🤖 Digital Intelligence</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="robot" size={14} /> Digital Intelligence</div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
-          Partner: <strong>@{user.diPartner}</strong> · {!user.diApproved ? <span style={{ color: "var(--red)" }}>⚠ Awaiting partner approval — submissions disabled</span> : "Approved"}
+          Partner: <strong>@{user.diPartner}</strong> · {!user.diApproved ? <span style={{ color: "var(--red)" }}>Awaiting partner approval — submissions disabled</span> : "Approved"}
           {activeOrg && user.diApproved && <span> · Limit: {getDISubmissionLimit(activeOrg)}/day in this Assembly</span>}
         </div>
         <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4 }}>Your submissions will be flagged as DI-generated and require partner pre-approval before entering jury review.</div>
       </div>}
       {activeOrg && (() => {
         const tp = getTrustedProgress(user, user.orgId);
-        if (tp.isTrusted) return <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)", lineHeight: 1.6 }}>🛡 <strong>Trusted Contributor</strong> in {activeOrg.name} — your submissions skip jury review and go straight to approved. Still disputable by any member.</div>;
-        if (tp.current > 0) return <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>🎯 Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
+        if (tp.isTrusted) return <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)", lineHeight: 1.6, display: "flex", alignItems: "center", gap: 4 }}><Icon name="trust-badge" size={14} /> <strong>Trusted Contributor</strong> in {activeOrg.name} — your submissions skip jury review and go straight to approved. Still disputable by any member.</div>;
+        if (tp.current > 0) return <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
         return null;
       })()}
 
       {/* Submission Type Toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
-        {[["correction", "🔴 Correction", "This headline is misleading"], ["affirmation", "🟢 Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
-          <button key={key} onClick={() => setForm({ ...form, submissionType: key })} style={{ flex: 1, padding: "10px 8px", background: form.submissionType === key ? (key === "correction" ? "#DC2626" : "#059669") : "#FFFFFF", color: form.submissionType === key ? "#fff" : "#475569", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: form.submissionType === key ? 700 : 400 }}>
-            <div>{label}</div>
-            <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, marginTop: 2, textTransform: "none", letterSpacing: 0 }}>{desc}</div>
-          </button>
-        ))}
+        <button onClick={() => setForm({ ...form, submissionType: "correction" })} style={{
+          flex: 1, padding: "8px", fontSize: 10, letterSpacing: 1, textAlign: "center", cursor: "pointer", fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase",
+          background: form.submissionType === "correction" ? "rgba(196,74,58,0.13)" : "transparent",
+          border: form.submissionType === "correction" ? "1.5px solid #c44a3a" : "1.5px solid var(--border)",
+          color: form.submissionType === "correction" ? "#c44a3a" : "var(--text-muted)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="correction" size={12} /> Correction</div>
+          <div style={{ fontSize: 8, fontWeight: 400, marginTop: 2, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>Correct something false or misleading</div>
+        </button>
+        <button onClick={() => setForm({ ...form, submissionType: "affirmation" })} style={{
+          flex: 1, padding: "8px", fontSize: 10, letterSpacing: 1, textAlign: "center", cursor: "pointer", fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase",
+          background: form.submissionType === "affirmation" ? "rgba(74,158,85,0.07)" : "transparent",
+          border: form.submissionType === "affirmation" ? "1.5px solid rgba(74,158,85,0.27)" : "1.5px solid var(--border)",
+          color: form.submissionType === "affirmation" ? "#4a9e55" : "var(--text-muted)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="affirmation" size={12} /> Affirmation</div>
+          <div style={{ fontSize: 8, fontWeight: 400, marginTop: 2, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>Lend weight and evidence to confirm something true</div>
+        </button>
       </div>
 
       {/* Org picker — multi-select */}
       {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
         <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "4px 10px", fontSize: 10, fontFamily: "var(--mono)", border: `1.5px solid ${sel ? "#059669" : "var(--border)"}`, background: sel ? "#059669" : "#fff", color: sel ? "#fff" : "#475569", borderRadius: 0, cursor: "pointer", fontWeight: sel ? 700 : 400 }}>{sel ? "✓ " : ""}{o.isGeneralPublic ? "🏛 " : ""}{o.name}</button>; })}
+          {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "3px 7px", fontSize: 8, fontFamily: "var(--mono)", border: sel ? "1px solid var(--gold)" : "1px solid var(--border)", background: sel ? "var(--gold)" : "transparent", color: sel ? "var(--bg)" : "var(--text-muted)", borderRadius: 0, cursor: "pointer", fontWeight: sel ? 700 : 400, display: "inline-flex", alignItems: "center", gap: 3 }}>{sel && "+ "}{o.name}</button>; })}
         </div>
       </div>}
       {error && <div className="ta-error">{error}</div>}
@@ -479,10 +536,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       {/* ── STEP 1: The Article ── */}
       <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: "2px 2px 0 0" }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 1 ? 0 : 1 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: form.url && form.originalHeadline ? "#059669" : "var(--gold)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{form.url && form.originalHeadline ? "✓" : "1"}</span>
+          <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>1</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>The Article</div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Paste the URL and headline you want to {form.submissionType === "affirmation" ? "affirm" : "correct"}</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>The article</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
@@ -531,10 +587,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       {/* ── STEP 2: Your Case ── */}
       <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 2 ? 0 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: (form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "#059669" : "var(--gold)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(form.submissionType === "correction" ? form.replacement && form.reasoning : form.reasoning) ? "✓" : "2"}</span>
+          <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>2</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Your Case</div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{form.submissionType === "affirmation" ? "Explain why this headline is accurate" : "Propose the corrected headline and explain why"}</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>Rewrite the headline</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
@@ -552,10 +607,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       {/* ── STEP 3: In-Line Edits (optional) ── */}
       <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 3 ? 0 : 3 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: inlineEdits.some(e => e.original && e.replacement) ? "#059669" : "var(--border)", color: inlineEdits.some(e => e.original && e.replacement) ? "#fff" : "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{inlineEdits.some(e => e.original && e.replacement) ? "✓" : "3"}</span>
+          <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>3</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>In-Line Article Edits <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 11 }}>optional</span></div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Propose specific text changes within the article body. Jurors vote on each edit independently.</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>Edit the article <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>up to 20</span></div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
@@ -568,10 +622,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       {/* ── STEP 4: Assembly Vault (optional) ── */}
       <div className="ta-card" style={{ borderRadius: "0 0 2px 2px" }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 4 ? 0 : 4 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-          <span style={{ width: 24, height: 24, borderRadius: "50%", background: linkedEntries.length > 0 || standingCorrections.some(sc => sc.assertion) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original) ? "#059669" : "var(--border)", color: linkedEntries.length > 0 || standingCorrections.some(sc => sc.assertion) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original) ? "#fff" : "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{linkedEntries.length > 0 || standingCorrections.some(sc => sc.assertion) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original) ? "✓" : "4"}</span>
+          <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>4</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Assembly Vault <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 11 }}>optional</span></div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Link reusable facts, arguments, beliefs, or translations to strengthen your submission.</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>Build the case <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>search or create</span></div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 4 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
@@ -582,9 +635,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           {linkedEntries.length > 0 && <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Linked ({linkedEntries.length})</div>
             {linkedEntries.map(e => {
-              const tc = { correction: ["🏛", "#059669", "#ECFDF5"], argument: ["⚔️", "#0D9488", "#F0FDFA"], belief: ["🧭", "#7C3AED", "#F3E8F9"] }[e.type] || ["📎", "#475569", "var(--card-bg)"];
+              const tc = { correction: ["vault", "#059669", "#ECFDF5"], argument: ["dispute", "#0D9488", "#F0FDFA"], belief: ["jury", "#7C3AED", "#F3E8F9"] }[e.type] || ["vault", "#475569", "var(--card-bg)"];
               return <div key={e.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}40`, borderRadius: 0, marginBottom: 6 }}>
-                <span style={{ fontSize: 12, flexShrink: 0 }}>{tc[0]}</span>
+                <Icon name={tc[0]} size={12} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700, marginBottom: 2 }}>{e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount}` : ""}</div>
                   <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis" }}>{e.label}</div>
@@ -597,7 +650,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           {/* Search to link existing submissions */}
           <div style={{ marginBottom: 12 }}>
             <button onClick={() => setShowSubSearch(s => !s)} style={{ background: showSubSearch ? "var(--gold)" : "#F9FAFB", color: showSubSearch ? "#fff" : "var(--text)", border: "1px solid var(--border)", padding: "6px 12px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-              {showSubSearch ? "✕ Close" : "🔗 Link Existing Submission"}
+              {showSubSearch ? "Close" : "Link Existing Submission"}
             </button>
             {showSubSearch && <div style={{ marginTop: 4, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
               <input value={subSearch} onChange={e => searchSubmissions(e.target.value)} placeholder="Search approved submissions by headline or URL..." style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, fontFamily: "inherit", boxSizing: "border-box" }} />
@@ -631,7 +684,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           {/* Search to link existing vault entries */}
           <div style={{ marginBottom: 12 }}>
             <button onClick={() => setShowVaultSearch(s => !s)} style={{ background: showVaultSearch ? "var(--gold)" : "#F9FAFB", color: showVaultSearch ? "#fff" : "var(--text)", border: "1px solid var(--border)", padding: "6px 12px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              {showVaultSearch ? "✕ Close Search" : "🔍 Link Existing Vault Entry"}
+              {showVaultSearch ? "Close Search" : "Link Existing Vault Entry"}
             </button>
             {showVaultSearch && <div style={{ marginTop: 10, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
               <input value={vaultSearch} onChange={e => searchVault(e.target.value)} placeholder="Search your assembly's vault..." style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, fontFamily: "inherit", boxSizing: "border-box" }} />
@@ -639,9 +692,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
               {vaultResults.length > 0 && <div style={{ marginTop: 8, maxHeight: 240, overflowY: "auto" }}>
                 {vaultResults.map(r => {
                   const already = linkedEntries.find(e => e.id === r.id);
-                  const tc = { correction: ["🏛", "#059669"], argument: ["⚔️", "#0D9488"], belief: ["🧭", "#7C3AED"] }[r.type] || ["📎", "#475569"];
+                  const tc = { correction: ["vault", "#059669"], argument: ["dispute", "#0D9488"], belief: ["jury", "#7C3AED"] }[r.type] || ["vault", "#475569"];
                   return <div key={r.id} onClick={() => !already && linkEntry(r)} style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", cursor: already ? "default" : "pointer", opacity: already ? 0.5 : 1, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                    <span style={{ fontSize: 12, flexShrink: 0 }}>{tc[0]}</span>
+                    <Icon name={tc[0]} size={12} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{r.type}{r.survivalCount > 0 ? ` · survived ${r.survivalCount}` : ""}</div>
                       <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>{r.label}</div>
@@ -660,7 +713,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
             <div style={{ marginTop: 10 }}>
               {/* Standing Corrections — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span style={{ color: "var(--green)" }}>🏛</span> Standing Corrections <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— reusable facts</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="vault" size={12} /> Standing Corrections <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— reusable facts</span></div>
                 {standingCorrections.map((sc, i) => (
                   <div key={i} style={{ marginBottom: 8, padding: i > 0 ? "8px 0 0 0" : 0, borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
                     {standingCorrections.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -675,7 +728,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Arguments — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>⚔️</span> Arguments <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— reusable rhetorical or logical tools</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={12} /> Arguments <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— reusable rhetorical or logical tools</span></div>
                 {submitArgs.map((arg, i) => (
                   <div key={i} style={{ marginBottom: 8, position: "relative" }}>
                     {submitArgs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -690,7 +743,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Beliefs — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🧭</span> Foundational Beliefs <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— axioms your Assembly holds</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="jury" size={12} /> Foundational Beliefs <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— axioms your Assembly holds</span></div>
                 {submitBeliefs.map((belief, i) => (
                   <div key={i} style={{ marginBottom: 8, position: "relative" }}>
                     {submitBeliefs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -705,7 +758,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Translations — multiple */}
               <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><span>🔄</span> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={12} /> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
                 {submitTranslations.map((tr, i) => (
                   <div key={i} style={{ marginBottom: 8, paddingTop: i > 0 ? 8 : 0, borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
                     {submitTranslations.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -790,6 +843,91 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         )}
         <LegalDisclaimer short />
       </div>
+      </div>{/* end form-side */}
+
+      {/* ── RIGHT: ARTICLE PREVIEW ── */}
+      <div style={{ flex: "0 0 340px", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)" }}>
+        <div style={{ background: "var(--bg)", padding: "6px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          <span style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Article preview</span>
+          <div style={{ display: "flex", border: "1px solid var(--border)", cursor: "pointer" }}>
+            <span onClick={() => setPreviewMode("clean")} style={{ padding: "3px 7px", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", background: previewMode === "clean" ? "var(--gold)" : "transparent", color: previewMode === "clean" ? "var(--bg)" : "var(--text-muted)", fontWeight: previewMode === "clean" ? 700 : 400 }}>Clean</span>
+            <span onClick={() => setPreviewMode("diff")} style={{ padding: "3px 7px", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", background: previewMode === "diff" ? "var(--gold)" : "transparent", color: previewMode === "diff" ? "var(--bg)" : "var(--text-muted)", fontWeight: previewMode === "diff" ? 700 : 400 }}>Diff</span>
+          </div>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", background: "#f8f8f6", padding: "14px 12px", fontFamily: "Georgia, serif" }}>
+          {!form.originalHeadline && !form.url ? (
+            <div style={{ textAlign: "center", padding: 40, color: "#999", fontSize: 11, fontFamily: "var(--mono)" }}>
+              Import an article to see preview
+            </div>
+          ) : (
+            <>
+              {/* Section label */}
+              {urlDomain && <div style={{ fontSize: 9, color: "#c44a3a", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, fontFamily: "sans-serif" }}>{urlDomain}</div>}
+
+              {/* Original headline */}
+              {form.originalHeadline && (
+                <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25, color: previewMode === "diff" && form.replacement ? "#999" : "#1a1a1a", textDecoration: previewMode === "diff" && form.replacement ? "line-through" : "none", marginBottom: 3 }}>
+                  {form.originalHeadline}
+                </div>
+              )}
+
+              {/* Corrected headline */}
+              {form.replacement && (
+                <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.25, color: form.submissionType === "correction" ? "#c44a3a" : "#2d6e34", marginBottom: 3 }}>
+                  {previewMode === "clean" ? form.replacement : form.replacement}
+                </div>
+              )}
+
+              {/* Subtitle placeholder */}
+              {form.submissionType === "affirmation" && form.originalHeadline && (
+                <div style={{ fontSize: 11, color: "#666", fontStyle: "italic", marginBottom: 4 }}>Affirmed as accurate</div>
+              )}
+
+              {/* Author byline */}
+              {(authors.length > 0 || form.author) && (
+                <div style={{ fontSize: 10, color: "#999", marginBottom: 12, fontFamily: "sans-serif" }}>
+                  By {authors.length > 0 ? authors.join(", ") : form.author}{urlDomain ? ` · ${urlDomain}` : ""}
+                </div>
+              )}
+
+              {/* Body text with inline edit diffs */}
+              {previewParagraphs.length > 0 ? (
+                previewParagraphs.map((p, i) => renderPreviewParagraph(p, i))
+              ) : (
+                <div style={{ fontSize: 10, color: "#bbb", fontFamily: "sans-serif", fontStyle: "italic", marginTop: 8 }}>
+                  {form.url ? "Article body text will appear here after import." : ""}
+                </div>
+              )}
+
+              {/* Vault annotations section */}
+              {(standingCorrections.some(sc => sc.assertion.trim()) || submitTranslations.some(t => t.original.trim() && t.translated.trim())) && (
+                <div style={{ borderTop: "1px solid #ddd", paddingTop: 10, fontFamily: "sans-serif", marginTop: 14 }}>
+                  <div style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6 }}>Trust Assembly annotations</div>
+
+                  {submitTranslations.filter(t => t.original.trim() && t.translated.trim()).map((t, i) => (
+                    <div key={`t-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                      <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>TRANSLATION</div>
+                      <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>
+                        <span style={{ textDecoration: "line-through", color: "#999" }}>"{t.original}"</span>
+                        {" → "}
+                        <span style={{ color: "#2d6e34" }}>"{t.translated}"</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {standingCorrections.filter(sc => sc.assertion.trim()).map((sc, i) => (
+                    <div key={`sc-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                      <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>FACT</div>
+                      <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{sc.assertion}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      </div>{/* end split */}
     </div>
   );
 }

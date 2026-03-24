@@ -6,7 +6,7 @@ import { sG } from "../lib/storage";
 import { W, computeAssemblyReputation, getMajority } from "../lib/scoring";
 import { checkEnrollment } from "../lib/permissions";
 import { getJurySize, getSuperJurySize, getConcessionRecovery } from "../lib/jury";
-import { UsernameLink, SubHeadline, StatusPill, InviteCTA, Empty, Loader } from "../components/ui";
+import { UsernameLink, SubHeadline, StatusPill, InviteCTA, Empty, Loader, Icon } from "../components/ui";
 import AssemblyGuide from "../components/AssemblyGuide";
 import { queryKeys } from "../lib/queryKeys";
 
@@ -331,7 +331,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
             </div>
           )}
           {rep.deceptionFindings > 0 && <div style={{ padding: 8, background: "rgba(196,74,58,0.09)", border: "1px solid #991B1B", borderRadius: 0, marginTop: 8, fontSize: 12, color: "var(--red)", fontWeight: 600 }}>
-            ⚠ {rep.deceptionFindings} cross-group deception finding{rep.deceptionFindings > 1 ? "s" : ""} — external jurors found content this Assembly approved to be deliberately misleading ({CROSS_GROUP_DECEPTION_MULT}× penalty each).
+            {rep.deceptionFindings} cross-group deception finding{rep.deceptionFindings > 1 ? "s" : ""} — external jurors found content this Assembly approved to be deliberately misleading ({CROSS_GROUP_DECEPTION_MULT}× penalty each).
           </div>}
           {rep.concessions > 0 && <div style={{ padding: 8, background: "var(--card-bg)", border: "1px solid #9B7DB8", borderRadius: 0, marginTop: 8, fontSize: 12, color: "#7C3AED" }}>
             This Assembly has conceded {rep.concessions} time{rep.concessions > 1 ? "s" : ""} — acknowledging when cross-group review found them wrong.
@@ -343,7 +343,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
         {/* Concessions */}
         {canPropose && <div className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 8, fontWeight: 700 }}>⚖ Concessions</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 8, fontWeight: 700 }}><Icon name="jury" size={12} /> Concessions</div>
           <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 10 }}>
             When a cross-group rejection occurs, any member can propose the Assembly concede. A <strong>super jury of {getSuperJurySize(vo.members.length)}</strong> decides. One concession per week gets full recovery — no reputation loss. Additional concessions in the same week recover 90%. After the first week, recovery decays (90% at 2 weeks, 50% at 1 month, down to 5% after 3 months). Individual dispute winners keep their full {W.disputeWin}× reward regardless — the Assembly does not share in that reward.
           </div>
@@ -377,7 +377,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
               return (
                 <div key={s.id} style={{ padding: 8, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 6 }}>
                   <div style={{ fontSize: 12 }}><SubHeadline sub={s} size={12} /></div>
-                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 3 }}>by {s.submittedBy === ADMIN_USERNAME ? "👑 " : ""}@{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
+                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 3 }}>by {s.submittedBy === ADMIN_USERNAME ? <><Icon name="crown" size={10} />{" "}</> : ""}@{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
                   {alreadyConceded ? <div style={{ fontSize: 10, color: "#7C3AED", fontFamily: "var(--mono)", marginTop: 3 }}>Concession proposed</div> : (
                     <div style={{ marginTop: 6 }}>
                       <textarea value={concessionReason} onChange={e => setConcessionReason(e.target.value)} placeholder="Why should the Assembly concede?" rows={2} style={{ width: "100%", padding: 6, border: "1px solid var(--border)", fontSize: 12, borderRadius: 0, boxSizing: "border-box", fontFamily: "var(--body)" }} />
@@ -429,14 +429,14 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
                         <UsernameLink username={s.submittedBy} onClick={onViewCitizen} /> · {sDate(s.resolvedAt || s.createdAt)}
-                        {s.isDI ? " · 🤖 DI" : ""}{s.trustedSkip ? " · 🛡" : ""}
+                        {s.isDI && <><span> · </span><Icon name="robot" size={10} /> DI</>}{s.trustedSkip && <><span> · </span><Icon name="trust-badge" size={10} /></>}
                       </span>
                       <StatusPill status={s.status} />
                     </div>
                     <SubHeadline sub={s} size={12} />
                     <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 4 }}>
                       {approveCount + rejectCount > 0 && <span>{approveCount}↑ {rejectCount}↓</span>}
-                      {s.evidence && s.evidence.length > 0 && <span> · 📎 {s.evidence.length}</span>}
+                      {s.evidence && s.evidence.length > 0 && <span> · {s.evidence.length}</span>}
                       {s.inlineEdits && s.inlineEdits.length > 0 && <span> · {s.inlineEdits.length} edits</span>}
                     </div>
                   </div>
@@ -501,7 +501,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
       <div className="ta-section-rule" /><h2 className="ta-section-head">Trust Assemblies</h2>
 
       <button onClick={() => setShowGuide(g => !g)} style={{ background: showGuide ? "var(--gold)" : "#F9FAFB", color: showGuide ? "#fff" : "var(--text)", border: "1px solid var(--border)", padding: "6px 14px", fontFamily: "var(--mono)", fontSize: 10, cursor: "pointer", borderRadius: 0, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        {showGuide ? "✕ Hide Guide" : "📖 How Assemblies Work"}
+        {showGuide ? "Hide Guide" : "How Assemblies Work"}
       </button>
 
       {showGuide && <AssemblyGuide />}
@@ -521,7 +521,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
                   <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "var(--border)" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
                   {isActive && <span style={{ fontSize: 8, padding: "2px 6px", background: "rgba(74,158,85,0.09)", color: "var(--green)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700 }}>★ ACTIVE</span>}
-                  {isGP && <span style={{ fontSize: 8, padding: "2px 6px", background: "var(--card-bg)", color: "var(--gold)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700 }}>🏛 HOME</span>}
+                  {isGP && <span style={{ fontSize: 8, padding: "2px 6px", background: "var(--card-bg)", color: "var(--gold)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700 }}><Icon name="vault" size={10} /> HOME</span>}
                 </div>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)" }}>{o.members.length} members · {(() => { const enr = checkEnrollment(o); const founders = o.founders || [o.createdBy]; const isFounder = founders.includes(user.username); if (enr.mode === "tribal" && isFounder) return "You are the founder"; return enr.label; })()}{st.total > 0 ? ` · ${st.total} subs` : ""}{(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? ` · Trust: ${r.trustScore}%` : r.total > 0 ? ` · ${r.total}/20 reviews` : ""; })()}</div>
               </div>
@@ -582,11 +582,11 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
             <div key={a.id} className="ta-card" style={{ borderLeft: `4px solid ${isTribal ? "#EA580C" : "#0D9488"}`, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{a.userId === ADMIN_USERNAME ? "👑 " : ""}@{a.displayName}</strong> wants to join <strong>{a.orgName}</strong></div>
+                  <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{a.userId === ADMIN_USERNAME ? <><Icon name="crown" size={10} />{" "}</> : ""}@{a.displayName}</strong> wants to join <strong>{a.orgName}</strong></div>
                   {isTribal && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.09)", color: "#A16207", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700, display: "inline-block", marginBottom: 4 }}>Tribal Rule — Founder Approval</span>}
                   {!isTribal && <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>{a.sponsors.length}/{a.sponsorsNeeded} sponsor{a.sponsorsNeeded > 1 ? "s" : ""} · Applied {sDate(a.createdAt)}</div>}
                   {a.reason && <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, padding: 8, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 4 }}><div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}>Why They Want to Join</div>{a.reason}</div>}
-                  {a.link && <a href={a.link} target="_blank" rel="noopener" style={{ fontSize: 12, color: "var(--gold)", wordBreak: "break-all" }}>🔗 {a.link}</a>}
+                  {a.link && <a href={a.link} target="_blank" rel="noopener" style={{ fontSize: 12, color: "var(--gold)", wordBreak: "break-all" }}>{a.link}</a>}
                   {a.sponsors.length > 0 && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>Vouched by: {a.sponsors.map(s => "@" + s).join(", ")}</div>}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginLeft: 10 }}>
@@ -611,7 +611,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
       {applyingTo && orgs[applyingTo] && <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
         <div style={{ background: "var(--card-bg)", padding: 24, borderRadius: 0, maxWidth: 500, width: "100%", maxHeight: "90vh", overflow: "auto" }}>
           <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Apply to {orgs[applyingTo].name}</div>
-          {checkEnrollment(orgs[applyingTo]).mode === "tribal" && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#A16207", marginBottom: 8 }}>⚠ Tribal Rule — the founder will review your application personally.</div>}
+          {checkEnrollment(orgs[applyingTo]).mode === "tribal" && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#A16207", marginBottom: 8 }}>Tribal Rule — the founder will review your application personally.</div>}
           {checkEnrollment(orgs[applyingTo]).mode === "sponsor" && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", marginBottom: 8 }}>{checkEnrollment(orgs[applyingTo]).sponsors} qualified sponsor{checkEnrollment(orgs[applyingTo]).sponsors > 1 ? "s" : ""} will need to vouch for you.</div>}
           {orgs[applyingTo].charter && <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 12 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}>Assembly Charter</div>

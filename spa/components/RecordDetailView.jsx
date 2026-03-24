@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { anonName, sDate } from "../lib/utils";
-import { UsernameLink, SubHeadline, StatusPill, AuditTrail } from "./ui";
+import { UsernameLink, SubHeadline, StatusPill, AuditTrail, Icon } from "./ui";
 
 export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDispute }) {
   if (!sub) return null;
@@ -39,8 +39,8 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
               <UsernameLink username={sub.resolvedAt ? sub.submittedBy : null} onClick={onViewCitizen} />
               {!sub.resolvedAt && <span className="hidden-user">{anonName(sub.submittedBy, sub.anonMap, false)}</span>}
               <span style={{ marginLeft: 4 }}>· {sub.orgName} · {sDate(sub.createdAt)}</span>
-              {sub.trustedSkip && <span> · 🛡 Trusted</span>}
-              {sub.isDI && <span> · 🤖 DI</span>}
+              {sub.trustedSkip && <span> · <Icon name="trust-badge" size={10} /> Trusted</span>}
+              {sub.isDI && <span> · <Icon name="robot" size={10} /> DI</span>}
             </div>
             <div style={{ fontSize: 9, color: "var(--gold)", marginBottom: 6 }}>{sub.url}</div>
             <SubHeadline sub={sub} />
@@ -177,7 +177,7 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
         </div>
       )}
 
-      {sub.deliberateLieFinding && <div style={{ fontSize: 9, color: "var(--red)", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4, letterSpacing: "1px" }}>⚠ DELIBERATE DECEPTION FINDING</div>}
+      {sub.deliberateLieFinding && <div style={{ fontSize: 9, color: "var(--red)", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4, letterSpacing: "1px" }}>DELIBERATE DECEPTION FINDING</div>}
 
       <AuditTrail entries={sub.auditTrail} />
     </div>
