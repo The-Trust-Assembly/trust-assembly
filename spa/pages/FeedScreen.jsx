@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Component } from "react";
+import React, { useState, useEffect, Component } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SK, ADMIN_USERNAME } from "../lib/constants";
 import { sG } from "../lib/storage";
@@ -19,6 +19,72 @@ class FeedErrorBoundary extends Component {
     if (this.state.hasError) return <div style={{ padding: 20, color: "var(--red)" }}>Feed error: {String(this.state.error?.message || this.state.error)}. Try refreshing.</div>;
     return this.props.children;
   }
+}
+
+function FeedHeroCarousel({ subs }) {
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [fading, setFading] = useState(false);
+  const [paused, setPaused] = useState(false);
+
+  const approved = Object.values(subs || {})
+    .filter(s => ["approved", "consensus", "cross_review"].includes(s.status))
+    .sort((a, b) => new Date(b.resolvedAt || b.createdAt).getTime() - new Date(a.resolvedAt || a.createdAt).getTime())
+    .slice(0, 5);
+
+  useEffect(() => {
+    if (paused || approved.length <= 1) return;
+    const t = setInterval(() => {
+      setFading(true);
+      setTimeout(() => {
+        setSlideIdx(i => (i + 1) % approved.length);
+        setFading(false);
+      }, 280);
+    }, 8000);
+    return () => clearInterval(t);
+  }, [paused, approved.length]);
+
+  if (approved.length === 0) {
+    return (
+      <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10, textAlign: "center" }}>
+        <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>How You're Changing the Narrative</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>No corrections approved yet — submit one and let the jury decide.</div>
+      </div>
+    );
+  }
+
+  const slide = approved[slideIdx % approved.length];
+  const isAffirm = slide.submissionType === "affirmation";
+  let domain = "";
+  try { domain = new URL(String(slide.url)).hostname.replace(/^www\./, ""); } catch {}
+
+  return (
+    <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10 }}
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 12 }}>How You're Changing the Narrative</div>
+      <div style={{ minHeight: 80, opacity: fading ? 0 : 1, transition: "opacity 0.25s ease" }}>
+        {isAffirm ? (
+          <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "var(--text)" }}>
+            <span style={{ color: "var(--green)", fontWeight: 700 }}>Affirmed: </span>{safe(slide.originalHeadline)}
+          </div>
+        ) : (
+          <>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 14, lineHeight: 1.4, color: "var(--text-muted)", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "var(--gold)", fontWeight: 600 }}>{safe(slide.replacement)}</div>
+          </>
+        )}
+        <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 8 }}>
+          {safe(slide.orgName)}{domain ? ` · ${domain}` : ""} · {sDate(slide.resolvedAt || slide.createdAt)}
+        </div>
+      </div>
+      {approved.length > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
+          {approved.map((_, i) => (
+            <span key={i} onClick={() => { setSlideIdx(i); setFading(false); }} style={{ width: 8, height: 8, borderRadius: "50%", background: i === slideIdx % approved.length ? "var(--gold)" : "var(--border)", cursor: "pointer", transition: "background 0.2s" }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const FILTER_CHIPS = [
@@ -221,42 +287,10 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
   const trustedRequired = 10;
   const trustedRemaining = Math.max(0, trustedRequired - myApprovedInGP);
 
-  // TEMPORARY DIAGNOSTIC: Find which value is an object being rendered as a React child
-  // Check ALL values that get rendered in the feed, including computed ones
-  const _diagFields = {};
-  try {
-    _diagFields.reviewQueueCount = typeof reviewQueueCount;
-    _diagFields.totalCitizens = typeof totalCitizens;
-    _diagFields.myApprovedInGP = typeof myApprovedInGP;
-    _diagFields.trustedRemaining = typeof trustedRemaining;
-    _diagFields.gpOrgName = gpOrg ? typeof gpOrg.name : "no gpOrg";
-    _diagFields.myOrgIdsLength = typeof myOrgIds.length;
-    _diagFields.filteredLength = typeof filtered.length;
-    _diagFields.pagedLength = typeof paged.length;
-    _diagFields.savedDraftsLength = typeof savedDrafts.length;
-    // Check first 5 subs for non-string renderable fields
-    const firstSubs = paged.slice(0, 5);
-    for (let i = 0; i < firstSubs.length; i++) {
-      const s = firstSubs[i];
-      const objFields = [];
-      for (const [k, v] of Object.entries(s)) {
-        if (v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v)) {
-          objFields.push(k);
-        }
-      }
-      _diagFields["sub" + i + "_objFields"] = objFields.join(",");
-      _diagFields["sub" + i + "_orgName_type"] = typeof s.orgName;
-      _diagFields["sub" + i + "_reasoning_type"] = typeof s.reasoning;
-      _diagFields["sub" + i + "_url_type"] = typeof s.url;
-      _diagFields["sub" + i + "_status_type"] = typeof s.status;
-      _diagFields["sub" + i + "_createdAt_type"] = typeof s.createdAt;
-      _diagFields["sub" + i + "_submittedBy_type"] = typeof s.submittedBy;
-    }
-    console.log("FEED DIAG:", JSON.stringify(_diagFields, null, 2));
-  } catch (e) { console.error("FEED DIAG ERROR:", e); }
-
   return (
     <div className="ta-content">
+      <FeedHeroCarousel subs={subs} />
+
       {/* Admin update box */}
       <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
         <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Admin update</div>

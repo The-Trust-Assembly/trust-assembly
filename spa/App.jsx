@@ -937,7 +937,6 @@ export default function TrustAssembly() {
           </div>
 
           <div className="ta-content">
-            {screen === "feed" && !viewingRecord && !viewingCitizen && <CitizenCounter />}
             {viewingRecord ? (
               <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : viewingCitizen ? (
