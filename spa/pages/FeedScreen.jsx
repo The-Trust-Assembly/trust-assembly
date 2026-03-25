@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Component } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SK, ADMIN_USERNAME } from "../lib/constants";
 import { sG } from "../lib/storage";
@@ -7,6 +7,19 @@ import { fileDispute } from "../lib/jury";
 import { Loader, Empty, UsernameLink, EvidenceFields, LegalDisclaimer } from "../components/ui";
 import RecordDetailView from "../components/RecordDetailView";
 import { queryKeys } from "../lib/queryKeys";
+
+// Safety: ensure a value is safe to render as a React child
+function safe(v) { return (v !== null && typeof v === "object") ? JSON.stringify(v) : v; }
+
+class FeedErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("FeedScreen error:", error, info); }
+  render() {
+    if (this.state.hasError) return <div style={{ padding: 20, color: "var(--red)" }}>Feed error: {String(this.state.error?.message || this.state.error)}. Try refreshing.</div>;
+    return this.props.children;
+  }
+}
 
 const FILTER_CHIPS = [
   { key: "all", label: "All" },
@@ -67,7 +80,11 @@ function matchesFilter(sub, filter) {
   return true;
 }
 
-export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewRecord }) {
+export default function FeedScreen(props) {
+  return <FeedErrorBoundary><FeedScreenInner {...props} /></FeedErrorBoundary>;
+}
+
+function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
@@ -250,7 +267,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
               <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 11, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {d.title || "(no headline)"}
+                    {safe(d.title) || "(no headline)"}
                   </div>
                   <div style={{ fontSize: 9, color: "var(--text-muted)" }}>{domain} · {ago}</div>
                 </div>
@@ -300,7 +317,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
         const isAffirm = sub.submissionType === "affirmation";
         const showUser = sub.resolvedAt;
         let domain = "";
-        try { domain = new URL(sub.url).hostname.replace(/^www\./, ""); } catch { domain = sub.url; }
+        try { domain = new URL(String(sub.url)).hostname.replace(/^www\./, ""); } catch { domain = safe(sub.url) || ""; }
 
         return (
         <div key={sub.id} className="card">
@@ -313,7 +330,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
               ) : (
                 <span className="hidden-user">Citizen (pending review)</span>
               )}
-              <span className="muted">· {typeof sub.orgName === "object" ? JSON.stringify(sub.orgName) : sub.orgName}{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4 }}>{typeof a === "object" ? JSON.stringify(a) : a}</span>)} · {sDate(sub.createdAt)}</span>
+              <span className="muted">· {safe(sub.orgName)}{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4 }}>{safe(a)}</span>)} · {sDate(sub.createdAt)}</span>
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
               {sub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
             </div>
@@ -329,7 +346,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
           </div>
 
           {/* Reasoning */}
-          <div className="card-reason">{typeof sub.reasoning === "object" ? JSON.stringify(sub.reasoning) : sub.reasoning}</div>
+          <div className="card-reason">{safe(sub.reasoning)}</div>
 
           {/* Edits & evidence */}
           {sub.inlineEdits && sub.inlineEdits.length > 0 && (
@@ -422,17 +439,17 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
                         <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 8, fontWeight: 700, letterSpacing: "1px" }}>ORIGINAL SUBMISSION — RESPOND TO EACH FIELD</div>
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 2, letterSpacing: "1px" }}>ORIGINAL HEADLINE</div>
-                          <div style={{ fontSize: 11, color: "var(--text)", padding: "4px 8px", background: "var(--bg)", border: "1px solid var(--border)" }}>{sub.originalHeadline}</div>
+                          <div style={{ fontSize: 11, color: "var(--text)", padding: "4px 8px", background: "var(--bg)", border: "1px solid var(--border)" }}>{safe(sub.originalHeadline)}</div>
                           <textarea value={(disputeForm.fieldResponses || {}).headline || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, headline: e.target.value } })} rows={2} placeholder="Why is this characterization of the headline wrong? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid var(--border)", fontSize: 11, boxSizing: "border-box", fontFamily: "var(--body)", background: "var(--bg)", color: "var(--text)" }} />
                         </div>
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 2, letterSpacing: "1px" }}>PROPOSED REPLACEMENT</div>
-                          <div style={{ fontSize: 11, color: "var(--red)", fontWeight: 600, padding: "4px 8px", background: "var(--bg)", border: "1px solid var(--border)" }}>{sub.replacement}</div>
+                          <div style={{ fontSize: 11, color: "var(--red)", fontWeight: 600, padding: "4px 8px", background: "var(--bg)", border: "1px solid var(--border)" }}>{safe(sub.replacement)}</div>
                           <textarea value={(disputeForm.fieldResponses || {}).replacement || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, replacement: e.target.value } })} rows={2} placeholder="Why is this replacement inaccurate? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid var(--border)", fontSize: 11, boxSizing: "border-box", fontFamily: "var(--body)", background: "var(--bg)", color: "var(--text)" }} />
                         </div>
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 2, letterSpacing: "1px" }}>REASONING</div>
-                          <div style={{ fontSize: 11, color: "var(--text-sec)", padding: "4px 8px", background: "var(--bg)", border: "1px solid var(--border)", lineHeight: 1.6 }}>{sub.reasoning}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-sec)", padding: "4px 8px", background: "var(--bg)", border: "1px solid var(--border)", lineHeight: 1.6 }}>{safe(sub.reasoning)}</div>
                           <textarea value={(disputeForm.fieldResponses || {}).reasoning || ""} onChange={e => setDisputeForm({ ...disputeForm, fieldResponses: { ...disputeForm.fieldResponses, reasoning: e.target.value } })} rows={2} placeholder="Why is this reasoning flawed? (optional)" style={{ width: "100%", marginTop: 4, padding: 6, border: "1px solid var(--border)", fontSize: 11, boxSizing: "border-box", fontFamily: "var(--body)", background: "var(--bg)", color: "var(--text)" }} />
                         </div>
                       </div>
