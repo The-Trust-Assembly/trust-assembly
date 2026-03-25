@@ -21,6 +21,29 @@ class FeedErrorBoundary extends Component {
   }
 }
 
+function HeroSlide({ slide, style }) {
+  const isAffirm = slide.submissionType === "affirmation";
+  let domain = "";
+  try { domain = new URL(String(slide.url)).hostname.replace(/^www\./, ""); } catch {}
+  return (
+    <div style={style}>
+      {isAffirm ? (
+        <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#1a1a1a" }}>
+          <span style={{ color: "#059669", fontWeight: 700 }}>Affirmed: </span>{safe(slide.originalHeadline)}
+        </div>
+      ) : (
+        <>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 14, lineHeight: 1.4, color: "#666", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#c44a3a", fontWeight: 600 }}>{safe(slide.replacement)}</div>
+        </>
+      )}
+      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#999", marginTop: 8 }}>
+        {safe(slide.orgName)}{domain ? ` \u00B7 ${domain}` : ""} {"\u00B7"} {sDate(slide.resolvedAt || slide.createdAt)}
+      </div>
+    </div>
+  );
+}
+
 function FeedHeroCarousel({ subs }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [fading, setFading] = useState(false);
@@ -45,41 +68,35 @@ function FeedHeroCarousel({ subs }) {
 
   if (approved.length === 0) {
     return (
-      <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10, textAlign: "center" }}>
+      <div style={{ background: "#fff", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10, textAlign: "center" }}>
         <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>How You're Changing the Narrative</div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>No corrections approved yet — submit one and let the jury decide.</div>
+        <div style={{ fontSize: 12, color: "#999", lineHeight: 1.6 }}>No corrections approved yet — submit one and let the jury decide.</div>
       </div>
     );
   }
 
-  const slide = approved[slideIdx % approved.length];
-  const isAffirm = slide.submissionType === "affirmation";
-  let domain = "";
-  try { domain = new URL(String(slide.url)).hostname.replace(/^www\./, ""); } catch {}
+  const activeIdx = slideIdx % approved.length;
 
   return (
-    <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10 }}
+    <div style={{ background: "#fff", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10 }}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 12 }}>How You're Changing the Narrative</div>
-      <div style={{ minHeight: 80, opacity: fading ? 0 : 1, transition: "opacity 0.25s ease" }}>
-        {isAffirm ? (
-          <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "var(--text)" }}>
-            <span style={{ color: "var(--green)", fontWeight: 700 }}>Affirmed: </span>{safe(slide.originalHeadline)}
-          </div>
-        ) : (
-          <>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 14, lineHeight: 1.4, color: "var(--text-muted)", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "var(--gold)", fontWeight: 600 }}>{safe(slide.replacement)}</div>
-          </>
-        )}
-        <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 8 }}>
-          {safe(slide.orgName)}{domain ? ` · ${domain}` : ""} · {sDate(slide.resolvedAt || slide.createdAt)}
-        </div>
+      {/* All slides rendered to establish max height; only active is visible */}
+      <div style={{ position: "relative" }}>
+        {approved.map((s, i) => (
+          <HeroSlide key={s.id} slide={s} style={{
+            visibility: i === activeIdx ? "visible" : "hidden",
+            position: i === activeIdx ? "relative" : "absolute",
+            top: 0, left: 0, right: 0,
+            opacity: i === activeIdx && !fading ? 1 : 0,
+            transition: "opacity 0.25s ease",
+          }} />
+        ))}
       </div>
       {approved.length > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
           {approved.map((_, i) => (
-            <span key={i} onClick={() => { setSlideIdx(i); setFading(false); }} style={{ width: 8, height: 8, borderRadius: "50%", background: i === slideIdx % approved.length ? "var(--gold)" : "var(--border)", cursor: "pointer", transition: "background 0.2s" }} />
+            <span key={i} onClick={() => { setSlideIdx(i); setFading(false); }} style={{ width: 8, height: 8, borderRadius: "50%", background: i === activeIdx ? "var(--gold)" : "#ccc", cursor: "pointer", transition: "background 0.2s" }} />
           ))}
         </div>
       )}
@@ -411,7 +428,7 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
           </div>
 
           {/* URL */}
-          <div className="card-url">{domain}</div>
+          <a href={sub.url} target="_blank" rel="noopener noreferrer" className="card-url" style={{ color: "var(--gold)", textDecoration: "none" }}>{domain}</a>
 
           {/* Headlines */}
           <div style={{ cursor: "pointer" }} onClick={() => setExpandedId(sub.id)}>
