@@ -362,21 +362,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
     }
     setLoading(false);
     if (submittedNames.length === 0) { setError("No assemblies could accept your submission. Check DI limits."); return; }
-    // Track grace period submissions
-    const graceItems = createdSubs.map(s => ({ id: s.id, createdAt: s.created_at || new Date().toISOString(), orgName: s.org_name || "assembly" }));
-    setGraceSubmissions(graceItems);
-    // Start 5-minute countdown
-    const endTime = Date.now() + 5 * 60 * 1000;
-    const updateTimer = () => {
-      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-      if (remaining <= 0) { setGraceTimer(null); setGraceSubmissions([]); return; }
-      const mins = Math.floor(remaining / 60);
-      const secs = remaining % 60;
-      setGraceTimer(`${mins}:${secs.toString().padStart(2, "0")}`);
-      setTimeout(updateTimer, 1000);
-    };
-    updateTimer();
-    setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}`);
+    setSuccess(`Submitted to ${submittedNames.length} assembl${submittedNames.length > 1 ? "ies" : "y"}: ${submittedNames.join(", ")}. Your submission is now in jury review.`);
     setForm({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 }); setAuthors([]); setAuthorInput(""); setInlineEdits([{ original: "", replacement: "", reasoning: "" }]); setStandingCorrections([{ assertion: "", evidence: "" }]); setStandingCorrection({ assertion: "", evidence: "" }); setSubmitArgs([""]); setSubmitArg(""); setSubmitBeliefs([""]); setSubmitBelief(""); setSubmitTranslations([{ original: "", translated: "", type: "clarity" }]); setSubmitTranslation({ original: "", translated: "", type: "clarity" }); setLinkedEntries([]); setVaultSearch(""); setVaultResults([]); setShowVaultSearch(false); setLinkedSubs([]); setSubSearch(""); setSubResults([]); setShowSubSearch(false); setEvidenceUrls([{ url: "", explanation: "" }]);
     clearDraft("ta_draft_submit");
     // Invalidate TanStack Query caches so other screens see fresh data
@@ -431,9 +417,9 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   return (
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
-      <div style={{ display: "flex", minHeight: "calc(100vh - 120px)", gap: 0 }}>
+      <div style={{ display: "flex", height: "calc(100vh - 120px)", gap: 0 }}>
       {/* ── LEFT: FORM SIDE ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingRight: 8 }}>
 
       {/* Saved drafts banner */}
       {savedDrafts.length > 0 && (
@@ -757,20 +743,24 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
               </div>
 
               {/* Translations — multiple */}
-              <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={16} /> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
+              <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={16} /> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
+                <div style={{ fontSize: 11, color: "var(--text-sec)", marginBottom: 8, lineHeight: 1.5 }}>Plain-language replacements. <span style={{ color: "var(--gold)", fontWeight: 600 }}>Assembly-wide — every citizen sees these wherever the original terms appear.</span></div>
                 {submitTranslations.map((tr, i) => (
                   <div key={i} style={{ marginBottom: 8, paddingTop: i > 0 ? 8 : 0, borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
                     {submitTranslations.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 9, color: "var(--text-muted)" }}>#{i + 1}</span>
                       <button onClick={() => { const next = submitTranslations.filter((_, j) => j !== i); setSubmitTranslations(next); setSubmitTranslation(next[0] || { original: "", translated: "", type: "clarity" }); }} style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 12, padding: 0 }}>&times; Remove</button>
                     </div>}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "start", marginBottom: 8 }}>
-                      <input value={tr.original} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], original: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} placeholder='e.g. "Enhanced interrogation techniques"' style={{ padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, borderRadius: 0, fontFamily: "inherit" }} />
-                      <span style={{ padding: "8px 4px", color: "#B45309", fontWeight: 700 }}>→</span>
-                      <input value={tr.translated} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], translated: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} placeholder='e.g. "Torture"' style={{ padding: "8px 10px", border: "1.5px solid #B4530980", background: "var(--card-bg)", fontSize: 12, borderRadius: 0, fontFamily: "inherit" }} />
+                    <div style={{ marginBottom: 4 }}>
+                      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", letterSpacing: 1, marginBottom: 3 }}>ORIGINAL PHRASE</div>
+                      <input value={tr.original} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], original: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} placeholder='e.g. "Enhanced interrogation techniques"' style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--bg)", fontSize: 12, borderRadius: 0, fontFamily: "inherit", color: "var(--text)", boxSizing: "border-box" }} />
                     </div>
-                    <select value={tr.type} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], type: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} style={{ padding: "6px 8px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 11, borderRadius: 0, fontFamily: "var(--mono)", color: "var(--text-sec)" }}>
+                    <div style={{ marginBottom: 6 }}>
+                      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", letterSpacing: 1, marginBottom: 3 }}>PLAIN-LANGUAGE REPLACEMENT</div>
+                      <input value={tr.translated} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], translated: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} placeholder='e.g. "Torture"' style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--bg)", fontSize: 12, borderRadius: 0, fontFamily: "inherit", color: "var(--text)", boxSizing: "border-box" }} />
+                    </div>
+                    <select value={tr.type} onChange={e => { const next = [...submitTranslations]; next[i] = { ...next[i], type: e.target.value }; setSubmitTranslations(next); setSubmitTranslation(next[0]); }} style={{ padding: "6px 8px", border: "1px solid var(--border)", background: "var(--bg)", fontSize: 11, borderRadius: 0, fontFamily: "var(--mono)", color: "var(--text)" }}>
                       <option value="clarity">Clarity — strip jargon</option>
                       <option value="propaganda">Anti-Propaganda — rename spin</option>
                       <option value="euphemism">Euphemism — call it what it is</option>
@@ -778,45 +768,54 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
                     </select>
                   </div>
                 ))}
-                <button onClick={() => setSubmitTranslations([...submitTranslations, { original: "", translated: "", type: "clarity" }])} style={{ background: "none", border: "1px dashed var(--border)", color: "#B45309", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", padding: "4px 10px", borderRadius: 0, width: "100%", marginTop: 4 }}>+ Add another translation</button>
+                <button onClick={() => setSubmitTranslations([...submitTranslations, { original: "", translated: "", type: "clarity" }])} style={{ background: "none", border: "1px dashed var(--border)", color: "var(--gold)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", padding: "4px 10px", borderRadius: 0, width: "100%", marginTop: 4 }}>+ Add another translation</button>
               </div>
             </div>
           </details>
         </div>}
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Final Confirmation Modal with Preview */}
       {showConfirm && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowConfirm(false)}>
-          <div style={{ background: "var(--card-bg)", borderRadius: 0, padding: 24, maxWidth: 440, width: "90%",  }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>Ready to submit?</div>
-            <div style={{ fontSize: 13, color: "var(--text-sec)", lineHeight: 1.7, marginBottom: 16 }}>
-              You'll have <strong>5 minutes</strong> to edit or delete this submission before it goes out for jury review.
-              {selectedOrgIds.length > 0 && <> Submitting to: <strong>{myOrgs.filter(o => selectedOrgIds.includes(o.id)).map(o => o.name).join(", ")}</strong>.</>}
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowConfirm(false)}>
+          <div style={{ background: "var(--card-bg)", borderRadius: 0, padding: 0, maxWidth: 640, width: "100%", maxHeight: "90vh", overflow: "auto", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Confirm Submission</div>
+              <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 600, lineHeight: 1.5 }}>
+                This action is final. Once submitted, your correction enters jury review and cannot be edited or withdrawn.
+              </div>
+              {selectedOrgIds.length > 0 && <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>Submitting to: <strong style={{ color: "var(--gold)" }}>{myOrgs.filter(o => selectedOrgIds.includes(o.id)).map(o => o.name).join(", ")}</strong></div>}
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button className="ta-btn-primary" onClick={go} style={{ flex: 1 }}>Submit</button>
-              <button className="ta-btn-ghost" onClick={() => setShowConfirm(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Grace Period Banner */}
-      {graceSubmissions.length > 0 && graceTimer && (
-        <div style={{ margin: "16px 0", padding: 16, background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--green)", fontWeight: 700 }}>Grace Period Active</div>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 14, color: "var(--green)", fontWeight: 700 }}>{graceTimer}</div>
+            {/* Preview */}
+            <div style={{ padding: "14px 20px", background: "#f8f8f6", fontFamily: "Georgia, serif" }}>
+              <div style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6, fontFamily: "sans-serif", fontWeight: 600 }}>Preview</div>
+              {form.originalHeadline && <div style={{ fontSize: 14, fontWeight: 700, color: "#999", textDecoration: form.replacement ? "line-through" : "none", marginBottom: 2 }}>{form.originalHeadline}</div>}
+              {form.replacement && <div style={{ fontSize: 14, fontWeight: 700, color: "#c44a3a", marginBottom: 4 }}>{form.replacement}</div>}
+              {form.reasoning && <div style={{ fontSize: 11, color: "#333", lineHeight: 1.6, marginBottom: 8 }}>{form.reasoning}</div>}
+              {inlineEdits.filter(e => e.original.trim()).length > 0 && <div style={{ fontSize: 10, color: "#666", fontFamily: "sans-serif" }}>+ {inlineEdits.filter(e => e.original.trim()).length} in-line edit{inlineEdits.filter(e => e.original.trim()).length > 1 ? "s" : ""}</div>}
+              {evidenceUrls.filter(e => e.url.trim()).length > 0 && <div style={{ fontSize: 10, color: "#666", fontFamily: "sans-serif" }}>{evidenceUrls.filter(e => e.url.trim()).length} evidence source{evidenceUrls.filter(e => e.url.trim()).length > 1 ? "s" : ""}</div>}
+
+              {/* Vault artifacts summary */}
+              {(standingCorrections.some(sc => sc.assertion.trim()) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original.trim() && t.translated.trim()) || linkedEntries.length > 0) && (
+                <div style={{ borderTop: "1px solid #ddd", marginTop: 8, paddingTop: 8, fontFamily: "sans-serif" }}>
+                  <div style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 4 }}>Vault artifacts</div>
+                  {standingCorrections.filter(sc => sc.assertion.trim()).map((sc, i) => <div key={`sc-${i}`} style={{ fontSize: 10, color: "#333", marginBottom: 2 }}>Fact: {sc.assertion}</div>)}
+                  {submitArgs.filter(a => a.trim()).map((a, i) => <div key={`a-${i}`} style={{ fontSize: 10, color: "#333", marginBottom: 2 }}>Argument: {a.substring(0, 80)}{a.length > 80 ? "..." : ""}</div>)}
+                  {submitBeliefs.filter(b => b.trim()).map((b, i) => <div key={`b-${i}`} style={{ fontSize: 10, color: "#333", marginBottom: 2 }}>Belief: {b.substring(0, 80)}{b.length > 80 ? "..." : ""}</div>)}
+                  {submitTranslations.filter(t => t.original.trim() && t.translated.trim()).map((t, i) => <div key={`t-${i}`} style={{ fontSize: 10, color: "#333", marginBottom: 2 }}>Translation: "{t.original}" → "{t.translated}"</div>)}
+                  {linkedEntries.map(e => <div key={e.id} style={{ fontSize: 10, color: "#333", marginBottom: 2 }}>Linked {e.type}: {e.label.substring(0, 60)}{e.label.length > 60 ? "..." : ""}</div>)}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div style={{ padding: "14px 20px", display: "flex", gap: 10, borderTop: "1px solid var(--border)" }}>
+              <button className="ta-btn-primary" onClick={go} style={{ flex: 1, padding: "12px 16px", fontSize: 13 }}>{loading ? "Submitting..." : "SUBMIT — THIS IS FINAL"}</button>
+              <button className="ta-btn-ghost" onClick={() => setShowConfirm(false)} style={{ padding: "12px 16px" }}>Go Back</button>
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, marginBottom: 10 }}>You can delete this submission before the timer expires and jury review begins.</div>
-          <button className="ta-btn-ghost" style={{ color: "var(--red)", fontSize: 11 }} onClick={async () => {
-            for (const gs of graceSubmissions) {
-              try { await fetch(`/api/submissions/${gs.id}`, { method: "DELETE" }); } catch {}
-            }
-            setGraceSubmissions([]); setGraceTimer(null);
-            setSuccess(""); setError("");
-          }}>Delete Submission</button>
         </div>
       )}
 
@@ -899,8 +898,8 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
                 </div>
               )}
 
-              {/* Vault annotations section */}
-              {(standingCorrections.some(sc => sc.assertion.trim()) || submitTranslations.some(t => t.original.trim() && t.translated.trim())) && (
+              {/* Vault annotations section — all artifact types */}
+              {(standingCorrections.some(sc => sc.assertion.trim()) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original.trim() && t.translated.trim()) || linkedEntries.length > 0) && (
                 <div style={{ borderTop: "1px solid #ddd", paddingTop: 10, fontFamily: "sans-serif", marginTop: 14 }}>
                   <div style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6 }}>Trust Assembly annotations</div>
 
@@ -919,6 +918,27 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
                     <div key={`sc-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
                       <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>FACT</div>
                       <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{sc.assertion}</div>
+                    </div>
+                  ))}
+
+                  {submitArgs.filter(a => a.trim()).map((a, i) => (
+                    <div key={`a-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                      <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>ARGUMENT</div>
+                      <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{a}</div>
+                    </div>
+                  ))}
+
+                  {submitBeliefs.filter(b => b.trim()).map((b, i) => (
+                    <div key={`b-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                      <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>BELIEF</div>
+                      <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{b}</div>
+                    </div>
+                  ))}
+
+                  {linkedEntries.map(e => (
+                    <div key={e.id} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                      <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>{e.type.toUpperCase()} (LINKED)</div>
+                      <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{e.label}</div>
                     </div>
                   ))}
                 </div>
