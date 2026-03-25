@@ -554,6 +554,11 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
         <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.6, marginTop: 6 }}>
           <span style={{ color: "var(--green)", fontWeight: 700 }}>Follow</span> an assembly to see its content in your feed without joining. You won't be able to submit or vote, but you can observe the deliberation and decide if it's worth your commitment.
         </div>
+        {myOrgIds.length < MAX_ORGS && !creating && (
+          <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.6, marginTop: 6 }}>
+            <span style={{ color: "var(--gold)", fontWeight: 700 }}>Create</span> your own assembly if you see a gap. <span style={{ color: "var(--gold)", cursor: "pointer", textDecoration: "underline" }} onClick={() => setCreating(true)}>Propose a new assembly →</span>
+          </div>
+        )}
       </div>
 
       {/* How Assemblies Work CTA */}

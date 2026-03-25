@@ -40,6 +40,11 @@ function HeroSlide({ slide, style, onClickSlide, onClickAssembly }) {
           </>
         )}
       </div>
+      {slide.bodyText && (
+        <div style={{ fontSize: 11, lineHeight: 1.6, color: "#1a1a1a", marginTop: 8, fontFamily: "Georgia, serif" }}>
+          {slide.bodyText.slice(0, 200).trim()}{slide.bodyText.length > 200 ? "\u2026" : ""}
+        </div>
+      )}
       <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#777", marginTop: 10 }}>
         Corrected by <span style={{ color: "var(--gold)", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onClickAssembly && onClickAssembly(slide.orgId); }}>{safe(slide.orgName)}</span> {"\u00B7"} {sDate(slide.resolvedAt || slide.createdAt)}
       </div>

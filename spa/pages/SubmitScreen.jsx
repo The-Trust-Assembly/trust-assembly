@@ -299,6 +299,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         replacement: form.replacement.trim() || null,
         reasoning: form.reasoning.trim(),
         author: authorStr || null,
+        bodyText: bodyText || null,
         orgIds: targetOrgIds,
         evidence: validEvidence.map(e => ({ url: e.url.trim(), explanation: e.explanation?.trim() || "" })),
         inlineEdits: validEdits.map(e => ({ original: e.original.trim(), replacement: e.replacement.trim(), reasoning: e.reasoning?.trim() || null })),
