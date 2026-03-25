@@ -64,7 +64,7 @@ function OBSubmitStep() {
       {/* Mode toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
         {[["correction", "Correction", "This headline is misleading"], ["affirmation", "Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
-          <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "#DC2626" : "#059669") : "var(--card-bg)", color: mode === key ? "#fff" : "var(--text-muted)", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
+          <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "rgba(196,74,58,0.13)" : "rgba(74,158,85,0.07)") : "transparent", color: mode === key ? (key === "correction" ? "#c44a3a" : "#4a9e55") : "var(--text-muted)", border: mode === key ? (key === "correction" ? "1.5px solid #c44a3a" : "1.5px solid rgba(74,158,85,0.27)") : "1.5px solid var(--border)", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name={key} size={42}/> {label}</div>
             <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, marginTop: 2, textTransform: "none", letterSpacing: 0 }}>{desc}</div>
           </button>

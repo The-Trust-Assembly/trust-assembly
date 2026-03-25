@@ -695,7 +695,7 @@ export default function TrustAssembly() {
         /* ── NAV DROPDOWN (for More menu) ── */
         .ta-nav-dropdown-trigger { background:none; border:none; font-family:var(--font); cursor:pointer; font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#fff; }
         .ta-nav-dropdown-trigger.active { color:var(--gold); font-weight:700; }
-        .ta-nav-dropdown-menu { position:absolute; top:100%; right:0; min-width:180px; background:var(--card-bg); border:1px solid var(--border); z-index:110; padding:4px 0; margin-top:2px; }
+        .ta-nav-dropdown-menu { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); min-width:180px; background:var(--card-bg); border:1px solid var(--border); z-index:110; padding:4px 0; margin-bottom:2px; }
         .ta-nav-dropdown-item { display:block; width:100%; padding:8px 16px; font-size:11px; color:var(--text-sec); text-decoration:none; cursor:pointer; border:none; background:none; text-align:left; font-family:var(--font); }
         .ta-nav-dropdown-item:hover { background:var(--bg); color:var(--gold); }
         .ta-nav-dropdown-item.active { color:var(--gold); font-weight:600; }
@@ -922,9 +922,6 @@ export default function TrustAssembly() {
                     {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
                   </span>
                 ))}
-                {NAV_DROPDOWNS.map(dd => (
-                  <NavDropdown key={dd.label} label={dd.label} items={dd.items} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
-                ))}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -999,10 +996,10 @@ export default function TrustAssembly() {
             </>}
           </div>
 
-          <div style={{ padding: "12px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "center", gap: 20, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-muted)", maxWidth: 820, margin: "0 auto" }}>
-            <span style={{ cursor: "pointer" }} onClick={() => setScreen("guide")}>Learn</span>
-            <span style={{ cursor: "pointer" }} onClick={() => setScreen("consensus")}>Explore</span>
-            <span style={{ cursor: "pointer" }} onClick={() => setScreen("profile")}>Account</span>
+          <div style={{ padding: "12px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "center", gap: 20, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-muted)", maxWidth: 1080, margin: "0 auto" }}>
+            {NAV_DROPDOWNS.map(dd => (
+              <NavDropdown key={dd.label} label={dd.label} items={dd.items} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
+            ))}
           </div>
 
           {/* Floating feedback button — visible to all non-admin users */}
