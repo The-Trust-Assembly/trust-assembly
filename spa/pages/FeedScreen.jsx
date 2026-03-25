@@ -313,7 +313,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
               ) : (
                 <span className="hidden-user">Citizen (pending review)</span>
               )}
-              <span className="muted">· {sub.orgName}{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4 }}>{a}</span>)} · {sDate(sub.createdAt)}</span>
+              <span className="muted">· {typeof sub.orgName === "object" ? JSON.stringify(sub.orgName) : sub.orgName}{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4 }}>{typeof a === "object" ? JSON.stringify(a) : a}</span>)} · {sDate(sub.createdAt)}</span>
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
               {sub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
             </div>
@@ -329,7 +329,7 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
           </div>
 
           {/* Reasoning */}
-          <div className="card-reason">{sub.reasoning}</div>
+          <div className="card-reason">{typeof sub.reasoning === "object" ? JSON.stringify(sub.reasoning) : sub.reasoning}</div>
 
           {/* Edits & evidence */}
           {sub.inlineEdits && sub.inlineEdits.length > 0 && (
