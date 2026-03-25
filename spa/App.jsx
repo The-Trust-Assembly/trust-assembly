@@ -887,20 +887,18 @@ export default function TrustAssembly() {
 
           {/* USER BAR */}
           <div className="user-bar">
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div>
-                <span className="name" style={{ cursor: "pointer" }} onClick={() => setScreen("profile")}>@{user.displayName || user.username}</span>
-                <span className="meta"> · {navProfile.profile} ·</span>
-                <span className="score"> {navProfile.trustScore}</span>
-              </div>
-              <div className="hdr-nav ta-nav-desktop">
-                {NAV_PRIMARY.map(n => (
-                  <span key={n.key} style={{ fontWeight: 700 }} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>
-                    {n.label}
-                    {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
-                  </span>
-                ))}
-              </div>
+            <div>
+              <span className="name" style={{ cursor: "pointer" }} onClick={() => setScreen("profile")}>@{user.displayName || user.username}</span>
+              <span className="meta"> · {navProfile.profile} ·</span>
+              <span className="score"> {navProfile.trustScore}</span>
+            </div>
+            <div className="hdr-nav ta-nav-desktop">
+              {NAV_PRIMARY.map(n => (
+                <span key={n.key} style={{ fontWeight: 700 }} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>
+                  {n.label}
+                  {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
+                </span>
+              ))}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div ref={notifRef} style={{ position: "relative" }}>
@@ -957,7 +955,7 @@ export default function TrustAssembly() {
                   maxHeight: 120,
                   overflowY: "auto",
                 }}>
-                  {typeof siteAnnouncement === "string" ? siteAnnouncement : JSON.stringify(siteAnnouncement)}
+                  {siteAnnouncement}
                 </div>
               </div>
             )}
