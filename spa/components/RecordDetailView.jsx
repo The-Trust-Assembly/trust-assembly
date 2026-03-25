@@ -39,8 +39,8 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
               <UsernameLink username={sub.resolvedAt ? sub.submittedBy : null} onClick={onViewCitizen} />
               {!sub.resolvedAt && <span className="hidden-user">{anonName(sub.submittedBy, sub.anonMap, false)}</span>}
               <span style={{ marginLeft: 4 }}>· {sub.orgName} · {sDate(sub.createdAt)}</span>
-              {sub.trustedSkip && <span> · <Icon name="trust-badge" size={10} /> Trusted</span>}
-              {sub.isDI && <span> · <Icon name="robot" size={10} /> DI</span>}
+              {sub.trustedSkip && <span> · <Icon name="trust-badge" size={14} /> Trusted</span>}
+              {sub.isDI && <span> · <Icon name="robot" size={14} /> DI</span>}
             </div>
             <div style={{ fontSize: 9, color: "var(--gold)", marginBottom: 6 }}>{sub.url}</div>
             <SubHeadline sub={sub} />

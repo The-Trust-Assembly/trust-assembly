@@ -509,7 +509,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           border: form.submissionType === "correction" ? "1.5px solid #c44a3a" : "1.5px solid var(--border)",
           color: form.submissionType === "correction" ? "#c44a3a" : "var(--text-muted)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="correction" size={12} /> Correction</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="correction" size={14} /> Correction</div>
           <div style={{ fontSize: 8, fontWeight: 400, marginTop: 2, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>Correct something false or misleading</div>
         </button>
         <button onClick={() => setForm({ ...form, submissionType: "affirmation" })} style={{
@@ -518,7 +518,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           border: form.submissionType === "affirmation" ? "1.5px solid rgba(74,158,85,0.27)" : "1.5px solid var(--border)",
           color: form.submissionType === "affirmation" ? "#4a9e55" : "var(--text-muted)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="affirmation" size={12} /> Affirmation</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="affirmation" size={14} /> Affirmation</div>
           <div style={{ fontSize: 8, fontWeight: 400, marginTop: 2, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>Lend weight and evidence to confirm something true</div>
         </button>
       </div>
@@ -637,7 +637,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
             {linkedEntries.map(e => {
               const tc = { correction: ["vault", "#059669", "#ECFDF5"], argument: ["dispute", "#0D9488", "#F0FDFA"], belief: ["jury", "#7C3AED", "#F3E8F9"] }[e.type] || ["vault", "#475569", "var(--card-bg)"];
               return <div key={e.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}40`, borderRadius: 0, marginBottom: 6 }}>
-                <Icon name={tc[0]} size={12} />
+                <Icon name={tc[0]} size={14} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700, marginBottom: 2 }}>{e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount}` : ""}</div>
                   <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis" }}>{e.label}</div>
@@ -694,7 +694,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
                   const already = linkedEntries.find(e => e.id === r.id);
                   const tc = { correction: ["vault", "#059669"], argument: ["dispute", "#0D9488"], belief: ["jury", "#7C3AED"] }[r.type] || ["vault", "#475569"];
                   return <div key={r.id} onClick={() => !already && linkEntry(r)} style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", cursor: already ? "default" : "pointer", opacity: already ? 0.5 : 1, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                    <Icon name={tc[0]} size={12} />
+                    <Icon name={tc[0]} size={14} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{r.type}{r.survivalCount > 0 ? ` · survived ${r.survivalCount}` : ""}</div>
                       <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>{r.label}</div>
@@ -713,7 +713,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
             <div style={{ marginTop: 10 }}>
               {/* Standing Corrections — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="vault" size={12} /> Standing Corrections <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— reusable facts</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="vault" size={16} /> Standing Corrections <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— reusable facts</span></div>
                 {standingCorrections.map((sc, i) => (
                   <div key={i} style={{ marginBottom: 8, padding: i > 0 ? "8px 0 0 0" : 0, borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
                     {standingCorrections.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -728,7 +728,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Arguments — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={12} /> Arguments <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— reusable rhetorical or logical tools</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={16} /> Arguments <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— reusable rhetorical or logical tools</span></div>
                 {submitArgs.map((arg, i) => (
                   <div key={i} style={{ marginBottom: 8, position: "relative" }}>
                     {submitArgs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -743,7 +743,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Beliefs — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="jury" size={12} /> Foundational Beliefs <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— axioms your Assembly holds</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="jury" size={16} /> Foundational Beliefs <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— axioms your Assembly holds</span></div>
                 {submitBeliefs.map((belief, i) => (
                   <div key={i} style={{ marginBottom: 8, position: "relative" }}>
                     {submitBeliefs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -758,7 +758,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Translations — multiple */}
               <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={12} /> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#B45309", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={16} /> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
                 {submitTranslations.map((tr, i) => (
                   <div key={i} style={{ marginBottom: 8, paddingTop: i > 0 ? 8 : 0, borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
                     {submitTranslations.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>

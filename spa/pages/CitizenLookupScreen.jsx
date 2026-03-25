@@ -58,7 +58,7 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
         {myOrgs.length > 0 && <div style={{ marginTop: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 0, background: o.isGeneralPublic ? "#F0FDFA" : "var(--card-bg)", color: o.isGeneralPublic ? "#0D9488" : "#475569" }}>{o.isGeneralPublic ? <><Icon name="vault" size={10} /> </> : ""}{o.name}</span>)}
+          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 0, background: o.isGeneralPublic ? "#F0FDFA" : "var(--card-bg)", color: o.isGeneralPublic ? "#0D9488" : "#475569" }}>{o.isGeneralPublic ? <><Icon name="vault" size={14} /> </> : ""}{o.name}</span>)}
         </div>}
         <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: pi.color, marginBottom: 4 }}>Profile: {p.profile}</div>
@@ -82,7 +82,7 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
       </div>
       {/* Registered Digital Intelligences */}
       {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 8, fontWeight: 700 }}><Icon name="robot" size={12} /> Registered Digital Intelligences</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 8, fontWeight: 700 }}><Icon name="robot" size={16} /> Registered Digital Intelligences</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
         </div>

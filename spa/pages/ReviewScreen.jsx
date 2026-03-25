@@ -336,7 +336,7 @@ function ReviewScreenInner({ user }) {
     return (
     <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={10} /> DI</>}</span>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={14} /> DI</>}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px", borderRadius: 0 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />
@@ -381,7 +381,7 @@ function ReviewScreenInner({ user }) {
 
       {sub.standingCorrection && (
         <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}><Icon name="vault" size={10} /> Standing Correction Proposed</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}><Icon name="vault" size={16} /> Standing Correction Proposed</div>
           <div style={{ color: "var(--text)", fontWeight: 600 }}>{safe(sub.standingCorrection.assertion)}</div>
           {sub.standingCorrection.evidence && <div style={{ color: "var(--text-sec)", fontSize: 12, marginTop: 2 }}>Source: {safe(sub.standingCorrection.evidence)}</div>}
         </div>
@@ -389,21 +389,21 @@ function ReviewScreenInner({ user }) {
 
       {sub.argumentEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}><Icon name="dispute" size={10} /> Argument Proposed</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}><Icon name="dispute" size={16} /> Argument Proposed</div>
           <div style={{ color: "var(--text)", lineHeight: 1.6 }}>{safe(sub.argumentEntry.content)}</div>
         </div>
       )}
 
       {sub.beliefEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}><Icon name="jury" size={10} /> Foundational Belief Proposed</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}><Icon name="jury" size={16} /> Foundational Belief Proposed</div>
           <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{safe(sub.beliefEntry.content)}</div>
         </div>
       )}
 
       {sub.translationEntry && (
         <div style={{ marginTop: 8, padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530980", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}><Icon name="dispute" size={10} /> Translation Proposed — {sub.translationEntry.type}</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}><Icon name="dispute" size={16} /> Translation Proposed — {sub.translationEntry.type}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{safe(sub.translationEntry.original)}</span>
             <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
@@ -419,7 +419,7 @@ function ReviewScreenInner({ user }) {
             const tc = { correction: ["vault", "#059669", "#ECFDF5"], argument: ["dispute", "#0D9488", "#F0FDFA"], belief: ["jury", "#7C3AED", "#F3E8F9"] }[e.type] || ["vault", "#475569", "var(--card-bg)"];
             return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}><Icon name={tc[0]} size={10} /> Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}><Icon name={tc[0]} size={16} /> Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
               </div>
               <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{safe(e.label)}</div>
               {e.detail && <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>Source: {safe(e.detail)}</div>}
@@ -485,20 +485,27 @@ function ReviewScreenInner({ user }) {
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Review Queue</h2>
 
-      {/* What you're about to do */}
-      <div style={{ padding: "14px 16px", background: "var(--card-bg)", border: "1px solid var(--border)", borderLeft: "3px solid var(--gold)", borderRadius: 0, marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
-          You're reviewing submissions from fellow citizens.
-        </div>
-        <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
-          Read the headline, the proposed correction, and the reasoning. Then vote to approve or reject. Your verdict is permanent and public — take your time, weigh the evidence.
-        </div>
+      {/* Per-tab education text */}
+      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", lineHeight: 1.5, marginBottom: 8 }}>
+        {{ ingroup: "Vote to approve or reject submissions from citizens in your own Assemblies.",
+           crossgroup: "Vote to approve or reject submissions from citizens in other Assemblies.",
+           stories: "Vote to approve Story Artifacts that organize submissions around events and themes.",
+           disputes: "Think the jury got it wrong? Re-submit your case. There is a penalty for being repeatedly wrong, the same way there is a reward for proving you were correct. You may also concede to recover lost points (once per week: 100% recovery).",
+           mydisputes: "Submissions where you disputed the jury's verdict. Conceding recovers 100% of lost points (once per week).",
+           myresults: "Your approved submissions and their final verdicts across all assemblies.",
+           di: "Review and approve pre-screened submissions from your registered Digital Intelligence agent."
+        }[tab] || "Vote to approve or reject submissions from citizens in your own Assemblies."}
+      </div>
+
+      {/* Anonymous voting box */}
+      <div style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", padding: "8px 12px", marginBottom: 10 }}>
+        <div style={{ fontSize: 10, color: "var(--text)", lineHeight: 1.5 }}>Your votes are <span style={{ color: "var(--gold)", fontWeight: 700 }}>anonymous</span>. No one — not the submitter, not other jurors, not administrators — can see how you voted. This is your ability to speak the truth as an individual, free from social pressure. Vote your conscience.</div>
       </div>
 
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
-      {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}><Icon name="robot" size={12} /> <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
+      {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}><Icon name="robot" size={14} /> <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid var(--border)" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={10} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={14} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid var(--gold)" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "var(--gold)" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
             {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
@@ -511,7 +518,7 @@ function ReviewScreenInner({ user }) {
         {dQ.map(d => (
           <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="jury" size={10} /> {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="jury" size={14} /> {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
               <span style={{ fontSize: 10, padding: "2px 7px", background: "rgba(212,168,67,0.09)", color: "#EA580C", borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
             </div>
             <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 8 }}>

@@ -343,7 +343,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
 
         {/* Concessions */}
         {canPropose && <div className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 8, fontWeight: 700 }}><Icon name="jury" size={12} /> Concessions</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 8, fontWeight: 700 }}><Icon name="jury" size={16} /> Concessions</div>
           <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 10 }}>
             When a cross-group rejection occurs, any member can propose the Assembly concede. A <strong>super jury of {getSuperJurySize(vo.members.length)}</strong> decides. One concession per week gets full recovery — no reputation loss. Additional concessions in the same week recover 90%. After the first week, recovery decays (90% at 2 weeks, 50% at 1 month, down to 5% after 3 months). Individual dispute winners keep their full {W.disputeWin}× reward regardless — the Assembly does not share in that reward.
           </div>
@@ -377,7 +377,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
               return (
                 <div key={s.id} style={{ padding: 8, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 6 }}>
                   <div style={{ fontSize: 12 }}><SubHeadline sub={s} size={12} /></div>
-                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 3 }}>by {s.submittedBy === ADMIN_USERNAME ? <><Icon name="crown" size={10} />{" "}</> : ""}@{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
+                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 3 }}>by {s.submittedBy === ADMIN_USERNAME ? <><Icon name="crown" size={14} />{" "}</> : ""}@{s.submittedBy} · Rejected {sDate(s.resolvedAt)} · Recovery: {Math.round(recovery * 100)}%</div>
                   {alreadyConceded ? <div style={{ fontSize: 10, color: "#7C3AED", fontFamily: "var(--mono)", marginTop: 3 }}>Concession proposed</div> : (
                     <div style={{ marginTop: 6 }}>
                       <textarea value={concessionReason} onChange={e => setConcessionReason(e.target.value)} placeholder="Why should the Assembly concede?" rows={2} style={{ width: "100%", padding: 6, border: "1px solid var(--border)", fontSize: 12, borderRadius: 0, boxSizing: "border-box", fontFamily: "var(--body)" }} />
@@ -429,7 +429,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
                         <UsernameLink username={s.submittedBy} onClick={onViewCitizen} /> · {sDate(s.resolvedAt || s.createdAt)}
-                        {s.isDI && <><span> · </span><Icon name="robot" size={10} /> DI</>}{s.trustedSkip && <><span> · </span><Icon name="trust-badge" size={10} /></>}
+                        {s.isDI && <><span> · </span><Icon name="robot" size={14} /> DI</>}{s.trustedSkip && <><span> · </span><Icon name="trust-badge" size={14} /></>}
                       </span>
                       <StatusPill status={s.status} />
                     </div>
@@ -521,7 +521,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
                   <strong style={{ fontSize: 15, fontFamily: "var(--serif)", cursor: "pointer", textDecoration: "underline", textDecorationColor: "var(--border)" }} onClick={() => setViewingOrg(o.id)}>{o.name}</strong>
                   {isActive && <span style={{ fontSize: 8, padding: "2px 6px", background: "rgba(74,158,85,0.09)", color: "var(--green)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700 }}>★ ACTIVE</span>}
-                  {isGP && <span style={{ fontSize: 8, padding: "2px 6px", background: "var(--card-bg)", color: "var(--gold)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700 }}><Icon name="vault" size={10} /> HOME</span>}
+                  {isGP && <span style={{ fontSize: 8, padding: "2px 6px", background: "var(--card-bg)", color: "var(--gold)", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700 }}><Icon name="vault" size={14} /> HOME</span>}
                 </div>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)" }}>{o.members.length} members · {(() => { const enr = checkEnrollment(o); const founders = o.founders || [o.createdBy]; const isFounder = founders.includes(user.username); if (enr.mode === "tribal" && isFounder) return "You are the founder"; return enr.label; })()}{st.total > 0 ? ` · ${st.total} subs` : ""}{(() => { const r = computeAssemblyReputation(o, subs); return r.confidence ? ` · Trust: ${r.trustScore}%` : r.total > 0 ? ` · ${r.total}/20 reviews` : ""; })()}</div>
               </div>
@@ -582,7 +582,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
             <div key={a.id} className="ta-card" style={{ borderLeft: `4px solid ${isTribal ? "#EA580C" : "#0D9488"}`, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{a.userId === ADMIN_USERNAME ? <><Icon name="crown" size={10} />{" "}</> : ""}@{a.displayName}</strong> wants to join <strong>{a.orgName}</strong></div>
+                  <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{a.userId === ADMIN_USERNAME ? <><Icon name="crown" size={14} />{" "}</> : ""}@{a.displayName}</strong> wants to join <strong>{a.orgName}</strong></div>
                   {isTribal && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.09)", color: "#A16207", borderRadius: 0, fontFamily: "var(--mono)", fontWeight: 700, display: "inline-block", marginBottom: 4 }}>Tribal Rule — Founder Approval</span>}
                   {!isTribal && <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>{a.sponsors.length}/{a.sponsorsNeeded} sponsor{a.sponsorsNeeded > 1 ? "s" : ""} · Applied {sDate(a.createdAt)}</div>}
                   {a.reason && <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, padding: 8, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 4 }}><div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}>Why They Want to Join</div>{a.reason}</div>}
