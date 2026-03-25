@@ -374,7 +374,7 @@ function OBCompareStep() {
               <div style={{ padding: 8, background: "var(--card-bg)", borderRadius: 0, marginBottom: 6, fontSize: 12 }}>
                 <span style={{ fontWeight: 600 }}>⚔️ Argument:</span> {OB_ARTICLE.argEntry.content.substring(0, 120)}...
               </div>
-              <div style={{ padding: 8, background: "#F3E8F9", borderRadius: 0, fontSize: 12 }}>
+              <div style={{ padding: 8, background: "var(--card-bg)", borderRadius: 0, fontSize: 12 }}>
                 <span style={{ fontWeight: 600 }}>🧭 Belief:</span> {OB_ARTICLE.beliefEntry.content.substring(0, 100)}...
               </div>
             </div>}
@@ -442,7 +442,7 @@ function OBAdditionalStep({ onComplete }) {
 
       <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid var(--border)" }}>
         {[["scoring", "📊 Scoring"], ["dispute", "⚖️ Disputes"], ["concession", "🤝 Concessions"]].map(([key, label]) => (
-          <button key={key} onClick={() => setSection(key)} style={{ flex: 1, padding: "10px 8px", background: section === key ? "var(--gold)" : "transparent", color: section === key ? "#fff" : "#64748B", border: "none", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", fontWeight: section === key ? 700 : 400, borderBottom: section === key ? "2px solid var(--gold)" : "2px solid transparent", transition: "all 0.2s" }}>{label}</button>
+          <button key={key} onClick={() => setSection(key)} style={{ flex: 1, padding: "10px 8px", background: section === key ? "var(--gold)" : "transparent", color: section === key ? "#fff" : "var(--text-muted)", border: "none", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", fontWeight: section === key ? 700 : 400, borderBottom: section === key ? "2px solid var(--gold)" : "2px solid transparent", transition: "all 0.2s" }}>{label}</button>
         ))}
       </div>
 
