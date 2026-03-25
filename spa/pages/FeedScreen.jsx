@@ -201,17 +201,22 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
   // Compute stats for info cards
   const myOrgIds = user ? (user.orgIds || (user.orgId ? [user.orgId] : [])) : [];
   const reviewQueueCount = Object.values(subs || {}).filter(s => ["pending_review", "pending_jury"].includes(s.status) && myOrgIds.includes(s.orgId) && s.submittedBy !== (user?.username || "")).length;
-  const totalCitizens = useMemo(() => {
+  let totalCitizens = 0;
+  try {
     const members = new Set();
     Object.values(orgs || {}).forEach(o => (o.members || []).forEach(m => members.add(m)));
-    return members.size;
-  }, [orgs]);
-  const myApprovedInGP = useMemo(() => {
-    if (!user) return 0;
-    const gp = Object.values(orgs || {}).find(o => o.isGeneralPublic);
-    if (!gp) return 0;
-    return Object.values(subs || {}).filter(s => s.orgId === gp.id && s.submittedBy === user.username && ["approved", "consensus", "cross_review"].includes(s.status)).length;
-  }, [subs, orgs, user]);
+    totalCitizens = members.size;
+  } catch (e) { console.error("FEED CRASH in totalCitizens:", e); }
+
+  let myApprovedInGP = 0;
+  try {
+    if (user) {
+      const gp = Object.values(orgs || {}).find(o => o.isGeneralPublic);
+      if (gp) {
+        myApprovedInGP = Object.values(subs || {}).filter(s => s.orgId === gp.id && s.submittedBy === user.username && ["approved", "consensus", "cross_review"].includes(s.status)).length;
+      }
+    }
+  } catch (e) { console.error("FEED CRASH in myApprovedInGP:", e); }
   const gpOrg = Object.values(orgs || {}).find(o => o.isGeneralPublic);
   const trustedRequired = 10;
   const trustedRemaining = Math.max(0, trustedRequired - myApprovedInGP);
