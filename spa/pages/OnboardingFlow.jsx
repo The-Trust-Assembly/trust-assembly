@@ -60,7 +60,7 @@ function OBSubmitStep() {
       {/* Mode toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
         {[["correction", "Correction", "This headline is misleading"], ["affirmation", "Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
-          <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "#DC2626" : "#059669") : "#FFFFFF", color: mode === key ? "#fff" : "#475569", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
+          <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "rgba(196,74,58,0.13)" : "rgba(74,158,85,0.07)") : "transparent", color: mode === key ? (key === "correction" ? "#c44a3a" : "#4a9e55") : "var(--text-muted)", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
             <div>{label}</div>
             <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, marginTop: 2, textTransform: "none", letterSpacing: 0 }}>{desc}</div>
           </button>
@@ -137,7 +137,7 @@ function OBSubmitStep() {
             <div style={{ fontSize: 13, lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           </div>
 
-          <div style={{ padding: 12, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, marginBottom: 14 }}>
+          <div style={{ padding: 12, background: "rgba(124,58,237,0.09)", border: "1px solid #9B7DB8", borderRadius: 0, marginBottom: 14 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 4 }}>Foundational Belief <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ fontSize: 13, lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           </div>
@@ -204,8 +204,8 @@ function OBReviewStep() {
               <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", marginBottom: 6 }}>↳ {e.reasoning}</div>
               {!voted && (
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "var(--border)", background: editVotes[i] === true ? "#ECFDF5" : "#fff", color: editVotes[i] === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Approve Edit</button>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "var(--border)", background: editVotes[i] === false ? "#FEF2F2" : "#fff", color: editVotes[i] === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ Reject Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "var(--border)", background: editVotes[i] === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: editVotes[i] === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Approve Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "var(--border)", background: editVotes[i] === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: editVotes[i] === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Reject Edit</button>
                 </div>
               )}
               {voted && <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: editVotes[i] ? "#059669" : "#DC2626", fontWeight: 700 }}>{editVotes[i] ? "✓ YOU APPROVED" : "✗ YOU REJECTED"}</span>}
@@ -220,24 +220,24 @@ function OBReviewStep() {
           <div style={{ color: "var(--text)", fontWeight: 600 }}>{OB_ARTICLE.vaultEntry.assertion}</div>
           <div style={{ color: "var(--text-sec)", fontSize: 12, marginTop: 2 }}>Source: {OB_ARTICLE.vaultEntry.evidence}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#059669" : "var(--border)", background: vaultVotes.sc === true ? "#ECFDF5" : "#fff", color: vaultVotes.sc === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#DC2626" : "var(--border)", background: vaultVotes.sc === false ? "#FEF2F2" : "#fff", color: vaultVotes.sc === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#059669" : "var(--border)", background: vaultVotes.sc === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.sc === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#DC2626" : "var(--border)", background: vaultVotes.sc === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.sc === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}>Argument — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
           <div style={{ color: "var(--text)", lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "var(--border)", background: vaultVotes.arg === true ? "#ECFDF5" : "#fff", color: vaultVotes.arg === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "var(--border)", background: vaultVotes.arg === false ? "#FEF2F2" : "#fff", color: vaultVotes.arg === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "var(--border)", background: vaultVotes.arg === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.arg === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "var(--border)", background: vaultVotes.arg === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.arg === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
-        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, fontSize: 12 }}>
+        <div style={{ marginTop: 8, padding: 10, background: "rgba(124,58,237,0.09)", border: "1px solid #9B7DB8", borderRadius: 0, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>Foundational Belief — <span style={{ color: "var(--text-muted)", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
           <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "var(--border)", background: vaultVotes.belief === true ? "#ECFDF5" : "#fff", color: vaultVotes.belief === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#DC2626" : "var(--border)", background: vaultVotes.belief === false ? "#FEF2F2" : "#fff", color: vaultVotes.belief === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "var(--border)", background: vaultVotes.belief === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.belief === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#DC2626" : "var(--border)", background: vaultVotes.belief === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.belief === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0, fontSize: 12, marginBottom: 8 }}>
@@ -249,8 +249,8 @@ function OBReviewStep() {
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>Type: Anti-Propaganda</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#059669" : "var(--border)", background: vaultVotes.trans === true ? "#ECFDF5" : "#fff", color: vaultVotes.trans === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Good Translation</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#DC2626" : "var(--border)", background: vaultVotes.trans === false ? "#FEF2F2" : "#fff", color: vaultVotes.trans === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ Inaccurate</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#059669" : "var(--border)", background: vaultVotes.trans === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.trans === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Good Translation</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#DC2626" : "var(--border)", background: vaultVotes.trans === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.trans === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Inaccurate</button>
           </div>
         </div>
       </div>
@@ -374,7 +374,7 @@ function OBCompareStep() {
               <div style={{ padding: 8, background: "var(--card-bg)", borderRadius: 0, marginBottom: 6, fontSize: 12 }}>
                 <span style={{ fontWeight: 600 }}>Argument:</span> {OB_ARTICLE.argEntry.content.substring(0, 120)}...
               </div>
-              <div style={{ padding: 8, background: "#F3E8F9", borderRadius: 0, fontSize: 12 }}>
+              <div style={{ padding: 8, background: "rgba(124,58,237,0.09)", borderRadius: 0, fontSize: 12 }}>
                 <span style={{ fontWeight: 600 }}>Belief:</span> {OB_ARTICLE.beliefEntry.content.substring(0, 100)}...
               </div>
             </div>}
@@ -441,8 +441,8 @@ function OBAdditionalStep({ onComplete }) {
       <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
 
       <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid var(--border)" }}>
-        {[["scoring", "📊 Scoring"], ["dispute", "⚖️ Disputes"], ["concession", "🤝 Concessions"]].map(([key, label]) => (
-          <button key={key} onClick={() => setSection(key)} style={{ flex: 1, padding: "10px 8px", background: section === key ? "var(--gold)" : "transparent", color: section === key ? "#fff" : "#64748B", border: "none", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", fontWeight: section === key ? 700 : 400, borderBottom: section === key ? "2px solid var(--gold)" : "2px solid transparent", transition: "all 0.2s" }}>{label}</button>
+        {[["scoring", "Scoring"], ["dispute", "Disputes"], ["concession", "Concessions"]].map(([key, label]) => (
+          <button key={key} onClick={() => setSection(key)} style={{ flex: 1, padding: "10px 8px", background: section === key ? "var(--gold)" : "transparent", color: section === key ? "#0d0d0a" : "var(--text-muted)", border: "none", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", fontWeight: section === key ? 700 : 400, borderBottom: section === key ? "2px solid var(--gold)" : "2px solid transparent", transition: "all 0.2s" }}>{label}</button>
         ))}
       </div>
 
@@ -546,7 +546,7 @@ function OBAdditionalStep({ onComplete }) {
           </div>
         </div>
 
-        <ExplainBox title="The Deception Penalty Cascade" icon="🚨" color="#991B1B">
+        <ExplainBox title="The Deception Penalty Cascade" icon="" color="#991B1B">
           A Deliberate Deception finding doesn't just hurt your score — it triggers a cooldown. You must complete a streak of consecutive approved submissions before your reputation can recover. If you're a Digital Intelligence partner, a deception finding against your DI suspends all linked accounts. The system makes honesty the only sustainable strategy.
         </ExplainBox>
 
@@ -560,14 +560,14 @@ function OBAdditionalStep({ onComplete }) {
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}>Dispute Flow</h3>
         <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 16 }}>Sometimes a correction gets approved but contains an error. The dispute mechanism lets any citizen challenge an approved correction — and if they're right, they earn the highest reward in the system.</p>
 
-        <ExplainBox title="Disputes & The Cassandra Rule" icon="🔮" color="#7C3AED">
+        <ExplainBox title="Disputes & The Cassandra Rule" icon="" color="#7C3AED">
           <strong>Disputes (+{W.disputeWin} pts):</strong> If you spot an error in an approved correction, you can challenge it. A new jury reviews the dispute. Win and you earn +{W.disputeWin} points. Lose and you take drag. Only challenge what you can prove.
           <br /><br />
           <strong>The Cassandra Rule:</strong> Named for the prophet no one believed. If your correction is disputed and the dispute is upheld — meaning the jury said you were wrong — but you refuse to concede because you believe you're right, and you are later vindicated, you earn an additive bonus that scales with the story's importance and the number of rejections you weathered. A single historic vindication can propel a brand-new citizen to the top of the system. The full Cassandra vindication path is being built for a future release.
         </ExplainBox>
 
         <div style={{ padding: 16, background: "rgba(212,168,67,0.09)", border: "1.5px solid #B45309", borderRadius: 0, marginBottom: 16 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B45309", fontWeight: 700, marginBottom: 8 }}>📋 Sample Scenario</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B45309", fontWeight: 700, marginBottom: 8 }}>Sample Scenario</div>
           <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>
             <p style={{ marginBottom: 6 }}>A citizen submitted a correction for the headline <strong>"City Council Approves $12M Budget for New Downtown Park"</strong>.</p>
             <p style={{ marginBottom: 6 }}>Their correction: <em>"The approved park budget was $8.5M, not $12M — the $12M figure includes a separate transit project bundled into the same vote."</em></p>
@@ -607,7 +607,7 @@ function OBAdditionalStep({ onComplete }) {
           </div>
         ) : (
           <div style={{ padding: 20, background: "rgba(212,168,67,0.09)", border: "1.5px solid #EA580C", borderRadius: 0, marginBottom: 16 }}>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#EA580C", marginBottom: 8 }}>⚖️ Dispute Filed</div>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "#EA580C", marginBottom: 8 }}>Dispute Filed</div>
             <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 12 }}>A super jury of 7 members (2× the normal jury for this Assembly, minimum 7) has been drawn from citizens outside the Metro Accountability Assembly. They will review both the original correction and your dispute evidence.</p>
             <div style={{ padding: 12, background: "var(--card-bg)", borderRadius: 0, border: "1px solid var(--border)" }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 6 }}>Dispute Verdict</div>
@@ -615,13 +615,13 @@ function OBAdditionalStep({ onComplete }) {
               <p style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 6, lineHeight: 1.6 }}>The jury found that while the original correction correctly identified the budget conflation, the specific figure ($8.5M) was from an outdated draft. The actual park budget of $9.2M is supported by the official council minutes. The original correction's headline should be amended.</p>
             </div>
             <div style={{ marginTop: 12, padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>⚖ DISPUTE UPHELD</div>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>DISPUTE UPHELD</div>
               <div style={{ fontSize: 12, marginTop: 4 }}>You earn <strong>+{W.disputeWin} points</strong> for successfully catching an error in an approved correction. The original submitter takes drag — not for deception, but for inaccuracy.</div>
             </div>
           </div>
         )}
 
-        <ExplainBox title="What happens next" icon="📝" color="#059669">
+        <ExplainBox title="What happens next" icon="" color="#059669">
           After a successful dispute, the original submitter has the opportunity to <strong>concede</strong> — acknowledging the error and allowing their correction to be amended. Concessions preserve the core correction while fixing the specific error. They also trigger partial score recovery through a time-decay mechanism.
         </ExplainBox>
 
@@ -635,12 +635,12 @@ function OBAdditionalStep({ onComplete }) {
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}>Concession Flow</h3>
         <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 16 }}>When a dispute succeeds, the original submitter can acknowledge their error through a concession. This isn't defeat — it's intellectual honesty made visible. The system rewards it.</p>
 
-        <ExplainBox title="Why Concessions Matter" icon="🤝" color="#0D9488">
+        <ExplainBox title="Why Concessions Matter" icon="" color="#0D9488">
           In most online spaces, admitting you were wrong is a losing move. In Trust Assembly, conceding to a valid dispute triggers <strong>time-decay recovery</strong> — you earn back a portion of your score loss, with the most recovery available to those who concede quickly. One concession per week gets full recovery — no loss at all. Additional concessions in the same week recover 90%. After two weeks it drops to 50%, and after three months to 5%. The message is clear: intellectual honesty is rewarded, and stubbornness isn't.
         </ExplainBox>
 
         <div style={{ padding: 16, background: "rgba(212,168,67,0.09)", border: "1.5px solid #B45309", borderRadius: 0, marginBottom: 16 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B45309", fontWeight: 700, marginBottom: 8 }}>📋 Continuing the Scenario</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#B45309", fontWeight: 700, marginBottom: 8 }}>Continuing the Scenario</div>
           <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>
             <p style={{ marginBottom: 0 }}>You are now <strong>@civicwatcher</strong>, the original submitter. Your correction about the park budget was disputed because you cited $8.5M (from a draft) instead of the final $9.2M figure. The dispute jury sided with the disputant 5–2. You've been notified and need to decide: concede, or stand your ground.</p>
           </div>
@@ -682,13 +682,13 @@ function OBAdditionalStep({ onComplete }) {
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConceded(true)} style={{ background: "#0D9488", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>🤝 Concede — Accept the Correction</button>
+              <button onClick={() => setConceded(true)} style={{ background: "#0D9488", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>Concede — Accept the Correction</button>
               <button style={{ background: "none", border: "1px solid var(--border)", padding: "10px 16px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, color: "var(--text-sec)" }}>Decline</button>
             </div>
           </div>
         ) : (
           <div style={{ padding: 20, background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0, marginBottom: 16 }}>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>🤝 Concession Accepted</div>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>Concession Accepted</div>
             <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 12 }}>You conceded within one week. Your correction is being amended to reflect the accurate $9.2M figure. The core of your correction — that the article conflated two budgets — stands. Your amended headline:</p>
             <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, border: "1px solid var(--border)", marginBottom: 12 }}>
               <div style={{ fontFamily: "var(--serif)", color: "var(--red)", fontWeight: 700, fontSize: 15 }}>Park Budget Is $9.2M, Not $12M — Article Conflates Two Separate Line Items</div>
@@ -725,14 +725,14 @@ export default function OnboardingFlow({ onComplete, embedded }) {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         :root { --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; --serif: var(--font); --mono: var(--font); --body: var(--font); --accent: var(--gold); }
       `}</style>}
-      {!embedded && <div ref={topRef} style={{ background: "var(--card-bg)", color: "var(--text)", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #BFDBFE" }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>📖 Interactive Tutorial</div>
+      {!embedded && <div ref={topRef} style={{ background: "var(--card-bg)", color: "var(--text)", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>
         <div style={{ fontSize: 24, fontWeight: 700 }}>Learn The Trust Assembly</div>
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>A guided walkthrough using a sample correction — nothing here is real</div>
       </div>}
       {embedded && <div ref={topRef}><div className="ta-section-rule" /><h2 className="ta-section-head">Guide</h2><p style={{ color: "var(--text-sec)", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>An interactive walkthrough using a sample correction — nothing here is real.</p></div>}
       <div style={{ background: "rgba(212,168,67,0.09)", padding: "6px 16px", textAlign: "center", fontSize: 10, color: "#EA580C", fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em" }}>
-        ⚠ TUTORIAL MODE — This is a practice exercise. No data will be saved.
+        TUTORIAL MODE — This is a practice exercise. No data will be saved.
       </div>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
