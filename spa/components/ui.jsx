@@ -345,7 +345,7 @@ export function RatingInput({ label, value, onChange, rubric }) {
 
 export function DeliberateLieCheckbox({ checked, onChange }) {
   return (
-    <div style={{ margin: "12px 0", padding: 12, background: "#FEF2F2", border: "1.5px solid #DC2626", borderRadius: 0 }}>
+    <div style={{ margin: "12px 0", padding: 12, background: "rgba(196,74,58,0.09)", border: "1.5px solid #DC2626", borderRadius: 0 }}>
       <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}>
         <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ accentColor: "#DC2626", marginTop: 3, flexShrink: 0 }} />
         <div>
@@ -447,7 +447,7 @@ export function Loader() { return <div style={{ textAlign: "center", padding: 36
 
 export function ExplainBox({ title, children, color = "#0D9488", icon = null }) {
   return (
-    <div style={{ margin: "14px 0", padding: 14, background: "#F0F4F8", border: `1.5px solid ${color}40`, borderLeft: `4px solid ${color}`, borderRadius: 0 }}>
+    <div style={{ margin: "14px 0", padding: 14, background: "var(--card-bg)", border: `1.5px solid ${color}40`, borderLeft: `4px solid ${color}`, borderRadius: 0 }}>
       <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.1em", color, fontWeight: 700, marginBottom: 6 }}>{icon ? <>{icon} </> : ""}{title}</div>
       <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>{children}</div>
     </div>

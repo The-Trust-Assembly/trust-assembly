@@ -425,7 +425,7 @@ export default function TrustAssembly() {
         .user-bar .score { color:var(--gold); font-weight:600; }
         .user-bar .signout { color:var(--text-muted); cursor:pointer; }
         /* ── CONTENT ── */
-        .ta-content { max-width:820px; margin:0 auto; padding:14px 24px 6px; }
+        .ta-content { max-width:1080px; margin:0 auto; padding:14px 24px 6px; }
         .ta-section-rule { height:0; border-top:1px solid var(--border); margin:0 0 10px; }
         .ta-section-head { font-family:var(--font); font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin:0 0 6px; font-weight:600; }
         /* ── CARDS ── */
@@ -669,7 +669,7 @@ export default function TrustAssembly() {
         /* ── NOTIFICATIONS ── */
         .ta-notif-bell { position:relative; color:var(--text-muted); padding:4px; cursor:pointer; }
         .ta-notif-bell:hover { color:var(--gold); }
-        .ta-notif-badge { position:absolute; top:-2px; right:-4px; background:var(--red); color:#fff; font-size:8px; min-width:14px; height:14px; display:flex; align-items:center; justify-content:center; font-weight:700; padding:0 3px; }
+        .ta-notif-badge { position:absolute; top:-2px; right:-4px; background:var(--gold); color:#0d0d0a; font-size:8px; min-width:14px; height:14px; display:flex; align-items:center; justify-content:center; font-weight:700; padding:0 3px; border-radius:50%; }
         .ta-notif-dropdown { position:absolute; top:28px; right:0; width:300px; max-height:400px; background:var(--card-bg); border:1px solid var(--border); z-index:100; overflow:hidden; }
         .ta-notif-header { padding:10px 14px; font-size:12px; font-weight:700; border-bottom:1px solid var(--border); color:var(--gold); }
         .ta-notif-empty { padding:24px 14px; text-align:center; color:var(--text-muted); font-size:12px; }
@@ -699,7 +699,7 @@ export default function TrustAssembly() {
         .ta-nav-dropdown-item { display:block; width:100%; padding:8px 16px; font-size:11px; color:var(--text-sec); text-decoration:none; cursor:pointer; border:none; background:none; text-align:left; font-family:var(--font); }
         .ta-nav-dropdown-item:hover { background:var(--bg); color:var(--gold); }
         .ta-nav-dropdown-item.active { color:var(--gold); font-weight:600; }
-        .ta-nav-badge { background:var(--red); color:#fff; font-size:8px; padding:1px 5px; font-weight:700; margin-left:4px; }
+        .ta-nav-badge { background:var(--gold); color:#0d0d0a; font-size:8px; padding:1px 5px; font-weight:700; margin-left:4px; border-radius:50%; }
       `}</style>
 
 

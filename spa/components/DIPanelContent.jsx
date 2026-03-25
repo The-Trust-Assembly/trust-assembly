@@ -151,7 +151,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
       {error && <div className="ta-error">{error}</div>}
 
       {/* DI Pre-Review Queue */}
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={16} /> DI Submissions Awaiting Your Approval ({diQueue.length})</div>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={42} /> DI Submissions Awaiting Your Approval ({diQueue.length})</div>
       {diQueue.length > 0 && <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
         {confirmAll ? (
           <div style={{ padding: 10, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 0, flex: 1 }}>

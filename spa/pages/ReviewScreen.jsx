@@ -264,7 +264,10 @@ function ReviewScreenInner({ user }) {
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
   const hasDIPartnership = !!user.diPartner || all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
 
-  // My Results: user's rejected submissions that they can concede or dispute
+  // My approved submissions (for history tab)
+  const myApproved = all.filter(s => s.submittedBy === user.username && ["approved", "consensus", "cross_review"].includes(s.status));
+
+  // My rejected submissions that they can concede or dispute
   // Deduplicate cross-assembly duplicates — keep the first (highest priority) and merge assembly names
   const myRejectedRaw = all.filter(s => s.submittedBy === user.username && s.status === "rejected");
   const rejectedByUrl = new Map();
@@ -505,15 +508,16 @@ function ReviewScreenInner({ user }) {
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}><Icon name="robot" size={14} /> <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid var(--border)" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes / Concession", dQ.length + myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={14} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes / Concession", dQ.length + myDisputes.length + myRejected.length], ["myresults", "My Results", myApproved.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={42} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid var(--gold)" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "var(--gold)" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
-            {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
+            {l} {c > 0 && <span style={{ background: "var(--gold)", color: "#0d0d0a", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
         ))}
       </div>
       {tab === "ingroup" && (igQ.length === 0 ? <Empty text="No in-group reviews waiting." /> : igQ.map(s => renderItem(s, false)))}
       {tab === "crossgroup" && (cgQ.length === 0 ? <Empty text="No cross-group reviews waiting." /> : <div><p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>These corrections were approved by another Assembly and now face cross-group review. Jury size scales with the number of qualifying Assemblies in the ecosystem. No two jurors share more than 2 non-GP Assembly memberships — your perspective is independent by design.</p>{cgQ.map(s => renderItem(s, true))}</div>)}
-      {tab === "disputes" && (dQ.length === 0 ? <Empty text="No disputes awaiting your review." /> : <div>
+      {tab === "disputes" && <div>
+        {dQ.length > 0 && <>
         <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Intra-Assembly disputes. A member is challenging another member's submission. Upholding the dispute means the submission was wrong. Dismissing means the original stands. Winners gain significant reputation.</p>
         {dQ.map(d => (
           <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
@@ -548,6 +552,8 @@ function ReviewScreenInner({ user }) {
             <AuditTrail entries={d.auditTrail} />
           </div>
         ))}
+      </>}
+      {dQ.length === 0 && myDisputes.length === 0 && myRejected.length === 0 && <Empty text="No disputes, concessions, or rejected submissions." />}
       {/* My Disputes — inline within disputes tab */}
       {myDisputes.length > 0 && <div style={{ marginTop: 16 }}>
         <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>All disputes involving your submissions — either filed by you or filed against your work. Track the status and outcome of each dispute.</p>
@@ -595,12 +601,11 @@ function ReviewScreenInner({ user }) {
           );
         })}
       </div>}
-      </div>)}
-
-      {/* My Results Tab — user's rejected submissions with concede/dispute actions */}
-      {tab === "myresults" && (myRejected.length === 0 ? <Empty text="No rejected submissions. When your submissions are rejected by a jury, they'll appear here so you can concede or dispute." /> : <div>
+      {/* Rejected submissions — concede or dispute */}
+      {myRejected.length > 0 && <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--red)", fontWeight: 700, marginBottom: 8 }}>Your Rejected Submissions — Choose to Concede or Dispute</div>
         <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>
-          Your submissions that were rejected by jury vote. You can <strong>concede</strong> (accept the rejection and recover reputation) or <strong>dispute</strong> (challenge the rejection with additional evidence — a new jury will decide).
+          <strong>Concede</strong> to accept the rejection and recover reputation, or <strong>dispute</strong> to challenge with additional evidence — a new jury will decide.
         </p>
         {concedeSuccess && <div className="ta-success" style={{ marginBottom: 12 }}>{concedeSuccess}</div>}
         {myRejected.sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt)).map(s => {
@@ -689,6 +694,21 @@ function ReviewScreenInner({ user }) {
             </div>
           );
         })}
+      </div>}
+      </div>}
+
+      {/* My Results Tab — submission history (approved/resolved) */}
+      {tab === "myresults" && (myApproved.length === 0 ? <Empty text="No approved submissions yet. Your approved corrections and affirmations will appear here." /> : <div>
+        <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Your submissions that were approved by jury vote — your contribution to the assembly record.</p>
+        {myApproved.sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt)).map(s => (
+          <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #059669" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(s.orgName)} · {sDate(s.resolvedAt || s.createdAt)}</span>
+              <StatusPill status={s.status} />
+            </div>
+            <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}><SubHeadline sub={s} /></div>
+          </div>
+        ))}
       </div>)}
 
       {/* Story Proposals Tab */}
