@@ -120,6 +120,7 @@ export default function TrustAssembly() {
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
   const [heroFading, setHeroFading] = useState(false);
+  const [viewingAssemblyId, setViewingAssemblyId] = useState(null);
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
   const [activeDraftId, setActiveDraftId] = useState(null);
@@ -942,8 +943,8 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} />}
+            {screen === "feed" && <FeedScreen user={user} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
+            {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}

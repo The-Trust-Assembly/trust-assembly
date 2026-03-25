@@ -46,7 +46,7 @@ async function voteConcession(concessionId, voterUsername, approve) {
   }
 }
 
-export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
+export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewingOrg, onViewingOrgChange }) {
   const qc = useQueryClient();
   const invalidateOrgs = () => { qc.invalidateQueries({ queryKey: queryKeys.orgs }); qc.invalidateQueries({ queryKey: queryKeys.users }); qc.invalidateQueries({ queryKey: queryKeys.applications }); };
   const [orgs, setOrgs] = useState(null); const [subs, setSubs] = useState(null); const [apps, setApps] = useState(null);
@@ -55,7 +55,9 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
   const [error, setError] = useState(""); const [success, setSuccess] = useState("");
   const [search, setSearch] = useState(""); const [sortBy, setSortBy] = useState("activity");
   const [showGuide, setShowGuide] = useState(false);
-  const [viewingOrg, setViewingOrg] = useState(null); // Assembly detail/profile view
+  const [viewingOrg, setViewingOrgRaw] = useState(initialViewingOrg || null); // Assembly detail/profile view
+  const setViewingOrg = (id) => { setViewingOrgRaw(id); if (!id && onViewingOrgChange) onViewingOrgChange(); };
+  useEffect(() => { if (initialViewingOrg) setViewingOrgRaw(initialViewingOrg); }, [initialViewingOrg]);
   const [concessions, setConcessions] = useState(null);
   const [concessionReason, setConcessionReason] = useState("");
 

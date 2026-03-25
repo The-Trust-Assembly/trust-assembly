@@ -27,18 +27,19 @@ function HeroSlide({ slide, style }) {
   try { domain = new URL(String(slide.url)).hostname.replace(/^www\./, ""); } catch {}
   return (
     <div style={style}>
+      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#aaa", letterSpacing: "0.5px", marginBottom: 8 }}>{domain || "article"}</div>
       {isAffirm ? (
-        <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#1a1a1a" }}>
+        <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#1a1a1a" }}>
           <span style={{ color: "#059669", fontWeight: 700 }}>Affirmed: </span>{safe(slide.originalHeadline)}
         </div>
       ) : (
         <>
-          <div style={{ fontFamily: "var(--serif)", fontSize: 14, lineHeight: 1.4, color: "#666", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
-          <div style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#c44a3a", fontWeight: 600 }}>{safe(slide.replacement)}</div>
+          <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 14, lineHeight: 1.4, color: "#888", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
+          <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#c44a3a", fontWeight: 600 }}>{safe(slide.replacement)}</div>
         </>
       )}
-      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#999", marginTop: 8 }}>
-        {safe(slide.orgName)}{domain ? ` \u00B7 ${domain}` : ""} {"\u00B7"} {sDate(slide.resolvedAt || slide.createdAt)}
+      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#aaa", marginTop: 10 }}>
+        Corrected by {safe(slide.orgName)} {"\u00B7"} {sDate(slide.resolvedAt || slide.createdAt)}
       </div>
     </div>
   );
@@ -68,9 +69,9 @@ function FeedHeroCarousel({ subs }) {
 
   if (approved.length === 0) {
     return (
-      <div style={{ background: "#fff", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10, textAlign: "center" }}>
+      <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10, textAlign: "center" }}>
         <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>How You're Changing the Narrative</div>
-        <div style={{ fontSize: 12, color: "#999", lineHeight: 1.6 }}>No corrections approved yet — submit one and let the jury decide.</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>No corrections approved yet — submit one and let the jury decide.</div>
       </div>
     );
   }
@@ -78,25 +79,27 @@ function FeedHeroCarousel({ subs }) {
   const activeIdx = slideIdx % approved.length;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10 }}
+    <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "16px 16px 12px", marginBottom: 10 }}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 12 }}>How You're Changing the Narrative</div>
-      {/* All slides rendered to establish max height; only active is visible */}
-      <div style={{ position: "relative" }}>
-        {approved.map((s, i) => (
-          <HeroSlide key={s.id} slide={s} style={{
-            visibility: i === activeIdx ? "visible" : "hidden",
-            position: i === activeIdx ? "relative" : "absolute",
-            top: 0, left: 0, right: 0,
-            opacity: i === activeIdx && !fading ? 1 : 0,
-            transition: "opacity 0.25s ease",
-          }} />
-        ))}
+      {/* Portal window — inset shadow creates depth, white bg mimics a real webpage */}
+      <div style={{ background: "#fafafa", border: "1px solid rgba(0,0,0,0.1)", boxShadow: "inset 0 2px 12px rgba(0,0,0,0.12)", padding: "14px 16px" }}>
+        {/* CSS grid: all slides in same cell, tallest sets height */}
+        <div style={{ display: "grid" }}>
+          {approved.map((s, i) => (
+            <HeroSlide key={s.id} slide={s} style={{
+              gridArea: "1 / 1",
+              opacity: i === activeIdx && !fading ? 1 : 0,
+              transition: "opacity 0.25s ease",
+              pointerEvents: i === activeIdx ? "auto" : "none",
+            }} />
+          ))}
+        </div>
       </div>
       {approved.length > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
           {approved.map((_, i) => (
-            <span key={i} onClick={() => { setSlideIdx(i); setFading(false); }} style={{ width: 8, height: 8, borderRadius: "50%", background: i === activeIdx ? "var(--gold)" : "#ccc", cursor: "pointer", transition: "background 0.2s" }} />
+            <span key={i} onClick={() => { setSlideIdx(i); setFading(false); }} style={{ width: 8, height: 8, borderRadius: "50%", background: i === activeIdx ? "var(--gold)" : "var(--border)", cursor: "pointer", transition: "background 0.2s" }} />
           ))}
         </div>
       )}
@@ -167,7 +170,7 @@ export default function FeedScreen(props) {
   return <FeedErrorBoundary><FeedScreenInner {...props} /></FeedErrorBoundary>;
 }
 
-function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
+function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
@@ -420,7 +423,7 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
               ) : (
                 <span className="hidden-user">Citizen (pending review)</span>
               )}
-              <span className="muted">· {safe(sub.orgName)}{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4 }}>{safe(a)}</span>)} · {sDate(sub.createdAt)}</span>
+              <span className="muted">· <span style={{ cursor: "pointer", color: "var(--gold)" }} onClick={(e) => { e.stopPropagation(); onViewAssembly && onViewAssembly(sub.orgId); }}>{safe(sub.orgName)}</span>{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4, cursor: "pointer" }}>{safe(a)}</span>)} · {sDate(sub.createdAt)}</span>
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
               {sub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
             </div>
