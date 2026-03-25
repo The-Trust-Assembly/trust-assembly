@@ -85,6 +85,9 @@ export default function FeedScreen(props) {
 }
 
 function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
+  // TEMPORARY: bypass all rendering to isolate crash
+  const [debugBypass, setDebugBypass] = useState(true);
+  if (debugBypass) return <div style={{ padding: 20 }}><div style={{ color: "var(--gold)", marginBottom: 10 }}>Feed debug mode — rendering bypassed. If you see this, the crash is in the render body below.</div><button onClick={() => setDebugBypass(false)} style={{ padding: "8px 16px", background: "var(--gold)", color: "#0d0d0a", border: "none", cursor: "pointer", fontWeight: 700 }}>Enable Full Feed (will crash if bug is here)</button></div>;
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
