@@ -644,7 +644,7 @@ export default function TrustAssembly() {
         .ta-mobile-menu-item.active { color:var(--gold); font-weight:600; }
         .ta-mobile-menu-divider { height:1px; background:var(--border); margin:6px 0; }
         .ta-mobile-menu-group { padding:8px 24px 4px; font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.1em; color:var(--gold); font-weight:600; }
-        @media(max-width:768px) { .ta-nav-desktop{display:none !important;} .ta-nav-mobile{display:block;} .split{flex-direction:column;} .preview-side{flex:none;height:300px;} }
+        @media(max-width:768px) { .ta-nav-desktop{display:none !important;} .ta-nav-mobile{display:block;} .split{flex-direction:column;} .preview-side{flex:none;height:300px;} .ta-preview-panel{display:none !important;} }
         /* ── NOTIFICATIONS ── */
         .ta-notif-bell { position:relative; color:var(--text-muted); padding:4px; cursor:pointer; }
         .ta-notif-bell:hover { color:var(--gold); }

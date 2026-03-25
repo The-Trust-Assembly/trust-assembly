@@ -31,6 +31,8 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const [evidenceUrls, setEvidenceUrls] = useState([{ url: "", explanation: "" }]);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
   const [graceSubmissions, setGraceSubmissions] = useState([]); // { id, createdAt, orgName }
   const [graceTimer, setGraceTimer] = useState(null);
   const [myOrgs, setMyOrgs] = useState([]);
@@ -265,6 +267,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
   const handleSubmitClick = () => {
     if (!validate()) return;
+    if (isMobile) { setShowMobilePreview(true); return; }
     setShowConfirm(true);
   };
 
@@ -722,7 +725,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
             <div style={{ marginTop: 10 }}>
               {/* Standing Corrections — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="vault" size={16} /> Standing Corrections <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— reusable facts</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="vault" size={42} /> Standing Corrections <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— reusable facts</span></div>
                 {standingCorrections.map((sc, i) => (
                   <div key={i} style={{ marginBottom: 8, padding: i > 0 ? "8px 0 0 0" : 0, borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
                     {standingCorrections.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -737,7 +740,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Arguments — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={16} /> Arguments <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— reusable rhetorical or logical tools</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={42} /> Arguments <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— reusable rhetorical or logical tools</span></div>
                 {submitArgs.map((arg, i) => (
                   <div key={i} style={{ marginBottom: 8, position: "relative" }}>
                     {submitArgs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -752,7 +755,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Beliefs — multiple */}
               <div style={{ marginBottom: 12, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="jury" size={16} /> Foundational Beliefs <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— axioms your Assembly holds</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="jury" size={42} /> Foundational Beliefs <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— axioms your Assembly holds</span></div>
                 {submitBeliefs.map((belief, i) => (
                   <div key={i} style={{ marginBottom: 8, position: "relative" }}>
                     {submitBeliefs.length > 1 && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -767,7 +770,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
               {/* Translations — multiple */}
               <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={16} /> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}><Icon name="dispute" size={42} /> Translations <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 10, color: "var(--text-sec)" }}>— strip spin, jargon, or propaganda from language</span></div>
                 <div style={{ fontSize: 11, color: "var(--text-sec)", marginBottom: 8, lineHeight: 1.5 }}>Plain-language replacements. <span style={{ color: "var(--gold)", fontWeight: 600 }}>Assembly-wide — every citizen sees these wherever the original terms appear.</span></div>
                 {submitTranslations.map((tr, i) => (
                   <div key={i} style={{ marginBottom: 8, paddingTop: i > 0 ? 8 : 0, borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
@@ -842,6 +845,62 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>
       )}
 
+      {/* ── Mobile Preview Modal ── */}
+      {showMobilePreview && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "var(--bg)", zIndex: 1000, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+            <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700 }}>Preview Your Submission</span>
+            <div style={{ display: "flex", border: "1px solid var(--border)", cursor: "pointer" }}>
+              <span onClick={() => setPreviewMode("clean")} style={{ padding: "3px 7px", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", background: previewMode === "clean" ? "var(--gold)" : "transparent", color: previewMode === "clean" ? "var(--bg)" : "var(--text-muted)", fontWeight: previewMode === "clean" ? 700 : 400 }}>Clean</span>
+              <span onClick={() => setPreviewMode("diff")} style={{ padding: "3px 7px", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", background: previewMode === "diff" ? "var(--gold)" : "transparent", color: previewMode === "diff" ? "var(--bg)" : "var(--text-muted)", fontWeight: previewMode === "diff" ? 700 : 400 }}>Diff</span>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", background: "#f8f8f6", padding: "14px 16px", fontFamily: "Georgia, serif" }}>
+            {(() => { let domain = ""; try { domain = new URL(form.url).hostname.replace(/^www\./, ""); } catch {} return domain; })() && (
+              <div style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6, fontFamily: "sans-serif", fontWeight: 600 }}>{(() => { try { return new URL(form.url).hostname.replace(/^www\./, ""); } catch { return ""; } })()}</div>
+            )}
+            {form.originalHeadline && <div style={{ fontSize: 18, fontWeight: 700, color: form.replacement ? "#999" : "#1a1a1a", textDecoration: form.replacement ? "line-through" : "none", marginBottom: 4, lineHeight: 1.3 }}>{form.originalHeadline}</div>}
+            {form.replacement && <div style={{ fontSize: 18, fontWeight: 700, color: "#c44a3a", marginBottom: 6, lineHeight: 1.3 }}>{form.replacement}</div>}
+            {authors.length > 0 && <div style={{ fontSize: 10, color: "#666", fontFamily: "sans-serif", marginBottom: 10 }}>By {authors.join(", ")}</div>}
+            {form.reasoning && <div style={{ fontSize: 12, color: "#555", lineHeight: 1.6, marginBottom: 12, padding: "8px 10px", borderLeft: "3px solid var(--gold)", background: "rgba(212,168,67,0.06)" }}>{form.reasoning}</div>}
+            {previewParagraphs.length > 0 && previewParagraphs.map((p, i) => renderPreviewParagraph(p, i))}
+            {(standingCorrections.some(sc => sc.assertion.trim()) || submitArgs.some(a => a.trim()) || submitBeliefs.some(b => b.trim()) || submitTranslations.some(t => t.original.trim() && t.translated.trim())) && (
+              <div style={{ borderTop: "1px solid #ddd", paddingTop: 10, fontFamily: "sans-serif", marginTop: 14 }}>
+                <div style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6 }}>Trust Assembly annotations</div>
+                {submitTranslations.filter(t => t.original.trim() && t.translated.trim()).map((t, i) => (
+                  <div key={`t-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                    <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>TRANSLATION</div>
+                    <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}><span style={{ textDecoration: "line-through", color: "#999" }}>"{t.original}"</span>{" \u2192 "}<span style={{ color: "#c44a3a" }}>"{t.translated}"</span></div>
+                  </div>
+                ))}
+                {standingCorrections.filter(sc => sc.assertion.trim()).map((sc, i) => (
+                  <div key={`sc-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                    <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>FACT</div>
+                    <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{sc.assertion}</div>
+                  </div>
+                ))}
+                {submitArgs.filter(a => a.trim()).map((a, i) => (
+                  <div key={`a-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                    <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>ARGUMENT</div>
+                    <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{a}</div>
+                  </div>
+                ))}
+                {submitBeliefs.filter(b => b.trim()).map((b, i) => (
+                  <div key={`b-${i}`} style={{ background: "#f0f0ea", border: "1px solid #ddd", padding: "6px 8px", marginBottom: 4 }}>
+                    <div style={{ fontSize: 7, color: "#b8963e", letterSpacing: 1, fontWeight: 600 }}>BELIEF</div>
+                    <div style={{ fontSize: 10, color: "#333", marginTop: 2 }}>{b}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", display: "flex", gap: 10, flexShrink: 0 }}>
+            <button className="ta-btn-ghost" onClick={() => setShowMobilePreview(false)} style={{ flex: 1, padding: "12px 16px", fontSize: 13 }}>Return to Edit</button>
+            <button className="ta-btn-primary" onClick={() => { setShowMobilePreview(false); setShowConfirm(true); }} style={{ flex: 1, padding: "12px 16px", fontSize: 13 }}>Finalize Submission</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Submit & Save Draft Buttons ── */}
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
@@ -867,8 +926,8 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       </div>
       </div>{/* end form-side */}
 
-      {/* ── RIGHT: ARTICLE PREVIEW ── */}
-      <div style={{ flex: "0 0 340px", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)" }}>
+      {/* ── RIGHT: ARTICLE PREVIEW (hidden on mobile) ── */}
+      <div className="ta-preview-panel" style={{ flex: "0 0 340px", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)" }}>
         <div style={{ background: "var(--bg)", padding: "6px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <span style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Article preview</span>
           <div style={{ display: "flex", border: "1px solid var(--border)", cursor: "pointer" }}>
