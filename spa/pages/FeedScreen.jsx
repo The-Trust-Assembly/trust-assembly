@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SK, ADMIN_USERNAME } from "../lib/constants";
 import { sG } from "../lib/storage";
@@ -81,6 +81,8 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   const [approveMsg, setApproveMsg] = useState("");
   const [savedDrafts, setSavedDrafts] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const isAdmin = user && user.username === ADMIN_USERNAME;
 
   const [loadError, setLoadError] = useState("");
@@ -176,24 +178,70 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
   }
 
   const filtered = all.filter(sub => matchesFilter(sub, activeFilter));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paged = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  // Compute stats for info cards
+  const myOrgIds = user ? (user.orgIds || (user.orgId ? [user.orgId] : [])) : [];
+  const reviewQueueCount = Object.values(subs || {}).filter(s => ["pending_review", "pending_jury"].includes(s.status) && myOrgIds.includes(s.orgId) && s.submittedBy !== (user?.username || "")).length;
+  const totalCitizens = useMemo(() => {
+    const members = new Set();
+    Object.values(orgs || {}).forEach(o => (o.members || []).forEach(m => members.add(m)));
+    return members.size;
+  }, [orgs]);
+  const myApprovedInGP = useMemo(() => {
+    if (!user) return 0;
+    const gp = Object.values(orgs || {}).find(o => o.isGeneralPublic);
+    if (!gp) return 0;
+    return Object.values(subs || {}).filter(s => s.orgId === gp.id && s.submittedBy === user.username && ["approved", "consensus", "cross_review"].includes(s.status)).length;
+  }, [subs, orgs, user]);
+  const gpOrg = Object.values(orgs || {}).find(o => o.isGeneralPublic);
+  const trustedRequired = 10;
+  const trustedRemaining = Math.max(0, trustedRequired - myApprovedInGP);
 
   return (
     <div className="ta-content">
-      {/* Admin box */}
-      {isAdmin && (
-        <div className="admin-box">
-          <div className="admin-title">Admin</div>
-          <div className="admin-text" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {/* Admin update box */}
+      <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
+        <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Admin update</div>
+        <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>Focus is on back-end transaction reliability. UI enhancements coming once submissions move between states with high fidelity.</div>
+        {isAdmin && (
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
             <button className="card-btn" style={{ background: "var(--gold)", color: "var(--bg)", fontWeight: 700, borderColor: "var(--gold)" }} onClick={approveAllPending}>Approve All Pending</button>
-            {approveMsg && <span style={{ color: "var(--green)", fontWeight: 600 }}>{approveMsg}</span>}
+            {approveMsg && <span style={{ color: "var(--green)", fontWeight: 600, fontSize: 10 }}>{approveMsg}</span>}
           </div>
+        )}
+      </div>
+
+      {/* Your Next Steps + Assembly Status */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+        <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
+          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Your next steps</div>
+          <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
+            You have <span style={{ color: "var(--text)", fontWeight: 600 }}>{reviewQueueCount} items</span> in your review queue.
+            {trustedRemaining > 0 && gpOrg && <> Next milestone: <span style={{ color: "var(--gold)", fontWeight: 600 }}>{trustedRemaining} more approvals</span> for Trusted Contributor in {gpOrg.name}.</>}
+          </div>
+        </div>
+        <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
+          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Assembly status</div>
+          <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
+            Member of <span style={{ color: "var(--text)", fontWeight: 600 }}>{myOrgIds.length} assemblies</span>. {totalCitizens} citizens registered — <span style={{ color: "var(--gold)", fontWeight: 600 }}>{Math.max(0, 100 - totalCitizens)} more</span> until advanced jury rules activate.
+          </div>
+        </div>
+      </div>
+
+      {/* Wild West Rules */}
+      {totalCitizens < 100 && (
+        <div style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", padding: "8px 12px", marginBottom: 10 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--gold)", letterSpacing: 1, marginBottom: 3 }}>WILD WEST RULES — {totalCitizens}/100 CITIZENS</div>
+          <div style={{ fontSize: 9, color: "var(--text-sec)", lineHeight: 1.5 }}>1. Any assembly with 2+ members can have jurors · 2. Submissions require one reviewer · 3. Deception findings disabled</div>
         </div>
       )}
 
       {/* Saved drafts */}
       {user && savedDrafts.length > 0 && (
-        <div className="wild-box" style={{ marginBottom: 10 }}>
-          <div className="wild-title">{savedDrafts.length} DRAFT{savedDrafts.length > 1 ? "S" : ""} IN PROGRESS</div>
+        <div style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", padding: "8px 12px", marginBottom: 10 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--gold)", letterSpacing: 1, marginBottom: 3 }}>{savedDrafts.length} DRAFT{savedDrafts.length > 1 ? "S" : ""} IN PROGRESS</div>
           {savedDrafts.slice(0, 5).map(d => {
             let domain = "";
             try { domain = new URL(d.url).hostname.replace(/^www\./, ""); } catch {}
@@ -233,21 +281,21 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
 
       {/* Filter row */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-        <span className="ta-section-head" style={{ margin: 0, padding: 0, border: "none" }}>Assembly Record</span>
-        <span style={{ fontSize: 9, color: "var(--text-muted)" }}>Select to filter</span>
+        <div style={{ fontSize: 10, letterSpacing: 3, color: "var(--gold)", textTransform: "uppercase", fontWeight: 600 }}>Assembly record</div>
+        <span style={{ fontSize: 9, color: "var(--text-muted)" }}>Multi-select to filter</span>
       </div>
-      <div className="filters">
+      <div className="filters" style={{ marginBottom: 10 }}>
         {FILTER_CHIPS.map(f => (
           <span
             key={f.key}
             className={`filt${activeFilter === f.key ? " active" : ""}`}
-            onClick={() => setActiveFilter(f.key)}
+            onClick={() => { setActiveFilter(f.key); setCurrentPage(1); }}
           >{f.label}</span>
         ))}
       </div>
 
       {/* Feed cards */}
-      {filtered.length === 0 ? <Empty text="No corrections yet." /> : filtered.map(sub => {
+      {paged.length === 0 ? <Empty text="No corrections yet." /> : paged.map(sub => {
         const isExpanded = expandedId === sub.id;
         const isAffirm = sub.submissionType === "affirmation";
         const showUser = sub.resolvedAt;
@@ -412,7 +460,18 @@ export default function FeedScreen({ user, onNavigate, onViewCitizen, onViewReco
           )}
         </div>
       );})}
-      <LegalDisclaimer short />
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ padding: "10px 0", display: "flex", justifyContent: "center", gap: 3 }}>
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(p => (
+            <button key={p} onClick={() => setCurrentPage(p)} style={{ padding: "3px 8px", fontSize: 9, border: `1px solid ${p === currentPage ? "var(--gold)" : "var(--border)"}`, color: p === currentPage ? "#0d0d0a" : "var(--text-sec)", background: p === currentPage ? "var(--gold)" : "none", cursor: "pointer", fontWeight: p === currentPage ? 700 : 400 }}>{p}</button>
+          ))}
+          {currentPage < totalPages && <button onClick={() => setCurrentPage(p => p + 1)} style={{ padding: "3px 8px", fontSize: 9, border: "1px solid var(--border)", color: "var(--text-sec)", background: "none", cursor: "pointer" }}>Next</button>}
+        </div>
+      )}
+
+      {/* Disclaimer */}
+      <div style={{ fontSize: 8, color: "var(--text-muted)", textAlign: "center", padding: "4px 0" }}>Digital Citizens are solely responsible for the content of their submissions.</div>
     </div>
   );
 }
