@@ -957,7 +957,7 @@ export default function TrustAssembly() {
                   maxHeight: 120,
                   overflowY: "auto",
                 }}>
-                  {siteAnnouncement}
+                  {typeof siteAnnouncement === "string" ? siteAnnouncement : JSON.stringify(siteAnnouncement)}
                 </div>
               </div>
             )}
