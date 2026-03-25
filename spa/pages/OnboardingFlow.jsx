@@ -47,6 +47,10 @@ const OB_AFFIRMATION = {
 function OBSubmitStep() {
   const [revealed, setRevealed] = useState(0);
   const [mode, setMode] = useState("correction"); // correction | affirmation
+  const [editHeadline, setEditHeadline] = useState(OB_ARTICLE.originalHeadline);
+  const [editReplacement, setEditReplacement] = useState(OB_ARTICLE.correctedHeadline);
+  const [editReasoning, setEditReasoning] = useState("The article presents the claim 'evil is good' as though it were a serious argument. No substantive case is made — the piece relies on fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. This is textbook ragebait designed to provoke, not inform.");
+  const [editAuthor, setEditAuthor] = useState(OB_ARTICLE.author);
   useEffect(() => { const t = setInterval(() => setRevealed(r => Math.min(r + 1, 20)), 400); return () => clearInterval(t); }, []);
 
   const isAffirm = mode === "affirmation";
@@ -55,7 +59,7 @@ function OBSubmitStep() {
   return (
     <div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 1: Submit</h2>
-      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 14 }}>When you find an article worth reviewing, you submit either a <strong>correction</strong> (the headline is misleading) or an <strong>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review.</p>
+      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 14 }}>When you find an article worth reviewing, you submit either a <strong>correction</strong> (the headline is misleading) or an <strong>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review. <strong>Try editing the fields below</strong> — the preview updates live.</p>
 
       {/* Mode toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
@@ -67,24 +71,28 @@ function OBSubmitStep() {
         ))}
       </div>
 
-      <ExplainBox title={isAffirm ? "Why Affirmations Matter" : "Article URL"} icon={isAffirm ? "🟢" : "🔗"} color={isAffirm ? "#059669" : "#0D9488"}>
+      <div style={{ display: "flex", gap: 16 }}>
+      {/* LEFT: Editable form */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+
+      <ExplainBox title={isAffirm ? "Why Affirmations Matter" : "Article URL"} icon={isAffirm ? "✓" : ""} color={isAffirm ? "#059669" : "#0D9488"}>
         {isAffirm
           ? "Not everything needs correcting. When a journalist gets it right — especially on a controversial topic — affirming their accuracy with evidence strengthens the public record. Affirmations go through the same jury review as corrections."
           : "Every correction starts with the article you're correcting. Paste the URL so jurors can read the original. The article automatically imports when you enter a URL and click another field."}
       </ExplainBox>
-      <HighlightField label="Article URL" value={article.url} note={isAffirm ? "The article you're affirming is accurate." : "This links directly to the offending article."} />
+      <div className="ta-field" style={{ marginBottom: 14 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Article URL</label><input value={article.url} readOnly style={{ opacity: 0.7 }} /></div>
 
-      <ExplainBox title={isAffirm ? "The Headline You're Affirming" : "The Headlines"} icon="✏️">
+      <ExplainBox title={isAffirm ? "The Headline You're Affirming" : "The Headlines"} icon="" color="var(--text-sec)">
         {isAffirm
           ? "You quote the headline exactly. For affirmations, there's no replacement — you're confirming the original is accurate."
           : "You quote the original headline exactly, then propose your corrected replacement. Your replacement should be factual, not editorial — the goal is truth, not dunking."}
       </ExplainBox>
-      <HighlightField label="Original Headline" value={article.originalHeadline} />
-      <HighlightField label="Author" value={article.author} note="Captured for future writer accountability ratings." />
-      {!isAffirm && <HighlightField label="Proposed Correction — the red pen" value={OB_ARTICLE.correctedHeadline} color="#DC2626" />}
+      <div className="ta-field" style={{ marginBottom: 10 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Original Headline</label><input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} /></div>
+      <div className="ta-field" style={{ marginBottom: 10 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Author</label><input value={editAuthor} onChange={e => setEditAuthor(e.target.value)} /></div>
+      {!isAffirm && <div className="ta-field" style={{ marginBottom: 10 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#DC2626" }}>Proposed Correction — the red pen</label><input value={editReplacement} onChange={e => setEditReplacement(e.target.value)} style={{ borderColor: "#DC2626" }} /></div>}
       {isAffirm && <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginBottom: 14, fontSize: 13, color: "var(--green)" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
 
-      <HighlightField label="Reasoning" value={isAffirm ? article.reasoning : "The article presents the claim 'evil is good' as though it were a serious argument. No substantive case is made — the piece relies on fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. This is textbook ragebait designed to provoke, not inform."} isTextarea note={isAffirm ? "Explain WHY this headline is accurate. Cite the evidence." : "Explain WHY the original is misleading. This is what jurors evaluate."} />
+      <div className="ta-field" style={{ marginBottom: 14 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Reasoning</label><textarea value={editReasoning} onChange={e => setEditReasoning(e.target.value)} rows={3} style={{ resize: "vertical" }} /></div>
 
       {revealed >= 2 && !isAffirm && <>
         <ExplainBox title="Supporting Evidence" icon="📎" color="#059669">You can attach URLs that support your correction — news articles, studies, primary sources. Each one gets an explanation of what it proves.</ExplainBox>
@@ -137,7 +145,7 @@ function OBSubmitStep() {
             <div style={{ fontSize: 13, lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           </div>
 
-          <div style={{ padding: 12, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, marginBottom: 14 }}>
+          <div style={{ padding: 12, background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, marginBottom: 14 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><Icon name="jury" size={42}/> Foundational Belief <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ fontSize: 13, lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           </div>
@@ -156,14 +164,29 @@ function OBSubmitStep() {
           </div>
         </>}
       </>}
+
+      </div>{/* end left form side */}
+
+      {/* RIGHT: Live Preview Panel */}
+      <div className="ta-preview-panel" style={{ flex: "0 0 300px", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "6px 12px", background: "var(--bg)", borderBottom: "1px solid var(--border)", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Live Preview</div>
+        <div style={{ flex: 1, overflowY: "auto", background: "#f8f8f6", padding: "14px 12px", fontFamily: "Georgia, serif" }}>
+          <div style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6, fontFamily: "sans-serif", fontWeight: 600 }}>the-daily-falsehood.com</div>
+          {editHeadline && <div style={{ fontSize: 16, fontWeight: 700, color: !isAffirm && editReplacement ? "#999" : "#1a1a1a", textDecoration: !isAffirm && editReplacement ? "line-through" : "none", marginBottom: 4, lineHeight: 1.3 }}>{editHeadline}</div>}
+          {!isAffirm && editReplacement && <div style={{ fontSize: 16, fontWeight: 700, color: "#c44a3a", marginBottom: 6, lineHeight: 1.3 }}>{editReplacement}</div>}
+          {isAffirm && <div style={{ fontSize: 14, fontWeight: 700, color: "#059669", marginBottom: 6 }}>Affirmed as accurate</div>}
+          {editAuthor && <div style={{ fontSize: 10, color: "#666", fontFamily: "sans-serif", marginBottom: 10 }}>By {editAuthor}</div>}
+          {editReasoning && <div style={{ fontSize: 11, color: "#555", lineHeight: 1.6, marginBottom: 10, padding: "6px 8px", borderLeft: "3px solid #b8963e", background: "rgba(184,150,62,0.06)" }}>{editReasoning}</div>}
+          {OB_ARTICLE.body && OB_ARTICLE.body.map((p, i) => <p key={i} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 8 }}>{p}</p>)}
+        </div>
+      </div>
+      </div>{/* end split-pane */}
     </div>
   );
 }
 
 // ── Step 2: Review ──
 function OBReviewStep() {
-  const [newsRating, setNewsRating] = useState(8);
-  const [funRating, setFunRating] = useState(9);
   const [lieChecked, setLieChecked] = useState(false);
   const [voteNote, setVoteNote] = useState("");
   const [voted, setVoted] = useState(false);
@@ -232,7 +255,7 @@ function OBReviewStep() {
             <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "var(--border)", background: vaultVotes.arg === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.arg === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
-        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, fontSize: 12 }}>
+        <div style={{ marginTop: 8, padding: 10, background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief — <span style={{ color: "var(--text-muted)", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
           <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
@@ -258,12 +281,6 @@ function OBReviewStep() {
       {!voted ? (
         <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 16, borderRadius: 0 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 10 }}>Headline Correction Verdict</div>
-
-          <ExplainBox title="Rating: Newsworthiness" icon="📰">How important is this correction? Slide the scale to see what each level means — these anchors keep jurors calibrated so a "7" means the same thing to everyone.</ExplainBox>
-          <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
-
-          <ExplainBox title="Rating: Interesting" icon="⭐">How compelling is this correction to read? A well-argued correction that teaches the reader something scores higher than a routine fix.</ExplainBox>
-          <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
 
           <ExplainBox title="Review Note" icon="💬">Your note is permanent and public. Use it to explain your reasoning. This contributes to the audit trail that makes every decision transparent.</ExplainBox>
           <textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="The correction accurately identifies fabricated claims..." style={{ width: "100%", padding: "9px 11px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, boxSizing: "border-box", marginBottom: 14, fontFamily: "inherit", resize: "vertical" }} />
@@ -299,7 +316,14 @@ function OBCompareStep() {
   return (
     <div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 3: The Result</h2>
-      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 20 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
+      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 12 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
+      <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>See corrections on every article</div>
+          <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.5 }}>Install the Trust Assembly browser extension to see approved corrections, affirmations, and translations overlaid directly on news sites as you read.</div>
+        </div>
+        <button onClick={() => { if (typeof window !== "undefined") window.location.hash = "extensions"; }} style={{ flexShrink: 0, padding: "8px 16px", background: "var(--gold)", color: "#0d0d0a", border: "none", fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: 1 }}>Download</button>
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, fontFamily: "var(--mono)" }}>

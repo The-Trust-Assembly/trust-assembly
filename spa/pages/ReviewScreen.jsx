@@ -399,7 +399,7 @@ function ReviewScreenInner({ user }) {
       )}
 
       {sub.beliefEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, fontSize: 12 }}>
+        <div style={{ marginTop: 8, padding: 10, background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}><Icon name="jury" size={16} /> Foundational Belief Proposed</div>
           <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{safe(sub.beliefEntry.content)}</div>
         </div>
@@ -420,7 +420,7 @@ function ReviewScreenInner({ user }) {
         <div style={{ marginTop: 10, padding: 10, background: "var(--card-bg)", borderRadius: 0, border: "1px solid var(--border)" }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>{sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"} — vote on each</div>
           {sub.linkedVaultEntries.map(e => {
-            const tc = { correction: ["vault", "#059669", "#ECFDF5"], argument: ["dispute", "#0D9488", "#F0FDFA"], belief: ["jury", "#7C3AED", "#F3E8F9"] }[e.type] || ["vault", "#475569", "var(--card-bg)"];
+            const tc = { correction: ["vault", "#059669", "rgba(74,158,85,0.09)"], argument: ["dispute", "#0D9488", "rgba(13,148,136,0.09)"], belief: ["jury", "#7C3AED", "rgba(124,58,237,0.09)"] }[e.type] || ["vault", "#475569", "var(--card-bg)"];
             return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}><Icon name={tc[0]} size={16} /> Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
