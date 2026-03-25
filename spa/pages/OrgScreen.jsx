@@ -554,7 +554,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
         </div>
       </div>
 
-      {/* Info box: How Assemblies Work CTA */}
+      {/* How Assemblies Work CTA */}
       <button onClick={() => setShowGuide(g => !g)} style={{ background: showGuide ? "var(--gold)" : "transparent", color: showGuide ? "#0d0d0a" : "var(--text-sec)", border: "1px solid var(--border)", padding: "4px 12px", fontFamily: "var(--mono)", fontSize: 9, cursor: "pointer", borderRadius: 0, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>
         {showGuide ? "Hide Guide" : "How Assemblies Work"}
       </button>
@@ -586,7 +586,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
           <div key={o.id} style={{ border: "1px solid rgba(212,168,67,0.27)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>&#9656;</span>{o.name}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
                 <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>{o.description}</div>
               </div>
               <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "#4a9e55", fontWeight: 700, flexShrink: 0 }}>JOINED</span>
@@ -641,7 +641,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
               <div key={o.id} style={{ border: "1px solid rgba(212,168,67,0.2)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>&#9656;</span>{o.name}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
                     <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>{o.description}</div>
                   </div>
                   <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, flexShrink: 0 }}>FOLLOWING</span>
@@ -748,7 +748,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen }) {
             <div key={o.id} style={{ border: "1px solid var(--border)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>&#9656;</span>{o.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
                   {o.description && <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, marginBottom: 6 }}>{o.description}</div>}
                   <div style={{ display: "flex", gap: 16, fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
                     <span>{o.members.length} citizens</span>

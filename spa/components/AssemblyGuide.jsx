@@ -25,12 +25,12 @@ export default function AssemblyGuide() {
         <div style={{ ...S, borderLeft: "3px solid var(--gold)" }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>Jury Size Scales With Your Assembly</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", fontSize: 12 }}>
-            <span>5–20 members</span><span>→ <strong>3</strong> jurors (majority: 2)</span>
-            <span>21–50 members</span><span>→ <strong>5</strong> jurors (majority: 3)</span>
-            <span>51–100 members</span><span>→ <strong>7</strong> jurors (majority: 4)</span>
-            <span>101–999 members</span><span>→ <strong>9</strong> jurors (majority: 5)</span>
-            <span>1,000–9,999</span><span>→ <strong>11</strong> jurors (majority: 6)</span>
-            <span>10,000+</span><span>→ <strong>13</strong> jurors (majority: 7)</span>
+            <span>5–20 members</span><span>{"→"} <strong>3</strong> jurors (majority: 2)</span>
+            <span>21–50 members</span><span>{"→"} <strong>5</strong> jurors (majority: 3)</span>
+            <span>51–100 members</span><span>{"→"} <strong>7</strong> jurors (majority: 4)</span>
+            <span>101–999 members</span><span>{"→"} <strong>9</strong> jurors (majority: 5)</span>
+            <span>1,000–9,999</span><span>{"→"} <strong>11</strong> jurors (majority: 6)</span>
+            <span>10,000+</span><span>{"→"} <strong>13</strong> jurors (majority: 7)</span>
           </div>
           <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "var(--text-sec)" }}>This prevents the law of small numbers from dominating outcomes. As your community grows, the system demands broader agreement before a correction is approved.</p>
         </div>
@@ -39,12 +39,12 @@ export default function AssemblyGuide() {
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, fontWeight: 600 }}>Cross-Group Jury Scaling</div>
           <p style={{ margin: "0 0 8px" }}>Cross-group jury size scales with ecosystem diversity — the total number of Assemblies with 100+ members. More communities means more independent perspectives available for review.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", fontSize: 12 }}>
-            <span>5–7 assemblies</span><span>→ <strong>3</strong> jurors</span>
-            <span>8–12 assemblies</span><span>→ <strong>5</strong> jurors</span>
-            <span>13–20 assemblies</span><span>→ <strong>7</strong> jurors</span>
-            <span>21–50 assemblies</span><span>→ <strong>9</strong> jurors</span>
-            <span>51–100 assemblies</span><span>→ <strong>11</strong> jurors</span>
-            <span>100+ assemblies</span><span>→ <strong>13</strong> jurors</span>
+            <span>5–7 assemblies</span><span>{"→"} <strong>3</strong> jurors</span>
+            <span>8–12 assemblies</span><span>{"→"} <strong>5</strong> jurors</span>
+            <span>13–20 assemblies</span><span>{"→"} <strong>7</strong> jurors</span>
+            <span>21–50 assemblies</span><span>{"→"} <strong>9</strong> jurors</span>
+            <span>51–100 assemblies</span><span>{"→"} <strong>11</strong> jurors</span>
+            <span>100+ assemblies</span><span>{"→"} <strong>13</strong> jurors</span>
           </div>
           <p style={{ marginTop: 8, marginBottom: 6, fontSize: 12 }}><strong>The overlap constraint:</strong> No two cross-group jurors may share more than 2 non-General Public Assembly memberships. This guarantees genuinely independent perspectives — not just outsiders, but outsiders who think differently.</p>
           <p style={{ margin: "0 0 6px", fontSize: 12 }}><strong>Exclusion rule:</strong> No member of the originating Assembly can serve on its cross-group jury. The whole point is outside scrutiny.</p>
@@ -82,12 +82,10 @@ export default function AssemblyGuide() {
           <p style={{ margin: "0 0 8px" }}><strong>Disputes</strong> let any member challenge an approved correction. If the dispute jury agrees the correction was wrong, the disputer earns <strong>+{W.disputeWin} points</strong> for catching the error.</p>
           <p style={{ margin: "0 0 8px" }}><strong>The Cassandra Rule</strong> is the single most powerful act in the system. If your correction is disputed and the dispute is upheld — meaning you were found wrong — but you refuse to concede because you believe you're right, and you are later vindicated, you earn an <strong>additive bonus</strong> that scales with the importance of the story and the number of rejections you weathered. Named for the prophet nobody believed: the system's highest honor goes to those who hold their ground under pressure and are proven right.</p>
           <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8 }}>
-            <div>Cassandra vindication: <strong>additive bonus</strong> — scales with impact × persistence (coming soon)</div>
+            <div>Cassandra vindication: <strong>additive bonus</strong> — scales with impact x persistence (coming soon)</div>
             <div>Dispute won: <strong>+{W.disputeWin} points</strong> — you caught an error in someone else's correction</div>
-            <div>Dispute lost: <strong>adds to drag</strong> — diminishing cost (inside √), but not free</div>
+            <div>Dispute lost: <strong>adds to drag</strong> — diminishing cost (inside sqrt), but not free</div>
             <div>Deliberate deception: <strong>+{W.lieDrag} drag per lie</strong> — linear, no mercy, devastates score</div>
-            <div>✗ Regular loss: <strong>adds to drag</strong> — diminishing (inside √), first losses hurt most</div>
-            <div>✓ Regular win: <strong>+{W.win} point</strong> — volume has diminishing returns (√)</div>
           </div>
           <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "var(--text-sec)" }}>The full Cassandra vindication path is being built. At launch, dispute wins earn +{W.disputeWin} points. The Cassandra mechanic will activate when the vindication review process is complete — a single historic vindication can catapult a citizen to the top of the leaderboard.</p>
         </div>
@@ -116,7 +114,7 @@ export default function AssemblyGuide() {
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>Badges &amp; Achievements</div>
           <p style={{ margin: "0 0 6px" }}>Badges are earned automatically as you participate. They appear on your public profile and contribute a small bonus to your Trust Score (+1 per badge). There are several categories:</p>
           <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8 }}>
-            <div>✎ <strong>Submission Milestones</strong> — earned at 1, 10, 100, 1K, 10K, 100K, and 1M submissions</div>
+            <div><strong>Submission Milestones</strong> — earned at 1, 10, 100, 1K, 10K, 100K, and 1M submissions</div>
             <div><strong>Trusted Contributor</strong> — earned when you reach trusted status in any Assembly</div>
             <div><strong>Assembly Creator</strong> — earned when you found an Assembly</div>
             <div><strong>Assembly Member</strong> — earned when you join an Assembly beyond The General Public</div>
@@ -143,9 +141,9 @@ export default function AssemblyGuide() {
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 6, fontWeight: 600 }}>Three Vault Types</div>
           <p style={{ margin: "0 0 6px" }}>Each Assembly builds a shared knowledge base through three vault types:</p>
           <div style={{ fontSize: 12 }}>
-            <div style={{ marginBottom: 3 }}><span style={{ color: "var(--green)" }}>●</span> <strong>Standing Corrections</strong> — reusable verified facts</div>
-            <div style={{ marginBottom: 3 }}><span style={{ color: "#0D9488" }}>●</span> <strong>Arguments</strong> — reusable logical and rhetorical tools</div>
-            <div><span style={{ color: "#7C3AED" }}>●</span> <strong>Foundational Beliefs</strong> — the axioms your community holds</div>
+            <div style={{ marginBottom: 3 }}><strong>Standing Corrections</strong> — reusable verified facts</div>
+            <div style={{ marginBottom: 3 }}><strong>Arguments</strong> — reusable logical and rhetorical tools</div>
+            <div><strong>Foundational Beliefs</strong> — the axioms your community holds</div>
           </div>
           <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "var(--text-sec)" }}>All three can be attached to any correction at submission time. They accumulate into a searchable library of your Assembly's collective reasoning.</p>
         </div>
@@ -174,7 +172,7 @@ export default function AssemblyGuide() {
             <div>Within 3 months: <strong>25%</strong> recovery</div>
             <div>After 3 months: <strong>5%</strong> — essentially permanent</div>
           </div>
-          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "var(--text-sec)" }}>The dispute winner keeps their full {W.disputeWin}× reward regardless of whether the Assembly concedes. Concession is about the Assembly's character — humility is rewarded, stubbornness is not.</p>
+          <p style={{ marginTop: 8, marginBottom: 0, fontSize: 12, color: "var(--text-sec)" }}>The dispute winner keeps their full {W.disputeWin}x reward regardless of whether the Assembly concedes. Concession is about the Assembly's character — humility is rewarded, stubbornness is not.</p>
         </div>
       </div>
     </div>
