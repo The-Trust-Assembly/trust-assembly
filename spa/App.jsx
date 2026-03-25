@@ -938,29 +938,6 @@ export default function TrustAssembly() {
 
           <div className="ta-content">
             {screen === "feed" && !viewingRecord && !viewingCitizen && <CitizenCounter />}
-            {siteAnnouncement && !viewingRecord && !viewingCitizen && screen === "feed" && (
-              <div style={{
-                background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-                border: "1.5px solid #f59e0b",
-                borderRadius: 8,
-                padding: "12px 16px",
-                marginBottom: 16,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "#f59e0b", letterSpacing: "0.08em", textTransform: "uppercase" }}>Admin Update</span>
-                </div>
-                <div style={{
-                  fontSize: 13,
-                  color: "#e2e8f0",
-                  lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
-                  maxHeight: 120,
-                  overflowY: "auto",
-                }}>
-                  {typeof siteAnnouncement === "string" ? siteAnnouncement : ""}
-                </div>
-              </div>
-            )}
             {viewingRecord ? (
               <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : viewingCitizen ? (
