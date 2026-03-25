@@ -21,31 +21,33 @@ class FeedErrorBoundary extends Component {
   }
 }
 
-function HeroSlide({ slide, style }) {
+function HeroSlide({ slide, style, onClickSlide, onClickAssembly }) {
   const isAffirm = slide.submissionType === "affirmation";
   let domain = "";
   try { domain = new URL(String(slide.url)).hostname.replace(/^www\./, ""); } catch {}
   return (
     <div style={style}>
-      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#aaa", letterSpacing: "0.5px", marginBottom: 8 }}>{domain || "article"}</div>
-      {isAffirm ? (
-        <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#1a1a1a" }}>
-          <span style={{ color: "#059669", fontWeight: 700 }}>Affirmed: </span>{safe(slide.originalHeadline)}
-        </div>
-      ) : (
-        <>
-          <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 14, lineHeight: 1.4, color: "#888", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
-          <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#c44a3a", fontWeight: 600 }}>{safe(slide.replacement)}</div>
-        </>
-      )}
-      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#aaa", marginTop: 10 }}>
-        Corrected by {safe(slide.orgName)} {"\u00B7"} {sDate(slide.resolvedAt || slide.createdAt)}
+      <div style={{ cursor: "pointer" }} onClick={() => onClickSlide && onClickSlide(slide.id)}>
+        <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#777", letterSpacing: "0.5px", marginBottom: 8 }}>{domain || "article"}</div>
+        {isAffirm ? (
+          <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#1a1a1a" }}>
+            <span style={{ color: "#059669", fontWeight: 700 }}>Affirmed: </span>{safe(slide.originalHeadline)}
+          </div>
+        ) : (
+          <>
+            <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 14, lineHeight: 1.4, color: "#555", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
+            <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#c44a3a", fontWeight: 600 }}>{safe(slide.replacement)}</div>
+          </>
+        )}
+      </div>
+      <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#777", marginTop: 10 }}>
+        Corrected by <span style={{ color: "var(--gold)", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onClickAssembly && onClickAssembly(slide.orgId); }}>{safe(slide.orgName)}</span> {"\u00B7"} {sDate(slide.resolvedAt || slide.createdAt)}
       </div>
     </div>
   );
 }
 
-function FeedHeroCarousel({ subs }) {
+function FeedHeroCarousel({ subs, onViewRecord, onViewAssembly }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [fading, setFading] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -70,7 +72,7 @@ function FeedHeroCarousel({ subs }) {
   if (approved.length === 0) {
     return (
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "20px 16px", marginBottom: 10, textAlign: "center" }}>
-        <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>How You're Changing the Narrative</div>
+        <div style={{ fontSize: 15, fontFamily: "var(--serif)", letterSpacing: 1, color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>How You're Changing the Narrative</div>
         <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>No corrections approved yet — submit one and let the jury decide.</div>
       </div>
     );
@@ -81,13 +83,13 @@ function FeedHeroCarousel({ subs }) {
   return (
     <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: "16px 16px 12px", marginBottom: 10 }}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 12 }}>How You're Changing the Narrative</div>
+      <div style={{ fontSize: 15, fontFamily: "var(--serif)", letterSpacing: 1, color: "var(--gold)", fontWeight: 700, marginBottom: 12 }}>How You're Changing the Narrative</div>
       {/* Portal window — inset shadow creates depth, white bg mimics a real webpage */}
       <div style={{ background: "#fafafa", border: "1px solid rgba(0,0,0,0.1)", boxShadow: "inset 0 2px 12px rgba(0,0,0,0.12)", padding: "14px 16px" }}>
         {/* CSS grid: all slides in same cell, tallest sets height */}
         <div style={{ display: "grid" }}>
           {approved.map((s, i) => (
-            <HeroSlide key={s.id} slide={s} style={{
+            <HeroSlide key={s.id} slide={s} onClickSlide={onViewRecord} onClickAssembly={onViewAssembly} style={{
               gridArea: "1 / 1",
               opacity: i === activeIdx && !fading ? 1 : 0,
               transition: "opacity 0.25s ease",
@@ -309,7 +311,7 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord, onView
 
   return (
     <div className="ta-content">
-      <FeedHeroCarousel subs={subs} />
+      <FeedHeroCarousel subs={subs} onViewRecord={onViewRecord} onViewAssembly={onViewAssembly} />
 
       {/* Admin update box */}
       <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
