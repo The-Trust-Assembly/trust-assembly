@@ -384,7 +384,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
     return bodyText.split(/\n\n+/).filter(p => p.trim()).slice(0, 30);
   }, [bodyText]);
 
-  // Apply inline edit highlighting to a paragraph
+  // Apply inline edit and translation highlighting to a paragraph
   const renderPreviewParagraph = (text, idx) => {
     if (previewMode !== "diff") return <p key={idx} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 10, fontFamily: "Georgia, serif" }}>{text}</p>;
     // Check if any inline edit matches text in this paragraph
@@ -403,11 +403,34 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       }
       parts = newParts;
     }
+    // Apply translations — replace every instance of the original phrase with the translated version in red
+    for (const tr of submitTranslations) {
+      if (!tr.original.trim() || !tr.translated.trim()) continue;
+      const newParts = [];
+      for (const part of parts) {
+        if (part.type !== "normal") { newParts.push(part); continue; }
+        // Split on ALL occurrences of the translation phrase
+        let remaining = part.text;
+        let found = false;
+        while (remaining.length > 0) {
+          const idx2 = remaining.toLowerCase().indexOf(tr.original.toLowerCase());
+          if (idx2 === -1) { newParts.push({ text: remaining, type: "normal" }); break; }
+          found = true;
+          if (idx2 > 0) newParts.push({ text: remaining.slice(0, idx2), type: "normal" });
+          newParts.push({ text: remaining.slice(idx2, idx2 + tr.original.length), type: "tr-del" });
+          newParts.push({ text: tr.translated, type: "tr-ins" });
+          remaining = remaining.slice(idx2 + tr.original.length);
+        }
+      }
+      parts = newParts;
+    }
     return (
       <p key={idx} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 10, fontFamily: "Georgia, serif" }}>
         {parts.map((p, i) => {
           if (p.type === "del") return <span key={i} style={{ background: "rgba(196,74,58,0.12)", textDecoration: "line-through", textDecorationColor: "#9e3527", color: "#9e3527" }}>{p.text}</span>;
           if (p.type === "ins") return <span key={i} style={{ background: "rgba(74,158,85,0.12)", borderLeft: "2px solid #4a9e55", paddingLeft: 4, color: "#2d6e34" }}>{p.text}</span>;
+          if (p.type === "tr-del") return <span key={i} style={{ textDecoration: "line-through", color: "#999" }}>{p.text}</span>;
+          if (p.type === "tr-ins") return <span key={i} style={{ color: "#c44a3a", fontWeight: 600 }}>{p.text}</span>;
           return <span key={i}>{p.text}</span>;
         })}
       </p>
@@ -495,7 +518,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           border: form.submissionType === "correction" ? "1.5px solid #c44a3a" : "1.5px solid var(--border)",
           color: form.submissionType === "correction" ? "#c44a3a" : "var(--text-muted)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="correction" size={14} /> Correction</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="correction" size={42} /> Correction</div>
           <div style={{ fontSize: 8, fontWeight: 400, marginTop: 2, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>Correct something false or misleading</div>
         </button>
         <button onClick={() => setForm({ ...form, submissionType: "affirmation" })} style={{
@@ -504,7 +527,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           border: form.submissionType === "affirmation" ? "1.5px solid rgba(74,158,85,0.27)" : "1.5px solid var(--border)",
           color: form.submissionType === "affirmation" ? "#4a9e55" : "var(--text-muted)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Icon name="affirmation" size={14} /> Affirmation</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="affirmation" size={42} /> Affirmation</div>
           <div style={{ fontSize: 8, fontWeight: 400, marginTop: 2, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>Lend weight and evidence to confirm something true</div>
         </button>
       </div>
@@ -532,7 +555,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           <div className="ta-field">
             <label>Article URL *</label>
             <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-              <input value={form.url} onChange={e => handleUrlChange(e.target.value)} placeholder="https://..." maxLength={2000} style={{ flex: 1 }} />
+              <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importArticleMeta(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1 }} />
               <button type="button" disabled={importing || !form.url.trim()} onClick={() => importArticleMeta(form.url)} style={{
                 padding: "0 12px", fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600,
                 background: importing ? "var(--card-bg)" : "#EFF6FF", color: importing ? "#94A3B8" : "var(--gold)",

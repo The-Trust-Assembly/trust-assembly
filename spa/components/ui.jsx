@@ -414,7 +414,7 @@ export function InlineEditsForm({ edits, onChange }) {
         <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: edits.filter(e => e.original.trim()).length >= MAX_EDITS ? "#DC2626" : "#64748B" }}>{edits.filter(e => e.original.trim()).length}/{MAX_EDITS}</div>
       </div>
       {edits.map((edit, i) => (
-        <div key={i} style={{ padding: 12, background: i % 2 === 0 ? "#FFFFFF" : "var(--card-bg)", border: "1px solid var(--border)", marginBottom: 8, borderRadius: 0, position: "relative" }}>
+        <div key={i} style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", marginBottom: 8, borderRadius: 0, position: "relative" }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 6 }}>Edit #{i + 1}</div>
           {edits.length > 1 && <button onClick={() => removeEdit(i)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontSize: 14 }}>×</button>}
           <div className="ta-field" style={{ marginBottom: 8 }}><label style={{ fontSize: 10 }}>Original Text (copy from article)</label><textarea value={edit.original} onChange={(e) => updateEdit(i, "original", e.target.value)} rows={2} placeholder="Paste the exact text from the article you want to correct" /></div>
