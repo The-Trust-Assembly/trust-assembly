@@ -216,6 +216,20 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
   const trustedRequired = 10;
   const trustedRemaining = Math.max(0, trustedRequired - myApprovedInGP);
 
+  // Debug: scan all submission values for objects that would crash React
+  try {
+    for (const sub of Object.values(subs || {})) {
+      for (const [k, v] of Object.entries(sub)) {
+        if (v !== null && typeof v === "object" && !Array.isArray(v) && !(v instanceof Date)) {
+          // Objects are expected for votes, crossGroupVotes, acceptedAt, crossGroupAcceptedAt, anonMap
+          if (!["votes","crossGroupVotes","acceptedAt","crossGroupAcceptedAt","anonMap","_otherAssemblies"].includes(k)) {
+            console.warn("FeedScreen: sub." + k + " is an object in submission " + sub.id, v);
+          }
+        }
+      }
+    }
+  } catch (e) { console.error("FeedScreen debug scan error:", e); }
+
   return (
     <div className="ta-content">
       {/* Admin update box */}
