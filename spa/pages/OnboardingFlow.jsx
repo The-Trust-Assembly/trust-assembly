@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput } from "../components/ui";
+import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput, Icon } from "../components/ui";
 import { NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
 import { W } from "../lib/scoring";
 
@@ -59,7 +59,7 @@ function OBSubmitStep() {
 
       {/* Mode toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
-        {[["correction", "🔴 Correction", "This headline is misleading"], ["affirmation", "🟢 Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
+        {[["correction", "Correction", "This headline is misleading"], ["affirmation", "Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
           <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "#DC2626" : "#059669") : "#FFFFFF", color: mode === key ? "#fff" : "#475569", border: "none", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
             <div>{label}</div>
             <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, marginTop: 2, textTransform: "none", letterSpacing: 0 }}>{desc}</div>
@@ -67,14 +67,14 @@ function OBSubmitStep() {
         ))}
       </div>
 
-      <ExplainBox title={isAffirm ? "Why Affirmations Matter" : "Article URL"} icon={isAffirm ? "🟢" : "🔗"} color={isAffirm ? "#059669" : "#0D9488"}>
+      <ExplainBox title={isAffirm ? "Why Affirmations Matter" : "Article URL"} icon={isAffirm ? "✓" : ""} color={isAffirm ? "#059669" : "#0D9488"}>
         {isAffirm
           ? "Not everything needs correcting. When a journalist gets it right — especially on a controversial topic — affirming their accuracy with evidence strengthens the public record. Affirmations go through the same jury review as corrections."
           : "Every correction starts with the article you're correcting. Paste the URL so jurors can read the original."}
       </ExplainBox>
       <HighlightField label="Article URL" value={article.url} note={isAffirm ? "The article you're affirming is accurate." : "This links directly to the offending article."} />
 
-      <ExplainBox title={isAffirm ? "The Headline You're Affirming" : "The Headlines"} icon="✏️">
+      <ExplainBox title={isAffirm ? "The Headline You're Affirming" : "The Headlines"} icon="">
         {isAffirm
           ? "You quote the headline exactly. For affirmations, there's no replacement — you're confirming the original is accurate."
           : "You quote the original headline exactly, then propose your corrected replacement. Your replacement should be factual, not editorial — the goal is truth, not dunking."}
@@ -87,7 +87,7 @@ function OBSubmitStep() {
       <HighlightField label="Reasoning" value={isAffirm ? article.reasoning : "The article presents the claim 'evil is good' as though it were a serious argument. No substantive case is made — the piece relies on fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. This is textbook ragebait designed to provoke, not inform."} isTextarea note={isAffirm ? "Explain WHY this headline is accurate. Cite the evidence." : "Explain WHY the original is misleading. This is what jurors evaluate."} />
 
       {revealed >= 2 && !isAffirm && <>
-        <ExplainBox title="Supporting Evidence" icon="📎" color="#059669">You can attach URLs that support your correction — news articles, studies, primary sources. Each one gets an explanation of what it proves.</ExplainBox>
+        <ExplainBox title="Supporting Evidence" icon="" color="#059669">You can attach URLs that support your correction — news articles, studies, primary sources. Each one gets an explanation of what it proves.</ExplainBox>
         <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence #1</div>
           <div style={{ fontSize: 13 }}><a href="#" style={{ color: "var(--gold)" }}>https://ethics-institute.org/evil-still-bad-2025</a></div>
@@ -96,7 +96,7 @@ function OBSubmitStep() {
       </>}
 
       {revealed >= 2 && isAffirm && <>
-        <ExplainBox title="Supporting Evidence" icon="📎" color="#059669">Affirmations are strongest with evidence. Link the original study, primary sources, or independent verification.</ExplainBox>
+        <ExplainBox title="Supporting Evidence" icon="" color="#059669">Affirmations are strongest with evidence. Link the original study, primary sources, or independent verification.</ExplainBox>
         {OB_AFFIRMATION.evidence.map((e, i) => (
           <div key={i} style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence #{i + 1}</div>
@@ -107,7 +107,7 @@ function OBSubmitStep() {
       </>}
 
       {revealed >= 3 && !isAffirm && <>
-        <ExplainBox title="In-Line Article Edits" icon="🔴" color="#DC2626">Beyond the headline, you can correct specific claims within the article body — up to 20 edits per article. Each edit is voted on independently by jurors, so a strong headline can survive even if one edit is weak. Each edit shows the original text, your correction, and your reasoning.</ExplainBox>
+        <ExplainBox title="In-Line Article Edits" icon="" color="#DC2626">Beyond the headline, you can correct specific claims within the article body — up to 20 edits per article. Each edit is voted on independently by jurors, so a strong headline can survive even if one edit is weak. Each edit shows the original text, your correction, and your reasoning.</ExplainBox>
         <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 10 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 8 }}>3 In-Line Edits</div>
           {OB_ARTICLE.inlineEdits.map((edit, i) => (
@@ -121,32 +121,32 @@ function OBSubmitStep() {
       </>}
 
       {revealed >= 5 && <>
-        <ExplainBox title="Vault Artifacts" icon="📦" color="#475569">
+        <ExplainBox title="Vault Artifacts" icon="" color="#475569">
           Submissions can include vault entries — reusable knowledge that your Assembly builds over time. Entries can be <strong>new</strong> (proposed with this submission, pending until the submission is approved) or <strong>preexisting</strong> (already in your Assembly's vault, linked to show relevance). Jurors vote on each independently.
         </ExplainBox>
 
         <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 4 }}>🏛 Standing Correction <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 4 }}>Standing Correction <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
           <div style={{ fontSize: 14, fontFamily: "var(--serif)", fontWeight: 600, marginBottom: 3 }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.assertion}</div>
           <div style={{ fontSize: 12, color: "var(--gold)" }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.evidence}</div>
         </div>
 
         {!isAffirm && <>
           <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 4 }}>⚔️ Argument <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 4 }}>Argument <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ fontSize: 13, lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           </div>
 
           <div style={{ padding: 12, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 4 }}>🧭 Foundational Belief <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 4 }}>Foundational Belief <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ fontSize: 13, lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           </div>
 
-          <ExplainBox title="Translations — Take Back Your Language" icon="🔄" color="#B45309">
+          <ExplainBox title="Translations — Take Back Your Language" icon="" color="#B45309">
             Translations strip propaganda, jargon, and euphemisms from language. Governments name bills to manipulate you. Corporations invent jargon to obscure what they're doing. Media uses euphemisms to soften hard truths. You no longer have to use other people's language that's designed to manipulate you. Approved translations are applied automatically by the browser extension — everywhere, across every article that uses the phrase.
           </ExplainBox>
           <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 4 }}>🔄 Translation <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 4 }}>Translation <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
               <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{OB_ARTICLE.translationEntry.original}</span>
               <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
@@ -175,7 +175,7 @@ function OBReviewStep() {
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 2: Jury Review</h2>
       <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 6 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
 
-      <ExplainBox title="Important" icon="⚖️" color="#EA580C">In the real system, you can never review your own submissions. We're showing you the review experience so you understand what happens to your work. Jurors are randomly selected and can't see each other's votes until all have voted.</ExplainBox>
+      <ExplainBox title="Important" icon="" color="#EA580C">In the real system, you can never review your own submissions. We're showing you the review experience so you understand what happens to your work. Jurors are randomly selected and can't see each other's votes until all have voted.</ExplainBox>
 
       {/* The submission card */}
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 16, marginBottom: 16, borderLeft: "4px solid #D97706", borderRadius: 0 }}>
@@ -191,7 +191,7 @@ function OBReviewStep() {
         </div>
         <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 8 }}>The article presents "evil is good" as a serious argument. No substantive case is made — fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. Textbook ragebait.</div>
 
-        <ExplainBox title="Line-by-Line Voting" icon="📋" color="#059669">Each in-line edit gets its own verdict. You can approve the headline correction while rejecting a weak edit — good work doesn't get killed by one flawed claim. Up to 20 edits per article.</ExplainBox>
+        <ExplainBox title="Line-by-Line Voting" icon="" color="#059669">Each in-line edit gets its own verdict. You can approve the headline correction while rejecting a weak edit — good work doesn't get killed by one flawed claim. Up to 20 edits per article.</ExplainBox>
 
         <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 8 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>3 In-Line Edits — vote on each</div>
@@ -214,9 +214,9 @@ function OBReviewStep() {
         </div>
 
         {/* Vault entries attached to submission */}
-        <ExplainBox title="Vault Artifacts" icon="🏛" color="#475569">Vault entries can be <strong>new</strong> (proposed with this submission — pending until the submission is approved) or <strong>preexisting</strong> (already in the Assembly's vault, linked to show relevance). Jurors vote on each independently. "Still Applies?" means you believe the entry remains valid. Each time an entry survives review, it gains reputation.</ExplainBox>
+        <ExplainBox title="Vault Artifacts" icon="" color="#475569">Vault entries can be <strong>new</strong> (proposed with this submission — pending until the submission is approved) or <strong>preexisting</strong> (already in the Assembly's vault, linked to show relevance). Jurors vote on each independently. "Still Applies?" means you believe the entry remains valid. Each time an entry survives review, it gains reputation.</ExplainBox>
         <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}>🏛 Standing Correction — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}>Standing Correction — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
           <div style={{ color: "var(--text)", fontWeight: 600 }}>{OB_ARTICLE.vaultEntry.assertion}</div>
           <div style={{ color: "var(--text-sec)", fontSize: 12, marginTop: 2 }}>Source: {OB_ARTICLE.vaultEntry.evidence}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
@@ -225,7 +225,7 @@ function OBReviewStep() {
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}>⚔️ Argument — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}>Argument — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
           <div style={{ color: "var(--text)", lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
             <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "var(--border)", background: vaultVotes.arg === true ? "#ECFDF5" : "#fff", color: vaultVotes.arg === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
@@ -233,7 +233,7 @@ function OBReviewStep() {
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief — <span style={{ color: "var(--text-muted)", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>Foundational Belief — <span style={{ color: "var(--text-muted)", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
           <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
             <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "var(--border)", background: vaultVotes.belief === true ? "#ECFDF5" : "#fff", color: vaultVotes.belief === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
@@ -241,7 +241,7 @@ function OBReviewStep() {
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0, fontSize: 12, marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>Translation — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{OB_ARTICLE.translationEntry.original}</span>
             <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
@@ -259,16 +259,16 @@ function OBReviewStep() {
         <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 16, borderRadius: 0 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 10 }}>Headline Correction Verdict</div>
 
-          <ExplainBox title="Rating: Newsworthiness" icon="📰">How important is this correction? Slide the scale to see what each level means — these anchors keep jurors calibrated so a "7" means the same thing to everyone.</ExplainBox>
+          <ExplainBox title="Rating: Newsworthiness" icon="">How important is this correction? Slide the scale to see what each level means — these anchors keep jurors calibrated so a "7" means the same thing to everyone.</ExplainBox>
           <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
 
-          <ExplainBox title="Rating: Interesting" icon="⭐">How compelling is this correction to read? A well-argued correction that teaches the reader something scores higher than a routine fix.</ExplainBox>
+          <ExplainBox title="Rating: Interesting" icon="">How compelling is this correction to read? A well-argued correction that teaches the reader something scores higher than a routine fix.</ExplainBox>
           <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
 
-          <ExplainBox title="Review Note" icon="💬">Your note is permanent and public. Use it to explain your reasoning. This contributes to the audit trail that makes every decision transparent.</ExplainBox>
+          <ExplainBox title="Review Note" icon="">Your note is permanent and public. Use it to explain your reasoning. This contributes to the audit trail that makes every decision transparent.</ExplainBox>
           <textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="The correction accurately identifies fabricated claims..." style={{ width: "100%", padding: "9px 11px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, boxSizing: "border-box", marginBottom: 14, fontFamily: "inherit", resize: "vertical" }} />
 
-          <ExplainBox title="Deliberate Deception Finding" icon="⚠️" color="#991B1B">This is the nuclear option. Only check this if you believe the submitter is <strong>intentionally lying</strong> — not just wrong, but deliberately deceptive. A majority of jurors checking this triggers a severe drag penalty — each deception finding adds +{W.lieDrag} directly to drag, bypassing the √ curve that softens regular losses. This is a secret ballot — the submitter never sees which jurors checked it.</ExplainBox>
+          <ExplainBox title="Deliberate Deception Finding" icon="" color="#991B1B">This is the nuclear option. Only check this if you believe the submitter is <strong>intentionally lying</strong> — not just wrong, but deliberately deceptive. A majority of jurors checking this triggers a severe drag penalty — each deception finding adds +{W.lieDrag} directly to drag, bypassing the √ curve that softens regular losses. This is a secret ballot — the submitter never sees which jurors checked it.</ExplainBox>
           <div style={{ margin: "12px 0", padding: 12, background: "rgba(196,74,58,0.09)", border: "1.5px solid #DC2626", borderRadius: 0 }}>
             <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}>
               <input type="checkbox" checked={lieChecked} onChange={e => setLieChecked(e.target.checked)} style={{ accentColor: "#991B1B", marginTop: 3 }} />
@@ -279,7 +279,7 @@ function OBReviewStep() {
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
             <button onClick={() => setVoted(true)} style={{ background: "var(--green)", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>✓ Approve Headline</button>
             <button onClick={() => setVoted(true)} style={{ background: "var(--red)", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>✗ Reject Headline</button>
-            <button style={{ background: "#EA580C", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>⚖ Recuse</button>
+            <button style={{ background: "#EA580C", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>Recuse</button>
           </div>
         </div>
       ) : (
@@ -331,7 +331,7 @@ function OBCompareStep() {
               ) : OB_ARTICLE.originalHeadline}
             </h3>
             <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)", marginBottom: 4 }}>the-daily-falsehood.com · Opinion</div>
-            {highlight && <div style={{ fontSize: 10, padding: "3px 8px", background: "var(--card-bg)", color: "#7C3AED", borderRadius: 0, display: "inline-block", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 12 }}>⚖ 3 CORRECTIONS · CONSENSUS VERIFIED</div>}
+            {highlight && <div style={{ fontSize: 10, padding: "3px 8px", background: "var(--card-bg)", color: "#7C3AED", borderRadius: 0, display: "inline-block", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 12 }}>3 CORRECTIONS · CONSENSUS VERIFIED</div>}
             {!highlight && <div style={{ marginBottom: 12 }} />}
 
             {OB_ARTICLE.originalBody.map((p, i) => {
@@ -343,7 +343,7 @@ function OBCompareStep() {
                 // Text no longer found — article may have been edited since correction was filed
                 return (
                   <div key={i} style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "4px 8px", background: "rgba(212,168,67,0.09)", color: "#EA580C", borderRadius: 0, marginBottom: 4, display: "inline-block" }}>⚠ Original text no longer present — validated at time of submission and since corrected</div>
+                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", padding: "4px 8px", background: "rgba(212,168,67,0.09)", color: "#EA580C", borderRadius: 0, marginBottom: 4, display: "inline-block" }}>Original text no longer present — validated at time of submission and since corrected</div>
                     <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>{p}</p>
                     <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 600, marginTop: 2 }}>Correction applied: {edit.replacement}</div>
                   </div>
@@ -369,20 +369,20 @@ function OBCompareStep() {
             {highlight && <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>Linked Vault Entries</div>
               <div style={{ padding: 8, background: "var(--card-bg)", borderRadius: 0, marginBottom: 6, fontSize: 12 }}>
-                <span style={{ fontWeight: 600 }}>🏛 Standing Correction:</span> {OB_ARTICLE.vaultEntry.assertion}
+                <span style={{ fontWeight: 600 }}>Standing Correction:</span> {OB_ARTICLE.vaultEntry.assertion}
               </div>
               <div style={{ padding: 8, background: "var(--card-bg)", borderRadius: 0, marginBottom: 6, fontSize: 12 }}>
-                <span style={{ fontWeight: 600 }}>⚔️ Argument:</span> {OB_ARTICLE.argEntry.content.substring(0, 120)}...
+                <span style={{ fontWeight: 600 }}>Argument:</span> {OB_ARTICLE.argEntry.content.substring(0, 120)}...
               </div>
               <div style={{ padding: 8, background: "#F3E8F9", borderRadius: 0, fontSize: 12 }}>
-                <span style={{ fontWeight: 600 }}>🧭 Belief:</span> {OB_ARTICLE.beliefEntry.content.substring(0, 100)}...
+                <span style={{ fontWeight: 600 }}>Belief:</span> {OB_ARTICLE.beliefEntry.content.substring(0, 100)}...
               </div>
             </div>}
           </div>
         </div>
       </div>
 
-      <ExplainBox title="This is the goal" icon="🎯" color="#7C3AED">
+      <ExplainBox title="This is the goal" icon="" color="#7C3AED">
         Every correction that survives both in-group review AND cross-group verification achieves <strong>Consensus</strong> — the highest trust signal in the system. Through browser extensions and API integrations, approved corrections can be displayed directly alongside the original article — readers see the truth without needing to cross-reference anything themselves.
       </ExplainBox>
     </div>
@@ -393,7 +393,7 @@ function OBCompareStep() {
 function OBLaunchStep({ onComplete, onAdditional }) {
   return (
     <div style={{ textAlign: "center", padding: "20px 0" }}>
-      <div style={{ fontSize: 48, marginBottom: 12 }}>⚜</div>
+      <div style={{ fontSize: 48, marginBottom: 12 }}></div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 28, fontWeight: 700, margin: "0 0 8px" }}>You're Ready</h2>
       <p style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "var(--text-sec)", fontStyle: "italic", marginBottom: 24 }}>Truth Will Out.</p>
 
@@ -423,7 +423,7 @@ function OBLaunchStep({ onComplete, onAdditional }) {
 
       <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 0, marginTop: 8 }}>Enter The Trust Assembly →</button>
       <div style={{ marginTop: 14 }}>
-        <button onClick={onAdditional} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-sec)" }}>📚 Additional Flows — Scoring, Disputes & Concessions</button>
+        <button onClick={onAdditional} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-sec)" }}>Additional Flows — Scoring, Disputes & Concessions</button>
       </div>
     </div>
   );
@@ -450,7 +450,7 @@ function OBAdditionalStep({ onComplete }) {
       {section === "scoring" && <div>
         <h3 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, margin: "0 0 12px" }}>How Scoring Works</h3>
 
-        <ExplainBox title="The Core Principle" icon="⚖️" color="var(--text)">
+        <ExplainBox title="The Core Principle" icon="" color="var(--text)">
           The scoring system is intentionally asymmetric: honesty compounds slowly, but deception craters your reputation. This isn't punitive — it's structural. A system where lying is cheap and truth is expensive will produce lies. Trust Assembly inverts that. In the future system, these Trust Scores will be used to drive discoverability and prominence — the most trustworthy citizens and assemblies will surface first.
         </ExplainBox>
 
@@ -588,7 +588,7 @@ function OBAdditionalStep({ onComplete }) {
           <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>The $12M figure cited in the headline combines the $8.5M park budget with $3.5M for the Elm Street transit corridor. These were separate line items voted on in the same session.</div>
         </div>
 
-        <ExplainBox title="Filing a Dispute" icon="⚖️" color="#EA580C">
+        <ExplainBox title="Filing a Dispute" icon="" color="#EA580C">
           You file a dispute by citing the specific error and providing evidence. A fresh jury — larger than the original (a "super jury" of at least 7) — reviews both the original correction and your challenge. Neither the original submitter nor the original jurors can serve on the dispute jury.
         </ExplainBox>
 
@@ -701,7 +701,7 @@ function OBAdditionalStep({ onComplete }) {
           </div>
         )}
 
-        <ExplainBox title="The Big Picture" icon="🏛" color="var(--text)">
+        <ExplainBox title="The Big Picture" icon="" color="var(--text)">
           Disputes and concessions complete the accountability loop. Corrections can be corrected. Mistakes can be acknowledged. The system doesn't demand perfection — it demands honesty. A citizen who concedes gracefully builds more trust over time than one who's never been wrong, because they've proven they value truth over ego.
         </ExplainBox>
 
