@@ -901,6 +901,9 @@ export default function TrustAssembly() {
                     {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
                   </span>
                 ))}
+                {NAV_DROPDOWNS.map(dd => (
+                  <NavDropdown key={dd.label} label={dd.label} items={dd.items} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
+                ))}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>

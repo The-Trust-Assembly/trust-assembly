@@ -14,7 +14,7 @@ export default function AuditScreen() {
       <p style={{ color: "var(--text-sec)", marginBottom: 16, fontSize: 14, lineHeight: 1.6 }}>Every action. Nothing hidden. Nothing deleted.</p>
       {(!audit || audit.length === 0) ? <Empty text="No activity." /> :
         <div style={{ fontFamily: "var(--mono)", fontSize: 10 }}>{audit.map((e, i) => (
-          <div key={i} style={{ padding: "6px 10px", background: i % 2 === 0 ? "var(--card-bg)" : "#FFFFFF", borderBottom: "1px solid var(--border)", lineHeight: 1.4 }}>
+          <div key={i} style={{ padding: "6px 10px", background: i % 2 === 0 ? "var(--card-bg)" : "var(--bg)", borderBottom: "1px solid var(--border)", lineHeight: 1.4 }}>
             <span style={{ color: "var(--text-muted)" }}>{fDate(e.time)}</span><br />{e.action}
           </div>
         ))}</div>}
