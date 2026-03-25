@@ -8,6 +8,7 @@
   "use strict";
   if (window.__trustAssemblyLoaded) return;
   window.__trustAssemblyLoaded = true;
+  window.__trustAssemblyVersion = "1.0.0";
 
   const BADGE_ID = "ta-ext-badge";
   const PANEL_ID = "ta-ext-panel";

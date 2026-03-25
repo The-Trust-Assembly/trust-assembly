@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { SK, ADMIN_USERNAME, HERO_SLIDES, CREST_IMG } from "./lib/constants";
+import { SK, ADMIN_USERNAME, HERO_SLIDES, CREST_IMG, EXTENSION_LATEST_VERSION } from "./lib/constants";
 import { sG } from "./lib/storage";
 import { computeProfile } from "./lib/scoring";
 import { CrestIcon } from "./components/ui";
@@ -121,6 +121,7 @@ export default function TrustAssembly() {
   const [heroPaused, setHeroPaused] = useState(false);
   const [heroFading, setHeroFading] = useState(false);
   const [viewingAssemblyId, setViewingAssemblyId] = useState(null);
+  const [extCta, setExtCta] = useState(null); // null | "install" | "update"
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
   const [activeDraftId, setActiveDraftId] = useState(null);
@@ -325,6 +326,26 @@ export default function TrustAssembly() {
       } catch {}
     })();
   }, [user?.username]);
+
+  // Extension detection — check after login with delay for content script injection
+  useEffect(() => {
+    if (!user) return;
+    const dismissKey = `ta-ext-cta-dismissed-${EXTENSION_LATEST_VERSION}`;
+    if (typeof localStorage !== "undefined" && localStorage.getItem(dismissKey)) return;
+    const t = setTimeout(() => {
+      if (!window.__trustAssemblyLoaded) {
+        setExtCta("install");
+      } else if (window.__trustAssemblyVersion && window.__trustAssemblyVersion !== EXTENSION_LATEST_VERSION) {
+        setExtCta("update");
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [user]);
+
+  const dismissExtCta = () => {
+    setExtCta(null);
+    try { localStorage.setItem(`ta-ext-cta-dismissed-${EXTENSION_LATEST_VERSION}`, "1"); } catch {}
+  };
 
   // Notification dropdown: dismiss on outside click or Escape
   useEffect(() => {
@@ -941,6 +962,20 @@ export default function TrustAssembly() {
           </div>
 
           <div className="ta-content">
+            {extCta && (
+              <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>{extCta === "install" ? "Get the browser extension" : "Extension update available"}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.5 }}>
+                    {extCta === "install"
+                      ? "See corrections, affirmations, and translations on every news site you visit."
+                      : "A new version of the Trust Assembly extension is available with the latest features."}
+                    {" "}<span style={{ color: "var(--gold)", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setScreen("extensions"); dismissExtCta(); }}>{extCta === "install" ? "Download now" : "Update now"}</span>
+                  </div>
+                </div>
+                <button onClick={dismissExtCta} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, padding: "0 0 0 12px", lineHeight: 1 }}>&times;</button>
+              </div>
+            )}
             {viewingRecord ? (
               <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : viewingCitizen ? (
