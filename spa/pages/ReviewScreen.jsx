@@ -72,6 +72,7 @@ function ReviewScreenInner({ user }) {
   // State for My Results tab actions — must be declared here (not after early return)
   // to satisfy React's rules of hooks (same number of hooks every render).
   const [concedingId, setConcedingId] = useState(null);
+  const [showConcedeConfirm, setShowConcedeConfirm] = useState(null); // holds submission id
   const [concedeReason, setConcedeReason] = useState("");
   const [concedeError, setConcedeError] = useState("");
   const [concedeSuccess, setConcedeSuccess] = useState("");
@@ -491,7 +492,6 @@ function ReviewScreenInner({ user }) {
            crossgroup: "Vote to approve or reject submissions from citizens in other Assemblies.",
            stories: "Vote to approve Story Artifacts that organize submissions around events and themes.",
            disputes: "Think the jury got it wrong? Re-submit your case. There is a penalty for being repeatedly wrong, the same way there is a reward for proving you were correct. You may also concede to recover lost points (once per week: 100% recovery).",
-           mydisputes: "Submissions where you disputed the jury's verdict. Conceding recovers 100% of lost points (once per week).",
            myresults: "Your approved submissions and their final verdicts across all assemblies.",
            di: "Review and approve pre-screened submissions from your registered Digital Intelligence agent."
         }[tab] || "Vote to approve or reject submissions from citizens in your own Assemblies."}
@@ -505,7 +505,7 @@ function ReviewScreenInner({ user }) {
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}><Icon name="robot" size={14} /> <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
       <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid var(--border)" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={14} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes / Concession", dQ.length + myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={14} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
           <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid var(--gold)" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "var(--gold)" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
             {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
@@ -548,10 +548,8 @@ function ReviewScreenInner({ user }) {
             <AuditTrail entries={d.auditTrail} />
           </div>
         ))}
-      </div>)}
-
-      {/* My Disputes Tab — shows all disputes filed by or against the current user */}
-      {tab === "mydisputes" && (myDisputes.length === 0 ? <Empty text="No disputes involve you. Disputes you file or disputes against your submissions will appear here." /> : <div>
+      {/* My Disputes — inline within disputes tab */}
+      {myDisputes.length > 0 && <div style={{ marginTop: 16 }}>
         <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>All disputes involving your submissions — either filed by you or filed against your work. Track the status and outcome of each dispute.</p>
         {myDisputes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(d => {
           const isDisputer = d.disputedBy === user.username;
@@ -596,6 +594,7 @@ function ReviewScreenInner({ user }) {
             </div>
           );
         })}
+      </div>}
       </div>)}
 
       {/* My Results Tab — user's rejected submissions with concede/dispute actions */}
@@ -663,7 +662,7 @@ function ReviewScreenInner({ user }) {
                       {concedeError && <div className="ta-error">{concedeError}</div>}
                       <div className="ta-field"><label>Why are you conceding? *</label><textarea value={concedeReason} onChange={e => setConcedeReason(e.target.value)} rows={2} placeholder="Briefly explain why you accept the jury's decision..." /></div>
                       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                        <button className="ta-btn-primary" style={{ background: "#7C3AED" }} onClick={() => submitConcession(s.id)}>Submit Concession</button>
+                        <button className="ta-btn-primary" style={{ background: "#7C3AED" }} onClick={() => setShowConcedeConfirm(s.id)}>Submit Concession</button>
                         <button className="ta-btn-ghost" onClick={() => setConcedingId(null)}>Cancel</button>
                       </div>
                     </div>
@@ -740,6 +739,22 @@ function ReviewScreenInner({ user }) {
 
       {/* DI Management Tab */}
       {tab === "di" && <DIPanelContent user={user} subs={subs} onReload={load} />}
+
+      {/* Concession Confirmation Modal */}
+      {showConcedeConfirm && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(10,10,6,0.94)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowConcedeConfirm(null)}>
+          <div style={{ border: "1px solid var(--border)", padding: 20, textAlign: "center", maxWidth: 340, background: "var(--card-bg)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#7C3AED", marginBottom: 6 }}>Concession is Permanent</div>
+            <div style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 14, lineHeight: 1.6 }}>
+              By conceding, you accept the jury's rejection. This cannot be undone. If you realize you were correct later on, <strong style={{ color: "var(--red)" }}>it will be too late to earn back reputation</strong>. If you believe you were right, dispute instead.
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button className="ta-btn-primary" style={{ background: "#7C3AED", padding: "8px 20px", fontSize: 11, fontWeight: 700, letterSpacing: 1 }} onClick={() => { submitConcession(showConcedeConfirm); setShowConcedeConfirm(null); }}>YES, CONCEDE</button>
+              <button style={{ padding: "8px 16px", fontSize: 11, border: "1px solid var(--border)", color: "var(--text-sec)", cursor: "pointer", background: "none" }} onClick={() => setShowConcedeConfirm(null)}>CANCEL</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -848,14 +848,6 @@ export default function TrustAssembly() {
               <span className="hdr-sub">TRUTH WILL OUT</span>
               <span className="hdr-beta">BETA</span>
             </div>
-            <div className="hdr-nav ta-nav-desktop">
-              {NAV_PRIMARY.map(n => (
-                <span key={n.key} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>
-                  {n.label}
-                  {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
-                </span>
-              ))}
-            </div>
           </div>
           <div className="gold-rule" />
 
@@ -899,6 +891,14 @@ export default function TrustAssembly() {
               <span className="name" style={{ cursor: "pointer" }} onClick={() => setScreen("profile")}>@{user.displayName || user.username}</span>
               <span className="meta"> · {navProfile.profile} ·</span>
               <span className="score"> {navProfile.trustScore}</span>
+            </div>
+            <div className="hdr-nav ta-nav-desktop">
+              {NAV_PRIMARY.map(n => (
+                <span key={n.key} style={{ fontWeight: 700 }} className={screen === n.key ? "active" : ""} onClick={() => setScreen(n.key)}>
+                  {n.label}
+                  {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
+                </span>
+              ))}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div ref={notifRef} style={{ position: "relative" }}>
@@ -980,6 +980,12 @@ export default function TrustAssembly() {
             {screen === "extensions" && <ExtensionsScreen />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
             </>}
+          </div>
+
+          <div style={{ padding: "12px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "center", gap: 20, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-muted)", maxWidth: 820, margin: "0 auto" }}>
+            <span style={{ cursor: "pointer" }} onClick={() => setScreen("guide")}>Learn</span>
+            <span style={{ cursor: "pointer" }} onClick={() => setScreen("consensus")}>Explore</span>
+            <span style={{ cursor: "pointer" }} onClick={() => setScreen("profile")}>Account</span>
           </div>
 
           {/* Floating feedback button — visible to all non-admin users */}
