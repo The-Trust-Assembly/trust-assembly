@@ -85,9 +85,6 @@ export default function FeedScreen(props) {
 }
 
 function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
-  // TEMPORARY: bypass all rendering to isolate crash
-  const [debugBypass, setDebugBypass] = useState(true);
-  if (debugBypass) return <div style={{ padding: 20 }}><div style={{ color: "var(--gold)", marginBottom: 10 }}>Feed debug mode — rendering bypassed. If you see this, the crash is in the render body below.</div><button onClick={() => setDebugBypass(false)} style={{ padding: "8px 16px", background: "var(--gold)", color: "#0d0d0a", border: "none", cursor: "pointer", fontWeight: 700 }}>Enable Full Feed (will crash if bug is here)</button></div>;
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
@@ -219,19 +216,39 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord }) {
   const trustedRequired = 10;
   const trustedRemaining = Math.max(0, trustedRequired - myApprovedInGP);
 
-  // Debug: scan all submission values for objects that would crash React
+  // TEMPORARY DIAGNOSTIC: Find which value is an object being rendered as a React child
+  // Check ALL values that get rendered in the feed, including computed ones
+  const _diagFields = {};
   try {
-    for (const sub of Object.values(subs || {})) {
-      for (const [k, v] of Object.entries(sub)) {
-        if (v !== null && typeof v === "object" && !Array.isArray(v) && !(v instanceof Date)) {
-          // Objects are expected for votes, crossGroupVotes, acceptedAt, crossGroupAcceptedAt, anonMap
-          if (!["votes","crossGroupVotes","acceptedAt","crossGroupAcceptedAt","anonMap","_otherAssemblies"].includes(k)) {
-            console.warn("FeedScreen: sub." + k + " is an object in submission " + sub.id, v);
-          }
+    _diagFields.reviewQueueCount = typeof reviewQueueCount;
+    _diagFields.totalCitizens = typeof totalCitizens;
+    _diagFields.myApprovedInGP = typeof myApprovedInGP;
+    _diagFields.trustedRemaining = typeof trustedRemaining;
+    _diagFields.gpOrgName = gpOrg ? typeof gpOrg.name : "no gpOrg";
+    _diagFields.myOrgIdsLength = typeof myOrgIds.length;
+    _diagFields.filteredLength = typeof filtered.length;
+    _diagFields.pagedLength = typeof paged.length;
+    _diagFields.savedDraftsLength = typeof savedDrafts.length;
+    // Check first 5 subs for non-string renderable fields
+    const firstSubs = paged.slice(0, 5);
+    for (let i = 0; i < firstSubs.length; i++) {
+      const s = firstSubs[i];
+      const objFields = [];
+      for (const [k, v] of Object.entries(s)) {
+        if (v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v)) {
+          objFields.push(k);
         }
       }
+      _diagFields["sub" + i + "_objFields"] = objFields.join(",");
+      _diagFields["sub" + i + "_orgName_type"] = typeof s.orgName;
+      _diagFields["sub" + i + "_reasoning_type"] = typeof s.reasoning;
+      _diagFields["sub" + i + "_url_type"] = typeof s.url;
+      _diagFields["sub" + i + "_status_type"] = typeof s.status;
+      _diagFields["sub" + i + "_createdAt_type"] = typeof s.createdAt;
+      _diagFields["sub" + i + "_submittedBy_type"] = typeof s.submittedBy;
     }
-  } catch (e) { console.error("FeedScreen debug scan error:", e); }
+    console.log("FEED DIAG:", JSON.stringify(_diagFields, null, 2));
+  } catch (e) { console.error("FEED DIAG ERROR:", e); }
 
   return (
     <div className="ta-content">
