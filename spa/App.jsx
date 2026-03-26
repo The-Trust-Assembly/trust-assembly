@@ -118,6 +118,9 @@ export default function TrustAssembly() {
   const setTheme = (t) => { setThemeState(t); try { localStorage.setItem("ta-theme", t); } catch {} document.documentElement.setAttribute("data-theme", t === "light" ? "light" : ""); };
   const setFontSize = (s) => { setFontSizeState(s); try { localStorage.setItem("ta-font-size", s); } catch {} };
 
+  const [contentWidth, setContentWidthState] = useState(() => { try { return localStorage.getItem("ta-content-width") || "wide"; } catch { return "wide"; } });
+  const setContentWidth = (w) => { setContentWidthState(w); try { localStorage.setItem("ta-content-width", w); } catch {} };
+
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -441,6 +444,7 @@ export default function TrustAssembly() {
         .user-bar .signout { color:var(--text-muted); cursor:pointer; }
         /* ── CONTENT ── */
         .ta-content { max-width:1080px; margin:0 auto; padding:14px 24px 6px; }
+        .ta-content.compact { max-width:820px; }
         .ta-section-rule { height:0; border-top:1px solid var(--border); margin:0 0 10px; }
         .ta-section-head { font-family:var(--font); font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin:0 0 6px; font-weight:600; }
         /* ── CARDS ── */
@@ -879,7 +883,7 @@ export default function TrustAssembly() {
         <div>
           {/* ── HEADER ── */}
           <div className="hdr">
-            <div className="hdr-left">
+            <div className="hdr-left" style={{ cursor: "pointer" }} onClick={() => setScreen("feed")}>
               <div className="hdr-bar" />
               <span className="hdr-title">Trust Assembly</span>
               <span className="hdr-sub">TRUTH WILL OUT</span>
@@ -973,7 +977,7 @@ export default function TrustAssembly() {
             </div>
           </div>
 
-          <div className="ta-content">
+          <div className={`ta-content${contentWidth === "compact" ? " compact" : ""}`}>
             {extCta && (
               <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -1000,7 +1004,7 @@ export default function TrustAssembly() {
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
@@ -1011,7 +1015,7 @@ export default function TrustAssembly() {
             </>}
           </div>
 
-          <div style={{ padding: "12px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "center", gap: 20, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-muted)", maxWidth: 1080, margin: "0 auto" }}>
+          <div style={{ padding: "12px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "center", gap: 20, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-muted)", maxWidth: contentWidth === "compact" ? 820 : 1080, margin: "0 auto" }}>
             {NAV_DROPDOWNS.map(dd => (
               <NavDropdown key={dd.label} label={dd.label} items={dd.items} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
             ))}
