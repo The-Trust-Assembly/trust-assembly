@@ -438,7 +438,7 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord, onView
           </div>
 
           {/* URL */}
-          <a href={sub.url} target="_blank" rel="noopener noreferrer" className="card-url" style={{ color: "var(--gold)", textDecoration: "none" }}>{domain}</a>
+          <a href={sub.url && /^https?:\/\//.test(String(sub.url)) ? sub.url : "#"} target="_blank" rel="noopener noreferrer" className="card-url" style={{ color: "var(--gold)", textDecoration: "none" }}>{domain}</a>
 
           {/* Headlines */}
           <div style={{ cursor: "pointer" }} onClick={() => setExpandedId(sub.id)}>

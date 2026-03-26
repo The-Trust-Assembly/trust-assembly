@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
     ["reasoning", reasoning, MAX_LENGTHS.reasoning],
     ["author", author, MAX_LENGTHS.author],
     ["url", url, MAX_LENGTHS.evidence_url],
+    ["bodyText", bodyText, MAX_LENGTHS.body_text],
   ]);
   if (lengthError) return err(lengthError);
 
