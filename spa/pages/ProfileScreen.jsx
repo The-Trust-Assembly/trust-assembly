@@ -75,7 +75,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
       {/* Stats row */}
       <div className="stat-row">
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--gold)" }}>{p.trustScore}</div><div className="stat-label">Global trust</div></div>
-        <div className="stat-card"><div className="stat-num" style={{ color: "#fff" }}>{mySubs.length}</div><div className="stat-label">Submissions</div></div>
+        <div className="stat-card"><div className="stat-num" style={{ color: "var(--text)" }}>{mySubs.length}</div><div className="stat-label">Submissions</div></div>
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--green)" }}>{approvedCount}</div><div className="stat-label">Approved</div></div>
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--red)" }}>{rejectedCount}</div><div className="stat-label">Rejected</div></div>
       </div>
