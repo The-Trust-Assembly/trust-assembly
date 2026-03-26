@@ -295,15 +295,20 @@
     }
 
     // --- Substack ---
-    if (host.includes("substack.com") || document.querySelector('meta[property="article:publisher"][content*="substack"]')) {
+    if (host.includes("substack.com") || document.querySelector('meta[property="article:publisher"][content*="substack"]') || document.querySelector('meta[name="generator"][content*="Substack"]') || document.querySelector('script[src*="substackcdn.com"]')) {
       return {
         name: "substack",
         dynamic: false,
         headlineSelectors: [
           'h1.post-title', 'h1[class*="post-title"]',
-          '.post-header h1', 'article h1', 'h1',
+          'h1[data-testid="post-title"]',
+          '.post-header h1',
+          'h1[class*="headline"]',
+          '.pencraft h1',
+          'article h1',
+          'h1',
         ],
-        articleRoot: 'article, .body.markup, .post-content',
+        articleRoot: 'article, .body.markup, .post-content, .available-content, .pencraft',
         waitSelector: null,
       };
     }
@@ -1995,9 +2000,7 @@
   // ── Utilities ──
   function escapeHtml(str) {
     if (!str) return "";
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   function escapeRegex(str) {
