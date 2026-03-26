@@ -88,27 +88,27 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
             </div>
             <span style={{ fontSize: 11, color: "var(--stone)" }}>{new Date(item.created_at).toLocaleString()}</span>
           </div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--charcoal)", whiteSpace: "pre-wrap" }}>{item.message}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-wrap" }}>{item.message}</div>
 
           {/* Admin reply display */}
           {item.admin_reply && (
-            <div style={{ marginTop: 12, padding: "10px 14px", backgroundColor: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", marginBottom: 4 }}>Admin Response · {new Date(item.admin_reply_at).toLocaleString()}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--charcoal)", whiteSpace: "pre-wrap" }}>{item.admin_reply}</div>
+            <div style={{ marginTop: 12, padding: "10px 14px", backgroundColor: "rgba(212,168,67,0.09)", border: "1px solid var(--gold)", borderRadius: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--gold)", marginBottom: 4 }}>Admin Response · {new Date(item.admin_reply_at).toLocaleString()}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text)", whiteSpace: "pre-wrap" }}>{item.admin_reply}</div>
             </div>
           )}
 
           {/* User resolution display */}
           {item.user_resolution && item.user_resolution_note && (
-            <div style={{ marginTop: 8, padding: "8px 12px", backgroundColor: item.user_resolution === "resolved" ? "#ECFDF5" : "#FFF7ED", border: `1px solid ${item.user_resolution === "resolved" ? "#A7F3D0" : "#FED7AA"}`, borderRadius: 0 }}>
+            <div style={{ marginTop: 8, padding: "8px 12px", backgroundColor: item.user_resolution === "resolved" ? "rgba(74,158,85,0.09)" : "rgba(212,168,67,0.09)", border: `1px solid ${item.user_resolution === "resolved" ? "rgba(74,158,85,0.27)" : "rgba(212,168,67,0.27)"}`, borderRadius: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: item.user_resolution === "resolved" ? "#059669" : "#EA580C", marginBottom: 2 }}>User Feedback</div>
-              <div style={{ fontSize: 12, lineHeight: 1.4, color: "var(--charcoal)" }}>{item.user_resolution_note}</div>
+              <div style={{ fontSize: 12, lineHeight: 1.4, color: "var(--text)" }}>{item.user_resolution_note}</div>
             </div>
           )}
 
           {/* Admin reply form */}
           {isAdmin && replyingTo === item.id && (
-            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "#F8FAFC", border: "1px solid var(--border)", borderRadius: 0 }}>
+            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
               <div className="ta-field" style={{ marginBottom: 10 }}>
                 <label>Status</label>
                 <select value={replyStatus} onChange={e => setReplyStatus(e.target.value)} style={{ padding: "6px 10px", fontSize: 13 }}>
@@ -142,8 +142,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
 
           {/* User resolution form — only for completed items belonging to the current user */}
           {!isAdmin && item.status === "completed" && !item.user_resolution && item.username === currentUsername && (
-            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#92400E", marginBottom: 8 }}>This item has been marked as completed. Is it resolved?</div>
+            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "rgba(212,168,67,0.09)", border: "1px solid var(--gold)", borderRadius: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--gold)", marginBottom: 8 }}>This item has been marked as completed. Is it resolved?</div>
               {resolvingId === item.id ? (
                 <>
                   <div className="ta-field" style={{ marginBottom: 10 }}>

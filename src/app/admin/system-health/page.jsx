@@ -95,6 +95,8 @@ export default function SystemHealthPage() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteMsg, setDeleteMsg] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [rulesData, setRulesData] = useState(null);
+  const [rulesLoading, setRulesLoading] = useState(false);
 
   const getAuthHeaders = useCallback(() => {
     const cookies = document.cookie.split(";").map(c => c.trim());
@@ -447,6 +449,136 @@ export default function SystemHealthPage() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Active Rules & System Configuration ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #10b981" }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#10b981" }}>Active Rules & System Configuration</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px" }}>Live view of all rules currently governing the system based on population and assembly sizes.</p>
+        <button onClick={async () => { setRulesLoading(true); try { const r = await fetch("/api/admin/active-rules"); const d = await r.json(); setRulesData(d); } catch (e) { alert("Failed: " + e); } setRulesLoading(false); }} disabled={rulesLoading} style={{ ...btnStyle, background: "#10b981", color: "#000" }}>
+          {rulesLoading ? "Loading..." : "Fetch Active Rules"}
+        </button>
+        {rulesData && (
+          <div style={{ marginTop: 16 }}>
+            {/* System Mode */}
+            <div style={{ padding: 12, background: rulesData.systemMode?.wildWest ? "#422006" : "#052e16", border: `1px solid ${rulesData.systemMode?.wildWest ? "#f59e0b" : "#22c55e"}`, borderRadius: 6, marginBottom: 12 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: rulesData.systemMode?.wildWest ? "#f59e0b" : "#22c55e" }}>
+                {rulesData.systemMode?.wildWest ? "WILD WEST MODE" : "STANDARD MODE"}
+              </div>
+              <div style={{ fontSize: 13, color: "#e2e8f0", marginTop: 4 }}>
+                {rulesData.systemMode?.totalUsers} / {rulesData.systemMode?.wildWestThreshold} users
+                {rulesData.systemMode?.wildWest && <span style={{ color: "#f59e0b" }}> — {rulesData.systemMode.wildWestThreshold - rulesData.systemMode.totalUsers} more needed to exit Wild West</span>}
+              </div>
+              <div style={{ marginTop: 6, height: 6, background: "#334155", borderRadius: 3 }}>
+                <div style={{ height: 6, background: rulesData.systemMode?.wildWest ? "#f59e0b" : "#22c55e", borderRadius: 3, width: `${Math.min(100, (rulesData.systemMode?.totalUsers / rulesData.systemMode?.wildWestThreshold) * 100)}%` }} />
+              </div>
+              {rulesData.systemMode?.wildWest && rulesData.systemMode?.wildWestEffects?.length > 0 && (
+                <div style={{ marginTop: 8, fontSize: 11, color: "#fcd34d" }}>
+                  {rulesData.systemMode.wildWestEffects.map((e, i) => <div key={i}>• {e}</div>)}
+                </div>
+              )}
+            </div>
+
+            {/* Cross-Group Status */}
+            <div style={{ padding: 12, background: "#0f172a", border: `1px solid ${rulesData.crossGroup?.active ? "#7c3aed" : "#334155"}`, borderRadius: 6, marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: rulesData.crossGroup?.active ? "#7c3aed" : "#94a3b8" }}>
+                Cross-Group Review: {rulesData.crossGroup?.active ? "ACTIVE" : "INACTIVE"}
+              </div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                {rulesData.crossGroup?.qualifyingAssemblies} / {rulesData.crossGroup?.requiredAssemblies} qualifying assemblies (each needs {rulesData.crossGroup?.qualifyingThreshold}+ members)
+                {rulesData.crossGroup?.active && <span> · Jury size: <strong style={{ color: "#e2e8f0" }}>{rulesData.crossGroup.crossGroupJurySize}</strong> · Majority: <strong style={{ color: "#e2e8f0" }}>{rulesData.crossGroup.crossGroupMajority}</strong> · Max shared non-GP assemblies: {rulesData.crossGroup.maxSharedAssemblies}</span>}
+              </div>
+            </div>
+
+            {/* Per-Assembly Rules Table */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 6 }}>Per-Assembly Rules</div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                  <thead><tr style={{ borderBottom: "1px solid #334155" }}>
+                    {["Assembly", "Members", "Jury", "Super Jury", "Majority", "Enrollment", "DI Limit", "Selection Rules"].map(h => (
+                      <th key={h} style={{ ...thStyle, fontSize: 10 }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {(rulesData.assemblies || []).map((a, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid #1e293b", background: a.isGeneralPublic ? "rgba(13,148,136,0.08)" : "transparent" }}>
+                        <td style={tdStyle}><strong>{a.name}</strong>{a.isGeneralPublic && <span style={{ color: "#0d9488", marginLeft: 4, fontSize: 9 }}>GP</span>}</td>
+                        <td style={tdStyle}>{a.members}</td>
+                        <td style={tdStyle}><strong>{a.jurySize}</strong></td>
+                        <td style={tdStyle}>{a.superJurySize}</td>
+                        <td style={tdStyle}>{a.majority}</td>
+                        <td style={tdStyle}><span style={{ color: a.enrollmentMode === "tribal" ? "#f59e0b" : a.enrollmentMode === "open" ? "#22c55e" : "#7c3aed" }}>{a.enrollment}</span></td>
+                        <td style={tdStyle}>{a.diSubmissionLimit}/day</td>
+                        <td style={tdStyle}>
+                          {a.jurySelectionRules?.joinDateFilter && <span style={{ background: "#334155", padding: "1px 4px", borderRadius: 3, marginRight: 3, fontSize: 9 }}>Join Filter</span>}
+                          {a.jurySelectionRules?.noRepeatReviewer && <span style={{ background: "#334155", padding: "1px 4px", borderRadius: 3, marginRight: 3, fontSize: 9 }}>No-Repeat</span>}
+                          {a.jurySelectionRules?.demographicDiversity && <span style={{ background: "#334155", padding: "1px 4px", borderRadius: 3, marginRight: 3, fontSize: 9 }}>Diversity</span>}
+                          {a.jurySelectionRules?.cooldown24h && <span style={{ background: "#334155", padding: "1px 4px", borderRadius: 3, marginRight: 3, fontSize: 9 }}>24h Cool</span>}
+                          {!a.jurySelectionRules?.joinDateFilter && !a.jurySelectionRules?.noRepeatReviewer && <span style={{ color: "#64748b", fontSize: 9 }}>None</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Global Rules + Scoring Weights */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ padding: 12, background: "#0f172a", border: "1px solid #334155", borderRadius: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Global Rules</div>
+                {rulesData.globalRules && Object.entries(rulesData.globalRules).map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "3px 0", borderBottom: "1px solid #1e293b" }}>
+                    <span style={{ color: "#94a3b8" }}>{k.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase())}</span>
+                    <span style={{ color: "#e2e8f0", fontWeight: 600 }}>{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: 12, background: "#0f172a", border: "1px solid #334155", borderRadius: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Scoring Weights (W)</div>
+                {rulesData.scoringWeights && Object.entries(rulesData.scoringWeights).map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "3px 0", borderBottom: "1px solid #1e293b" }}>
+                    <span style={{ color: "#94a3b8" }}>{k}</span>
+                    <span style={{ color: "#e2e8f0", fontWeight: 600 }}>{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Concession Recovery + Rate Limits + Field Limits */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div style={{ padding: 12, background: "#0f172a", border: "1px solid #334155", borderRadius: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Concession Recovery</div>
+                {(rulesData.concessionRecovery || []).map((c, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "3px 0", borderBottom: "1px solid #1e293b" }}>
+                    <span style={{ color: "#94a3b8" }}>{c.window}</span>
+                    <span style={{ color: c.recovery === "100%" ? "#22c55e" : c.recovery === "5%" ? "#ef4444" : "#e2e8f0", fontWeight: 600 }}>{c.recovery}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: 12, background: "#0f172a", border: "1px solid #334155", borderRadius: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Rate Limits</div>
+                {rulesData.rateLimits && Object.entries(rulesData.rateLimits).map(([k, v]) => (
+                  <div key={k} style={{ fontSize: 11, padding: "3px 0", borderBottom: "1px solid #1e293b" }}>
+                    <span style={{ color: "#94a3b8" }}>{k}: </span><span style={{ color: "#e2e8f0" }}>{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: 12, background: "#0f172a", border: "1px solid #334155", borderRadius: 6, maxHeight: 200, overflowY: "auto" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Field Limits</div>
+                {rulesData.fieldLimits && Object.entries(rulesData.fieldLimits).map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, padding: "2px 0", borderBottom: "1px solid #1e293b" }}>
+                    <span style={{ color: "#94a3b8" }}>{k}</span>
+                    <span style={{ color: "#e2e8f0" }}>{String(v).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ fontSize: 10, color: "#64748b", marginTop: 8 }}>Generated: {rulesData.generatedAt}</div>
           </div>
         )}
       </div>
