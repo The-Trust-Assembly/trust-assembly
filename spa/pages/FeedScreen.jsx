@@ -177,7 +177,7 @@ export default function FeedScreen(props) {
   return <FeedErrorBoundary><FeedScreenInner {...props} /></FeedErrorBoundary>;
 }
 
-function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
+function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
@@ -318,17 +318,19 @@ function FeedScreenInner({ user, onNavigate, onViewCitizen, onViewRecord, onView
     <div className="ta-content">
       <FeedHeroCarousel subs={subs} onViewRecord={onViewRecord} onViewAssembly={onViewAssembly} />
 
-      {/* Admin update box */}
-      <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
-        <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Admin update</div>
-        <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>Focus is on back-end transaction reliability. UI enhancements coming once submissions move between states with high fidelity.</div>
-        {isAdmin && (
-          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
-            <button className="card-btn" style={{ background: "var(--gold)", color: "var(--bg)", fontWeight: 700, borderColor: "var(--gold)" }} onClick={approveAllPending}>Approve All Pending</button>
-            {approveMsg && <span style={{ color: "var(--green)", fontWeight: 600, fontSize: 10 }}>{approveMsg}</span>}
-          </div>
-        )}
-      </div>
+      {/* Admin update box — driven by /api/admin/announcement */}
+      {siteAnnouncement && typeof siteAnnouncement === "string" && (
+        <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
+          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Admin update</div>
+          <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{siteAnnouncement}</div>
+        </div>
+      )}
+      {isAdmin && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <button className="card-btn" style={{ background: "var(--gold)", color: "var(--bg)", fontWeight: 700, borderColor: "var(--gold)" }} onClick={approveAllPending}>Approve All Pending</button>
+          {approveMsg && <span style={{ color: "var(--green)", fontWeight: 600, fontSize: 10 }}>{approveMsg}</span>}
+        </div>
+      )}
 
       {/* Your Next Steps + Assembly Status */}
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
