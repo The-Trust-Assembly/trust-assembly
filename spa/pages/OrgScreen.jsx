@@ -277,6 +277,10 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
 
   if (loading) return <Loader />;
 
+  // Compute Wild West status for accurate jury size display
+  const totalCitizens = Object.values(orgs || {}).reduce((set, o) => { (o.members || []).forEach(m => set.add(m)); return set; }, new Set()).size;
+  const wildWest = totalCitizens < 100;
+
   // ── Assembly Profile View ──
   if (viewingOrg && orgs[viewingOrg]) {
     const vo = orgs[viewingOrg];
@@ -322,7 +326,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
           <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 8 }}>{vo.description}</div>
           {vo.charter && <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid var(--border)" }}>{vo.charter}</div>}
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 8 }}>
-            Founded by @{vo.createdBy} · {sDate(vo.createdAt)} · {vo.members.length} members · {enrollment.label} · Jury: {getJurySize(vo.members.length)} · Super jury: {getSuperJurySize(vo.members.length)}
+            Founded by @{vo.createdBy} · {sDate(vo.createdAt)} · {vo.members.length} members · {enrollment.label} · Jury: {wildWest ? 1 : getJurySize(vo.members.length)} · Super jury: {wildWest ? "N/A" : getSuperJurySize(vo.members.length)}
           </div>
         </div>
 
@@ -358,7 +362,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
         {canPropose && <div className="ta-card" style={{ borderLeft: "4px solid #7C3AED" }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", marginBottom: 8, fontWeight: 700 }}><Icon name="jury" size={16} /> Concessions</div>
           <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 10 }}>
-            When a cross-group rejection occurs, any member can propose the Assembly concede. A <strong>super jury of {getSuperJurySize(vo.members.length)}</strong> decides. One concession per week gets full recovery — no reputation loss. Additional concessions in the same week recover 90%. After the first week, recovery decays (90% at 2 weeks, 50% at 1 month, down to 5% after 3 months). Individual dispute winners keep their full {W.disputeWin}× reward regardless — the Assembly does not share in that reward.
+            When a cross-group rejection occurs, any member can propose the Assembly concede. {wildWest ? <strong>In Wild West mode, concessions require 1 reviewer.</strong> : <span>A <strong>super jury of {getSuperJurySize(vo.members.length)}</strong> decides.</span>} One concession per week gets full recovery — no reputation loss. Additional concessions in the same week recover 90%. After the first week, recovery decays (90% at 2 weeks, 50% at 1 month, down to 5% after 3 months). Individual dispute winners keep their full {W.disputeWin}× reward regardless — the Assembly does not share in that reward.
           </div>
           {/* Pending concession votes I'm on */}
           {pendingConcessions.filter(c => c.jurors.includes(user.username) && !c.votes[user.username]).map(c => {
