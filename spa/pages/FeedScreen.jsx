@@ -4,7 +4,7 @@ import { SK, ADMIN_USERNAME } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { anonName, sDate, hotScore } from "../lib/utils";
 import { fileDispute } from "../lib/jury";
-import { Loader, Empty, UsernameLink, EvidenceFields, LegalDisclaimer } from "../components/ui";
+import { Loader, Empty, UsernameLink, EvidenceFields, LegalDisclaimer, StatusPill } from "../components/ui";
 import RecordDetailView from "../components/RecordDetailView";
 import { queryKeys } from "../lib/queryKeys";
 
@@ -124,23 +124,7 @@ const FILTER_CHIPS = [
   { key: "di", label: "DI Reviewed" },
 ];
 
-function statusBadge(status) {
-  const m = {
-    di_pending: { cls: "status-pending", label: "DI PRE-REVIEW" },
-    pending_jury: { cls: "status-pending", label: "AWAITING JURY" },
-    pending_review: { cls: "status-pending", label: "UNDER REVIEW" },
-    approved: { cls: "status-approved", label: "APPROVED" },
-    rejected: { cls: "status-rejected", label: "REJECTED" },
-    cross_review: { cls: "status-approved", label: "CROSS-GROUP" },
-    consensus: { cls: "status-approved", label: "CONSENSUS" },
-    consensus_rejected: { cls: "status-rejected", label: "CONSENSUS REJECTED" },
-    disputed: { cls: "status-pending", label: "DISPUTED" },
-    upheld: { cls: "status-rejected", label: "DISPUTE UPHELD" },
-    dismissed: { cls: "status-approved", label: "DISPUTE DISMISSED" },
-  };
-  const s = m[status] || { cls: "status-pending", label: (typeof status === "string" ? status : "unknown").toUpperCase() };
-  return <span className={`status-badge ${s.cls}`}>{s.label}</span>;
-}
+// statusBadge removed — using StatusPill component (stamp images) instead
 
 function DarkSubHeadline({ sub }) {
   const isAffirm = sub.submissionType === "affirmation";
@@ -436,7 +420,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
               {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
               {sub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
             </div>
-            {statusBadge(sub.status)}
+            <StatusPill status={sub.status} />
           </div>
 
           {/* URL */}

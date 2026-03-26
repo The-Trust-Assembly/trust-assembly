@@ -16,6 +16,10 @@ const ICON_MAP = {
   "trust-badge": "/icons/trust-badge.png",
   lighthouse: "/icons/lighthouse.png",
   crest: "/icons/crest.png",
+  "status-approved": "/icons/status-approved.png",
+  "status-rejected": "/icons/status-rejected.png",
+  "status-review": "/icons/status-review.png",
+  "status-pending": "/icons/status-Needs More Jurors.png",
 };
 
 export function Icon({ name, size = 14, style: userStyle, title }) {
@@ -193,21 +197,20 @@ export function SubHeadline({ sub, size = 12 }) {
 }
 
 export function StatusPill({ status }) {
-  const m = {
-    di_pending: { bg: "rgba(212,168,67,0.13)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "DI PRE-REVIEW" },
-    pending_jury: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "PENDING" },
-    pending_review: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "PENDING" },
-    approved: { bg: "rgba(74,158,85,0.09)", border: "rgba(74,158,85,0.27)", c: "#4a9e55", l: "APPROVED" },
-    rejected: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "REJECTED" },
-    cross_review: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "CROSS-GROUP" },
-    consensus: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "CONSENSUS" },
-    consensus_rejected: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "CONSENSUS REJECTED" },
-    disputed: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "DISPUTED" },
-    upheld: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "DISPUTE UPHELD" },
-    dismissed: { bg: "rgba(74,158,85,0.09)", border: "rgba(74,158,85,0.27)", c: "#4a9e55", l: "DISPUTE DISMISSED" },
+  const iconMap = {
+    approved: "status-approved", dismissed: "status-approved",
+    rejected: "status-rejected", consensus_rejected: "status-rejected", upheld: "status-rejected",
+    pending_review: "status-review", cross_review: "status-review", disputed: "status-review",
+    pending_jury: "status-pending", di_pending: "status-pending", consensus: "status-pending",
   };
-  const s = m[status] || { bg: "rgba(138,130,120,0.09)", border: "rgba(138,130,120,0.27)", c: "#8a8278", l: typeof status === "string" ? status.toUpperCase() : "UNKNOWN" };
-  return <span style={{ fontSize: 8, padding: "2px 6px", background: s.bg, border: `1px solid ${s.border}`, color: s.c, fontWeight: 700, letterSpacing: "1px", whiteSpace: "nowrap" }}>{s.l}</span>;
+  const name = iconMap[status] || "status-pending";
+  const label = {
+    di_pending: "DI PRE-REVIEW", pending_jury: "PENDING", pending_review: "UNDER REVIEW",
+    approved: "APPROVED", rejected: "REJECTED", cross_review: "CROSS-GROUP",
+    consensus: "CONSENSUS", consensus_rejected: "CONSENSUS REJECTED",
+    disputed: "DISPUTED", upheld: "DISPUTE UPHELD", dismissed: "DISPUTE DISMISSED",
+  }[status] || (typeof status === "string" ? status.toUpperCase() : "UNKNOWN");
+  return <img src={ICON_MAP[name] || `/icons/${name}.png`} alt={label} title={label} width={48} height={48} style={{ display: "inline-block", objectFit: "contain", verticalAlign: "middle" }} />;
 }
 
 export function LegalDisclaimer({ short }) {
