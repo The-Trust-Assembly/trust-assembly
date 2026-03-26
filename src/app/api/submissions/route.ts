@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
   if (!session) return unauthorized();
 
   const body = await request.json();
-  const { submissionType, url, originalHeadline, replacement, reasoning, author, orgId, orgIds, evidence, inlineEdits } = body;
+  const { submissionType, url, originalHeadline, replacement, reasoning, author, orgId, orgIds, evidence, inlineEdits, bodyText } = body;
 
   // Support single orgId or multiple orgIds for multi-assembly submission
   const targetOrgIds: string[] = orgIds && Array.isArray(orgIds) && orgIds.length > 0
@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
     ["reasoning", reasoning, MAX_LENGTHS.reasoning],
     ["author", author, MAX_LENGTHS.author],
     ["url", url, MAX_LENGTHS.evidence_url],
+    ["bodyText", bodyText, MAX_LENGTHS.body_text],
   ]);
   if (lengthError) return err(lengthError);
 
@@ -189,11 +190,11 @@ export async function POST(request: NextRequest) {
       const result = await client.query(
         `INSERT INTO submissions (
           submission_type, status, url, normalized_url, original_headline, replacement,
-          reasoning, author, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          reasoning, author, body_text, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, submission_type, status, created_at`,
         [submissionType, initialStatus, url, normalizedUrl, originalHeadline,
-         replacement || null, reasoning, author || null,
+         replacement || null, reasoning, author || null, bodyText || null,
          session.sub, targetOrg, trustedSkip, submitterIsDI, user.rows[0].di_partner_id || null, jurySeats]
       );
       // Set slug now that we have the ID

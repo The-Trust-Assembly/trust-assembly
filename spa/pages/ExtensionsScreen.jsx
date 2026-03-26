@@ -1,13 +1,13 @@
 export default function ExtensionsScreen() {
   const stepStyle = { display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" };
-  const numStyle = { background: "#2563EB", color: "#fff", width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 2 };
-  const codeStyle = { background: "#E8E4DC", padding: "3px 8px", borderRadius: 8, fontFamily: "var(--mono)", fontSize: 12, color: "var(--charcoal)" };
+  const numStyle = { background: "var(--gold)", color: "#fff", width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 2 };
+  const codeStyle = { background: "#E8E4DC", padding: "3px 8px", borderRadius: 0, fontFamily: "var(--mono)", fontSize: 12, color: "var(--charcoal)" };
 
   return (
     <div>
       <div className="ta-section-rule" />
       <h2 className="ta-section-head">Browser Extension</h2>
-      <p style={{ fontSize: 14, color: "#475569", marginBottom: 20, lineHeight: 1.7 }}>
+      <p style={{ fontSize: 14, color: "var(--text-sec)", marginBottom: 20, lineHeight: 1.7 }}>
         The Trust Assembly browser extension overlays verified corrections, affirmations, and translations directly on news articles as you read them. No extra tabs. No searching. Truth finds you.
       </p>
 
@@ -38,7 +38,7 @@ export default function ExtensionsScreen() {
         <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Toggle <strong>"Developer mode"</strong> on — it's in the top-right corner of the page.</div></div>
         <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load unpacked"</strong> and select the folder containing the unzipped extension files (where <span style={codeStyle}>manifest.json</span> is located).</div></div>
         <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The Trust Assembly icon will appear in your toolbar. Pin it for easy access. Visit any news article to see corrections and translations overlaid automatically.</div></div>
-        <div style={{ padding: 10, background: "#FFFBEB", border: "1px solid #B45309", borderRadius: 8, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
+        <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B45309", borderRadius: 0, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
           <strong>Note:</strong> Chrome may show a "Disable developer mode extensions" popup on restart. Click the three dots and select "Keep" to keep the extension active.
         </div>
       </div>
@@ -51,7 +51,7 @@ export default function ExtensionsScreen() {
         <div style={stepStyle}><div style={numStyle}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Click <strong>"Load Temporary Add-on..."</strong></div></div>
         <div style={stepStyle}><div style={numStyle}>4</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>Select the <span style={codeStyle}>manifest.json</span> file from the unzipped folder.</div></div>
         <div style={stepStyle}><div style={numStyle}>5</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension is now active. Visit any news article to see Trust Assembly corrections overlaid.</div></div>
-        <div style={{ padding: 10, background: "#FFFBEB", border: "1px solid #B45309", borderRadius: 8, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
+        <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B45309", borderRadius: 0, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
           <strong>Note:</strong> Firefox temporary add-ons are removed when you close the browser. You'll need to reload it each session until the extension is published to the Firefox Add-ons store.
         </div>
       </div>
@@ -63,7 +63,7 @@ export default function ExtensionsScreen() {
         <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>1</div><div style={{ fontSize: 13, lineHeight: 1.7 }}><strong>macOS:</strong> Install the Trust Assembly extension from the Mac App Store (coming soon). Once installed, open <span style={codeStyle}>Safari → Settings → Extensions</span> and enable "Trust Assembly".</div></div>
         <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>2</div><div style={{ fontSize: 13, lineHeight: 1.7 }}><strong>iPhone / iPad:</strong> Install from the App Store. Then go to <span style={codeStyle}>Settings → Safari → Extensions</span>, tap Trust Assembly, and toggle it on. Grant permission to run on news sites.</div></div>
         <div style={stepStyle}><div style={{ ...numStyle, background: "#0071E3" }}>3</div><div style={{ fontSize: 13, lineHeight: 1.7 }}>The extension syncs your Trust Assembly account across all your Apple devices. Corrections and translations appear automatically as you browse.</div></div>
-        <div style={{ padding: 10, background: "#E8F0FE", border: "1px solid #0071E3", borderRadius: 8, fontSize: 12, color: "#004EA2", lineHeight: 1.6 }}>
+        <div style={{ padding: 10, background: "#E8F0FE", border: "1px solid #0071E3", borderRadius: 0, fontSize: 12, color: "#004EA2", lineHeight: 1.6 }}>
           <strong>Status:</strong> The Safari extension is being prepared for App Store submission. In the meantime, developers can build it locally using <span style={codeStyle}>xcrun safari-web-extension-converter</span> with the Chrome extension source.
         </div>
       </div>
@@ -81,8 +81,8 @@ export default function ExtensionsScreen() {
             <div style={{ marginBottom: 4 }}>⛔ <strong>No server-side cache of queries.</strong> We don't maintain a record of what pages were checked or how often.</div>
           </div>
           <div style={{ marginBottom: 10 }}>The only URLs we store are the ones <em>submitters voluntarily publish</em> when they submit a correction — that's the article they're correcting, and it's public by design. Your reading activity is completely invisible to us.</div>
-          <div style={{ padding: 10, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 12 }}>
-            <strong>Technical detail:</strong> Results are cached in your browser's <code style={{ background: "#E8E4DC", padding: "1px 4px", borderRadius: 8 }}>sessionStorage</code> for 5 minutes to reduce network requests. This cache is local to your machine, per-tab, and cleared automatically when you close the tab. We never see it.
+          <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
+            <strong>Technical detail:</strong> Results are cached in your browser's <code style={{ background: "#E8E4DC", padding: "1px 4px", borderRadius: 0 }}>sessionStorage</code> for 5 minutes to reduce network requests. This cache is local to your machine, per-tab, and cleared automatically when you close the tab. We never see it.
           </div>
         </div>
       </div>

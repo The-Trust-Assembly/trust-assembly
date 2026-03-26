@@ -8,7 +8,7 @@ import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining } from "
 import { recuseJuror, getConcessionRecovery, fileDispute } from "../lib/jury";
 import { clearDraft } from "../lib/hooks";
 import { queryKeys } from "../lib/queryKeys";
-import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader } from "../components/ui";
+import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader, Icon } from "../components/ui";
 import DIPanelContent from "../components/DIPanelContent";
 
 const DRAFT_DEBOUNCE = 500;
@@ -26,6 +26,12 @@ const safe = (v) => {
   return String(v);
 };
 
+// Guard: only allow http(s) URLs in href attributes to prevent javascript: injection
+const safeHref = (url) => {
+  try { const u = new URL(String(url)); return ["http:", "https:"].includes(u.protocol) ? url : "#"; }
+  catch { return "#"; }
+};
+
 class ReviewErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -40,9 +46,9 @@ class ReviewErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return <div style={{ padding: 24, textAlign: "center" }}>
-        <h3 style={{ color: "#DC2626", fontFamily: "var(--mono)" }}>Review page encountered an error</h3>
-        <p style={{ color: "#64748B", fontSize: 13, marginTop: 8 }}>{this.state.error?.message || "Unknown error"}</p>
-        <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 12, padding: "8px 16px", background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12 }}>Retry</button>
+        <h3 style={{ color: "var(--red)", fontFamily: "var(--mono)" }}>Review page encountered an error</h3>
+        <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>{this.state.error?.message || "Unknown error"}</p>
+        <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 12, padding: "8px 16px", background: "var(--gold)", color: "#fff", border: "none", borderRadius: 0, cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12 }}>Retry</button>
       </div>;
     }
     return this.props.children;
@@ -72,6 +78,7 @@ function ReviewScreenInner({ user }) {
   // State for My Results tab actions — must be declared here (not after early return)
   // to satisfy React's rules of hooks (same number of hooks every render).
   const [concedingId, setConcedingId] = useState(null);
+  const [showConcedeConfirm, setShowConcedeConfirm] = useState(null); // holds submission id
   const [concedeReason, setConcedeReason] = useState("");
   const [concedeError, setConcedeError] = useState("");
   const [concedeSuccess, setConcedeSuccess] = useState("");
@@ -263,7 +270,10 @@ function ReviewScreenInner({ user }) {
   const pendingDILinks = Object.values(diLinkReqs).filter(r => r.partnerUsername === user.username && r.status === "pending");
   const hasDIPartnership = !!user.diPartner || all.some(s => s.isDI && s.diPartner === user.username) || diQ.length > 0 || pendingDILinks.length > 0;
 
-  // My Results: user's rejected submissions that they can concede or dispute
+  // My approved submissions (for history tab)
+  const myApproved = all.filter(s => s.submittedBy === user.username && ["approved", "consensus", "cross_review"].includes(s.status));
+
+  // My rejected submissions that they can concede or dispute
   // Deduplicate cross-assembly duplicates — keep the first (highest priority) and merge assembly names
   const myRejectedRaw = all.filter(s => s.submittedBy === user.username && s.status === "rejected");
   const rejectedByUrl = new Map();
@@ -336,39 +346,39 @@ function ReviewScreenInner({ user }) {
     return (
     <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI ? " · 🤖 DI" : ""}</span>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={14} /> DI</>}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", background: "#F1F5F9", padding: "1px 5px", borderRadius: 8 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
+          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px", borderRadius: 0 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />
         </div>
       </div>
-      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(sub.url)}</a>
-      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#0D9488", padding: "4px 8px", background: "#F0FDFA", borderRadius: 8, marginTop: 6 }}>🌐 Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
-      <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+      <a href={safeHref(sub.url)} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(sub.url)}</a>
+      {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", padding: "4px 8px", background: "var(--card-bg)", borderRadius: 0, marginTop: 6 }}>Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
+      <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />
       </div>
-      <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{safe(sub.reasoning)}</div>
+      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10 }}>{safe(sub.reasoning)}</div>
 
       {sub.evidence && sub.evidence.length > 0 && (
-        <div style={{ marginTop: 12, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
-          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "#475569", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
+        <div style={{ marginTop: 12, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence: {sub.evidence.length} Source{sub.evidence.length > 1 ? "s" : ""}</div>
+          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
         </div>
       )}
 
       {sub.inlineEdits && sub.inlineEdits.length > 0 && (
-        <div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>{sub.inlineEdits.length} In-Line Edit{sub.inlineEdits.length > 1 ? "s" : ""} — {reviewingId === sub.id ? "vote on each" : "line-by-line review"}</div>
+        <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>{sub.inlineEdits.length} In-Line Edit{sub.inlineEdits.length > 1 ? "s" : ""} — {reviewingId === sub.id ? "vote on each" : "line-by-line review"}</div>
           {sub.inlineEdits.map((e, i) => (
-            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid #E2E8F0" : "none" }}>
+            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid var(--border)" : "none" }}>
               <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
-                <span style={{ textDecoration: "line-through", color: "#64748B" }}>{safe(e.original)}</span> → <span style={{ color: "#DC2626", fontWeight: 600 }}>{safe(e.replacement)}</span>
-                {e.reasoning && <div style={{ fontSize: 12, color: "#475569", marginTop: 1 }}>↳ {safe(e.reasoning)}</div>}
+                <span style={{ textDecoration: "line-through", color: "var(--text-muted)" }}>{safe(e.original)}</span> → <span style={{ color: "var(--red)", fontWeight: 600 }}>{safe(e.replacement)}</span>
+                {e.reasoning && <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 1 }}>↳ {safe(e.reasoning)}</div>}
               </div>
               {reviewingId === sub.id && (
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "#CBD5E1", background: editVotes[i] === true ? "#ECFDF5" : "#fff", color: editVotes[i] === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Approve Edit</button>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "#CBD5E1", background: editVotes[i] === false ? "#FEF2F2" : "#fff", color: editVotes[i] === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ Reject Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "var(--border)", background: editVotes[i] === true ? "#ECFDF5" : "#fff", color: editVotes[i] === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Approve Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "var(--border)", background: editVotes[i] === false ? "#FEF2F2" : "#fff", color: editVotes[i] === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ Reject Edit</button>
                 </div>
               )}
               {reviewingId !== sub.id && e.approved !== undefined && (
@@ -380,32 +390,32 @@ function ReviewScreenInner({ user }) {
       )}
 
       {sub.standingCorrection && (
-        <div style={{ marginTop: 14, padding: 12, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
-          <div style={{ color: "#1E293B", fontWeight: 600 }}>{safe(sub.standingCorrection.assertion)}</div>
-          {sub.standingCorrection.evidence && <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>Source: {safe(sub.standingCorrection.evidence)}</div>}
+        <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}><Icon name="vault" size={16} /> Standing Correction Proposed</div>
+          <div style={{ color: "var(--text)", fontWeight: 600 }}>{safe(sub.standingCorrection.assertion)}</div>
+          {sub.standingCorrection.evidence && <div style={{ color: "var(--text-sec)", fontSize: 12, marginTop: 2 }}>Source: {safe(sub.standingCorrection.evidence)}</div>}
         </div>
       )}
 
       {sub.argumentEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 3 }}>⚔️ Argument Proposed</div>
-          <div style={{ color: "#1E293B", lineHeight: 1.6 }}>{safe(sub.argumentEntry.content)}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}><Icon name="dispute" size={16} /> Argument Proposed</div>
+          <div style={{ color: "var(--text)", lineHeight: 1.6 }}>{safe(sub.argumentEntry.content)}</div>
         </div>
       )}
 
       {sub.beliefEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief Proposed</div>
-          <div style={{ color: "#1E293B", lineHeight: 1.6, fontStyle: "italic" }}>{safe(sub.beliefEntry.content)}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}><Icon name="jury" size={16} /> Foundational Belief Proposed</div>
+          <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{safe(sub.beliefEntry.content)}</div>
         </div>
       )}
 
       {sub.translationEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#FFFBEB", border: "1px solid #B4530980", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation Proposed — {sub.translationEntry.type}</div>
+        <div style={{ marginTop: 8, padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530980", borderRadius: 0, fontSize: 12 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}><Icon name="dispute" size={16} /> Translation Proposed — {sub.translationEntry.type}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ textDecoration: "line-through", color: "#475569" }}>{safe(sub.translationEntry.original)}</span>
+            <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{safe(sub.translationEntry.original)}</span>
             <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
             <span style={{ color: "#B45309", fontWeight: 700 }}>{safe(sub.translationEntry.translated)}</span>
           </div>
@@ -413,20 +423,20 @@ function ReviewScreenInner({ user }) {
       )}
 
       {sub.linkedVaultEntries && sub.linkedVaultEntries.length > 0 && (
-        <div style={{ marginTop: 10, padding: 10, background: "#F1F5F9", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 8 }}>📎 {sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"} — vote on each</div>
+        <div style={{ marginTop: 10, padding: 10, background: "var(--card-bg)", borderRadius: 0, border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>{sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"} — vote on each</div>
           {sub.linkedVaultEntries.map(e => {
-            const tc = { correction: ["🏛", "#059669", "#ECFDF5"], argument: ["⚔️", "#0D9488", "#F0FDFA"], belief: ["🧭", "#7C3AED", "#F3E8F9"] }[e.type] || ["📎", "#475569", "#F1F5F9"];
-            return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 8 }}>
+            const tc = { correction: ["vault", "#059669", "rgba(74,158,85,0.09)"], argument: ["dispute", "#0D9488", "rgba(13,148,136,0.09)"], belief: ["jury", "#7C3AED", "rgba(124,58,237,0.09)"] }[e.type] || ["vault", "#475569", "var(--card-bg)"];
+            return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{tc[0]} Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}><Icon name={tc[0]} size={16} /> Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
               </div>
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{safe(e.label)}</div>
-              {e.detail && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Source: {safe(e.detail)}</div>}
+              <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", marginBottom: reviewingId === sub.id ? 6 : 0 }}>{safe(e.label)}</div>
+              {e.detail && <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>Source: {safe(e.detail)}</div>}
               {reviewingId === sub.id && (
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === true ? "#059669" : "#CBD5E1", background: vaultVotes[e.id] === true ? "#ECFDF5" : "#fff", color: vaultVotes[e.id] === true ? "#059669" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✓ Still Applies</button>
-                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === false ? "#DC2626" : "#CBD5E1", background: vaultVotes[e.id] === false ? "#FEF2F2" : "#fff", color: vaultVotes[e.id] === false ? "#DC2626" : "#64748B", borderRadius: 8, cursor: "pointer" }}>✗ No Longer Valid</button>
+                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === true ? "#059669" : "var(--border)", background: vaultVotes[e.id] === true ? "#ECFDF5" : "#fff", color: vaultVotes[e.id] === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+                  <button onClick={() => setVaultVotes(v => ({ ...v, [e.id]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes[e.id] === false ? "#DC2626" : "var(--border)", background: vaultVotes[e.id] === false ? "#FEF2F2" : "#fff", color: vaultVotes[e.id] === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
                 </div>
               )}
               {reviewingId !== sub.id && e.stillApplies !== undefined && (
@@ -438,18 +448,18 @@ function ReviewScreenInner({ user }) {
       )}
 
       {reviewingId === sub.id ? (
-        <div style={{ marginTop: 12, padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", marginBottom: 10 }}>Headline Correction Verdict</div>
+        <div style={{ marginTop: 12, padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 10 }}>Headline Correction Verdict</div>
           <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
           <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
-          <div className="ta-field"><label>Review Note (permanent, public){voteNote.trim().length < 50 && <span style={{ color: "#DC2626", fontSize: 10, marginLeft: 6 }}>Min 50 chars required for rejections ({voteNote.trim().length}/50)</span>}</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning... (minimum 50 characters required for rejections)" /></div>
+          <div className="ta-field"><label>Review Note (permanent, public){voteNote.trim().length < 50 && <span style={{ color: "var(--red)", fontSize: 10, marginLeft: 6 }}>Min 50 chars required for rejections ({voteNote.trim().length}/50)</span>}</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning... (minimum 50 characters required for rejections)" /></div>
           <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
           <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FFFFFF 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="ta-btn-primary" style={{ background: "#059669", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
-              <button className="ta-btn-primary" style={{ background: "#DC2626", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars needed)` : ""}</button>
+              <button className="ta-btn-primary" style={{ background: "var(--green)", flex: 1 }} onClick={() => castVote(sub.id, true, isCross)}>✓ Approve</button>
+              <button className="ta-btn-primary" style={{ background: "var(--red)", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }} onClick={() => castVote(sub.id, false, isCross)}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars needed)` : ""}</button>
               <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
-              <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>⚖ Recuse</button>
+              <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={async () => { const r = await recuseJuror(sub.id, user.username, isCross); if (r.success) { setReviewingId(null); load(); } }}>Recuse</button>
             </div>
             <LegalDisclaimer short />
           </div>
@@ -465,10 +475,10 @@ function ReviewScreenInner({ user }) {
         };
         return (
           <div style={{ marginTop: 10 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 4 }}>{accepted.length}/{seats} seats filled · {seats - accepted.length} remaining</div>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", marginBottom: 4 }}>{accepted.length}/{seats} seats filled · {seats - accepted.length} remaining</div>
             {!alreadyAccepted
-              ? <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, padding: "6px 8px", background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
-              : <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, padding: "6px 8px", background: "#F9FAFB", border: "1px solid #E2E8F0", borderRadius: 8 }}>Your 6-hour review window is still active. Pick up where you left off.</div>
+              ? <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, padding: "6px 8px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>You'll have 6 hours to complete your review. If you're unable to finish, your seat will be opened to another juror.</div>
+              : <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, padding: "6px 8px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>Your 6-hour review window is still active. Pick up where you left off.</div>
             }
             <button className="ta-btn-secondary" onClick={async () => {
               if (!alreadyAccepted) await acceptJurySeat(sub.id, isCross);
@@ -485,55 +495,62 @@ function ReviewScreenInner({ user }) {
     <div>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Review Queue</h2>
 
-      {/* What you're about to do */}
-      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #CBD5E1", borderLeft: "4px solid #CA8A04", borderRadius: 8, marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "#0F172A", marginBottom: 4 }}>
-          You're reviewing submissions from fellow citizens.
-        </div>
-        <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
-          Read the headline, the proposed correction, and the reasoning. Then vote to approve or reject. Your verdict is permanent and public — take your time, weigh the evidence.
-        </div>
+      {/* Per-tab education text */}
+      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", lineHeight: 1.5, marginBottom: 8 }}>
+        {{ ingroup: "Vote to approve or reject submissions from citizens in your own Assemblies.",
+           crossgroup: "Vote to approve or reject submissions from citizens in other Assemblies.",
+           stories: "Vote to approve Story Artifacts that organize submissions around events and themes.",
+           disputes: "Think the jury got it wrong? Re-submit your case. There is a penalty for being repeatedly wrong, the same way there is a reward for proving you were correct. You may also concede to recover lost points (once per week: 100% recovery).",
+           myresults: "Your approved submissions and their final verdicts across all assemblies.",
+           di: "Review and approve pre-screened submissions from your registered Digital Intelligence agent."
+        }[tab] || "Vote to approve or reject submissions from citizens in your own Assemblies."}
       </div>
 
-      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "#EBD5D3", border: "1.5px solid #991B1B", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#991B1B", lineHeight: 1.6 }}>⚠ <strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
-      {isDIUser(user) && <div style={{ padding: 10, background: "#EEF2FF", border: "1.5px solid #4F46E5", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#4F46E5", lineHeight: 1.6 }}>🤖 <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
-      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid #E2E8F0" }}>
-        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes", dQ.length], ["mydisputes", "My Disputes", myDisputes.length], ["myresults", "My Results", myRejected.length], ...(hasDIPartnership ? [["di", "🤖 DI Queue", diQ.length]] : [])].map(([k, l, c]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #2563EB" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "#2563EB" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
-            {l} {c > 0 && <span style={{ background: k === "disputes" ? "#EA580C" : k === "di" ? "#4F46E5" : "#DC2626", color: "#fff", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
+      {/* Anonymous voting box */}
+      <div style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", padding: "8px 12px", marginBottom: 10 }}>
+        <div style={{ fontSize: 10, color: "var(--text)", lineHeight: 1.5 }}>Your votes are <span style={{ color: "var(--gold)", fontWeight: 700 }}>anonymous</span>. No one — not the submitter, not other jurors, not administrators — can see how you voted. This is your ability to speak the truth as an individual, free from social pressure. Vote your conscience.</div>
+      </div>
+
+      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
+      {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}><Icon name="robot" size={14} /> <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
+      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid var(--border)" }}>
+        {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes / Concession", dQ.length + myDisputes.length + myRejected.length], ["myresults", "My Results", myApproved.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={42} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
+          <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid var(--gold)" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "var(--gold)" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
+            {l} {c > 0 && <span style={{ background: "var(--gold)", color: "#0d0d0a", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
         ))}
       </div>
       {tab === "ingroup" && (igQ.length === 0 ? <Empty text="No in-group reviews waiting." /> : igQ.map(s => renderItem(s, false)))}
-      {tab === "crossgroup" && (cgQ.length === 0 ? <Empty text="No cross-group reviews waiting." /> : <div><p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>These corrections were approved by another Assembly and now face cross-group review. Jury size scales with the number of qualifying Assemblies in the ecosystem. No two jurors share more than 2 non-GP Assembly memberships — your perspective is independent by design.</p>{cgQ.map(s => renderItem(s, true))}</div>)}
-      {tab === "disputes" && (dQ.length === 0 ? <Empty text="No disputes awaiting your review." /> : <div>
-        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>Intra-Assembly disputes. A member is challenging another member's submission. Upholding the dispute means the submission was wrong. Dismissing means the original stands. Winners gain significant reputation.</p>
+      {tab === "crossgroup" && (cgQ.length === 0 ? <Empty text="No cross-group reviews waiting." /> : <div><p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>These corrections were approved by another Assembly and now face cross-group review. Jury size scales with the number of qualifying Assemblies in the ecosystem. No two jurors share more than 2 non-GP Assembly memberships — your perspective is independent by design.</p>{cgQ.map(s => renderItem(s, true))}</div>)}
+      {tab === "disputes" && <div>
+        {dQ.length > 0 && <>
+        <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Intra-Assembly disputes. A member is challenging another member's submission. Upholding the dispute means the submission was wrong. Dismissing means the original stands. Winners gain significant reputation.</p>
         {dQ.map(d => (
           <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>⚖ {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
-              <span style={{ fontSize: 10, padding: "2px 7px", background: "#FFF7ED", color: "#EA580C", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="jury" size={14} /> {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
+              <span style={{ fontSize: 10, padding: "2px 7px", background: "rgba(212,168,67,0.09)", color: "#EA580C", borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
             </div>
-            <div style={{ padding: 10, background: "#F9FAFB", borderRadius: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 3 }}>ORIGINAL SUBMISSION BY {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)}</div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{safe(d.submissionHeadline)}</div>
-              <div style={{ fontSize: 12, color: "#475569", marginTop: 6, lineHeight: 1.8 }}>{safe(d.submissionReasoning)}</div>
+            <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", marginBottom: 3 }}>ORIGINAL SUBMISSION BY {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)}</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{safe(d.submissionHeadline)}</div>
+              <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 6, lineHeight: 1.8 }}>{safe(d.submissionReasoning)}</div>
             </div>
-            <div style={{ padding: 12, background: "#FFF7ED", border: "1px solid #EA580C", borderRadius: 8, marginBottom: 10 }}>
+            <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #EA580C", borderRadius: 0, marginBottom: 10 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 4 }}>DISPUTE BY {anonName(d.disputedBy, d.anonMap, d.resolvedAt)}</div>
-              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8 }}>{safe(d.reasoning)}</div>
-              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
+              <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8 }}>{safe(d.reasoning)}</div>
+              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
             </div>
             {reviewingId === d.id ? (
-              <div style={{ padding: 14, background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8 }}>
-                <div style={{ padding: 8, background: "#FFFBEB", border: "1px solid #CA8A04", borderRadius: 8, marginBottom: 10, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
-                  <strong style={{ color: "#CA8A04" }}>⚖ Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
+              <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+                <div style={{ padding: 8, background: "rgba(212,168,67,0.09)", border: "1px solid #CA8A04", borderRadius: 0, marginBottom: 10, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
+                  <strong style={{ color: "var(--gold)" }}>Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
                 </div>
                 <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} /></div>
                 <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => castDisputeVote(d.id, true)}>⚖ Uphold Dispute</button>
-                  <button className="ta-btn-primary" style={{ background: "#059669" }} onClick={() => castDisputeVote(d.id, false)}>✓ Dismiss (Original Stands)</button>
+                  <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={() => castDisputeVote(d.id, true)}>Uphold Dispute</button>
+                  <button className="ta-btn-primary" style={{ background: "var(--green)" }} onClick={() => castDisputeVote(d.id, false)}>✓ Dismiss (Original Stands)</button>
                   <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
                 </div>
               </div>
@@ -541,11 +558,11 @@ function ReviewScreenInner({ user }) {
             <AuditTrail entries={d.auditTrail} />
           </div>
         ))}
-      </div>)}
-
-      {/* My Disputes Tab — shows all disputes filed by or against the current user */}
-      {tab === "mydisputes" && (myDisputes.length === 0 ? <Empty text="No disputes involve you. Disputes you file or disputes against your submissions will appear here." /> : <div>
-        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>All disputes involving your submissions — either filed by you or filed against your work. Track the status and outcome of each dispute.</p>
+      </>}
+      {dQ.length === 0 && myDisputes.length === 0 && myRejected.length === 0 && <Empty text="No disputes, concessions, or rejected submissions." />}
+      {/* My Disputes — inline within disputes tab */}
+      {myDisputes.length > 0 && <div style={{ marginTop: 16 }}>
+        <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>All disputes involving your submissions — either filed by you or filed against your work. Track the status and outcome of each dispute.</p>
         {myDisputes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(d => {
           const isDisputer = d.disputedBy === user.username;
           const statusColor = d.status === "pending_review" ? "#D97706" : d.status === "upheld" ? "#DC2626" : "#059669";
@@ -558,30 +575,30 @@ function ReviewScreenInner({ user }) {
           return (
             <div key={d.id} className="ta-card" style={{ borderLeft: `4px solid ${statusColor}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
-                  {isDisputer ? "⚖ You disputed" : "⚖ Disputed against you"} · {safe(d.orgName)} · {sDate(d.createdAt)}
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
+                  {isDisputer ? "You disputed" : "Disputed against you"} · {safe(d.orgName)} · {sDate(d.createdAt)}
                 </span>
-                <span style={{ fontSize: 10, padding: "2px 7px", background: d.status === "pending_review" ? "#FFFBEB" : d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", color: statusColor, borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>{statusLabel}</span>
+                <span style={{ fontSize: 10, padding: "2px 7px", background: d.status === "pending_review" ? "#FFFBEB" : d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", color: statusColor, borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>{statusLabel}</span>
               </div>
-              <div style={{ padding: 10, background: "#F9FAFB", borderRadius: 8, marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#475569", marginBottom: 3 }}>ORIGINAL SUBMISSION</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "#0F172A" }}>{safe(d.submissionHeadline)}</div>
-                <div style={{ fontSize: 12, color: "#475569", marginTop: 4, lineHeight: 1.6 }}>{safe(d.submissionReasoning)}</div>
+              <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", marginBottom: 3 }}>ORIGINAL SUBMISSION</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{safe(d.submissionHeadline)}</div>
+                <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4, lineHeight: 1.6 }}>{safe(d.submissionReasoning)}</div>
               </div>
-              <div style={{ padding: 10, background: "#FFF7ED", border: "1px solid #EA580C40", borderRadius: 8, marginBottom: 8 }}>
+              <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #EA580C40", borderRadius: 0, marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 3 }}>DISPUTE REASONING</div>
-                <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{safe(d.reasoning)}</div>
-                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "#475569" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
+                <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{safe(d.reasoning)}</div>
+                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
               </div>
-              {d.status !== "pending_review" && <div style={{ padding: 10, background: d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", borderRadius: 8, marginBottom: 6 }}>
+              {d.status !== "pending_review" && <div style={{ padding: 10, background: d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", borderRadius: 0, marginBottom: 6 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: statusColor, marginBottom: 3 }}>OUTCOME</div>
-                <div style={{ fontSize: 13, color: "#1E293B" }}>{d.status === "upheld" ? "The dispute was upheld — the original submission was found to be wrong." : "The dispute was dismissed — the original submission stands."}</div>
-                <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>Votes: {upheldCount} uphold / {rejectedCount} dismiss</div>
+                <div style={{ fontSize: 13, color: "var(--text)" }}>{d.status === "upheld" ? "The dispute was upheld — the original submission was found to be wrong." : "The dispute was dismissed — the original submission stands."}</div>
+                <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>Votes: {upheldCount} uphold / {rejectedCount} dismiss</div>
               </div>}
-              {d.status === "pending_review" && <div style={{ fontSize: 11, color: "#D97706" }}>Jury review in progress — {voteCount}/{(d.jurors || []).length} votes cast</div>}
+              {d.status === "pending_review" && <div style={{ fontSize: 11, color: "var(--gold)" }}>Jury review in progress — {voteCount}/{(d.jurors || []).length} votes cast</div>}
               {jurorNotes.length > 0 && <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>Juror Notes</div>
-                {jurorNotes.map((jn, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: jn.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${jn.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 4 }}>Juror Notes</div>
+                {jurorNotes.map((jn, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: jn.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 0, borderLeft: `3px solid ${jn.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
                   <span style={{ fontSize: 10, color: jn.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{jn.approve ? "UPHOLD" : "DISMISS"}</span> — {safe(jn.note)}
                 </div>)}
               </div>}
@@ -589,12 +606,12 @@ function ReviewScreenInner({ user }) {
             </div>
           );
         })}
-      </div>)}
-
-      {/* My Results Tab — user's rejected submissions with concede/dispute actions */}
-      {tab === "myresults" && (myRejected.length === 0 ? <Empty text="No rejected submissions. When your submissions are rejected by a jury, they'll appear here so you can concede or dispute." /> : <div>
-        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>
-          Your submissions that were rejected by jury vote. You can <strong>concede</strong> (accept the rejection and recover reputation) or <strong>dispute</strong> (challenge the rejection with additional evidence — a new jury will decide).
+      </div>}
+      {/* Rejected submissions — concede or dispute */}
+      {myRejected.length > 0 && <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--red)", fontWeight: 700, marginBottom: 8 }}>Your Rejected Submissions — Choose to Concede or Dispute</div>
+        <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>
+          <strong>Concede</strong> to accept the rejection and recover reputation, or <strong>dispute</strong> to challenge with additional evidence — a new jury will decide.
         </p>
         {concedeSuccess && <div className="ta-success" style={{ marginBottom: 12 }}>{concedeSuccess}</div>}
         {myRejected.sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt)).map(s => {
@@ -606,23 +623,23 @@ function ReviewScreenInner({ user }) {
           return (
             <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #DC2626" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>
-                  {safe(s.orgName)}{s._otherAssemblies && s._otherAssemblies.length > 0 && s._otherAssemblies.map((a, i) => <span key={i} style={{ background: "#EFF6FF", color: "#2563EB", padding: "1px 5px", borderRadius: 6, fontSize: 9, marginLeft: 4 }}>{a}</span>)} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
+                  {safe(s.orgName)}{s._otherAssemblies && s._otherAssemblies.length > 0 && s._otherAssemblies.map((a, i) => <span key={i} style={{ background: "var(--card-bg)", color: "var(--gold)", padding: "1px 5px", borderRadius: 0, fontSize: 9, marginLeft: 4 }}>{a}</span>)} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
                 </span>
                 <StatusPill status={s.status} />
               </div>
-              <a href={s.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(s.url)}</a>
-              <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+              <a href={safeHref(s.url)} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(s.url)}</a>
+              <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
                 <SubHeadline sub={s} />
               </div>
-              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 8 }}>{safe(s.reasoning)}</div>
+              <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 8 }}>{safe(s.reasoning)}</div>
 
               {/* Juror rejection notes */}
               {rejectionNotes.length > 0 && (
-                <div style={{ marginBottom: 10, padding: 10, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8 }}>
-                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#DC2626", marginBottom: 6, fontWeight: 700 }}>JUROR REJECTION NOTES</div>
+                <div style={{ marginBottom: 10, padding: 10, background: "rgba(196,74,58,0.09)", border: "1px solid #FECACA", borderRadius: 0 }}>
+                  <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--red)", marginBottom: 6, fontWeight: 700 }}>JUROR REJECTION NOTES</div>
                   {rejectionNotes.map((jn, i) => (
-                    <div key={i} style={{ fontSize: 12, color: "#1E293B", padding: "6px 0", borderTop: i > 0 ? "1px solid #FECACA" : "none", lineHeight: 1.6 }}>
+                    <div key={i} style={{ fontSize: 12, color: "var(--text)", padding: "6px 0", borderTop: i > 0 ? "1px solid #FECACA" : "none", lineHeight: 1.6 }}>
                       {safe(jn.note)}
                     </div>
                   ))}
@@ -631,7 +648,7 @@ function ReviewScreenInner({ user }) {
 
               {/* Actions */}
               {hasDisputed ? (
-                <div style={{ fontSize: 11, color: "#EA580C", fontFamily: "var(--mono)", padding: "6px 8px", background: "#FFF7ED", borderRadius: 6 }}>⚖ Dispute filed — awaiting jury review</div>
+                <div style={{ fontSize: 11, color: "#EA580C", fontFamily: "var(--mono)", padding: "6px 8px", background: "rgba(212,168,67,0.09)", borderRadius: 0 }}>Dispute filed — awaiting jury review</div>
               ) : (
                 <div>
                   {concedingId !== s.id && disputingResultId !== s.id && (
@@ -640,23 +657,23 @@ function ReviewScreenInner({ user }) {
                         Concede ({Math.round(recovery * 100)}% recovery)
                       </button>
                       <button className="ta-btn-secondary" style={{ fontSize: 11, borderColor: "#EA580C", color: "#EA580C" }} onClick={() => { setDisputingResultId(s.id); setConcedingId(null); setResultDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }] }); setResultDisputeError(""); }}>
-                        ⚖ Dispute Rejection
+                        Dispute Rejection
                       </button>
                     </div>
                   )}
 
                   {/* Concede form */}
                   {concedingId === s.id && (
-                    <div style={{ marginTop: 8, padding: 12, background: "#F5F3FF", border: "1.5px solid #7C3AED", borderRadius: 8 }}>
+                    <div style={{ marginTop: 8, padding: 12, background: "var(--card-bg)", border: "1.5px solid #7C3AED", borderRadius: 0 }}>
                       <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#7C3AED", fontWeight: 700, marginBottom: 6 }}>CONCEDE THIS REJECTION</div>
-                      <p style={{ fontSize: 12, color: "#475569", marginBottom: 8, lineHeight: 1.6 }}>
+                      <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 8, lineHeight: 1.6 }}>
                         Conceding accepts the jury's rejection. Recovery: <strong>{Math.round(recovery * 100)}%</strong> of reputation loss.
                         {recovery >= 1 ? " First concession this week — full recovery." : recovery >= 0.9 ? " Within 2 weeks." : recovery >= 0.5 ? " Within 1 month — 50% recovery." : " Recovery decays over time."}
                       </p>
                       {concedeError && <div className="ta-error">{concedeError}</div>}
                       <div className="ta-field"><label>Why are you conceding? *</label><textarea value={concedeReason} onChange={e => setConcedeReason(e.target.value)} rows={2} placeholder="Briefly explain why you accept the jury's decision..." /></div>
                       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                        <button className="ta-btn-primary" style={{ background: "#7C3AED" }} onClick={() => submitConcession(s.id)}>Submit Concession</button>
+                        <button className="ta-btn-primary" style={{ background: "#7C3AED" }} onClick={() => setShowConcedeConfirm(s.id)}>Submit Concession</button>
                         <button className="ta-btn-ghost" onClick={() => setConcedingId(null)}>Cancel</button>
                       </div>
                     </div>
@@ -664,9 +681,9 @@ function ReviewScreenInner({ user }) {
 
                   {/* Dispute form */}
                   {disputingResultId === s.id && (
-                    <div style={{ marginTop: 8, padding: 12, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8 }}>
-                      <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#EA580C", fontWeight: 700, marginBottom: 6 }}>⚖ DISPUTE THIS REJECTION</div>
-                      <p style={{ fontSize: 12, color: "#475569", marginBottom: 8, lineHeight: 1.6 }}>
+                    <div style={{ marginTop: 8, padding: 12, background: "rgba(212,168,67,0.09)", border: "1.5px solid #EA580C", borderRadius: 0 }}>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#EA580C", fontWeight: 700, marginBottom: 6 }}>DISPUTE THIS REJECTION</div>
+                      <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 8, lineHeight: 1.6 }}>
                         Challenge the jury's rejection. Provide additional evidence and reasoning. A new jury will review. If upheld, your reputation is restored and the disputer gains credit.
                       </p>
                       {resultDisputeError && <div className="ta-error">{resultDisputeError}</div>}
@@ -683,29 +700,44 @@ function ReviewScreenInner({ user }) {
             </div>
           );
         })}
+      </div>}
+      </div>}
+
+      {/* My Results Tab — submission history (approved/resolved) */}
+      {tab === "myresults" && (myApproved.length === 0 ? <Empty text="No approved submissions yet. Your approved corrections and affirmations will appear here." /> : <div>
+        <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Your submissions that were approved by jury vote — your contribution to the assembly record.</p>
+        {myApproved.sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt)).map(s => (
+          <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #059669" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(s.orgName)} · {sDate(s.resolvedAt || s.createdAt)}</span>
+              <StatusPill status={s.status} />
+            </div>
+            <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}><SubHeadline sub={s} /></div>
+          </div>
+        ))}
       </div>)}
 
       {/* Story Proposals Tab */}
       {tab === "stories" && (storyProposals.length === 0 ? <Empty text="No story proposals awaiting your review." /> : <div>
-        <p style={{ fontSize: 13, color: "#475569", marginBottom: 12, lineHeight: 1.6 }}>Story pages track real-world events across multiple submissions. Vote on whether these stories deserve their own page.</p>
+        <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Story pages track real-world events across multiple submissions. Vote on whether these stories deserve their own page.</p>
         {storyProposals.map(sp => {
           const isReviewing = reviewingId === sp.id;
           return (
             <div key={sp.id} className="ta-card" style={{ borderLeft: "4px solid #8B5CF6" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{safe(sp.submittedBy)} · {safe(sp.orgName)} · {sDate(sp.createdAt)}</span>
-                <span style={{ fontSize: 10, padding: "2px 7px", background: "#F5F3FF", color: "#7C3AED", borderRadius: 8, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Story Proposal</span>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(sp.submittedBy)} · {safe(sp.orgName)} · {sDate(sp.createdAt)}</span>
+                <span style={{ fontSize: 10, padding: "2px 7px", background: "var(--card-bg)", color: "#7C3AED", borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Story Proposal</span>
               </div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "#0F172A", marginBottom: 8 }}>{safe(sp.title)}</div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>{safe(sp.title)}</div>
               <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, marginBottom: 10, whiteSpace: "pre-wrap" }}>{safe(sp.description)}</div>
-              <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
                 Jurors: {(sp.jurors || []).length} assigned · Votes: {Object.keys(sp.votes || {}).length}/{sp.jurySeats || "?"}
               </div>
               {!isReviewing ? (
                 <button className="ta-btn-primary" style={{ fontSize: 12 }} onClick={() => { setReviewingId(sp.id); setVoteNote(""); }}>Review & Vote</button>
               ) : (
-                <div style={{ padding: 12, background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-                  <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "#64748B", marginBottom: 8 }}>YOUR VOTE</div>
+                <div style={{ padding: 12, background: "var(--card-bg)", borderRadius: 0, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 8 }}>YOUR VOTE</div>
                   <textarea
                     className="ta-input"
                     style={{ width: "100%", marginBottom: 10, padding: "8px 12px", fontSize: 13, minHeight: 60, resize: "vertical" }}
@@ -714,11 +746,11 @@ function ReviewScreenInner({ user }) {
                     onChange={e => setVoteNote(e.target.value)}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="ta-btn-primary" style={{ background: "#059669" }} onClick={async () => {
+                    <button className="ta-btn-primary" style={{ background: "var(--green)" }} onClick={async () => {
                       const res = await fetch(`/api/stories/${sp.id}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approve: true, note: voteNote, role: sp.juryRole || "in_group" }) });
                       if (res.ok) { setReviewingId(null); load(); }
                     }}>Approve</button>
-                    <button className="ta-btn-primary" style={{ background: "#DC2626" }} onClick={async () => {
+                    <button className="ta-btn-primary" style={{ background: "var(--red)" }} onClick={async () => {
                       const res = await fetch(`/api/stories/${sp.id}/vote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approve: false, note: voteNote, role: sp.juryRole || "in_group" }) });
                       if (res.ok) { setReviewingId(null); load(); }
                     }}>Reject</button>
@@ -733,6 +765,22 @@ function ReviewScreenInner({ user }) {
 
       {/* DI Management Tab */}
       {tab === "di" && <DIPanelContent user={user} subs={subs} onReload={load} />}
+
+      {/* Concession Confirmation Modal */}
+      {showConcedeConfirm && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(10,10,6,0.94)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowConcedeConfirm(null)}>
+          <div style={{ border: "1px solid var(--border)", padding: 20, textAlign: "center", maxWidth: 340, background: "var(--card-bg)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#7C3AED", marginBottom: 6 }}>Concession is Permanent</div>
+            <div style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 14, lineHeight: 1.6 }}>
+              By conceding, you accept the jury's rejection. This cannot be undone. If you realize you were correct later on, <strong style={{ color: "var(--red)" }}>it will be too late to earn back reputation</strong>. If you believe you were right, dispute instead.
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button className="ta-btn-primary" style={{ background: "#7C3AED", padding: "8px 20px", fontSize: 11, fontWeight: 700, letterSpacing: 1 }} onClick={() => { submitConcession(showConcedeConfirm); setShowConcedeConfirm(null); }}>YES, CONCEDE</button>
+              <button style={{ padding: "8px 16px", fontSize: 11, border: "1px solid var(--border)", color: "var(--text-sec)", cursor: "pointer", background: "none" }} onClick={() => setShowConcedeConfirm(null)}>CANCEL</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

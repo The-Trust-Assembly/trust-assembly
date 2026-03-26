@@ -96,7 +96,7 @@ export async function GET() {
   const result = await sql`
     SELECT
       s.id, s.submission_type, s.status, s.url, s.normalized_url,
-      s.original_headline, s.replacement, s.reasoning, s.author,
+      s.original_headline, s.replacement, s.reasoning, s.author, s.body_text,
       s.trusted_skip, s.is_di, s.jury_seats, s.jury_seed,
       s.internal_jury_size, s.cross_group_jury_size, s.cross_group_seed,
       s.deliberate_lie_finding, s.survival_count,
@@ -224,6 +224,7 @@ export async function GET() {
       replacement: row.replacement,
       reasoning: row.reasoning,
       author: row.author,
+      bodyText: row.body_text,
       trustedSkip: row.trusted_skip,
       isDI: row.is_di,
       diPartner: row.di_partner_username,

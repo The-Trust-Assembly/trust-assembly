@@ -1,132 +1,183 @@
-import React from "react";
+import React, { useState } from "react";
 import { anonName, sDate } from "../lib/utils";
-import { UsernameLink, SubHeadline, StatusPill, AuditTrail } from "./ui";
+import { UsernameLink, SubHeadline, StatusPill, AuditTrail, Icon } from "./ui";
 
 export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDispute }) {
   if (!sub) return null;
+  const [openRibbons, setOpenRibbons] = useState({ rewrite: true, edits: true, vault: false, verdicts: true });
+  const toggle = (key) => setOpenRibbons(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const inlineEditCount = sub.inlineEdits?.length || 0;
+  const approvedEdits = sub.inlineEdits?.filter(e => e.approved)?.length || 0;
+  const rejectedEdits = sub.inlineEdits?.filter(e => e.approved === false)?.length || 0;
+
+  // Vault entries
+  const vaultItems = [];
+  if (sub.standingCorrection) vaultItems.push({ type: "FACT", content: sub.standingCorrection.assertion, detail: sub.standingCorrection.evidence });
+  if (sub.argumentEntry) vaultItems.push({ type: "ARGUMENT", content: sub.argumentEntry.content });
+  if (sub.beliefEntry) vaultItems.push({ type: "BELIEF", content: sub.beliefEntry.content });
+  if (sub.translationEntry) vaultItems.push({ type: "TRANSLATION", content: `"${sub.translationEntry.original}" → "${sub.translationEntry.translated}"` });
+  if (sub.linkedVaultEntries) sub.linkedVaultEntries.forEach(e => vaultItems.push({ type: (e.type || "FACT").toUpperCase(), content: e.label, detail: e.detail }));
+
+  // Jury votes
+  const allVotes = { ...(sub.votes || {}), ...(sub.crossGroupVotes || {}) };
+  const voteEntries = Object.entries(allVotes);
+  const approveCount = voteEntries.filter(([, v]) => v.approve).length;
+  const rejectCount = voteEntries.filter(([, v]) => !v.approve).length;
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>{sub.resolvedAt ? <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} /> : <span>{anonName(sub.submittedBy, sub.anonMap, false)}</span>} · {sub.orgName} · {sDate(sub.createdAt)}{sub.trustedSkip ? " · 🛡 Trusted" : ""}{sub.isDI ? " · 🤖 DI" : ""}</span>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {sub.isDI && <span style={{ fontSize: 8, padding: "1px 5px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>🤖 DIGITAL INTELLIGENCE</span>}
-          {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "#ECFDF5", color: "#059669", borderRadius: 8, fontFamily: "var(--mono)", fontWeight: 700 }}>TRUSTED — DISPUTABLE</span>}
-          <StatusPill status={sub.status} />
+      {/* 01: Rewrite the headline */}
+      <div className="ribbon">
+        <div className={`ribbon-head ${openRibbons.rewrite ? "open" : "closed"}`} onClick={() => toggle("rewrite")}>
+          <div><span className="ribbon-num">01</span><span className="ribbon-title">Rewrite the headline</span></div>
+          <span className="ribbon-arrow" style={{ transform: openRibbons.rewrite ? "rotate(180deg)" : "none" }}>▼</span>
         </div>
-      </div>
-      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{sub.url}</a>
-      <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
-        <SubHeadline sub={sub} size={15} />
-      </div>
-      <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.8, marginBottom: 10 }}>{sub.reasoning}</div>
-
-      {sub.evidence && sub.evidence.length > 0 && (
-        <div style={{ marginTop: 12, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>📎 {sub.evidence.length} Evidence Source{sub.evidence.length > 1 ? "s" : ""}</div>
-          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "#0D9488" }}>{e.url}</a>{e.explanation && <div style={{ color: "#475569", marginTop: 2 }}>↳ {e.explanation}</div>}</div>)}
-        </div>
-      )}
-
-      {sub.inlineEdits && sub.inlineEdits.length > 0 && (
-        <div style={{ marginTop: 14, padding: 12, background: "#F1F5F9", borderRadius: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 6 }}>{sub.inlineEdits.length} In-Line Edit{sub.inlineEdits.length > 1 ? "s" : ""}</div>
-          {sub.inlineEdits.map((e, i) => (
-            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < sub.inlineEdits.length - 1 ? "1px solid #E2E8F0" : "none" }}>
-              <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
-                <span style={{ textDecoration: "line-through", color: "#64748B" }}>{e.original}</span> → <span style={{ color: "#DC2626", fontWeight: 600 }}>{e.replacement}</span>
-                {e.reasoning && <div style={{ fontSize: 12, color: "#475569", marginTop: 1 }}>↳ {e.reasoning}</div>}
-              </div>
-              {e.approved !== undefined && (
-                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.approved ? "#059669" : "#DC2626", fontWeight: 700 }}>{e.approved ? "✓ APPROVED" : "✗ REJECTED"}</span>
-              )}
+        {openRibbons.rewrite && (
+          <div className="ribbon-body">
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>
+              <UsernameLink username={sub.resolvedAt ? sub.submittedBy : null} onClick={onViewCitizen} />
+              {!sub.resolvedAt && <span className="hidden-user">{anonName(sub.submittedBy, sub.anonMap, false)}</span>}
+              <span style={{ marginLeft: 4 }}>· {sub.orgName} · {sDate(sub.createdAt)}</span>
+              {sub.trustedSkip && <span> · <Icon name="trust-badge" size={14} /> Trusted</span>}
+              {sub.isDI && <span> · <Icon name="robot" size={14} /> DI</span>}
             </div>
-          ))}
-        </div>
-      )}
-
-      {sub.standingCorrection && (
-        <div style={{ marginTop: 14, padding: 12, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 3 }}>🏛 Standing Correction Proposed</div>
-          <div style={{ color: "#1E293B", fontWeight: 600 }}>{sub.standingCorrection.assertion}</div>
-          {sub.standingCorrection.evidence && <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>Source: {sub.standingCorrection.evidence}</div>}
-        </div>
-      )}
-
-      {sub.argumentEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#EFF6FF", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", marginBottom: 3 }}>⚔️ Argument Proposed</div>
-          <div style={{ color: "#1E293B", lineHeight: 1.6 }}>{sub.argumentEntry.content}</div>
-        </div>
-      )}
-
-      {sub.beliefEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#F3E8F9", border: "1px solid #9B7DB8", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief Proposed</div>
-          <div style={{ color: "#1E293B", lineHeight: 1.6, fontStyle: "italic" }}>{sub.beliefEntry.content}</div>
-        </div>
-      )}
-
-      {sub.translationEntry && (
-        <div style={{ marginTop: 8, padding: 10, background: "#FFFBEB", border: "1px solid #B4530980", borderRadius: 8, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation Proposed — {sub.translationEntry.type}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ textDecoration: "line-through", color: "#475569" }}>{sub.translationEntry.original}</span>
-            <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
-            <span style={{ color: "#B45309", fontWeight: 700 }}>{sub.translationEntry.translated}</span>
+            <div style={{ fontSize: 9, color: "var(--gold)", marginBottom: 6 }}>{sub.url}</div>
+            <SubHeadline sub={sub} />
+            {sub.reasoning && (
+              <>
+                <div className="field-label" style={{ marginTop: 8 }}>Reasoning</div>
+                <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 6 }}>{sub.reasoning}</div>
+              </>
+            )}
+            {sub.evidence && sub.evidence.length > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</span>
+              </div>
+            )}
+            {sub.evidence && sub.evidence.map((e, i) => (
+              <div key={i} style={{ fontSize: 9, marginTop: 4 }}>
+                <a href={e.url} target="_blank" rel="noopener" style={{ color: "var(--gold)", textDecoration: "none", wordBreak: "break-all" }}>{e.url}</a>
+                {e.explanation && <div style={{ color: "var(--text-muted)", marginTop: 1 }}>↳ {e.explanation}</div>}
+              </div>
+            ))}
           </div>
+        )}
+      </div>
+
+      {/* 02: In-line edits */}
+      {inlineEditCount > 0 && (
+        <div className="ribbon">
+          <div className={`ribbon-head ${openRibbons.edits ? "open" : "closed"}`} onClick={() => toggle("edits")}>
+            <div>
+              <span className="ribbon-num">02</span>
+              <span className="ribbon-title">In-line edits</span>
+              <span className="ribbon-meta" style={{ color: approvedEdits > 0 ? "var(--green)" : "var(--text-muted)" }}>
+                {approvedEdits} approved{rejectedEdits > 0 ? `, ${rejectedEdits} rejected` : ""}
+              </span>
+            </div>
+            <span className="ribbon-arrow" style={{ transform: openRibbons.edits ? "rotate(180deg)" : "none" }}>▼</span>
+          </div>
+          {openRibbons.edits && (
+            <div className="ribbon-body">
+              <div style={{ fontSize: 9, color: "var(--gold)", letterSpacing: "1px", fontWeight: 600, marginBottom: 6 }}>
+                {inlineEditCount} EDIT{inlineEditCount > 1 ? "S" : ""} ({approvedEdits} APPROVED, {rejectedEdits} REJECTED)
+              </div>
+              {sub.inlineEdits.map((e, i) => (
+                <div key={i} style={{ background: "#ffffff", border: "1px solid #e0dcd4", padding: 12, marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, letterSpacing: "1px", textTransform: "uppercase", color: "#9e3527", marginBottom: 3, fontWeight: 700 }}>Edit {i + 1} — original</div>
+                  <div style={{ fontSize: 11, color: "#9e3527", textDecoration: "line-through", lineHeight: 1.6, marginBottom: 8 }}>{e.original}</div>
+                  <div style={{ fontSize: 8, letterSpacing: "1px", textTransform: "uppercase", color: "#2d6e34", marginBottom: 3, fontWeight: 700 }}>Replacement</div>
+                  <div style={{ fontSize: 11, color: "#2d6e34", lineHeight: 1.6, borderLeft: "3px solid var(--green)", paddingLeft: 8 }}>{e.replacement}</div>
+                  {e.reasoning && <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 4 }}>↳ {e.reasoning}</div>}
+                  {e.approved !== undefined && (
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{ fontSize: 8, fontWeight: 700, color: e.approved ? "var(--green)" : "var(--red)" }}>
+                        {e.approved ? "✓ APPROVED" : "✗ REJECTED"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {sub.linkedVaultEntries && sub.linkedVaultEntries.length > 0 && (
-        <div style={{ marginTop: 10, padding: 10, background: "#F1F5F9", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569", marginBottom: 8 }}>📎 {sub.linkedVaultEntries.length} Linked Vault Entr{sub.linkedVaultEntries.length === 1 ? "y" : "ies"}</div>
-          {sub.linkedVaultEntries.map(e => {
-            const tc = { correction: ["🏛", "#059669", "#ECFDF5"], argument: ["⚔️", "#0D9488", "#F0FDFA"], belief: ["🧭", "#7C3AED", "#F3E8F9"] }[e.type] || ["📎", "#475569", "#F1F5F9"];
-            return <div key={e.id} style={{ marginBottom: 8, padding: "8px 10px", background: tc[2], border: `1px solid ${tc[1]}30`, borderRadius: 8 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: tc[1], fontWeight: 700 }}>{tc[0]} Existing {e.type}{e.survivalCount > 0 ? ` · survived ${e.survivalCount} review${e.survivalCount !== 1 ? "s" : ""}` : ""}</div>
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1E293B" }}>{e.label}</div>
-              {e.detail && <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Source: {e.detail}</div>}
-              {e.stillApplies !== undefined && (
-                <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: e.stillApplies ? "#059669" : "#DC2626", fontWeight: 700 }}>{e.stillApplies ? "✓ STILL APPLIES" : "✗ NO LONGER VALID"}</span>
-              )}
-            </div>;
-          })}
+      {/* 03: Build the case (vault) */}
+      {vaultItems.length > 0 && (
+        <div className="ribbon">
+          <div className={`ribbon-head ${openRibbons.vault ? "open" : "closed"}`} onClick={() => toggle("vault")}>
+            <div>
+              <span className="ribbon-num">03</span>
+              <span className="ribbon-title">Build the case</span>
+              <span className="ribbon-meta">{vaultItems.length} item{vaultItems.length > 1 ? "s" : ""}</span>
+            </div>
+            <span className="ribbon-arrow" style={{ transform: openRibbons.vault ? "rotate(180deg)" : "none" }}>▼</span>
+          </div>
+          {openRibbons.vault && (
+            <div className="ribbon-body">
+              {vaultItems.map((item, i) => (
+                <div key={i} style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 8, marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, color: "var(--gold)", letterSpacing: "1px", fontWeight: 600 }}>{item.type}</div>
+                  <div style={{ fontSize: 10, marginTop: 2, color: "var(--text)" }}>{item.content}</div>
+                  {item.detail && <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>{item.detail}</div>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Jury verdict tally + individual votes — visible after resolution */}
-      {sub.resolvedAt && (() => {
-        const allVotes = { ...(sub.votes || {}), ...(sub.crossGroupVotes || {}) };
-        const voteEntries = Object.entries(allVotes);
-        if (voteEntries.length === 0) return null;
-        const approveCount = voteEntries.filter(([, v]) => v.approve).length;
-        const rejectCount = voteEntries.filter(([, v]) => !v.approve).length;
-        const isRejected = ["rejected", "consensus_rejected"].includes(sub.status);
-        const allJurorRows = voteEntries.map(([voter, v]) => ({
-          voter: sub.anonMap?.[voter] || voter,
-          note: (v.note && v.note.trim()) ? v.note : "N/A — resolved before detailed review notes were recorded",
-          approve: v.approve,
-          time: v.time,
-          hasNote: !!(v.note && v.note.trim()),
-        }));
-        return (
-          <div style={{ marginTop: 14, padding: 12, background: isRejected ? "#FEF2F2" : "#F1F5F9", borderRadius: 8, border: `1px solid ${isRejected ? "#DC262640" : "#E2E8F0"}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#475569" }}>Jury Verdict</div>
-              <div style={{ fontSize: 11, fontFamily: "var(--mono)", fontWeight: 700 }}>
-                <span style={{ color: "#059669" }}>{approveCount} Approve</span>
-                <span style={{ color: "#64748B", margin: "0 4px" }}>&middot;</span>
-                <span style={{ color: "#DC2626" }}>{rejectCount} Reject</span>
+      {/* 04: Assembly verdicts */}
+      {sub.resolvedAt && voteEntries.length > 0 && (
+        <div className="ribbon">
+          <div className={`ribbon-head ${openRibbons.verdicts ? "open" : "closed"}`} onClick={() => toggle("verdicts")}>
+            <div><span className="ribbon-num">04</span><span className="ribbon-title">Assembly verdicts</span></div>
+            <span className="ribbon-arrow" style={{ transform: openRibbons.verdicts ? "rotate(180deg)" : "none" }}>▼</span>
+          </div>
+          {openRibbons.verdicts && (
+            <div className="ribbon-body">
+              <div style={{ border: "1px solid var(--border)", marginBottom: 6 }}>
+                <div style={{ padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card-bg)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700 }}>{sub.orgName}</span>
+                    <StatusPill status={sub.status} />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }}>
+                    <span style={{ color: "var(--green)", fontWeight: 700 }}>{approveCount}</span>
+                    <span style={{ color: "var(--text-muted)" }}>·</span>
+                    <span style={{ color: "var(--red)", fontWeight: 700 }}>{rejectCount}</span>
+                  </div>
+                </div>
+                <div style={{ padding: "8px 10px" }}>
+                  {voteEntries.map(([voter, v], i) => (
+                    <div key={i} style={{ border: "1px solid var(--border)", marginBottom: 4 }}>
+                      <div style={{ padding: "6px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg)" }}>
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: v.approve ? "var(--green)" : "var(--red)", display: "inline-block" }} />
+                          <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 6 }}>{sub.anonMap?.[voter] || voter}</span>
+                        </div>
+                        <span style={{ fontSize: 7, padding: "2px 5px", border: `1px solid ${v.approve ? "rgba(74,158,85,0.27)" : "rgba(196,74,58,0.27)"}`, color: v.approve ? "var(--green)" : "var(--red)", fontWeight: 700 }}>
+                          {v.approve ? "APPROVE" : "REJECT"}
+                        </span>
+                      </div>
+                      {v.note && v.note.trim() && (
+                        <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border)", background: "#0e0e08" }}>
+                          <div style={{ fontSize: 8, letterSpacing: "1px", fontWeight: 600, marginBottom: 3, color: v.approve ? "var(--green)" : "var(--red)" }}>REASONING</div>
+                          <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>{v.note}</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            {allJurorRows.map((n, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: n.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 6, borderLeft: `3px solid ${n.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
-              <span style={{ fontSize: 10, color: n.approve ? "#059669" : "#DC2626", fontFamily: "var(--mono)", fontWeight: 700 }}>{n.approve ? "APPROVE" : "REJECT"}</span> — <span style={n.hasNote ? {} : { color: "#94A3B8", fontStyle: "italic" }}>{n.note}</span>
-            </div>)}
-          </div>
-        );
-      })()}
+          )}
+        </div>
+      )}
 
-      {sub.deliberateLieFinding && <div style={{ fontSize: 10, color: "#991B1B", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4 }}>⚠ DELIBERATE DECEPTION FINDING</div>}
+      {sub.deliberateLieFinding && <div style={{ fontSize: 9, color: "var(--red)", fontFamily: "var(--mono)", fontWeight: 700, marginTop: 4, letterSpacing: "1px" }}>DELIBERATE DECEPTION FINDING</div>}
 
       <AuditTrail entries={sub.auditTrail} />
     </div>

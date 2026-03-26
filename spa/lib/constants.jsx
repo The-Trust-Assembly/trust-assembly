@@ -5,6 +5,7 @@
 import { LighthouseIcon, AttrLine, TABadge } from "../components/ui";
 
 export const VER = "v5";
+export const EXTENSION_LATEST_VERSION = "1.0.0";
 
 export const SK = { USERS: `ta-u-${VER}`, ORGS: `ta-o-${VER}`, SUBS: `ta-s-${VER}`, SESSION: `ta-ss-${VER}`, AUDIT: `ta-a-${VER}`, VAULT: `ta-vault-${VER}`, ARGS: `ta-args-${VER}`, BELIEFS: `ta-beliefs-${VER}`, TRANSLATIONS: `ta-trans-${VER}`, DISPUTES: `ta-disp-${VER}`, SYNTH: `ta-synth-${VER}`, GP: `ta-gp-${VER}`, APPS: `ta-apps-${VER}`, STORIES: `ta-stories-${VER}` };
 
@@ -367,12 +368,12 @@ export const PROFILES = {
   "Oracle": { desc: "Accurate, important, compelling. The gold standard.", color: "#7C3AED" },
   "Diligent Reporter": { desc: "Gets the important stories right. Not flashy, but indispensable.", color: "#059669" },
   "Raconteur": { desc: "Honest and entertaining. Picks lighter stories but never lies.", color: "#0D9488" },
-  "Archivist": { desc: "Quiet, reliable. Fills gaps nobody else bothers with.", color: "#475569" },
+  "Archivist": { desc: "Quiet, reliable. Fills gaps nobody else bothers with.", color: "#8a8278" },
   "Demagogue": { desc: "Interesting and seems important, but wrong. The dangerous kind.", color: "#DC2626" },
   "Overreacher": { desc: "Tackles big stories but can't back them up.", color: "#EA580C" },
   "Court Jester": { desc: "Entertaining noise. At least you had fun being wrong.", color: "#D97706" },
-  "Apprentice": { desc: "Still learning. Everyone starts here.", color: "#64748B" },
-  "New Citizen": { desc: "Insufficient data for profile. Submit and get reviewed.", color: "#94A3B8" },
+  "Apprentice": { desc: "Still learning. Everyone starts here.", color: "#bbb5aa" },
+  "New Citizen": { desc: "Insufficient data for profile. Submit and get reviewed.", color: "#bbb5aa" },
 };
 
 export const CITIZEN_BADGES = {
@@ -406,13 +407,13 @@ export const CITIZEN_BADGES = {
 export const BADGE_TIER_ORDER = { legendary: 0, diamond: 1, platinum: 2, gold: 3, silver: 4, bronze: 5, special: 6 };
 
 export const BADGE_TIER_STYLES = {
-  legendary: { bg: "#FFFBEB", border: "#CA8A04", text: "#92400E" },
-  diamond:   { bg: "#FDF2F8", border: "#EC4899", text: "#EC4899" },
-  platinum:  { bg: "#F5F3FF", border: "#7C3AED", text: "#7C3AED" },
-  gold:      { bg: "#FFFBEB", border: "#CA8A04", text: "#CA8A04" },
-  silver:    { bg: "#F1F5F9", border: "#64748B", text: "#475569" },
-  bronze:    { bg: "#FFF7ED", border: "#EA580C", text: "#EA580C" },
-  special:   { bg: "#F0FDFA", border: "#0D9488", text: "#0D9488" },
+  legendary: { bg: "rgba(212,168,67,0.13)", border: "rgba(212,168,67,0.4)", text: "#d4a843" },
+  diamond:   { bg: "rgba(236,72,153,0.09)", border: "rgba(236,72,153,0.27)", text: "#EC4899" },
+  platinum:  { bg: "rgba(124,58,237,0.09)", border: "rgba(124,58,237,0.27)", text: "#7C3AED" },
+  gold:      { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", text: "#d4a843" },
+  silver:    { bg: "rgba(138,130,120,0.09)", border: "rgba(138,130,120,0.27)", text: "#8a8278" },
+  bronze:    { bg: "rgba(234,88,12,0.09)", border: "rgba(234,88,12,0.27)", text: "#EA580C" },
+  special:   { bg: "rgba(13,148,136,0.09)", border: "rgba(13,148,136,0.27)", text: "#0D9488" },
 };
 
 // Deliberate Deception: 1-year penalty window

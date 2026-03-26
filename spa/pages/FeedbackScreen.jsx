@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ADMIN_USERNAME } from "../lib/constants";
 
 const FEEDBACK_STATUS_LABELS = { accepted: "Accepted", roadmapped: "Roadmapped", pending: "Pending", completed: "Completed" };
-const FEEDBACK_STATUS_COLORS = { accepted: "#059669", roadmapped: "#7C3AED", pending: "#D97706", completed: "#2563EB" };
+const FEEDBACK_STATUS_COLORS = { accepted: "#059669", roadmapped: "#7C3AED", pending: "#D97706", completed: "var(--gold)" };
 
 export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [items, setItems] = useState([]);
@@ -65,7 +65,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
         {isAdmin ? `${items.length} submission${items.length !== 1 ? "s" : ""} from beta users` : `${items.length} submission${items.length !== 1 ? "s" : ""} you've sent`}
       </p>
       {isAdmin && (
-        <div style={{ fontSize: 12, color: "var(--stone)", marginBottom: 16, padding: "8px 12px", background: "#F8FAFC", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+        <div style={{ fontSize: 12, color: "var(--stone)", marginBottom: 16, padding: "8px 12px", background: "var(--card-bg)", borderRadius: 0, border: "1px solid var(--border)" }}>
           Admin tools and diagnostics have moved to the <a href="/admin/system-health" style={{ color: "var(--accent)", fontWeight: 600 }}>System Health</a> page.
         </div>
       )}
@@ -92,7 +92,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
 
           {/* Admin reply display */}
           {item.admin_reply && (
-            <div style={{ marginTop: 12, padding: "10px 14px", backgroundColor: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 8 }}>
+            <div style={{ marginTop: 12, padding: "10px 14px", backgroundColor: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", marginBottom: 4 }}>Admin Response · {new Date(item.admin_reply_at).toLocaleString()}</div>
               <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--charcoal)", whiteSpace: "pre-wrap" }}>{item.admin_reply}</div>
             </div>
@@ -100,7 +100,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
 
           {/* User resolution display */}
           {item.user_resolution && item.user_resolution_note && (
-            <div style={{ marginTop: 8, padding: "8px 12px", backgroundColor: item.user_resolution === "resolved" ? "#ECFDF5" : "#FFF7ED", border: `1px solid ${item.user_resolution === "resolved" ? "#A7F3D0" : "#FED7AA"}`, borderRadius: 8 }}>
+            <div style={{ marginTop: 8, padding: "8px 12px", backgroundColor: item.user_resolution === "resolved" ? "#ECFDF5" : "#FFF7ED", border: `1px solid ${item.user_resolution === "resolved" ? "#A7F3D0" : "#FED7AA"}`, borderRadius: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: item.user_resolution === "resolved" ? "#059669" : "#EA580C", marginBottom: 2 }}>User Feedback</div>
               <div style={{ fontSize: 12, lineHeight: 1.4, color: "var(--charcoal)" }}>{item.user_resolution_note}</div>
             </div>
@@ -108,7 +108,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
 
           {/* Admin reply form */}
           {isAdmin && replyingTo === item.id && (
-            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8 }}>
+            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "#F8FAFC", border: "1px solid var(--border)", borderRadius: 0 }}>
               <div className="ta-field" style={{ marginBottom: 10 }}>
                 <label>Status</label>
                 <select value={replyStatus} onChange={e => setReplyStatus(e.target.value)} style={{ padding: "6px 10px", fontSize: 13 }}>
@@ -142,7 +142,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
 
           {/* User resolution form — only for completed items belonging to the current user */}
           {!isAdmin && item.status === "completed" && !item.user_resolution && item.username === currentUsername && (
-            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8 }}>
+            <div style={{ marginTop: 12, padding: "12px", backgroundColor: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#92400E", marginBottom: 8 }}>This item has been marked as completed. Is it resolved?</div>
               {resolvingId === item.id ? (
                 <>
@@ -151,14 +151,14 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
                     <textarea value={resolutionNote} onChange={e => { if (e.target.value.length <= 500) setResolutionNote(e.target.value); }} rows={2} placeholder="Any additional notes..." style={{ fontSize: 12 }} />
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="ta-btn-primary" style={{ background: "#059669", fontSize: 12 }} onClick={() => sendResolution(item.id, "resolved")} disabled={resolveSending}>Resolved</button>
+                    <button className="ta-btn-primary" style={{ background: "var(--green)", fontSize: 12 }} onClick={() => sendResolution(item.id, "resolved")} disabled={resolveSending}>Resolved</button>
                     <button className="ta-btn-primary" style={{ background: "#EA580C", fontSize: 12 }} onClick={() => sendResolution(item.id, "needs_work")} disabled={resolveSending}>Needs Work</button>
                     <button className="ta-btn-ghost" onClick={() => { setResolvingId(null); setResolutionNote(""); }}>Cancel</button>
                   </div>
                 </>
               ) : (
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="ta-btn-primary" style={{ background: "#059669", fontSize: 12 }} onClick={() => sendResolution(item.id, "resolved")}>Resolved</button>
+                  <button className="ta-btn-primary" style={{ background: "var(--green)", fontSize: 12 }} onClick={() => sendResolution(item.id, "resolved")}>Resolved</button>
                   <button className="ta-btn-secondary" style={{ fontSize: 12 }} onClick={() => setResolvingId(item.id)}>Needs Work (with feedback)</button>
                 </div>
               )}

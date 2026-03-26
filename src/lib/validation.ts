@@ -6,6 +6,7 @@ export const MAX_LENGTHS = {
   replacement: 500,
   reasoning: 5000,
   author: 200,
+  body_text: 100000,    // article body text captured at submission time
   evidence_url: 2048,
   evidence_explanation: 2000,
   inline_edit_text: 5000,

@@ -56,10 +56,12 @@ export async function GET(request: NextRequest) {
     // Extract metadata
     const headline = extractHeadline(html);
     const authors = extractAuthors(html);
+    const bodyText = extractBodyText(html);
 
     return ok({
       headline: headline || null,
       authors: authors.length > 0 ? authors : null,
+      bodyText: bodyText || null,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
@@ -212,4 +214,66 @@ function extractAuthors(html: string): string[] {
   }
 
   return authors;
+}
+
+function extractBodyText(html: string): string | null {
+  // Remove script and style tags first
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "");
+
+  let container: string | null = null;
+
+  // 1. Try <article> tag
+  const articleMatch = cleaned.match(/<article[\s\S]*?>([\s\S]*?)<\/article>/i);
+  if (articleMatch?.[1]) {
+    container = articleMatch[1];
+  }
+
+  // 2. Fall back to common article body selectors
+  if (!container) {
+    const selectors = [
+      /role=["']article["']/i,
+      /class=["'][^"']*\barticle-body\b[^"']*["']/i,
+      /class=["'][^"']*\bpost-content\b[^"']*["']/i,
+      /class=["'][^"']*\bentry-content\b[^"']*["']/i,
+      /class=["'][^"']*\bstory-body\b[^"']*["']/i,
+    ];
+
+    for (const selector of selectors) {
+      // Find the opening tag with this selector, then grab content until closing tag
+      const tagPattern = new RegExp(
+        `<(\\w+)[^>]*${selector.source}[^>]*>([\\s\\S]*?)<\\/\\1>`,
+        "i"
+      );
+      const match = cleaned.match(tagPattern);
+      if (match?.[2]) {
+        container = match[2];
+        break;
+      }
+    }
+  }
+
+  // 3. Extract <p> tags from the container (or entire page as fallback)
+  const source = container || cleaned;
+  const pMatches = source.match(/<p[\s\S]*?>([\s\S]*?)<\/p>/gi);
+  if (!pMatches || pMatches.length === 0) return null;
+
+  const paragraphs = pMatches
+    .map((p) => {
+      // Strip HTML tags
+      let text = p.replace(/<[^>]+>/g, "");
+      // Decode entities
+      text = decodeEntities(text);
+      // Collapse whitespace
+      text = text.replace(/\s+/g, " ").trim();
+      return text;
+    })
+    .filter((text) => text.length > 0);
+
+  if (paragraphs.length === 0) return null;
+
+  // Join with double newlines and cap at 10,000 characters
+  const bodyText = paragraphs.join("\n\n");
+  return bodyText.slice(0, 10_000);
 }

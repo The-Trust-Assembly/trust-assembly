@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { sDate } from "../lib/utils";
-import { SubHeadline, StatusPill, AuditTrail, Empty } from "./ui";
+import { SubHeadline, StatusPill, AuditTrail, Empty, Icon } from "./ui";
 import { queryKeys } from "../lib/queryKeys";
 
 const safe = (v) => {
@@ -133,16 +133,16 @@ export default function DIPanelContent({ user, subs, onReload }) {
     <div>
       {/* DI Link Requests */}
       {pendingLinks.length > 0 && <div style={{ marginBottom: 16 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Link Requests</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={16} /> DI Link Requests</div>
         {pendingLinks.map(r => (
           <div key={r.diUsername} className="ta-card" style={{ borderLeft: "4px solid #4F46E5", padding: 12 }}>
             <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{safe(r.diUsername)}</strong> wants to register as your Digital Intelligence</div>
-            <div style={{ padding: 10, background: "#EEF2FF", borderRadius: 8, marginBottom: 8, fontSize: 12, color: "#1E293B", lineHeight: 1.6 }}>
+            <div style={{ padding: 10, background: "#EEF2FF", borderRadius: 0, marginBottom: 8, fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
               By approving, you accept responsibility for all of this DI's submissions. <strong>You receive the scoring</strong> — wins, losses, and deliberate deception penalties. You must pre-approve each submission before it enters jury review.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="ta-btn-primary" style={{ background: "#4F46E5" }} onClick={() => approveDILink(r.diUsername)}>✓ Accept Responsibility</button>
-              <button className="ta-btn-ghost" style={{ color: "#DC2626" }} onClick={() => rejectDILink(r.diUsername)}>✗ Reject</button>
+              <button className="ta-btn-ghost" style={{ color: "var(--red)" }} onClick={() => rejectDILink(r.diUsername)}>✗ Reject</button>
             </div>
           </div>
         ))}
@@ -151,10 +151,10 @@ export default function DIPanelContent({ user, subs, onReload }) {
       {error && <div className="ta-error">{error}</div>}
 
       {/* DI Pre-Review Queue */}
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}>🤖 DI Submissions Awaiting Your Approval ({diQueue.length})</div>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={42} /> DI Submissions Awaiting Your Approval ({diQueue.length})</div>
       {diQueue.length > 0 && <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
         {confirmAll ? (
-          <div style={{ padding: 10, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 8, flex: 1 }}>
+          <div style={{ padding: 10, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 0, flex: 1 }}>
             <div style={{ fontSize: 12, color: "#EA580C", fontWeight: 600, marginBottom: 6 }}>⚠ Confirm: I have personally reviewed all {diQueue.length} pending DI submissions</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={approveAllDI}>Yes, Approve All {diQueue.length}</button>
@@ -168,18 +168,18 @@ export default function DIPanelContent({ user, subs, onReload }) {
       {diQueue.length === 0 ? <Empty text="No DI submissions awaiting your pre-approval." /> : diQueue.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "#64748B", fontFamily: "var(--mono)" }}>🤖 @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="robot" size={14} /> @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>
             <StatusPill status="di_pending" />
           </div>
           <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "#0D9488", wordBreak: "break-all" }}>{safe(sub.url)}</a>
-          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 8 }}>
+          <div style={{ margin: "8px 0", padding: 10, background: "#F9FAFB", borderRadius: 0 }}>
             <SubHeadline sub={sub} />
           </div>
-          <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.6 }}>{safe(sub.reasoning)}</div>
-          {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#0D9488" }}>📎 {sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
+          <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{safe(sub.reasoning)}</div>
+          {sub.evidence && sub.evidence.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: "#0D9488" }}>{sub.evidence.length} evidence source{sub.evidence.length > 1 ? "s" : ""}</div>}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button className="ta-btn-primary" style={{ background: "#4F46E5", fontSize: 12 }} onClick={() => approveDISub(sub.id)}>✓ Approve for Review</button>
-            <button className="ta-btn-ghost" style={{ color: "#DC2626", fontSize: 12 }} onClick={() => rejectDISub(sub.id)}>✗ Reject</button>
+            <button className="ta-btn-ghost" style={{ color: "var(--red)", fontSize: 12 }} onClick={() => rejectDISub(sub.id)}>✗ Reject</button>
           </div>
           <AuditTrail entries={sub.auditTrail} />
         </div>
