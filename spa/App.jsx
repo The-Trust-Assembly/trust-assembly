@@ -110,6 +110,14 @@ async function loadSyntheticData() {
 }
 
 export default function TrustAssembly() {
+  // Apply theme + font from localStorage on mount (before first render)
+  const [theme, setThemeState] = useState(() => { try { return localStorage.getItem("ta-theme") || "dark"; } catch { return "dark"; } });
+  const [fontSize, setFontSizeState] = useState(() => { try { return localStorage.getItem("ta-font-size") || "small"; } catch { return "small"; } });
+  useEffect(() => { document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : ""); }, [theme]);
+
+  const setTheme = (t) => { setThemeState(t); try { localStorage.setItem("ta-theme", t); } catch {} document.documentElement.setAttribute("data-theme", t === "light" ? "light" : ""); };
+  const setFontSize = (s) => { setFontSizeState(s); try { localStorage.setItem("ta-font-size", s); } catch {} };
+
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -395,7 +403,7 @@ export default function TrustAssembly() {
   }
 
   return (
-    <div className="ta-root">
+    <div className={`ta-root${fontSize === "medium" ? " font-medium" : fontSize === "large" ? " font-large" : ""}`}>
       <style>{`
         :root {
           --bg:#0d0d0a; --card-bg:#14130e; --border:#2a2518;
@@ -403,10 +411,17 @@ export default function TrustAssembly() {
           --green:#4a9e55; --red:#c44a3a; --purple:#7C3AED; --teal:#0D9488;
           --font:'Helvetica Neue',Helvetica,sans-serif; --serif:Georgia,serif; --mono:'Courier New',monospace;
         }
+        [data-theme="light"] {
+          --bg:#f5f2ec; --card-bg:#ffffff; --border:#d9d3c7;
+          --gold:#b8922e; --text:#1a1714; --text-sec:#5c564d; --text-muted:#9a948b;
+          --green:#2d7a38; --red:#b03a2e;
+        }
         *{margin:0;padding:0;box-sizing:border-box;}
         @keyframes ta-fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes ta-prog { from{width:0%} to{width:100%} }
         .ta-root { min-height:100vh; background:var(--bg); font-family:var(--font); color:var(--text); font-size:13px; line-height:1.6; }
+        .ta-root.font-medium { font-size:15px; }
+        .ta-root.font-large { font-size:17px; }
         /* ── HEADER ── */
         .hdr { padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
         .hdr-left { display:flex; align-items:center; gap:8px; }
@@ -985,7 +1000,7 @@ export default function TrustAssembly() {
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
