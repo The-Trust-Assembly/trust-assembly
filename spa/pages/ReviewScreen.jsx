@@ -26,6 +26,12 @@ const safe = (v) => {
   return String(v);
 };
 
+// Guard: only allow http(s) URLs in href attributes to prevent javascript: injection
+const safeHref = (url) => {
+  try { const u = new URL(String(url)); return ["http:", "https:"].includes(u.protocol) ? url : "#"; }
+  catch { return "#"; }
+};
+
 class ReviewErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -346,7 +352,7 @@ function ReviewScreenInner({ user }) {
           <StatusPill status={sub.status} />
         </div>
       </div>
-      <a href={sub.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(sub.url)}</a>
+      <a href={safeHref(sub.url)} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(sub.url)}</a>
       {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", padding: "4px 8px", background: "var(--card-bg)", borderRadius: 0, marginTop: 6 }}>Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
       <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />
@@ -356,7 +362,7 @@ function ReviewScreenInner({ user }) {
       {sub.evidence && sub.evidence.length > 0 && (
         <div style={{ marginTop: 12, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence: {sub.evidence.length} Source{sub.evidence.length > 1 ? "s" : ""}</div>
-          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
+          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
         </div>
       )}
 
@@ -533,7 +539,7 @@ function ReviewScreenInner({ user }) {
             <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #EA580C", borderRadius: 0, marginBottom: 10 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 4 }}>DISPUTE BY {anonName(d.disputedBy, d.anonMap, d.resolvedAt)}</div>
               <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8 }}>{safe(d.reasoning)}</div>
-              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
+              {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
             </div>
             {reviewingId === d.id ? (
               <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
@@ -582,7 +588,7 @@ function ReviewScreenInner({ user }) {
               <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #EA580C40", borderRadius: 0, marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 3 }}>DISPUTE REASONING</div>
                 <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{safe(d.reasoning)}</div>
-                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={e.url} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
+                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
               </div>
               {d.status !== "pending_review" && <div style={{ padding: 10, background: d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", borderRadius: 0, marginBottom: 6 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: statusColor, marginBottom: 3 }}>OUTCOME</div>
@@ -622,7 +628,7 @@ function ReviewScreenInner({ user }) {
                 </span>
                 <StatusPill status={s.status} />
               </div>
-              <a href={s.url} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(s.url)}</a>
+              <a href={safeHref(s.url)} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(s.url)}</a>
               <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
                 <SubHeadline sub={s} />
               </div>

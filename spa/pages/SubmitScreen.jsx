@@ -42,9 +42,12 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const [bodyText, setBodyText] = useState("");
   const [previewMode, setPreviewMode] = useState("diff"); // "clean" or "diff"
   const importTimerRef = useRef(null);
+  const lastImportedUrlRef = useRef(null);
 
   // Auto-import article headline and author when a valid URL is entered
   const importArticleMeta = useCallback(async (url) => {
+    const normalized = url?.trim().replace(/\/+$/, "").toLowerCase();
+    if (normalized && normalized === lastImportedUrlRef.current) return; // skip if already imported this URL
     if (!url || !/^https?:\/\/.+\..+/.test(url.trim())) return;
     setImporting(true); setImportMsg("");
     try {
@@ -70,6 +73,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         setImportMsg("No headline or author found on page.");
       }
     } catch { setImportMsg("Failed to fetch article."); }
+    lastImportedUrlRef.current = normalized;
     setImporting(false);
     setTimeout(() => setImportMsg(""), 5000);
   }, [form.originalHeadline, authors]);

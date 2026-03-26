@@ -207,7 +207,7 @@ CREATE TABLE submissions (
   replacement       VARCHAR(500),  -- null for affirmations
   reasoning         TEXT NOT NULL,
   author            VARCHAR(200),
-  body_text         TEXT,  -- article body text captured at submission time for preview
+  body_text         TEXT CHECK (length(body_text) <= 100000),  -- article body text captured at submission time for preview
 
   -- Origin
   submitted_by      UUID NOT NULL REFERENCES users(id),
