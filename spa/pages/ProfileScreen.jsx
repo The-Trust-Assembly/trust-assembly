@@ -7,7 +7,7 @@ import { hasActiveDeceptionPenalty, deceptionPenaltyRemaining, isDIUser, getTrus
 import { Badge, ScoreBreakdown, CitizenBadges, UsernameLink, StatusPill, SubHeadline, Icon } from "../components/ui";
 import JuryScoreCard from "../components/JuryScoreCard";
 
-export default function ProfileScreen({ user, onViewCitizen }) {
+export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fontSize, setFontSize }) {
   const [u, setU] = useState(user);
   const [orgs, setOrgs] = useState({});
   const [allUsers, setAllUsers] = useState({});
@@ -75,7 +75,7 @@ export default function ProfileScreen({ user, onViewCitizen }) {
       {/* Stats row */}
       <div className="stat-row">
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--gold)" }}>{p.trustScore}</div><div className="stat-label">Global trust</div></div>
-        <div className="stat-card"><div className="stat-num" style={{ color: "#fff" }}>{mySubs.length}</div><div className="stat-label">Submissions</div></div>
+        <div className="stat-card"><div className="stat-num" style={{ color: "var(--text)" }}>{mySubs.length}</div><div className="stat-label">Submissions</div></div>
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--green)" }}>{approvedCount}</div><div className="stat-label">Approved</div></div>
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--red)" }}>{rejectedCount}</div><div className="stat-label">Rejected</div></div>
       </div>
@@ -194,6 +194,24 @@ export default function ProfileScreen({ user, onViewCitizen }) {
         </div>
         {openRibbons.settings && (
           <div className="ribbon-body">
+            {/* Theme toggle */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Theme</div>
+              <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
+                {[["dark", "Dark"], ["light", "Light"]].map(([k, label]) => (
+                  <button key={k} onClick={() => setTheme && setTheme(k)} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: theme === k ? "var(--gold)" : "transparent", color: theme === k ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
+                ))}
+              </div>
+            </div>
+            {/* Font size */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Text Size</div>
+              <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
+                {[["small", "S"], ["medium", "M"], ["large", "L"]].map(([k, label]) => (
+                  <button key={k} onClick={() => setFontSize && setFontSize(k)} style={{ flex: 1, padding: "8px 12px", fontSize: k === "small" ? 10 : k === "medium" ? 12 : 14, fontFamily: "var(--mono)", fontWeight: 700, cursor: "pointer", border: "none", background: fontSize === k ? "var(--gold)" : "transparent", color: fontSize === k ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
+                ))}
+              </div>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "3px 12px", fontSize: 11 }}>
               {[["Username", "@" + u.username], ["Signed Up", fDate(u.signupDate)], ["Account Age", daysSince(u.signupDate) + " days"]].map(([l, v], i) => (
                 <div key={i} style={{ display: "contents" }}>

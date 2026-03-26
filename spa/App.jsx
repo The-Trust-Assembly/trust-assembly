@@ -110,6 +110,14 @@ async function loadSyntheticData() {
 }
 
 export default function TrustAssembly() {
+  // Apply theme + font from localStorage on mount (before first render)
+  const [theme, setThemeState] = useState(() => { try { return localStorage.getItem("ta-theme") || "dark"; } catch { return "dark"; } });
+  const [fontSize, setFontSizeState] = useState(() => { try { return localStorage.getItem("ta-font-size") || "small"; } catch { return "small"; } });
+  useEffect(() => { document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : ""); }, [theme]);
+
+  const setTheme = (t) => { setThemeState(t); try { localStorage.setItem("ta-theme", t); } catch {} document.documentElement.setAttribute("data-theme", t === "light" ? "light" : ""); };
+  const setFontSize = (s) => { setFontSizeState(s); try { localStorage.setItem("ta-font-size", s); } catch {} };
+
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -395,7 +403,7 @@ export default function TrustAssembly() {
   }
 
   return (
-    <div className="ta-root">
+    <div className={`ta-root${fontSize === "medium" ? " font-medium" : fontSize === "large" ? " font-large" : ""}`}>
       <style>{`
         :root {
           --bg:#0d0d0a; --card-bg:#14130e; --border:#2a2518;
@@ -403,10 +411,17 @@ export default function TrustAssembly() {
           --green:#4a9e55; --red:#c44a3a; --purple:#7C3AED; --teal:#0D9488;
           --font:'Helvetica Neue',Helvetica,sans-serif; --serif:Georgia,serif; --mono:'Courier New',monospace;
         }
+        [data-theme="light"] {
+          --bg:#f5f2ec; --card-bg:#ffffff; --border:#d9d3c7;
+          --gold:#b8922e; --text:#1a1714; --text-sec:#5c564d; --text-muted:#9a948b;
+          --green:#2d7a38; --red:#b03a2e;
+        }
         *{margin:0;padding:0;box-sizing:border-box;}
         @keyframes ta-fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes ta-prog { from{width:0%} to{width:100%} }
         .ta-root { min-height:100vh; background:var(--bg); font-family:var(--font); color:var(--text); font-size:13px; line-height:1.6; }
+        .ta-root.font-medium { zoom:1.15; }
+        .ta-root.font-large { zoom:1.3; }
         /* ── HEADER ── */
         .hdr { padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
         .hdr-left { display:flex; align-items:center; gap:8px; }
@@ -415,7 +430,7 @@ export default function TrustAssembly() {
         .hdr-sub { font-size:8px; color:var(--gold); letter-spacing:2px; font-weight:600; }
         .hdr-beta { font-size:7px; padding:1px 5px; background:var(--green); color:var(--bg); font-weight:700; }
         .hdr-nav { display:flex; gap:14px; font-size:9px; text-transform:uppercase; letter-spacing:1px; }
-        .hdr-nav span { color:#fff; cursor:pointer; }
+        .hdr-nav span { color:var(--text); cursor:pointer; }
         .hdr-nav span.active { color:var(--gold); font-weight:700; }
         .gold-rule { height:1px; background:var(--gold); margin:0 24px; }
         /* ── USER BAR ── */
@@ -472,13 +487,13 @@ export default function TrustAssembly() {
         /* ── FORMS ── */
         .ta-field { margin-bottom:8px; }
         .ta-field label { display:block; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; font-family:var(--font); }
-        .ta-field input,.ta-field textarea,.ta-field select { width:100%; background:#1a1a16; border:1px solid var(--border); padding:7px 10px; font-size:11px; color:#fff; font-family:inherit; outline:none; box-sizing:border-box; }
+        .ta-field input,.ta-field textarea,.ta-field select { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
         .ta-field input:focus,.ta-field textarea:focus { border-color:var(--gold); }
         .ta-field textarea { resize:vertical; }
         .field-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
-        .field-input { width:100%; background:#1a1a16; border:1px solid var(--border); padding:7px 10px; font-size:11px; color:#fff; font-family:inherit; outline:none; margin-bottom:8px; }
-        .field-textarea { width:100%; background:#1a1a16; border:1px solid var(--border); padding:7px 10px; font-size:11px; color:#fff; font-family:inherit; outline:none; resize:vertical; margin-bottom:8px; }
-        .ta-input { box-sizing:border-box; background:#1a1a16; border:1px solid var(--border); padding:7px 10px; font-size:11px; color:#fff; font-family:inherit; outline:none; }
+        .field-input { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; margin-bottom:8px; }
+        .field-textarea { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; resize:vertical; margin-bottom:8px; }
+        .ta-input { box-sizing:border-box; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; }
         .ta-input:focus { border-color:var(--gold); }
         /* ── BUTTONS ── */
         .ta-btn-primary,.btn-gold { background:var(--gold); color:var(--bg); border:none; padding:7px 18px; font-size:10px; font-weight:700; letter-spacing:1px; cursor:pointer; font-family:var(--font); }
@@ -506,7 +521,7 @@ export default function TrustAssembly() {
         .step-card { flex:1; background:var(--card-bg); border:1px solid var(--border); padding:10px; }
         .step-title { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:4px; }
         .step-text { font-size:10px; color:var(--text-sec); line-height:1.5; }
-        .step-text .w { color:#fff; font-weight:600; }
+        .step-text .w { color:var(--text); font-weight:600; }
         .step-text .g { color:var(--gold); font-weight:600; }
         /* ── SPLIT PANE ── */
         .split { display:flex; min-height:calc(100vh - 80px); }
@@ -526,7 +541,7 @@ export default function TrustAssembly() {
         .vote-panel { padding:8px 12px; border-top:1px solid var(--border); flex-shrink:0; }
         .vote-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
         .vote-label .req { color:var(--red); }
-        .vote-textarea { width:100%; background:#1a1a16; border:1px solid var(--border); padding:6px 8px; font-size:10px; color:#fff; font-family:inherit; outline:none; resize:vertical; margin-bottom:4px; }
+        .vote-textarea { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:6px 8px; font-size:10px; color:var(--text); font-family:inherit; outline:none; resize:vertical; margin-bottom:4px; }
         .vote-actions { display:flex; gap:3px; }
         .vote-btn { flex:1; text-align:center; padding:5px; font-size:9px; font-weight:700; letter-spacing:1px; cursor:pointer; border:none; }
         .vote-approve { background:var(--green); color:var(--bg); }
@@ -534,9 +549,9 @@ export default function TrustAssembly() {
         .vote-recuse { padding:5px 8px; font-size:9px; color:var(--text-muted); border:1px solid var(--border); cursor:pointer; background:none; flex:0; }
         /* ── REVIEW PAGE ── */
         .section-label { font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin-bottom:6px; font-weight:600; }
-        .education { font-size:14px; color:#fff; line-height:1.5; margin-bottom:8px; font-weight:500; }
+        .education { font-size:14px; color:var(--text); line-height:1.5; margin-bottom:8px; font-weight:500; }
         .anon-box { background:rgba(212,168,67,0.08); border:1px solid rgba(212,168,67,0.2); padding:8px 12px; margin-bottom:10px; }
-        .anon-text { font-size:10px; color:#fff; line-height:1.5; }
+        .anon-text { font-size:10px; color:var(--text); line-height:1.5; }
         .anon-text .gold { color:var(--gold); font-weight:700; }
         .review-card { margin-bottom:6px; border:1px solid var(--border); position:relative; }
         .review-split { display:flex; min-height:360px; }
@@ -617,7 +632,7 @@ export default function TrustAssembly() {
         .edit-num { font-size:9px; color:var(--gold); letter-spacing:1px; font-weight:600; }
         .edit-hint { font-size:8px; color:var(--text-muted); }
         .add-link { font-size:10px; color:var(--gold); cursor:pointer; background:none; border:none; font-family:inherit; }
-        .search-input { width:100%; background:#1a1a16; border:1px solid var(--border); padding:7px 10px; font-size:11px; color:#fff; font-family:inherit; outline:none; margin-bottom:10px; }
+        .search-input { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; margin-bottom:10px; }
         .create-label { font-size:9px; color:var(--gold); letter-spacing:1px; font-weight:600; margin:8px 0 6px; text-transform:uppercase; }
         .vault-item { background:var(--card-bg); border:1px solid var(--border); padding:8px; margin-bottom:6px; }
         .vault-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
@@ -693,7 +708,7 @@ export default function TrustAssembly() {
         .footer span { cursor:pointer; }
         .disclaimer { padding:4px 24px 8px; font-size:8px; color:var(--text-muted); text-align:center; }
         /* ── NAV DROPDOWN (for More menu) ── */
-        .ta-nav-dropdown-trigger { background:none; border:none; font-family:var(--font); cursor:pointer; font-size:9px; text-transform:uppercase; letter-spacing:1px; color:#fff; }
+        .ta-nav-dropdown-trigger { background:none; border:none; font-family:var(--font); cursor:pointer; font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--text); }
         .ta-nav-dropdown-trigger.active { color:var(--gold); font-weight:700; }
         .ta-nav-dropdown-menu { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); min-width:180px; background:var(--card-bg); border:1px solid var(--border); z-index:110; padding:4px 0; margin-bottom:2px; }
         .ta-nav-dropdown-item { display:block; width:100%; padding:8px 16px; font-size:11px; color:var(--text-sec); text-decoration:none; cursor:pointer; border:none; background:none; text-align:left; font-family:var(--font); }
@@ -985,7 +1000,7 @@ export default function TrustAssembly() {
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
