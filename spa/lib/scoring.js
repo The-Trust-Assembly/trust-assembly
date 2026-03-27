@@ -165,6 +165,37 @@ export function computeBadges(userObj, allUsers, allOrgs, allSubs) {
   if (userSubCount >= 100000)  badges.push({ ...CITIZEN_BADGES.hundredThousand, count: userSubCount });
   if (userSubCount >= 1000000) badges.push({ ...CITIZEN_BADGES.million, count: userSubCount });
 
+  // Vote milestones — count votes cast as a juror
+  const voteCount = Object.values(allSubs).reduce((count, s) => {
+    if (s.votes && s.votes[username]) count++;
+    if (s.crossGroupVotes && s.crossGroupVotes[username]) count++;
+    return count;
+  }, 0);
+  if (voteCount >= 1)   badges.push({ ...CITIZEN_BADGES.firstVote, count: voteCount });
+  if (voteCount >= 10)  badges.push({ ...CITIZEN_BADGES.tenVotes, count: voteCount });
+  if (voteCount >= 25)  badges.push({ ...CITIZEN_BADGES.twentyFiveVotes, count: voteCount });
+  if (voteCount >= 50)  badges.push({ ...CITIZEN_BADGES.fiftyVotes, count: voteCount });
+  if (voteCount >= 100) badges.push({ ...CITIZEN_BADGES.hundredVotes, count: voteCount });
+
+  // Dispute milestones — successful disputes won
+  const disputeWins = userObj.disputeWins || 0;
+  if (disputeWins >= 1)   badges.push({ ...CITIZEN_BADGES.firstDispute, count: disputeWins });
+  if (disputeWins >= 5)   badges.push({ ...CITIZEN_BADGES.fiveDisputes, count: disputeWins });
+  if (disputeWins >= 10)  badges.push({ ...CITIZEN_BADGES.tenDisputes, count: disputeWins });
+  if (disputeWins >= 20)  badges.push({ ...CITIZEN_BADGES.twentyDisputes, count: disputeWins });
+  if (disputeWins >= 50)  badges.push({ ...CITIZEN_BADGES.fiftyDisputes, count: disputeWins });
+  if (disputeWins >= 100) badges.push({ ...CITIZEN_BADGES.hundredDisputes, count: disputeWins });
+
+  // Rejection milestone
+  const rejectedCount = Object.values(allSubs).filter(s => s.submittedBy === username && s.status === "rejected").length;
+  if (rejectedCount >= 10) badges.push({ ...CITIZEN_BADGES.tenRejections, count: rejectedCount });
+
+  // DI partnership milestones
+  if (userObj.diPartner) badges.push({ ...CITIZEN_BADGES.diPartner });
+  const diSubCount = Object.values(allSubs).filter(s => s.isDI && s.diPartner === username).length;
+  if (diSubCount >= 10)     badges.push({ ...CITIZEN_BADGES.diTen, count: diSubCount });
+  if (diSubCount >= 100000) badges.push({ ...CITIZEN_BADGES.diHundredK, count: diSubCount });
+
   // Trusted Contributor - per assembly
   const streaks = userObj.assemblyStreaks || {};
   const trustedOrgs = Object.entries(streaks)

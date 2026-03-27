@@ -12,6 +12,7 @@ import ExtensionsScreen from "./pages/ExtensionsScreen";
 import ProfileScreen from "./pages/ProfileScreen";
 import OnboardingFlow from "./pages/OnboardingFlow";
 import RulesScreen from "./pages/RulesScreen";
+import BadgesScreen from "./pages/BadgesScreen";
 import VisionScreen from "./pages/VisionScreen";
 import AboutScreen from "./pages/AboutScreen";
 import VaultScreen from "./pages/VaultScreen";
@@ -36,7 +37,7 @@ const NAV_PRIMARY = [
 ];
 const NAV_DROPDOWNS = [
   { label: "Learn", items: [
-    { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "vision", label: "Vision" }, { key: "about", label: "About" },
+    { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "badges", label: "Badges" }, { key: "vision", label: "Vision" }, { key: "about", label: "About" },
   ]},
   { label: "Explore", items: [
     { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
@@ -1008,6 +1009,7 @@ export default function TrustAssembly() {
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
+            {screen === "badges" && <BadgesScreen />}
             {screen === "about" && <AboutScreen />}
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}

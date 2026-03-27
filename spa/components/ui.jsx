@@ -40,26 +40,26 @@ export function CitizenBadges({ badges }) {
   if (!badges || badges.length === 0) return (
     <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
       <div style={{ fontStyle: "italic", marginBottom: 6 }}>No badges earned yet.</div>
-      <div style={{ fontSize: 9, color: "var(--text-muted)" }}>Badges are earned automatically through participation.</div>
+      <div style={{ fontSize: 9, color: "var(--text-muted)" }}>Badges are earned automatically through participation. +1 point per badge.</div>
     </div>
   );
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-      {badges.map((b, i) => {
-        return (
-          <div key={b.id + (b.detail || "") + i} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            padding: "3px 7px",
-            background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)",
-            fontSize: 8, fontFamily: "var(--mono)", fontWeight: 700,
-            color: "var(--gold)", letterSpacing: "0.5px", cursor: "default",
-            whiteSpace: "nowrap",
-          }}>
-            <span style={{ fontSize: 11, lineHeight: 1 }}>{b.icon}</span>
-            <span>{b.label}{b.detail ? ` — ${b.detail}` : ""}</span>
-          </div>
-        );
-      })}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 8 }}>
+      {badges.map((b, i) => (
+        <div key={b.id + (b.detail || "") + i} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+          padding: "8px 4px", background: "var(--card-bg)", border: "1px solid var(--border)",
+          cursor: "default", textAlign: "center",
+        }}>
+          {b.image ? (
+            <img src={b.image} alt={b.label} width={64} height={64} style={{ objectFit: "contain" }} />
+          ) : (
+            <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px dashed var(--border)", fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", textAlign: "center", lineHeight: 1.2 }}>{b.label}</div>
+          )}
+          <div style={{ fontSize: 8, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--gold)", letterSpacing: "0.3px", lineHeight: 1.2 }}>{b.label}</div>
+          {b.detail && <div style={{ fontSize: 7, color: "var(--text-muted)" }}>{b.detail}</div>}
+        </div>
+      ))}
     </div>
   );
 }
