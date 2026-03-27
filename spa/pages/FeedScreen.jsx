@@ -407,8 +407,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
 
         return (
         <div key={sub.id} className="card">
-          {!isExpanded && <>
-          {/* Card top: meta + status */}
+          {/* Card top: meta + status — ALWAYS visible */}
           <div className="card-top">
             <div className="card-meta">
               {showUser ? (
@@ -423,6 +422,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
             <StatusPill status={sub.status} />
           </div>
 
+          {!isExpanded && <>
           {/* URL */}
           <a href={sub.url && /^https?:\/\//.test(String(sub.url)) ? sub.url : "#"} target="_blank" rel="noopener noreferrer" className="card-url" style={{ color: "var(--gold)", textDecoration: "none" }}>{domain}</a>
 

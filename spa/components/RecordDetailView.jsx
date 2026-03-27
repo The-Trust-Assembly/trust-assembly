@@ -164,7 +164,6 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
                 <div style={{ padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card-bg)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 700 }}>{sub.orgName}</span>
-                    <StatusPill status={sub.status} />
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }}>
                     <span style={{ color: "var(--green)", fontWeight: 700 }}>{approveCount}</span>
@@ -180,9 +179,7 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
                           <span style={{ width: 5, height: 5, borderRadius: "50%", background: v.approve ? "var(--green)" : "var(--red)", display: "inline-block" }} />
                           <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 6 }}>{anonId(voter)}</span>
                         </div>
-                        <span style={{ fontSize: 7, padding: "2px 5px", border: `1px solid ${v.approve ? "rgba(74,158,85,0.27)" : "rgba(196,74,58,0.27)"}`, color: v.approve ? "var(--green)" : "var(--red)", fontWeight: 700 }}>
-                          {v.approve ? "APPROVE" : "REJECT"}
-                        </span>
+                        <StatusPill status={v.approve ? "approved" : "rejected"} />
                       </div>
                       {v.note && v.note.trim() && (
                         <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border)", background: "var(--bg)" }}>
