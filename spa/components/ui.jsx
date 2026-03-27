@@ -36,6 +36,34 @@ export function Icon({ name, size = 14, style: userStyle, title }) {
   );
 }
 
+const BADGE_CATEGORIES = [
+  { title: "Submissions", ids: ["firstSubmission","tenSubmissions","centuryClub","thousand"] },
+  { title: "Voting", ids: ["firstVote","tenVotes","twentyFiveVotes","fiftyVotes","hundredVotes"] },
+  { title: "Disputes", ids: ["firstDispute","fiveDisputes","tenDisputes","twentyDisputes","fiftyDisputes","hundredDisputes"] },
+  { title: "Assembly", ids: ["assemblyCreator","assemblyMember","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"] },
+  { title: "DI Partnership", ids: ["diPartner","diTen","diHundred","diThousand","diTenK","diHundredK"] },
+  { title: "Early Adopter", ids: ["firstHundred","firstThousand"] },
+];
+
+function BadgeCard({ b }) {
+  const ts = BADGE_TIER_STYLES[b.tier] || BADGE_TIER_STYLES.gray;
+  return (
+    <div title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+      padding: "8px 4px", background: ts.bg, border: `1px solid ${ts.border}`,
+      cursor: "default", textAlign: "center",
+    }}>
+      {b.image ? (
+        <img src={b.image} alt={b.label} width={64} height={64} style={{ objectFit: "contain" }} />
+      ) : (
+        <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px dashed var(--border)", fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", textAlign: "center", lineHeight: 1.2 }}>Coming Soon</div>
+      )}
+      <div style={{ fontSize: 8, fontFamily: "var(--mono)", fontWeight: 700, color: ts.text, letterSpacing: "0.3px", lineHeight: 1.2 }}>{b.label}</div>
+      {b.detail && <div style={{ fontSize: 7, color: "var(--text-muted)" }}>{b.detail}</div>}
+    </div>
+  );
+}
+
 export function CitizenBadges({ badges }) {
   if (!badges || badges.length === 0) return (
     <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
@@ -43,23 +71,23 @@ export function CitizenBadges({ badges }) {
       <div style={{ fontSize: 9, color: "var(--text-muted)" }}>Badges are earned automatically through participation. +1 point per badge.</div>
     </div>
   );
+  // Group earned badges by category
+  const badgeMap = {};
+  badges.forEach(b => { badgeMap[b.id] = b; });
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 8 }}>
-      {badges.map((b, i) => (
-        <div key={b.id + (b.detail || "") + i} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-          padding: "8px 4px", background: "var(--card-bg)", border: "1px solid var(--border)",
-          cursor: "default", textAlign: "center",
-        }}>
-          {b.image ? (
-            <img src={b.image} alt={b.label} width={64} height={64} style={{ objectFit: "contain" }} />
-          ) : (
-            <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px dashed var(--border)", fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", textAlign: "center", lineHeight: 1.2 }}>{b.label}</div>
-          )}
-          <div style={{ fontSize: 8, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--gold)", letterSpacing: "0.3px", lineHeight: 1.2 }}>{b.label}</div>
-          {b.detail && <div style={{ fontSize: 7, color: "var(--text-muted)" }}>{b.detail}</div>}
-        </div>
-      ))}
+    <div>
+      {BADGE_CATEGORIES.map(cat => {
+        const earned = cat.ids.filter(id => badgeMap[id]).map(id => badgeMap[id]);
+        if (earned.length === 0) return null;
+        return (
+          <div key={cat.title} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{cat.title}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
+              {earned.map((b, i) => <BadgeCard key={b.id + (b.detail || "") + i} b={b} />)}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -3,8 +3,8 @@ import { CITIZEN_BADGES, BADGE_TIER_STYLES } from "../lib/constants";
 const CATEGORIES = [
   {
     title: "Submission Milestones",
-    desc: "Earn badges by submitting corrections and affirmations. Each submission that enters the record moves you closer to the next milestone.",
-    badges: ["firstSubmission", "tenSubmissions", "centuryClub", "thousand", "tenThousand", "hundredThousand", "million"],
+    desc: "Earn badges by submitting corrections and affirmations. Each submission that enters the record moves you closer to the next milestone. Submissions are the most valuable activity in the system.",
+    badges: ["firstSubmission", "tenSubmissions", "centuryClub", "thousand"],
   },
   {
     title: "Jury Vote Milestones",
@@ -19,7 +19,7 @@ const CATEGORIES = [
   {
     title: "Assembly Founder Milestones",
     desc: "Found an assembly and grow it. Each threshold unlocks new governance rules — your community's growth is the system's growth.",
-    badges: ["assemblyCreator", "founderFive", "founderTwentyOne", "founderFiftyOne", "founderHundredOne", "founderThousand", "founderTenK"],
+    badges: ["assemblyCreator", "founderFive", "founderFiftyOne", "founderHundredOne", "founderThousand"],
   },
   {
     title: "Assembly Membership",
@@ -29,17 +29,12 @@ const CATEGORIES = [
   {
     title: "Digital Intelligence Partnership",
     desc: "Link an AI agent and guide its contributions. You remain accountable for every submission your DI makes.",
-    badges: ["diPartner", "diTen", "diHundredK"],
+    badges: ["diPartner", "diTen", "diHundred", "diThousand", "diTenK", "diHundredK"],
   },
   {
     title: "Early Adopter",
     desc: "Recognized for believing early. These badges can never be earned again — they belong to the pioneers who built the foundation.",
     badges: ["firstHundred", "firstThousand"],
-  },
-  {
-    title: "Learning Curve",
-    desc: "Not all milestones are positive — but they're honest. These badges acknowledge the reality of learning in public.",
-    badges: ["tenRejections"],
   },
 ];
 

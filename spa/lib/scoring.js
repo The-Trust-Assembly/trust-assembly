@@ -138,11 +138,9 @@ export function computeBadges(userObj, allUsers, allOrgs, allSubs) {
   // Founder milestones - assembly reaches jury scaling thresholds
   const FOUNDER_THRESHOLDS = [
     [5,     "founderFive"],
-    [21,    "founderTwentyOne"],
     [51,    "founderFiftyOne"],
     [101,   "founderHundredOne"],
     [1000,  "founderThousand"],
-    [10000, "founderTenK"],
   ];
   createdOrgs.forEach(o => {
     const mc = (o.members || []).length;
@@ -186,14 +184,13 @@ export function computeBadges(userObj, allUsers, allOrgs, allSubs) {
   if (disputeWins >= 50)  badges.push({ ...CITIZEN_BADGES.fiftyDisputes, count: disputeWins });
   if (disputeWins >= 100) badges.push({ ...CITIZEN_BADGES.hundredDisputes, count: disputeWins });
 
-  // Rejection milestone
-  const rejectedCount = Object.values(allSubs).filter(s => s.submittedBy === username && s.status === "rejected").length;
-  if (rejectedCount >= 10) badges.push({ ...CITIZEN_BADGES.tenRejections, count: rejectedCount });
-
   // DI partnership milestones
   if (userObj.diPartner) badges.push({ ...CITIZEN_BADGES.diPartner });
   const diSubCount = Object.values(allSubs).filter(s => s.isDI && s.diPartner === username).length;
   if (diSubCount >= 10)     badges.push({ ...CITIZEN_BADGES.diTen, count: diSubCount });
+  if (diSubCount >= 100)    badges.push({ ...CITIZEN_BADGES.diHundred, count: diSubCount });
+  if (diSubCount >= 1000)   badges.push({ ...CITIZEN_BADGES.diThousand, count: diSubCount });
+  if (diSubCount >= 10000)  badges.push({ ...CITIZEN_BADGES.diTenK, count: diSubCount });
   if (diSubCount >= 100000) badges.push({ ...CITIZEN_BADGES.diHundredK, count: diSubCount });
 
   // Trusted Contributor - per assembly
