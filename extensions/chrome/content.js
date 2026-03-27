@@ -1484,10 +1484,11 @@
 
     try {
       // Fetch all three vault types in parallel
+      const currentUrl = encodeURIComponent(window.location.href.replace(/\/+$/, "").split("?")[0].split("#")[0]);
       const [vaultRes, argsRes, beliefsRes] = await Promise.all([
-        fetch(`${TA_API_BASE}/api/vault?type=vault&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5`),
-        fetch(`${TA_API_BASE}/api/vault?type=argument&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5`),
-        fetch(`${TA_API_BASE}/api/vault?type=belief&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5`),
+        fetch(`${TA_API_BASE}/api/vault?type=vault&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
+        fetch(`${TA_API_BASE}/api/vault?type=argument&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
+        fetch(`${TA_API_BASE}/api/vault?type=belief&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
       ]);
 
       const [vaultData, argsData, beliefsData] = await Promise.all([
