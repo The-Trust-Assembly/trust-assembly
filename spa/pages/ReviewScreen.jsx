@@ -578,7 +578,7 @@ function ReviewScreenInner({ user }) {
                 <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
                   {isDisputer ? "You disputed" : "Disputed against you"} · {safe(d.orgName)} · {sDate(d.createdAt)}
                 </span>
-                <span style={{ fontSize: 10, padding: "2px 7px", background: d.status === "pending_review" ? "#FFFBEB" : d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", color: statusColor, borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>{statusLabel}</span>
+                <StatusPill status={d.status} />
               </div>
               <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", marginBottom: 3 }}>ORIGINAL SUBMISSION</div>

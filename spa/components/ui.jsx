@@ -16,6 +16,10 @@ const ICON_MAP = {
   "trust-badge": "/icons/trust-badge.png",
   lighthouse: "/icons/lighthouse.png",
   crest: "/icons/crest.png",
+  "status-approved": "/icons/status-approved.png",
+  "status-rejected": "/icons/status-rejected.png",
+  "status-review": "/icons/status-review.png",
+  "status-pending": "/icons/status-Needs More Jurors.png",
 };
 
 export function Icon({ name, size = 14, style: userStyle, title }) {
@@ -32,30 +36,114 @@ export function Icon({ name, size = 14, style: userStyle, title }) {
   );
 }
 
+const BADGE_CATEGORIES = [
+  { title: "Submissions", ids: ["firstSubmission","tenSubmissions","centuryClub","thousand"] },
+  { title: "Voting", ids: ["firstVote","tenVotes","twentyFiveVotes","fiftyVotes","hundredVotes"] },
+  { title: "Disputes", ids: ["firstDispute","fiveDisputes","tenDisputes","twentyDisputes","fiftyDisputes","hundredDisputes"] },
+  { title: "Assembly", ids: ["assemblyCreator","joinOne","joinSix","joinTwelve","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"], subGroup: true },
+  { title: "DI Partnership", ids: ["diPartner","diTen","diHundred","diThousand","diTenK","diHundredK"] },
+  { title: "Early Adopter", ids: ["firstHundred","firstThousand"] },
+];
+
+const ASSEMBLY_BADGE_IDS = new Set(["assemblyCreator","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"]);
+const MEMBERSHIP_BADGE_IDS = new Set(["joinOne","joinSix","joinTwelve"]);
+
+function BadgeCard({ b, onClick }) {
+  const ts = BADGE_TIER_STYLES[b.tier] || BADGE_TIER_STYLES.gray;
+  return (
+    <div onClick={() => onClick && onClick(b)} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+      padding: "8px 4px", background: ts.bg, border: `1px solid ${ts.border}`,
+      cursor: "pointer", textAlign: "center",
+    }}>
+      {b.image ? (
+        <img src={b.image} alt={b.label} width={64} height={64} style={{ objectFit: "contain" }} />
+      ) : (
+        <div style={{ width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px dashed var(--border)", fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", textAlign: "center", lineHeight: 1.2 }}>Coming Soon</div>
+      )}
+      <div style={{ fontSize: 8, fontFamily: "var(--mono)", fontWeight: 700, color: ts.text, letterSpacing: "0.3px", lineHeight: 1.2 }}>{b.label}</div>
+      {b.detail && <div style={{ fontSize: 7, color: "var(--text-muted)" }}>{b.detail}</div>}
+    </div>
+  );
+}
+
 export function CitizenBadges({ badges }) {
+  const [selectedBadge, setSelectedBadge] = useState(null);
   if (!badges || badges.length === 0) return (
     <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
       <div style={{ fontStyle: "italic", marginBottom: 6 }}>No badges earned yet.</div>
-      <div style={{ fontSize: 9, color: "var(--text-muted)" }}>Badges are earned automatically through participation.</div>
+      <div style={{ fontSize: 9, color: "var(--text-muted)" }}>Badges are earned automatically through participation. +1 point per badge.</div>
     </div>
   );
+  // Group earned badges by category — badges with same id but different detail get separate entries
+  const earned = badges;
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-      {badges.map((b, i) => {
+    <div>
+      {BADGE_CATEGORIES.map(cat => {
+        const catBadges = earned.filter(b => cat.ids.includes(b.id));
+        if (catBadges.length === 0) return null;
+
+        // Assembly category gets special sub-grouping
+        if (cat.subGroup) {
+          // Group per-assembly badges by assembly name
+          const assemblyGroups = {};
+          const membershipBadges = [];
+          catBadges.forEach(b => {
+            if (MEMBERSHIP_BADGE_IDS.has(b.id)) { membershipBadges.push(b); return; }
+            if (ASSEMBLY_BADGE_IDS.has(b.id) && b.detail) {
+              if (!assemblyGroups[b.detail]) assemblyGroups[b.detail] = [];
+              assemblyGroups[b.detail].push(b);
+            }
+          });
+          return (
+            <div key={cat.title} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{cat.title}</div>
+              {Object.entries(assemblyGroups).map(([name, badges]) => (
+                <div key={name} style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, fontFamily: "var(--mono)", color: "var(--gold)", marginBottom: 3, paddingLeft: 2 }}>{name}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
+                    {badges.map((b, i) => <BadgeCard key={b.id + b.detail + i} b={b} onClick={setSelectedBadge} />)}
+                  </div>
+                </div>
+              ))}
+              {membershipBadges.length > 0 && (
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, fontFamily: "var(--mono)", color: "var(--gold)", marginBottom: 3, paddingLeft: 2 }}>Membership</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
+                    {membershipBadges.map((b, i) => <BadgeCard key={b.id + i} b={b} onClick={setSelectedBadge} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
         return (
-          <div key={b.id + (b.detail || "") + i} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            padding: "3px 7px",
-            background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)",
-            fontSize: 8, fontFamily: "var(--mono)", fontWeight: 700,
-            color: "var(--gold)", letterSpacing: "0.5px", cursor: "default",
-            whiteSpace: "nowrap",
-          }}>
-            <span style={{ fontSize: 11, lineHeight: 1 }}>{b.icon}</span>
-            <span>{b.label}{b.detail ? ` — ${b.detail}` : ""}</span>
+          <div key={cat.title} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{cat.title}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
+              {catBadges.map((b, i) => <BadgeCard key={b.id + (b.detail || "") + i} b={b} onClick={setSelectedBadge} />)}
+            </div>
           </div>
         );
       })}
+      {/* Badge detail popup */}
+      {selectedBadge && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setSelectedBadge(null)}>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 24, maxWidth: 320, width: "100%", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+            {selectedBadge.image ? (
+              <img src={selectedBadge.image} alt={selectedBadge.label} width={128} height={128} style={{ objectFit: "contain", marginBottom: 12 }} />
+            ) : (
+              <div style={{ width: 128, height: 128, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px dashed var(--border)", fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>Coming Soon</div>
+            )}
+            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{selectedBadge.label}</div>
+            {selectedBadge.detail && <div style={{ fontSize: 11, color: "var(--gold)", marginBottom: 6 }}>{selectedBadge.detail}</div>}
+            <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 8 }}>{selectedBadge.desc}</div>
+            <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{selectedBadge.tier} · +{selectedBadge.points || 1} point</div>
+            <button onClick={() => setSelectedBadge(null)} style={{ marginTop: 12, padding: "6px 16px", background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -193,21 +281,20 @@ export function SubHeadline({ sub, size = 12 }) {
 }
 
 export function StatusPill({ status }) {
-  const m = {
-    di_pending: { bg: "rgba(212,168,67,0.13)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "DI PRE-REVIEW" },
-    pending_jury: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "PENDING" },
-    pending_review: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "PENDING" },
-    approved: { bg: "rgba(74,158,85,0.09)", border: "rgba(74,158,85,0.27)", c: "#4a9e55", l: "APPROVED" },
-    rejected: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "REJECTED" },
-    cross_review: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "CROSS-GROUP" },
-    consensus: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "CONSENSUS" },
-    consensus_rejected: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "CONSENSUS REJECTED" },
-    disputed: { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", c: "#d4a843", l: "DISPUTED" },
-    upheld: { bg: "rgba(196,74,58,0.09)", border: "rgba(196,74,58,0.27)", c: "#c44a3a", l: "DISPUTE UPHELD" },
-    dismissed: { bg: "rgba(74,158,85,0.09)", border: "rgba(74,158,85,0.27)", c: "#4a9e55", l: "DISPUTE DISMISSED" },
+  const iconMap = {
+    approved: "status-approved", dismissed: "status-approved",
+    rejected: "status-rejected", consensus_rejected: "status-rejected", upheld: "status-rejected",
+    pending_review: "status-review", cross_review: "status-review", disputed: "status-review",
+    pending_jury: "status-pending", di_pending: "status-pending", consensus: "status-pending",
   };
-  const s = m[status] || { bg: "rgba(138,130,120,0.09)", border: "rgba(138,130,120,0.27)", c: "#8a8278", l: typeof status === "string" ? status.toUpperCase() : "UNKNOWN" };
-  return <span style={{ fontSize: 8, padding: "2px 6px", background: s.bg, border: `1px solid ${s.border}`, color: s.c, fontWeight: 700, letterSpacing: "1px", whiteSpace: "nowrap" }}>{s.l}</span>;
+  const name = iconMap[status] || "status-pending";
+  const label = {
+    di_pending: "DI PRE-REVIEW", pending_jury: "PENDING", pending_review: "UNDER REVIEW",
+    approved: "APPROVED", rejected: "REJECTED", cross_review: "CROSS-GROUP",
+    consensus: "CONSENSUS", consensus_rejected: "CONSENSUS REJECTED",
+    disputed: "DISPUTED", upheld: "DISPUTE UPHELD", dismissed: "DISPUTE DISMISSED",
+  }[status] || (typeof status === "string" ? status.toUpperCase() : "UNKNOWN");
+  return <img src={ICON_MAP[name] || `/icons/${name}.png`} alt={label} title={label} width={48} height={48} style={{ display: "inline-block", objectFit: "contain", verticalAlign: "middle" }} />;
 }
 
 export function LegalDisclaimer({ short }) {

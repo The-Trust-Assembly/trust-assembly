@@ -377,43 +377,58 @@ export const PROFILES = {
 };
 
 export const CITIZEN_BADGES = {
-  // Assembly badges
-  assemblyCreator:   { id: "assemblyCreator",   icon: "🏗",  label: "Assembly Creator",    desc: "Created an assembly",                          color: "#7C3AED", tier: "special" },
-  assemblyMember:    { id: "assemblyMember",     icon: "⬡",   label: "Assembly Member",     desc: "Joined an assembly beyond The General Public",  color: "#0D9488", tier: "special" },
-  // Submission milestones
-  firstSubmission:   { id: "firstSubmission",    icon: "✎",   label: "First Submission",    desc: "Made your first submission",                    color: "#059669", tier: "bronze" },
-  tenSubmissions:    { id: "tenSubmissions",      icon: "✎✎",  label: "Ten Submissions",     desc: "10 submissions",                                color: "#0D9488", tier: "bronze" },
-  centuryClub:      { id: "centuryClub",         icon: "💯",  label: "Century Club",        desc: "100 submissions",                               color: "#CA8A04", tier: "silver" },
-  thousand:         { id: "thousand",            icon: "🏛",  label: "Thousand",            desc: "1,000 submissions",                             color: "#EA580C", tier: "gold" },
-  tenThousand:      { id: "tenThousand",         icon: "⚡",  label: "Ten Thousand",        desc: "10,000 submissions",                            color: "#7C3AED", tier: "platinum" },
-  hundredThousand:  { id: "hundredThousand",     icon: "🌟",  label: "Hundred Thousand",    desc: "100,000 submissions",                           color: "#991B1B", tier: "diamond" },
-  million:          { id: "million",             icon: "👑",  label: "Millionaire",         desc: "1,000,000 submissions — legendary",              color: "#0F172A", tier: "legendary" },
+  // Submission milestones (all gold — darkening with tier, most valuable)
+  firstSubmission:   { id: "firstSubmission",    image: "/icons/badge-submission-1.PNG",   label: "First Submission",    desc: "Your first correction enters the record",         tier: "gold" },
+  tenSubmissions:    { id: "tenSubmissions",      image: "/icons/bad-submission-10.PNG",    label: "10 Submissions",      desc: "Building a track record",                          tier: "gold" },
+  centuryClub:      { id: "centuryClub",         image: "/icons/badge-submission-100.PNG", label: "Century Club",        desc: "A hundred contributions to the public record",     tier: "gold-dark" },
+  thousand:         { id: "thousand",            image: "/icons/badge-submission-1k.PNG",  label: "Thousand",            desc: "1,000 submissions — prolific contributor",         tier: "gold-dark" },
+  // Vote milestones (gray → green → gold)
+  firstVote:        { id: "firstVote",           image: "/icons/badge-vote-1.PNG",         label: "First Vote",          desc: "Your first jury service",                          tier: "gray" },
+  tenVotes:         { id: "tenVotes",            image: "/icons/badge-vote-10.PNG",        label: "10 Votes",            desc: "Reliable juror",                                   tier: "gray" },
+  twentyFiveVotes:  { id: "twentyFiveVotes",     image: "/icons/badge-vote-25.PNG",        label: "25 Votes",            desc: "Dedicated reviewer",                               tier: "green" },
+  fiftyVotes:       { id: "fiftyVotes",          image: "/icons/badge-vote-50.PNG",        label: "50 Votes",            desc: "Veteran juror",                                    tier: "gold" },
+  hundredVotes:     { id: "hundredVotes",        image: "/icons/badge-vote-100.PNG",       label: "100 Votes",           desc: "Centurion juror",                                  tier: "gold" },
+  // Dispute milestones (gray → green → gold)
+  firstDispute:     { id: "firstDispute",        image: "/icons/badge-dispute-1.PNG",      label: "First Dispute Won",   desc: "You caught an error others missed",                tier: "gray" },
+  fiveDisputes:     { id: "fiveDisputes",        image: "/icons/badge-dispute-5.PNG",      label: "5 Disputes Won",      desc: "Sharp-eyed challenger",                            tier: "gray" },
+  tenDisputes:      { id: "tenDisputes",         image: "/icons/badge-dispute-10.PNG",     label: "10 Disputes Won",     desc: "Persistent truth-seeker",                          tier: "green" },
+  twentyDisputes:   { id: "twentyDisputes",      image: "/icons/badge-dispute-20.PNG",     label: "20 Disputes Won",     desc: "Formidable disputant",                             tier: "green" },
+  fiftyDisputes:    { id: "fiftyDisputes",       image: "/icons/badge-dispute-50.PNG",     label: "50 Disputes Won",     desc: "Master disputant",                                 tier: "gold" },
+  hundredDisputes:  { id: "hundredDisputes",     image: "/icons/badge-dispute-100.PNG",    label: "100 Disputes Won",    desc: "Legendary challenger",                             tier: "gold" },
+  // Assembly badges (gray → green → gold)
+  assemblyCreator:  { id: "assemblyCreator",     image: "/icons/badge-assembly-0(1).PNG",  label: "Assembly Creator",    desc: "You started a community",                          tier: "gray" },
+  // Membership milestones (joining assemblies)
+  joinOne:          { id: "joinOne",             image: "/icons/badge-join-1.png",         label: "Assembly Member",     desc: "Joined your first assembly beyond The General Public", tier: "gray" },
+  joinSix:          { id: "joinSix",             image: "/icons/badge-join-6.png",         label: "6 Assemblies",        desc: "Member of 6 assemblies (including The General Public)", tier: "green" },
+  joinTwelve:       { id: "joinTwelve",          image: "/icons/badge-joined-12.png",      label: "Full Plate",          desc: "Member of all 12 assemblies — fully committed",     tier: "gold" },
+  // Founder milestones (green → gold)
+  founderFive:      { id: "founderFive",         image: "/icons/badge-assembly-0.PNG",     label: "Jury Ready",          desc: "Founded assembly reached 5 members",               tier: "green" },
+  founderFiftyOne:  { id: "founderFiftyOne",     image: "/icons/badge-assembly-50.PNG",    label: "Full Bench",          desc: "Founded assembly reached 50 members",              tier: "green" },
+  founderHundredOne:{ id: "founderHundredOne",   image: "/icons/badge-assembly-100.PNG",   label: "Centurion Founder",   desc: "Founded assembly reached 100 members — advanced jury rules", tier: "gold" },
+  founderThousand:  { id: "founderThousand",     image: "/icons/badge-assembly-1k.PNG",    label: "Grand Founder",       desc: "Founded assembly reached 1,000 members",           tier: "gold" },
   // Trust badges (per assembly)
-  trustedContributor: { id: "trustedContributor", icon: "🛡",  label: "Trusted Contributor", desc: "Earned trusted status in an assembly",          color: "#059669", tier: "gold" },
-  // Founder milestone badges (assembly reaches jury scaling thresholds)
-  founderFive:      { id: "founderFive",         icon: "🌱",  label: "Jury Ready",          desc: "Founded an assembly that reached 5 members",    color: "#059669", tier: "bronze" },
-  founderTwentyOne: { id: "founderTwentyOne",    icon: "🌳",  label: "Growing Assembly",    desc: "Founded an assembly that reached 21 members",   color: "#0D9488", tier: "silver" },
-  founderFiftyOne:  { id: "founderFiftyOne",     icon: "⚖️",  label: "Full Bench",          desc: "Founded an assembly that reached 51 members",   color: "#CA8A04", tier: "gold" },
-  founderHundredOne:{ id: "founderHundredOne",   icon: "🏛",  label: "Centurion Founder",   desc: "Founded an assembly that reached 101 members",  color: "#EA580C", tier: "gold" },
-  founderThousand:  { id: "founderThousand",     icon: "⭐",  label: "Grand Founder",       desc: "Founded an assembly that reached 1,000 members",color: "#7C3AED", tier: "platinum" },
-  founderTenK:      { id: "founderTenK",         icon: "🏔",  label: "Legendary Founder",   desc: "Founded an assembly that reached 10,000 members",color: "#0F172A", tier: "legendary" },
-  // Early adopter badges
-  firstHundred:     { id: "firstHundred",        icon: "🔱",  label: "First Hundred",       desc: "Among the first 100 citizens to join",          color: "#7C3AED", tier: "legendary" },
-  firstThousand:    { id: "firstThousand",       icon: "🌿",  label: "First Thousand",      desc: "Among the first 1,000 citizens to join",        color: "#059669", tier: "gold" },
-  // Manually awarded badges
-  firstTester:      { id: "firstTester",         icon: "🧪",  label: "First Tester",        desc: "Early tester who helped shape the platform",    color: "#EA580C", tier: "legendary", points: 10 },
+  trustedContributor: { id: "trustedContributor", image: "/icons/trust-badge.png",         label: "Trusted Contributor", desc: "Earned trusted status in an assembly",              tier: "gold" },
+  // DI partnership milestones (gray → green → gold)
+  diPartner:        { id: "diPartner",           image: "/icons/badge-ai-0.PNG",           label: "DI Partner",          desc: "Linked a Digital Intelligence agent",               tier: "gray" },
+  diTen:            { id: "diTen",               image: "/icons/badge-ai-10.PNG",          label: "10 DI Submissions",   desc: "Your AI is contributing",                           tier: "green" },
+  diHundred:        { id: "diHundred",           image: "/icons/badge-ai-100.png",         label: "100 DI Submissions",  desc: "Consistent AI contributions",                       tier: "green" },
+  diThousand:       { id: "diThousand",          image: "/icons/badge-ai-1k.png",          label: "1K DI Submissions",   desc: "Serious AI partnership",                            tier: "gold" },
+  diTenK:           { id: "diTenK",              image: "/icons/badge-ai-10k.png",         label: "10K DI Submissions",  desc: "Major AI contributor",                              tier: "gold" },
+  diHundredK:       { id: "diHundredK",          image: "/icons/badge-ai-100k.PNG",        label: "100K DI Submissions", desc: "Industrial-scale truth",                            tier: "gold" },
+  // Early adopter badges (both gold)
+  firstHundred:     { id: "firstHundred",        image: "/icons/badge-join-100.PNG",       label: "First Hundred",       desc: "Among the first 100 citizens — pioneer",            tier: "gold" },
+  firstThousand:    { id: "firstThousand",       image: "/icons/badge-join-1000.PNG",      label: "First Thousand",      desc: "Among the first 1,000 citizens — early adopter",    tier: "gold" },
+  // Manually awarded
+  firstTester:      { id: "firstTester",         image: null,                              label: "First Tester",        desc: "Early tester who helped shape the platform",        tier: "gold", points: 10 },
 };
 
-export const BADGE_TIER_ORDER = { legendary: 0, diamond: 1, platinum: 2, gold: 3, silver: 4, bronze: 5, special: 6 };
+export const BADGE_TIER_ORDER = { "gold-dark": 0, gold: 1, green: 2, gray: 3 };
 
 export const BADGE_TIER_STYLES = {
-  legendary: { bg: "rgba(212,168,67,0.13)", border: "rgba(212,168,67,0.4)", text: "#d4a843" },
-  diamond:   { bg: "rgba(236,72,153,0.09)", border: "rgba(236,72,153,0.27)", text: "#EC4899" },
-  platinum:  { bg: "rgba(124,58,237,0.09)", border: "rgba(124,58,237,0.27)", text: "#7C3AED" },
+  gray:      { bg: "rgba(138,130,120,0.09)", border: "rgba(138,130,120,0.27)", text: "#8a8278" },
+  green:     { bg: "rgba(74,158,85,0.09)", border: "rgba(74,158,85,0.27)", text: "#4a9e55" },
   gold:      { bg: "rgba(212,168,67,0.09)", border: "rgba(212,168,67,0.27)", text: "#d4a843" },
-  silver:    { bg: "rgba(138,130,120,0.09)", border: "rgba(138,130,120,0.27)", text: "#8a8278" },
-  bronze:    { bg: "rgba(234,88,12,0.09)", border: "rgba(234,88,12,0.27)", text: "#EA580C" },
-  special:   { bg: "rgba(13,148,136,0.09)", border: "rgba(13,148,136,0.27)", text: "#0D9488" },
+  "gold-dark": { bg: "rgba(180,130,30,0.13)", border: "rgba(180,130,30,0.4)", text: "#b4821e" },
 };
 
 // Deliberate Deception: 1-year penalty window

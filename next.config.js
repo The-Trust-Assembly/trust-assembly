@@ -13,6 +13,7 @@ const nextConfig = {
       { source: '/orgs', destination: '/' },
       { source: '/guide', destination: '/' },
       { source: '/rules', destination: '/' },
+      { source: '/badges', destination: '/' },
       { source: '/vision', destination: '/' },
       { source: '/about', destination: '/' },
       { source: '/consensus', destination: '/' },
