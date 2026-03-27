@@ -59,6 +59,8 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
   const setViewingOrg = (id) => { setViewingOrgRaw(id); if (!id && onViewingOrgChange) onViewingOrgChange(); };
   useEffect(() => { if (initialViewingOrg) setViewingOrgRaw(initialViewingOrg); }, [initialViewingOrg]);
   const [concessions, setConcessions] = useState(null);
+  const [editingCharter, setEditingCharter] = useState(false);
+  const [charterDraft, setCharterDraft] = useState("");
   const [concessionReason, setConcessionReason] = useState("");
 
   const load = useCallback(async () => {
@@ -324,7 +326,30 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
         {/* Assembly Identity */}
         <div className="ta-card" style={{ borderLeft: `4px solid ${vo.isGeneralPublic ? "#0D9488" : "var(--text)"}` }}>
           <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 8 }}>{vo.description}</div>
-          {vo.charter && <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid var(--border)" }}>{vo.charter}</div>}
+          {vo.charter && !editingCharter && <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid var(--border)" }}>{vo.charter}</div>}
+          {!vo.charter && !editingCharter && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }}>No charter set</div>}
+          {(() => {
+            const isFounderOfThis = (vo.founders || [vo.createdBy]).includes(user.username);
+            const canEdit = isFounderOfThis && vo.members.length < 50 && !vo.isGeneralPublic;
+            if (!canEdit) return null;
+            if (editingCharter) return (
+              <div style={{ marginTop: 6 }}>
+                <textarea value={charterDraft} onChange={e => setCharterDraft(e.target.value)} rows={3} placeholder="Write your assembly's charter..." maxLength={10000} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", fontSize: 12, borderRadius: 0, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <button className="ta-btn-primary" style={{ fontSize: 10, padding: "4px 12px" }} onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ charter: charterDraft }) });
+                      if (res.ok) { setEditingCharter(false); setSuccess("Charter updated."); load(); setTimeout(() => setSuccess(""), 3000); }
+                      else { const d = await res.json().catch(() => ({})); setError(d.error || "Failed to update charter"); }
+                    } catch { setError("Network error updating charter"); }
+                  }}>Save Charter</button>
+                  <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "4px 8px" }} onClick={() => setEditingCharter(false)}>Cancel</button>
+                </div>
+                <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 4 }}>Charter becomes permanent at 50 members ({vo.members.length}/50)</div>
+              </div>
+            );
+            return <button className="ta-btn-ghost" style={{ fontSize: 9, color: "var(--gold)", marginTop: 4 }} onClick={() => { setEditingCharter(true); setCharterDraft(vo.charter || ""); }}>Edit Charter</button>;
+          })()}
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 8 }}>
             Founded by @{vo.createdBy} · {sDate(vo.createdAt)} · {vo.members.length} members · {enrollment.label} · Jury: {wildWest ? 1 : getJurySize(vo.members.length)} · Super jury: {wildWest ? "N/A" : getSuperJurySize(vo.members.length)}
           </div>

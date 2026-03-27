@@ -401,7 +401,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
       {paged.length === 0 ? <Empty text="No corrections yet." /> : paged.map(sub => {
         const isExpanded = expandedId === sub.id;
         const isAffirm = sub.submissionType === "affirmation";
-        const showUser = sub.resolvedAt;
+        const showUser = sub.resolvedAt || (user && sub.submittedBy === user.username);
         let domain = "";
         try { domain = new URL(String(sub.url)).hostname.replace(/^www\./, ""); } catch { domain = safe(sub.url) || ""; }
 

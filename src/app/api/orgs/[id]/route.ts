@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { ok, notFound } from "@/lib/api-utils";
-import { isValidUUID } from "@/lib/validation";
+import { getCurrentUserFromRequest } from "@/lib/auth";
+import { ok, notFound, err, unauthorized, forbidden, serverError } from "@/lib/api-utils";
+import { isValidUUID, validateLength, MAX_LENGTHS } from "@/lib/validation";
 
 // GET /api/orgs/[id] — assembly detail
 export async function GET(
@@ -52,4 +53,74 @@ export async function GET(
       display_name: f.display_name || "",
     })),
   });
+}
+
+// PATCH /api/orgs/[id] — update assembly details (charter, description)
+// Only founders can edit, and only while member count < 50
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getCurrentUserFromRequest(request);
+  if (!session) return unauthorized();
+
+  const { id } = await params;
+  if (!isValidUUID(id)) return notFound("Not found");
+
+  try {
+    // Verify assembly exists and get member count
+    const orgResult = await sql`
+      SELECT o.id, o.created_by,
+        (SELECT COUNT(*) FROM organization_members WHERE org_id = o.id AND is_active = TRUE) as member_count
+      FROM organizations o WHERE o.id = ${id}
+    `;
+    if (orgResult.rows.length === 0) return notFound("Assembly not found");
+
+    const org = orgResult.rows[0];
+    const memberCount = parseInt(org.member_count);
+
+    // Verify the user is a founder
+    const isFounder = await sql`
+      SELECT 1 FROM organization_members
+      WHERE org_id = ${id} AND user_id = ${session.sub} AND is_founder = TRUE AND is_active = TRUE
+    `;
+    if (isFounder.rows.length === 0) return forbidden("Only founders can edit assembly details");
+
+    // Check member count threshold
+    if (memberCount >= 50) return err("Charter cannot be edited once the assembly has 50 or more members. The charter is now permanent.");
+
+    const body = await request.json();
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (body.charter !== undefined) {
+      const charterErr = validateLength("charter", body.charter, MAX_LENGTHS.org_charter);
+      if (charterErr) return err(charterErr);
+      updates.push(`charter = $${idx++}`);
+      values.push(body.charter?.trim() || null);
+    }
+    if (body.description !== undefined) {
+      const descErr = validateLength("description", body.description, MAX_LENGTHS.org_description);
+      if (descErr) return err(descErr);
+      updates.push(`description = $${idx++}`);
+      values.push(body.description?.trim() || null);
+    }
+
+    if (updates.length === 0) return err("No fields to update");
+
+    values.push(id);
+    await sql.query(`UPDATE organizations SET ${updates.join(", ")} WHERE id = $${idx}`, values);
+
+    // Audit log
+    await sql`
+      INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+      VALUES ('Assembly details updated by founder', ${session.sub}, ${id}, 'organization', ${id},
+        ${JSON.stringify({ updatedFields: Object.keys(body).filter(k => body[k] !== undefined), memberCount })}::jsonb)
+    `;
+
+    return ok({ success: true });
+  } catch (e) {
+    return serverError("PATCH /api/orgs/[id]", e);
+  }
 }
