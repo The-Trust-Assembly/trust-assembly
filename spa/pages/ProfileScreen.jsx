@@ -53,7 +53,14 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
     <div>
       {/* Profile header */}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 16 }}>
-        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: "var(--bg)", flexShrink: 0 }}>{initials}</div>
+        <div style={{ position: "relative", cursor: "pointer" }} onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/jpeg,image/png,image/webp"; input.onchange = async (e) => { const file = e.target.files[0]; if (!file) return; if (file.size > 2 * 1024 * 1024) { alert("Image must be under 2MB"); return; } const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128; const ctx = canvas.getContext("2d"); const img = new Image(); img.onload = async () => { const s = Math.min(img.width, img.height); const sx = (img.width - s) / 2, sy = (img.height - s) / 2; ctx.drawImage(img, sx, sy, s, s, 0, 0, 128, 128); const dataUrl = canvas.toDataURL("image/jpeg", 0.8); try { const res = await fetch(`/api/users/${u.username}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: dataUrl }) }); if (res.ok) { setU(prev => ({ ...prev, avatar: dataUrl })); } else { alert("Failed to upload avatar"); } } catch { alert("Network error"); } }; img.src = URL.createObjectURL(file); }; input.click(); }}>
+          {u.avatar ? (
+            <img src={u.avatar} alt="avatar" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover" }} />
+          ) : (
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: "var(--bg)" }}>{initials}</div>
+          )}
+          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: "var(--card-bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>+</div>
+        </div>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>{u.displayName || u.username}</div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>@{u.username} · Joined {fDate(u.signupDate)}</div>

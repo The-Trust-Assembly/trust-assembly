@@ -92,6 +92,9 @@ CREATE TABLE users (
   -- Primary assembly
   primary_org_id UUID,
 
+  -- Profile
+  avatar        TEXT,          -- base64 data URL for profile picture (max ~200KB)
+
   -- Timestamps
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   ip_hash       TEXT
@@ -120,6 +123,7 @@ CREATE TABLE organizations (
   cross_group_deception_findings INTEGER NOT NULL DEFAULT 0,
   cassandra_wins INTEGER NOT NULL DEFAULT 0,
 
+  avatar          TEXT,         -- base64 data URL for assembly picture (square, max ~200KB)
   created_by      UUID NOT NULL REFERENCES users(id),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );

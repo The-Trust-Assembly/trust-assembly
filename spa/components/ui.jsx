@@ -525,8 +525,13 @@ export function StandingCorrectionInput({ value, onChange }) {
   );
 }
 
-export function UsernameLink({ username, onClick, style: userStyle }) {
-  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold)", fontSize: 11, textDecoration: "underline", textDecorationColor: "var(--border)", ...userStyle }}>{username === ADMIN_USERNAME ? <><Icon name="crown" size={14} /> </> : ""}@{username}</button>;
+export function UsernameLink({ username, avatar, onClick, style: userStyle }) {
+  return (
+    <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold)", fontSize: 11, textDecoration: "underline", textDecorationColor: "var(--border)", display: "inline-flex", alignItems: "center", gap: 3, ...userStyle }}>
+      {avatar && <img src={avatar} alt="" style={{ width: 14, height: 14, borderRadius: "50%", objectFit: "cover" }} />}
+      {username === ADMIN_USERNAME ? <><Icon name="crown" size={14} /> </> : ""}@{username}
+    </button>
+  );
 }
 
 export function Empty({ text }) { return <div style={{ textAlign: "center", padding: 36, color: "var(--text-muted)", fontSize: 11 }}>{text}</div>; }
