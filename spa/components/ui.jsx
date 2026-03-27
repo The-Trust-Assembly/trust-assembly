@@ -40,10 +40,13 @@ const BADGE_CATEGORIES = [
   { title: "Submissions", ids: ["firstSubmission","tenSubmissions","centuryClub","thousand"] },
   { title: "Voting", ids: ["firstVote","tenVotes","twentyFiveVotes","fiftyVotes","hundredVotes"] },
   { title: "Disputes", ids: ["firstDispute","fiveDisputes","tenDisputes","twentyDisputes","fiftyDisputes","hundredDisputes"] },
-  { title: "Assembly", ids: ["assemblyCreator","joinOne","joinSix","joinTwelve","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"] },
+  { title: "Assembly", ids: ["assemblyCreator","joinOne","joinSix","joinTwelve","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"], subGroup: true },
   { title: "DI Partnership", ids: ["diPartner","diTen","diHundred","diThousand","diTenK","diHundredK"] },
   { title: "Early Adopter", ids: ["firstHundred","firstThousand"] },
 ];
+
+const ASSEMBLY_BADGE_IDS = new Set(["assemblyCreator","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"]);
+const MEMBERSHIP_BADGE_IDS = new Set(["joinOne","joinSix","joinTwelve"]);
 
 function BadgeCard({ b, onClick }) {
   const ts = BADGE_TIER_STYLES[b.tier] || BADGE_TIER_STYLES.gray;
@@ -79,6 +82,42 @@ export function CitizenBadges({ badges }) {
       {BADGE_CATEGORIES.map(cat => {
         const catBadges = earned.filter(b => cat.ids.includes(b.id));
         if (catBadges.length === 0) return null;
+
+        // Assembly category gets special sub-grouping
+        if (cat.subGroup) {
+          // Group per-assembly badges by assembly name
+          const assemblyGroups = {};
+          const membershipBadges = [];
+          catBadges.forEach(b => {
+            if (MEMBERSHIP_BADGE_IDS.has(b.id)) { membershipBadges.push(b); return; }
+            if (ASSEMBLY_BADGE_IDS.has(b.id) && b.detail) {
+              if (!assemblyGroups[b.detail]) assemblyGroups[b.detail] = [];
+              assemblyGroups[b.detail].push(b);
+            }
+          });
+          return (
+            <div key={cat.title} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{cat.title}</div>
+              {Object.entries(assemblyGroups).map(([name, badges]) => (
+                <div key={name} style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, fontFamily: "var(--mono)", color: "var(--gold)", marginBottom: 3, paddingLeft: 2 }}>{name}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
+                    {badges.map((b, i) => <BadgeCard key={b.id + b.detail + i} b={b} onClick={setSelectedBadge} />)}
+                  </div>
+                </div>
+              ))}
+              {membershipBadges.length > 0 && (
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, fontFamily: "var(--mono)", color: "var(--gold)", marginBottom: 3, paddingLeft: 2 }}>Membership</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
+                    {membershipBadges.map((b, i) => <BadgeCard key={b.id + i} b={b} onClick={setSelectedBadge} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
         return (
           <div key={cat.title} style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{cat.title}</div>
