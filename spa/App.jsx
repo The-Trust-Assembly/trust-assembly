@@ -142,6 +142,7 @@ export default function TrustAssembly() {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackPrompt, setFeedbackPrompt] = useState("");
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -391,9 +392,9 @@ export default function TrustAssembly() {
     trackAction("button", "click:submit_feedback", { component: "FeedbackModal", screen: "feedback" });
     setFeedbackSending(true); setFeedbackError("");
     try {
-      const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: feedbackText.trim() }) });
+      const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: feedbackText.trim(), promptSuggestion: feedbackPrompt.trim() || null }) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setFeedbackError(d.error || "Failed to send"); setFeedbackSending(false); return; }
-      setFeedbackSent(true); setFeedbackText(""); setFeedbackSending(false); setHasSubmittedFeedback(true);
+      setFeedbackSent(true); setFeedbackText(""); setFeedbackPrompt(""); setFeedbackSending(false); setHasSubmittedFeedback(true);
       setTimeout(() => { setShowFeedbackModal(false); setFeedbackSent(false); }, 2000);
     } catch (e) { setFeedbackError("Network error"); setFeedbackSending(false); }
   };
@@ -1048,10 +1049,20 @@ export default function TrustAssembly() {
                         value={feedbackText}
                         onChange={e => { if (e.target.value.length <= 1000) setFeedbackText(e.target.value); }}
                         placeholder="What's on your mind? Describe a bug, suggest a feature, or share your thoughts..."
-                        rows={5}
+                        rows={4}
                         style={{ fontSize: 14 }}
                       />
                       <div className="ta-feedback-charcount">{feedbackText.length} / 1,000</div>
+                    </div>
+                    <div className="ta-field" style={{ marginTop: 8 }}>
+                      <label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", fontWeight: 600 }}>Suggest a Prompt</label>
+                      <textarea
+                        value={feedbackPrompt}
+                        onChange={e => { if (e.target.value.length <= 5000) setFeedbackPrompt(e.target.value); }}
+                        placeholder="What do you want changed and in what part of the system? Try writing a prompt that the admin can copy and paste into Claude Code to get your change delivered more quickly."
+                        rows={3}
+                        style={{ fontSize: 12, color: "var(--text-sec)" }}
+                      />
                     </div>
                     <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                       <button className="ta-btn-secondary" onClick={() => setShowFeedbackModal(false)}>Cancel</button>

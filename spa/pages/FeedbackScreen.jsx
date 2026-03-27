@@ -15,6 +15,8 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
   const [resolvingId, setResolvingId] = useState(null);
   const [resolutionNote, setResolutionNote] = useState("");
   const [resolveSending, setResolveSending] = useState(false);
+  const [threadReplyId, setThreadReplyId] = useState(null);
+  const [threadReplyText, setThreadReplyText] = useState("");
 
   const load = async () => {
     try {
@@ -90,7 +92,46 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-wrap" }}>{item.message}</div>
 
-          {/* Admin reply display */}
+          {/* Prompt suggestion */}
+          {item.prompt_suggestion && (
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 3, fontWeight: 600 }}>Suggested Prompt</div>
+              <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.5, whiteSpace: "pre-wrap", fontFamily: "var(--mono)" }}>{item.prompt_suggestion}</div>
+            </div>
+          )}
+
+          {/* Threaded replies */}
+          {item.replies && item.replies.length > 0 && (
+            <div style={{ marginTop: 8, borderLeft: "2px solid var(--border)", paddingLeft: 10 }}>
+              {item.replies.map(r => (
+                <div key={r.id} style={{ marginBottom: 6, padding: "6px 10px", background: r.is_admin ? "rgba(212,168,67,0.09)" : "var(--card-bg)", border: `1px solid ${r.is_admin ? "var(--gold)" : "var(--border)"}` }}>
+                  <div style={{ fontSize: 9, color: r.is_admin ? "var(--gold)" : "var(--text-muted)", fontWeight: 600, marginBottom: 2 }}>{r.is_admin ? "Admin" : `@${r.username}`} · {new Date(r.created_at).toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{r.message}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Reply form — for threaded conversation */}
+          {threadReplyId === item.id ? (
+            <div style={{ marginTop: 8, padding: "8px 10px", background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+              <textarea value={threadReplyText} onChange={e => { if (e.target.value.length <= 2000) setThreadReplyText(e.target.value); }} rows={2} placeholder="Your reply..." style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+              <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                <button className="ta-btn-primary" style={{ fontSize: 10, padding: "4px 10px" }} onClick={async () => {
+                  if (!threadReplyText.trim()) return;
+                  try {
+                    const res = await fetch("/api/feedback", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedbackId: item.id, action: "reply", message: threadReplyText.trim() }) });
+                    if (res.ok) { setThreadReplyId(null); setThreadReplyText(""); load(); }
+                  } catch {}
+                }}>Send Reply</button>
+                <button className="ta-btn-ghost" style={{ fontSize: 10 }} onClick={() => { setThreadReplyId(null); setThreadReplyText(""); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button className="ta-btn-ghost" style={{ fontSize: 10, color: "var(--gold)", marginTop: 4 }} onClick={() => { setThreadReplyId(item.id); setThreadReplyText(""); }}>Reply</button>
+          )}
+
+          {/* Admin reply display (legacy) */}
           {item.admin_reply && (
             <div style={{ marginTop: 12, padding: "10px 14px", backgroundColor: "rgba(212,168,67,0.09)", border: "1px solid var(--gold)", borderRadius: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--gold)", marginBottom: 4 }}>Admin Response · {new Date(item.admin_reply_at).toLocaleString()}</div>
