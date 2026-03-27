@@ -406,7 +406,10 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
         try { domain = new URL(String(sub.url)).hostname.replace(/^www\./, ""); } catch { domain = safe(sub.url) || ""; }
 
         return (
-        <div key={sub.id} className="card">
+        <div key={sub.id}>
+          {/* Manila folder tab */}
+          <div className="manila-tab" onClick={(e) => { e.stopPropagation(); onViewAssembly && onViewAssembly(sub.orgId); }}>{safe(sub.orgName)}</div>
+          <div className="card">
           {/* Card top: meta + status — ALWAYS visible */}
           <div className="card-top">
             <div className="card-meta">
@@ -454,7 +457,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
           {/* Expanded view */}
           {isExpanded && (
             <div>
-              <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
+              <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} status={sub.status} />
 
               {/* Tag to story */}
               {["approved", "consensus", "cross_review"].includes(sub.status) && taggingId !== sub.id && (
@@ -561,6 +564,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
               </div>
             </div>
           )}
+        </div>
         </div>
       );})}
       {/* Pagination */}

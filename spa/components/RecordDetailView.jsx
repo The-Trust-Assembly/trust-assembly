@@ -17,9 +17,9 @@ function safeHref(url) {
 
 const emptyState = <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }}>None submitted</div>;
 
-export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDispute }) {
+export default function RecordDetailView({ sub, onViewCitizen, status }) {
   if (!sub) return null;
-  const [openRibbons, setOpenRibbons] = useState({ rewrite: true, edits: true, vault: true, verdicts: true });
+  const [openRibbons, setOpenRibbons] = useState({ article: true, headline: true, edits: true, thecase: true, verdict: true });
   const toggle = (key) => setOpenRibbons(prev => ({ ...prev, [key]: !prev[key] }));
 
   const inlineEditCount = sub.inlineEdits?.length || 0;
@@ -34,6 +34,9 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
   if (sub.translationEntry) vaultItems.push({ type: "TRANSLATION", content: `"${sub.translationEntry.original}" → "${sub.translationEntry.translated}"` });
   if (sub.linkedVaultEntries) sub.linkedVaultEntries.forEach(e => vaultItems.push({ type: (e.type || "FACT").toUpperCase(), content: e.label, detail: e.detail }));
 
+  // Evidence
+  const evidenceCount = sub.evidence?.length || 0;
+
   // Jury votes
   const allVotes = { ...(sub.votes || {}), ...(sub.crossGroupVotes || {}) };
   const voteEntries = Object.entries(allVotes);
@@ -43,52 +46,62 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
   // Build deterministic anon map for juror privacy (secret ballot)
   const anonId = (voter) => stableAnonId("Juror", (sub.id || "") + voter);
 
+  // Extract domain from URL
+  let domain = "";
+  try { domain = new URL(String(sub.url)).hostname.replace(/^www\./, ""); } catch {}
+
   return (
     <div>
-      {/* 01: Rewrite the headline */}
-      <div className="ribbon">
-        <div className={`ribbon-head ${openRibbons.rewrite ? "open" : "closed"}`} onClick={() => toggle("rewrite")}>
-          <div><span className="ribbon-num">01</span><span className="ribbon-title">Rewrite the headline</span></div>
-          <span className="ribbon-arrow" style={{ transform: openRibbons.rewrite ? "rotate(180deg)" : "none" }}>▼</span>
+      {/* Card header: submitter identity + status stamp */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
+          <UsernameLink username={sub.resolvedAt ? sub.submittedBy : null} onClick={onViewCitizen} />
+          {!sub.resolvedAt && <span className="hidden-user">{anonName(sub.submittedBy, sub.anonMap, false)}</span>}
+          <span style={{ marginLeft: 4 }}>· {sub.orgName} · {sDate(sub.createdAt)}</span>
+          {sub.trustedSkip && <span> · <Icon name="trust-badge" size={14} /> Trusted</span>}
+          {sub.isDI && <span> · <Icon name="robot" size={14} /> DI</span>}
         </div>
-        {openRibbons.rewrite && (
+        {status && <StatusPill status={status} />}
+      </div>
+
+      {/* 01: The Article */}
+      <div className="ribbon">
+        <div className={`ribbon-head ${openRibbons.article ? "open" : "closed"}`} onClick={() => toggle("article")}>
+          <div><span className="ribbon-num">01</span><span className="ribbon-title">The Article</span></div>
+          <span className="ribbon-arrow" style={{ transform: openRibbons.article ? "rotate(180deg)" : "none" }}>▼</span>
+        </div>
+        {openRibbons.article && (
           <div className="ribbon-body">
-            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>
-              <UsernameLink username={sub.resolvedAt ? sub.submittedBy : null} onClick={onViewCitizen} />
-              {!sub.resolvedAt && <span className="hidden-user">{anonName(sub.submittedBy, sub.anonMap, false)}</span>}
-              <span style={{ marginLeft: 4 }}>· {sub.orgName} · {sDate(sub.createdAt)}</span>
-              {sub.trustedSkip && <span> · <Icon name="trust-badge" size={14} /> Trusted</span>}
-              {sub.isDI && <span> · <Icon name="robot" size={14} /> DI</span>}
-            </div>
-            <a href={safeHref(sub.url)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "var(--gold)", marginBottom: 6, textDecoration: "none", wordBreak: "break-all", display: "block" }}>{sub.url}</a>
-            {sub.author && <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 4 }}>Author: {sub.author}</div>}
-            {!sub.author && <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 4, fontStyle: "italic" }}>Author: Not specified</div>}
-            <SubHeadline sub={sub} />
-            <div className="field-label" style={{ marginTop: 8 }}>Reasoning</div>
-            {sub.reasoning
-              ? <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 6 }}>{sub.reasoning}</div>
-              : emptyState}
-            <div style={{ marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
-              <span style={{ fontSize: 9, color: "var(--text-muted)" }}>
-                {sub.evidence && sub.evidence.length > 0 ? `${sub.evidence.length} evidence source${sub.evidence.length > 1 ? "s" : ""}` : "Evidence: None submitted"}
-              </span>
-            </div>
-            {sub.evidence && sub.evidence.map((e, i) => (
-              <div key={i} style={{ fontSize: 9, marginTop: 4 }}>
-                <a href={safeHref(e.url)} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold)", textDecoration: "none", wordBreak: "break-all" }}>{e.url}</a>
-                {e.explanation && <div style={{ color: "var(--text-muted)", marginTop: 1 }}>↳ {e.explanation}</div>}
-              </div>
-            ))}
+            <a href={safeHref(sub.url)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--gold)", marginBottom: 4, textDecoration: "none", wordBreak: "break-all", display: "block" }}>{sub.url}</a>
+            {domain && <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 4 }}>{domain}</div>}
+            <div style={{ fontSize: 10, color: "var(--text-sec)" }}>Author: {sub.author || <span style={{ fontStyle: "italic", color: "var(--text-muted)" }}>Not specified</span>}</div>
           </div>
         )}
       </div>
 
-      {/* 02: In-line edits — always shown */}
+      {/* 02: Headline Rewrites */}
+      <div className="ribbon">
+        <div className={`ribbon-head ${openRibbons.headline ? "open" : "closed"}`} onClick={() => toggle("headline")}>
+          <div><span className="ribbon-num">02</span><span className="ribbon-title">Headline Rewrites</span></div>
+          <span className="ribbon-arrow" style={{ transform: openRibbons.headline ? "rotate(180deg)" : "none" }}>▼</span>
+        </div>
+        {openRibbons.headline && (
+          <div className="ribbon-body">
+            <SubHeadline sub={sub} />
+            <div className="field-label" style={{ marginTop: 8 }}>Reasoning</div>
+            {sub.reasoning
+              ? <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.6 }}>{sub.reasoning}</div>
+              : emptyState}
+          </div>
+        )}
+      </div>
+
+      {/* 03: Article Edits */}
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.edits ? "open" : "closed"}`} onClick={() => toggle("edits")}>
           <div>
-            <span className="ribbon-num">02</span>
-            <span className="ribbon-title">In-line edits</span>
+            <span className="ribbon-num">03</span>
+            <span className="ribbon-title">Article Edits</span>
             {inlineEditCount > 0 && (
               <span className="ribbon-meta" style={{ color: approvedEdits > 0 ? "var(--green)" : "var(--text-muted)" }}>
                 {approvedEdits} approved{rejectedEdits > 0 ? `, ${rejectedEdits} rejected` : ""}
@@ -113,9 +126,7 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
                     {e.reasoning && <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 4 }}>↳ {e.reasoning}</div>}
                     {e.approved !== undefined && (
                       <div style={{ marginTop: 4 }}>
-                        <span style={{ fontSize: 8, fontWeight: 700, color: e.approved ? "var(--green)" : "var(--red)" }}>
-                          {e.approved ? "✓ APPROVED" : "✗ REJECTED"}
-                        </span>
+                        <StatusPill status={e.approved ? "approved" : "rejected"} />
                       </div>
                     )}
                   </div>
@@ -126,18 +137,31 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
         )}
       </div>
 
-      {/* 03: Build the case (vault) — always shown */}
+      {/* 04: The Case */}
       <div className="ribbon">
-        <div className={`ribbon-head ${openRibbons.vault ? "open" : "closed"}`} onClick={() => toggle("vault")}>
+        <div className={`ribbon-head ${openRibbons.thecase ? "open" : "closed"}`} onClick={() => toggle("thecase")}>
           <div>
-            <span className="ribbon-num">03</span>
-            <span className="ribbon-title">Build the case</span>
-            {vaultItems.length > 0 && <span className="ribbon-meta">{vaultItems.length} item{vaultItems.length > 1 ? "s" : ""}</span>}
+            <span className="ribbon-num">04</span>
+            <span className="ribbon-title">The Case</span>
+            {(evidenceCount > 0 || vaultItems.length > 0) && (
+              <span className="ribbon-meta">{evidenceCount + vaultItems.length} item{(evidenceCount + vaultItems.length) > 1 ? "s" : ""}</span>
+            )}
           </div>
-          <span className="ribbon-arrow" style={{ transform: openRibbons.vault ? "rotate(180deg)" : "none" }}>▼</span>
+          <span className="ribbon-arrow" style={{ transform: openRibbons.thecase ? "rotate(180deg)" : "none" }}>▼</span>
         </div>
-        {openRibbons.vault && (
+        {openRibbons.thecase && (
           <div className="ribbon-body">
+            {/* Evidence */}
+            <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 4, fontWeight: 600 }}>Evidence</div>
+            {evidenceCount === 0 ? emptyState : sub.evidence.map((e, i) => (
+              <div key={i} style={{ fontSize: 9, marginTop: 4, marginBottom: 4 }}>
+                <a href={safeHref(e.url)} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold)", textDecoration: "none", wordBreak: "break-all" }}>{e.url}</a>
+                {e.explanation && <div style={{ color: "var(--text-muted)", marginTop: 1 }}>↳ {e.explanation}</div>}
+              </div>
+            ))}
+
+            {/* Vault entries */}
+            <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginTop: 10, marginBottom: 4, fontWeight: 600 }}>Vault Artifacts</div>
             {vaultItems.length === 0 ? emptyState : vaultItems.map((item, i) => (
               <div key={i} style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 8, marginBottom: 4 }}>
                 <div style={{ fontSize: 9, color: "var(--gold)", letterSpacing: "1px", fontWeight: 600 }}>{item.type}</div>
@@ -149,13 +173,13 @@ export default function RecordDetailView({ sub, onViewCitizen, onDispute, canDis
         )}
       </div>
 
-      {/* 04: Assembly verdicts — always shown */}
+      {/* 05: Assembly Verdict */}
       <div className="ribbon">
-        <div className={`ribbon-head ${openRibbons.verdicts ? "open" : "closed"}`} onClick={() => toggle("verdicts")}>
-          <div><span className="ribbon-num">04</span><span className="ribbon-title">Assembly verdicts</span></div>
-          <span className="ribbon-arrow" style={{ transform: openRibbons.verdicts ? "rotate(180deg)" : "none" }}>▼</span>
+        <div className={`ribbon-head ${openRibbons.verdict ? "open" : "closed"}`} onClick={() => toggle("verdict")}>
+          <div><span className="ribbon-num">05</span><span className="ribbon-title">Assembly Verdict</span></div>
+          <span className="ribbon-arrow" style={{ transform: openRibbons.verdict ? "rotate(180deg)" : "none" }}>▼</span>
         </div>
-        {openRibbons.verdicts && (
+        {openRibbons.verdict && (
           <div className="ribbon-body">
             {!sub.resolvedAt || voteEntries.length === 0 ? (
               <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }}>Awaiting jury review</div>
