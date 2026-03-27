@@ -131,9 +131,11 @@ export function computeBadges(userObj, allUsers, allOrgs, allSubs) {
   const badges = [];
   const username = userObj.username;
 
-  // Assembly Creator - user is listed as createdBy on any org
+  // Assembly Creator - one badge PER assembly founded (+1 point each)
   const createdOrgs = Object.values(allOrgs).filter(o => o.createdBy === username && !o.isGeneralPublic);
-  if (createdOrgs.length > 0) badges.push({ ...CITIZEN_BADGES.assemblyCreator, count: createdOrgs.length });
+  createdOrgs.forEach(o => {
+    badges.push({ ...CITIZEN_BADGES.assemblyCreator, detail: o.name });
+  });
 
   // Founder milestones - assembly reaches jury scaling thresholds
   const FOUNDER_THRESHOLDS = [
@@ -149,9 +151,12 @@ export function computeBadges(userObj, allUsers, allOrgs, allSubs) {
     });
   });
 
-  // Assembly Member - member of any non-GP org
+  // Assembly Membership milestones — non-GP memberships for first badge, total for levels
   const memberOrgs = Object.values(allOrgs).filter(o => !o.isGeneralPublic && o.members && o.members.includes(username));
-  if (memberOrgs.length > 0) badges.push({ ...CITIZEN_BADGES.assemblyMember, count: memberOrgs.length });
+  const totalMemberships = memberOrgs.length + 1; // +1 for GP (everyone is in GP)
+  if (memberOrgs.length >= 1)  badges.push({ ...CITIZEN_BADGES.joinOne });
+  if (totalMemberships >= 6)   badges.push({ ...CITIZEN_BADGES.joinSix });
+  if (totalMemberships >= 12)  badges.push({ ...CITIZEN_BADGES.joinTwelve });
 
   // Submission milestones
   const userSubCount = Object.values(allSubs).filter(s => s.submittedBy === username).length;

@@ -397,7 +397,10 @@ export const CITIZEN_BADGES = {
   hundredDisputes:  { id: "hundredDisputes",     image: "/icons/badge-dispute-100.PNG",    label: "100 Disputes Won",    desc: "Legendary challenger",                             tier: "gold" },
   // Assembly badges (gray → green → gold)
   assemblyCreator:  { id: "assemblyCreator",     image: "/icons/badge-assembly-0(1).PNG",  label: "Assembly Creator",    desc: "You started a community",                          tier: "gray" },
-  assemblyMember:   { id: "assemblyMember",      image: null,                              label: "Assembly Member",     desc: "Joined an assembly beyond The General Public",     tier: "gray" },
+  // Membership milestones (joining assemblies)
+  joinOne:          { id: "joinOne",             image: "/icons/badge-join-1.png",         label: "Assembly Member",     desc: "Joined your first assembly beyond The General Public", tier: "gray" },
+  joinSix:          { id: "joinSix",             image: "/icons/badge-join-6.png",         label: "6 Assemblies",        desc: "Member of 6 assemblies (including The General Public)", tier: "green" },
+  joinTwelve:       { id: "joinTwelve",          image: "/icons/badge-joined-12.png",      label: "Full Plate",          desc: "Member of all 12 assemblies — fully committed",     tier: "gold" },
   // Founder milestones (green → gold)
   founderFive:      { id: "founderFive",         image: "/icons/badge-assembly-0.PNG",     label: "Jury Ready",          desc: "Founded assembly reached 5 members",               tier: "green" },
   founderFiftyOne:  { id: "founderFiftyOne",     image: "/icons/badge-assembly-50.PNG",    label: "Full Bench",          desc: "Founded assembly reached 50 members",              tier: "green" },

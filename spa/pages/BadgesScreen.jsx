@@ -24,7 +24,7 @@ const CATEGORIES = [
   {
     title: "Assembly Membership",
     desc: "Join assemblies to participate in focused communities of verification.",
-    badges: ["assemblyMember", "trustedContributor"],
+    badges: ["joinOne", "joinSix", "joinTwelve", "trustedContributor"],
   },
   {
     title: "Digital Intelligence Partnership",

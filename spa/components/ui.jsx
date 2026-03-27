@@ -40,18 +40,18 @@ const BADGE_CATEGORIES = [
   { title: "Submissions", ids: ["firstSubmission","tenSubmissions","centuryClub","thousand"] },
   { title: "Voting", ids: ["firstVote","tenVotes","twentyFiveVotes","fiftyVotes","hundredVotes"] },
   { title: "Disputes", ids: ["firstDispute","fiveDisputes","tenDisputes","twentyDisputes","fiftyDisputes","hundredDisputes"] },
-  { title: "Assembly", ids: ["assemblyCreator","assemblyMember","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"] },
+  { title: "Assembly", ids: ["assemblyCreator","joinOne","joinSix","joinTwelve","founderFive","founderFiftyOne","founderHundredOne","founderThousand","trustedContributor"] },
   { title: "DI Partnership", ids: ["diPartner","diTen","diHundred","diThousand","diTenK","diHundredK"] },
   { title: "Early Adopter", ids: ["firstHundred","firstThousand"] },
 ];
 
-function BadgeCard({ b }) {
+function BadgeCard({ b, onClick }) {
   const ts = BADGE_TIER_STYLES[b.tier] || BADGE_TIER_STYLES.gray;
   return (
-    <div title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
+    <div onClick={() => onClick && onClick(b)} title={b.desc + (b.detail ? ` — ${b.detail}` : "")} style={{
       display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
       padding: "8px 4px", background: ts.bg, border: `1px solid ${ts.border}`,
-      cursor: "default", textAlign: "center",
+      cursor: "pointer", textAlign: "center",
     }}>
       {b.image ? (
         <img src={b.image} alt={b.label} width={64} height={64} style={{ objectFit: "contain" }} />
@@ -65,29 +65,46 @@ function BadgeCard({ b }) {
 }
 
 export function CitizenBadges({ badges }) {
+  const [selectedBadge, setSelectedBadge] = useState(null);
   if (!badges || badges.length === 0) return (
     <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>
       <div style={{ fontStyle: "italic", marginBottom: 6 }}>No badges earned yet.</div>
       <div style={{ fontSize: 9, color: "var(--text-muted)" }}>Badges are earned automatically through participation. +1 point per badge.</div>
     </div>
   );
-  // Group earned badges by category
-  const badgeMap = {};
-  badges.forEach(b => { badgeMap[b.id] = b; });
+  // Group earned badges by category — badges with same id but different detail get separate entries
+  const earned = badges;
   return (
     <div>
       {BADGE_CATEGORIES.map(cat => {
-        const earned = cat.ids.filter(id => badgeMap[id]).map(id => badgeMap[id]);
-        if (earned.length === 0) return null;
+        const catBadges = earned.filter(b => cat.ids.includes(b.id));
+        if (catBadges.length === 0) return null;
         return (
           <div key={cat.title} style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 4, fontWeight: 600 }}>{cat.title}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 6 }}>
-              {earned.map((b, i) => <BadgeCard key={b.id + (b.detail || "") + i} b={b} />)}
+              {catBadges.map((b, i) => <BadgeCard key={b.id + (b.detail || "") + i} b={b} onClick={setSelectedBadge} />)}
             </div>
           </div>
         );
       })}
+      {/* Badge detail popup */}
+      {selectedBadge && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setSelectedBadge(null)}>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 24, maxWidth: 320, width: "100%", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+            {selectedBadge.image ? (
+              <img src={selectedBadge.image} alt={selectedBadge.label} width={128} height={128} style={{ objectFit: "contain", marginBottom: 12 }} />
+            ) : (
+              <div style={{ width: 128, height: 128, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px dashed var(--border)", fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>Coming Soon</div>
+            )}
+            <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{selectedBadge.label}</div>
+            {selectedBadge.detail && <div style={{ fontSize: 11, color: "var(--gold)", marginBottom: 6 }}>{selectedBadge.detail}</div>}
+            <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 8 }}>{selectedBadge.desc}</div>
+            <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{selectedBadge.tier} · +{selectedBadge.points || 1} point</div>
+            <button onClick={() => setSelectedBadge(null)} style={{ marginTop: 12, padding: "6px 16px", background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)" }}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
