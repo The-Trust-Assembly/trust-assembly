@@ -117,7 +117,19 @@ export async function PATCH(
     if (updates.length === 0) return err("No fields to update");
 
     values.push(id);
-    await sql.query(`UPDATE organizations SET ${updates.join(", ")} WHERE id = $${idx}`, values);
+    const result = await sql.query(`UPDATE organizations SET ${updates.join(", ")} WHERE id = $${idx}`, values);
+
+    if (result.rowCount === 0) {
+      return err("Update failed — assembly not found or column may not exist. Please ensure the avatar migration has been run.");
+    }
+
+    // Verify the avatar was actually saved if it was part of the update
+    if (body.avatar !== undefined) {
+      const verify = await sql`SELECT avatar IS NOT NULL as has_avatar FROM organizations WHERE id = ${id}`;
+      if (verify.rows.length > 0 && !verify.rows[0].has_avatar && body.avatar) {
+        return err("Avatar column may not exist in the database. Please run: ALTER TABLE organizations ADD COLUMN IF NOT EXISTS avatar TEXT;");
+      }
+    }
 
     // Audit log
     await sql`
