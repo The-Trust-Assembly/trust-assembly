@@ -165,6 +165,8 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
+  const [users, setUsers] = useState({});
+  const [activeTab, setActiveTab] = useState({}); // { [primarySubId]: tabIndex }
   const [expandedId, setExpandedId] = useState(null);
   const [disputingId, setDisputingId] = useState(null);
   const [disputeForm, setDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
@@ -182,8 +184,8 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
   const [loadError, setLoadError] = useState("");
   const load = async () => {
     try {
-      const [subsData, orgsData, storiesData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS), sG(SK.STORIES)]);
-      setSubs(subsData || {}); setOrgs(orgsData || {}); setStories(storiesData || {}); setLoadError("");
+      const [subsData, orgsData, storiesData, usersData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS), sG(SK.STORIES), sG(SK.USERS)]);
+      setSubs(subsData || {}); setOrgs(orgsData || {}); setStories(storiesData || {}); setUsers(usersData || {}); setLoadError("");
     } catch (e) {
       console.error("FeedScreen load error:", e);
       setLoadError("Failed to load data. Please refresh the page.");
@@ -253,7 +255,7 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
   if (loading) return <Loader />;
   if (loadError) return <div style={{ margin: 20, color: "var(--red)" }}>{loadError} <button className="card-btn" onClick={load}>Retry</button></div>;
 
-  // Deduplicate submissions by URL
+  // Deduplicate submissions by URL — keep full submission objects for per-assembly tabs
   const sorted = Object.values(subs || {}).sort((a, b) => hotScore(b) - hotScore(a));
   const seenUrls = new Map();
   const all = [];
@@ -261,15 +263,22 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
     const key = sub.url ? sub.url.replace(/\/$/, "").toLowerCase() : sub.id;
     if (seenUrls.has(key)) {
       const existing = seenUrls.get(key);
-      if (!existing._otherAssemblies) existing._otherAssemblies = [];
-      if (sub.orgName && !existing._otherAssemblies.includes(sub.orgName) && sub.orgName !== existing.orgName) {
-        existing._otherAssemblies.push(sub.orgName);
+      if (!existing._allSubmissions) existing._allSubmissions = [existing];
+      // Avoid duplicating same assembly
+      if (!existing._allSubmissions.some(s => s.orgId === sub.orgId)) {
+        existing._allSubmissions.push(sub);
       }
     } else {
       seenUrls.set(key, sub);
       all.push(sub);
     }
   }
+
+  // Helper: get the active assembly's submission for a deduplicated card
+  const getActiveSub = (sub) => {
+    const subs = sub._allSubmissions || [sub];
+    return subs[activeTab[sub.id] || 0] || subs[0];
+  };
 
   const filtered = all.filter(sub => matchesFilter(sub, activeFilter));
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -405,27 +414,38 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
         let domain = "";
         try { domain = new URL(String(sub.url)).hostname.replace(/^www\./, ""); } catch { domain = safe(sub.url) || ""; }
 
+        const activeSub = getActiveSub(sub);
+
         return (
         <div key={sub.id}>
-          {/* Manila folder tab */}
-          <div className="manila-tab" onClick={(e) => { e.stopPropagation(); onViewAssembly && onViewAssembly(sub.orgId); }}>
-            {orgs[sub.orgId]?.avatar && <img src={orgs[sub.orgId].avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 4, verticalAlign: "middle" }} />}
-            {safe(sub.orgName)}
+          {/* Manila folder tabs — one per assembly */}
+          <div style={{ display: "flex", gap: 2 }}>
+            {(sub._allSubmissions || [sub]).map((aSub, idx) => {
+              const isActive = (activeTab[sub.id] || 0) === idx;
+              const org = orgs[aSub.orgId];
+              return (
+                <div key={aSub.orgId || idx} className={`manila-tab ${isActive ? "manila-tab-active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setActiveTab(prev => ({ ...prev, [sub.id]: idx })); }}>
+                  {org?.avatar && <img src={org.avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 4, verticalAlign: "middle" }} />}
+                  <span className="manila-tab-name">{safe(aSub.orgName)}</span>
+                </div>
+              );
+            })}
           </div>
           <div className="card">
           {/* Card top: meta + status — ALWAYS visible */}
           <div className="card-top">
             <div className="card-meta">
               {showUser ? (
-                <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} />
+                <UsernameLink username={sub.submittedBy} avatar={users[sub.submittedBy]?.avatar} onClick={onViewCitizen} />
               ) : (
                 <span className="hidden-user">Citizen (pending review)</span>
               )}
-              <span className="muted">· <span style={{ cursor: "pointer", color: "var(--gold)" }} onClick={(e) => { e.stopPropagation(); onViewAssembly && onViewAssembly(sub.orgId); }}>{safe(sub.orgName)}</span>{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4, cursor: "pointer" }}>{safe(a)}</span>)} · {sDate(sub.createdAt)}</span>
-              {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
-              {sub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
+              <span className="muted">· {sDate(sub.createdAt)}</span>
+              {activeSub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
+              {activeSub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
             </div>
-            <StatusPill status={sub.status} />
+            <StatusPill status={activeSub.status} />
           </div>
 
           {!isExpanded && <>
@@ -452,18 +472,18 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
           {/* Actions */}
           <div className="card-actions">
             <span className="card-btn" onClick={() => setExpandedId(sub.id)}>Expand</span>
-            {onViewRecord && <span className="card-btn" onClick={() => onViewRecord(sub.id)}>Open Full Record</span>}
-            <span className="card-btn" onClick={() => { const url = window.location.origin + "/record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</span>
+            {onViewRecord && <span className="card-btn" onClick={() => onViewRecord(activeSub.id)}>Open Full Record</span>}
+            <span className="card-btn" onClick={() => { const url = window.location.origin + "/record/" + activeSub.id; navigator.clipboard?.writeText(url); }}>Copy Link</span>
           </div>
           </>}
 
           {/* Expanded view */}
           {isExpanded && (
             <div>
-              <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} status={sub.status} />
+              <RecordDetailView sub={activeSub} onViewCitizen={onViewCitizen} status={activeSub.status} />
 
               {/* Tag to story */}
-              {["approved", "consensus", "cross_review"].includes(sub.status) && taggingId !== sub.id && (
+              {["approved", "consensus", "cross_review"].includes(activeSub.status) && taggingId !== sub.id && (
                 <button className="card-btn" style={{ color: "var(--gold)", borderColor: "var(--gold)", marginTop: 6, marginRight: 8 }} onClick={() => { setTaggingId(sub.id); setTagMsg(""); }}>
                   Tag to Story
                 </button>
@@ -491,9 +511,9 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
                 );
               })()}
 
-              {canDispute(sub) && disputingId !== sub.id && (
-                <button className="card-btn" style={{ color: "var(--red)", borderColor: "var(--red)", marginTop: 6 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} }); }}>
-                  {isRejectionDispute(sub) ? "Dispute This Rejection" : "Dispute This Submission"}
+              {canDispute(activeSub) && disputingId !== activeSub.id && (
+                <button className="card-btn" style={{ color: "var(--red)", borderColor: "var(--red)", marginTop: 6 }} onClick={() => { setDisputingId(activeSub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} }); }}>
+                  {isRejectionDispute(activeSub) ? "Dispute This Rejection" : "Dispute This Submission"}
                 </button>
               )}
 
