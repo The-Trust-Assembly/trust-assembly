@@ -126,6 +126,7 @@ export async function GET() {
       id: uid,
       username,
       displayName: row.display_name,
+      avatar: row.avatar,
       realName: row.real_name,
       email: row.email,
       gender: row.gender,

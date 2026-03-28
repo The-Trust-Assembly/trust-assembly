@@ -48,12 +48,19 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
       <h2 className="ta-section-head">Citizen Record</h2>
       <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4F46E5" : pi.color}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            {u.avatar ? (
+              <img src={u.avatar} alt="" style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: "var(--bg)", flexShrink: 0 }}>{((u.displayName || u.username || "?")[0] + ((u.displayName || u.username || "?")[1] || "")).toUpperCase()}</div>
+            )}
+            <div>
             <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
               {isDIUser(u) ? <span style={{ marginRight: 6 }}><Icon name="robot" size={14} /></span> : u.username === ADMIN_USERNAME ? <span style={{ marginRight: 6 }}><Icon name="crown" size={14} /></span> : null}
               @{u.displayName || u.username}
             </h3>
             {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "var(--gold)" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "Pending"}</div>}
+            </div>
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>

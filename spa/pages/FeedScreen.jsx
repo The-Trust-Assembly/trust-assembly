@@ -408,7 +408,10 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
         return (
         <div key={sub.id}>
           {/* Manila folder tab */}
-          <div className="manila-tab" onClick={(e) => { e.stopPropagation(); onViewAssembly && onViewAssembly(sub.orgId); }}>{safe(sub.orgName)}</div>
+          <div className="manila-tab" onClick={(e) => { e.stopPropagation(); onViewAssembly && onViewAssembly(sub.orgId); }}>
+            {orgs[sub.orgId]?.avatar && <img src={orgs[sub.orgId].avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 4, verticalAlign: "middle" }} />}
+            {safe(sub.orgName)}
+          </div>
           <div className="card">
           {/* Card top: meta + status — ALWAYS visible */}
           <div className="card-top">
