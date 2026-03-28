@@ -2,7 +2,9 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, serverError } from "@/lib/api-utils";
-import { tryResolveSubmission, tryResolveStory } from "@/lib/vote-resolution";
+import { tryResolveSubmission, tryResolveStory, tryResolveDispute } from "@/lib/vote-resolution";
+import { createNotification } from "@/lib/notifications";
+import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { getMajority } from "@/lib/jury-rules";
 
 // POST /api/admin/process-records
@@ -173,6 +175,42 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // ── Grace period expiration for disputes ──
+    let graceExpired = 0;
+    try {
+      const expiredGrace = await sql`
+        SELECT id, org_id, disputed_by, original_submitter
+        FROM disputes
+        WHERE status = 'grace_period' AND grace_period_until < now()
+      `;
+      for (const d of expiredGrace.rows) {
+        await sql`UPDATE disputes SET status = 'pending_review', grace_period_until = NULL WHERE id = ${d.id}`;
+        // Assign jury
+        const wildWest = await isWildWestMode();
+        const mc = await sql`SELECT COUNT(*) as count FROM organization_members WHERE org_id = ${d.org_id} AND is_active = TRUE`;
+        const count = parseInt(mc.rows[0].count);
+        const jurySize = wildWest ? 1 : getJurySize(count);
+        const pool = await sql.query(
+          `SELECT om.user_id FROM organization_members om JOIN users u ON u.id = om.user_id
+           WHERE om.org_id = $1 AND om.is_active = TRUE AND u.is_di = FALSE
+             AND om.user_id != $2 AND om.user_id != $3
+           ORDER BY RANDOM() LIMIT $4`,
+          [d.org_id, d.disputed_by, d.original_submitter, jurySize * JURY_POOL_MULTIPLIER]
+        );
+        for (const juror of pool.rows) {
+          await sql.query(
+            `INSERT INTO jury_assignments (dispute_id, user_id, role, in_pool, accepted, accepted_at)
+             VALUES ($1, $2, 'dispute', TRUE, TRUE, now()) ON CONFLICT DO NOTHING`,
+            [d.id, juror.user_id]
+          );
+          createNotification({ userId: juror.user_id as string, type: "dispute_jury_assigned", title: "You've been assigned to a dispute jury.", entityType: "dispute", entityId: d.id as string }).catch(() => {});
+        }
+        createNotification({ userId: d.original_submitter as string, type: "dispute_filed", title: "The 48-hour grace period has expired.", body: "The dispute will now proceed with the original filer.", entityType: "dispute", entityId: d.id as string }).catch(() => {});
+        createNotification({ userId: d.disputed_by as string, type: "dispute_filed", title: "Your dispute is now proceeding to jury.", body: "The grace period expired without a takeover.", entityType: "dispute", entityId: d.id as string }).catch(() => {});
+        graceExpired++;
+      }
+    } catch (e) { console.error("Grace period processing failed:", e); }
 
     // ── Concessions ──
     const stalledConcessions = await sql`

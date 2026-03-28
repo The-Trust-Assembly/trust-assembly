@@ -115,16 +115,23 @@ export async function POST(request: NextRequest) {
   // Determine dispute type from body or infer from submission status
   const resolvedType = (disputeType as string) || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
 
+  // Check if this is a third-party dispute on a rejection (grace period applies)
+  const isSelfDispute = session.sub === submitted_by;
+  const isRejectionDispute = resolvedType === "challenge_rejection";
+  const needsGracePeriod = !isSelfDispute && isRejectionDispute;
+  const initialStatus = needsGracePeriod ? "grace_period" : "pending_review";
+  const gracePeriodUntil = needsGracePeriod ? new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() : null;
+
   let dispute: Record<string, unknown>;
 
   try {
     dispute = await withTransaction(async (client) => {
       const result = await client.query(
-        `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, submission_id, org_id, status, dispute_type, created_at`,
+        `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses, status, grace_period_until)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id, submission_id, org_id, status, dispute_type, grace_period_until, created_at`,
         [submissionId, org_id, session.sub, submitted_by, reasoning, resolvedType,
-         fieldResponses ? JSON.stringify(fieldResponses) : null]
+         fieldResponses ? JSON.stringify(fieldResponses) : null, initialStatus, gracePeriodUntil]
       );
       const d = result.rows[0];
 
@@ -179,17 +186,31 @@ export async function POST(request: NextRequest) {
     return err("Failed to create dispute. Please try again.", 500);
   }
 
-  // Notify the original submitter about the dispute (fire-and-forget)
-  await createNotification({
+  if (needsGracePeriod) {
+    // Notify original submitter about the grace period
+    createNotification({
+      userId: submitted_by as string,
+      type: "dispute_filed",
+      title: "Someone has disputed the rejection of your submission",
+      body: "You have 48 hours to take over this dispute. If you don't act, the original filer's dispute will proceed to jury.",
+      entityType: "dispute",
+      entityId: dispute.id as string,
+    }).catch(() => {});
+
+    return ok({ ...dispute, gracePeriod: true, gracePeriodUntil }, 201);
+  }
+
+  // Notify the original submitter about the dispute (no grace period)
+  createNotification({
     userId: submitted_by as string,
     type: "dispute_filed",
     title: "Your submission has been disputed",
     body: `A ${resolvedType === "challenge_rejection" ? "challenge to rejection" : "challenge to approval"} was filed`,
     entityType: "dispute",
     entityId: dispute.id as string,
-  });
+  }).catch(() => {});
 
-  // ── Assign jury to the dispute ──
+  // ── Assign jury to the dispute (only when no grace period) ──
   try {
     const wildWest = await isWildWestMode();
     const memberCount = await sql`SELECT COUNT(*) as count FROM organization_members WHERE org_id = ${org_id} AND is_active = TRUE`;
