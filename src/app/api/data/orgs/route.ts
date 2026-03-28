@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET /api/data/orgs — returns ALL organizations keyed by ID
 // with member username arrays, in the format the v5 SPA expects.
@@ -49,9 +50,32 @@ export async function GET() {
     }
   }
 
+  // Direct avatar check to diagnose read-replica / caching issues
+  const avatarCheck = await sql`
+    SELECT id, name,
+      avatar IS NOT NULL as has_avatar,
+      CASE WHEN avatar IS NOT NULL THEN length(avatar) ELSE 0 END as avatar_length
+    FROM organizations ORDER BY name
+  `;
+  const avatarDiag: Record<string, { has_avatar: boolean; avatar_length: number }> = {};
+  for (const row of avatarCheck.rows) {
+    avatarDiag[row.id as string] = {
+      has_avatar: !!row.has_avatar,
+      avatar_length: Number(row.avatar_length) || 0,
+    };
+  }
+
   const orgs: Record<string, unknown> = {};
   for (const row of result.rows) {
     const id = row.id as string;
+    const mainQueryHasAvatar = row.avatar !== null && row.avatar !== undefined;
+    const diagHasAvatar = avatarDiag[id]?.has_avatar ?? false;
+
+    // Log discrepancy: main query says null but direct check says exists
+    if (!mainQueryHasAvatar && diagHasAvatar) {
+      console.warn(`[data/orgs] AVATAR DISCREPANCY for ${row.name} (${id}): main query avatar is ${row.avatar === null ? 'null' : 'undefined'}, but direct check says avatar exists (${avatarDiag[id]?.avatar_length} bytes)`);
+    }
+
     orgs[id] = {
       id,
       name: row.name,
@@ -70,10 +94,17 @@ export async function GET() {
     };
   }
 
+  // Add diagnostic metadata
+  (orgs as Record<string, unknown>)._avatarDiag = {
+    timestamp: new Date().toISOString(),
+    avatarStatus: avatarDiag,
+  };
+
   return NextResponse.json(orgs, {
     status: 200,
     headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      "Pragma": "no-cache",
       "Surrogate-Control": "no-store",
       "CDN-Cache-Control": "no-store",
     },

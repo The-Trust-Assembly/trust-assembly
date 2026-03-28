@@ -10,6 +10,7 @@ const NO_CACHE_HEADERS = {
 };
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET /api/data/stories — returns ALL stories keyed by ID
 // in the camelCase format the SPA expects.

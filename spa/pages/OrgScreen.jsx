@@ -381,14 +381,17 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
                       const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: dataUrl }) });
                       const responseData = await res.json().catch(() => ({}));
                       if (res.ok) {
+                        console.log("[OrgScreen] Avatar PATCH response:", responseData);
                         // Update local state immediately so image displays without waiting for refetch
                         setOrgs(prev => {
                           const updated = { ...prev };
                           if (updated[viewingOrg]) updated[viewingOrg] = { ...updated[viewingOrg], avatar: dataUrl };
                           return updated;
                         });
-                        // Also refetch to confirm persistence
-                        load();
+                        // Invalidate React Query cache before refetch
+                        invalidateOrgs();
+                        // Small delay to let edge caches invalidate, then refetch
+                        setTimeout(() => load(), 500);
                         setSuccess("Assembly image updated successfully.");
                         setTimeout(() => setSuccess(""), 3000);
                       } else {

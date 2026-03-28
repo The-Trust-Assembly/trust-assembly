@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET /api/data/users — returns ALL users keyed by username
 // in the format the v5 SPA expects. Excludes password hashes.

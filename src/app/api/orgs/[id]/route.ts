@@ -4,6 +4,8 @@ import { getCurrentUserFromRequest, requireAdmin } from "@/lib/auth";
 import { ok, notFound, err, unauthorized, forbidden, serverError } from "@/lib/api-utils";
 import { isValidUUID, validateLength, MAX_LENGTHS } from "@/lib/validation";
 
+export const fetchCache = "force-no-store";
+
 // GET /api/orgs/[id] — assembly detail
 export async function GET(
   _request: NextRequest,
