@@ -11,7 +11,7 @@ export async function GET() {
   try {
   const result = await sql`
     SELECT
-      o.id, o.name, o.description, o.charter, o.is_general_public,
+      o.id, o.name, o.description, o.charter, o.avatar, o.is_general_public,
       o.enrollment_mode, o.sponsors_required,
       o.cross_group_deception_findings, o.cassandra_wins,
       o.created_at,
@@ -57,6 +57,7 @@ export async function GET() {
       name: row.name,
       description: row.description,
       charter: row.charter,
+      avatar: row.avatar,
       isGeneralPublic: row.is_general_public,
       enrollmentMode: row.enrollment_mode,
       sponsorsRequired: row.sponsors_required,

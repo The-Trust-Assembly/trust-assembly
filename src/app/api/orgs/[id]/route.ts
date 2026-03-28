@@ -14,7 +14,7 @@ export async function GET(
 
   const result = await sql`
     SELECT
-      o.id, o.name, o.description, o.charter, o.is_general_public,
+      o.id, o.name, o.description, o.charter, o.avatar, o.is_general_public,
       o.enrollment_mode, o.sponsors_required,
       o.cross_group_deception_findings, o.cassandra_wins,
       o.created_at,
@@ -105,6 +105,12 @@ export async function PATCH(
       if (descErr) return err(descErr);
       updates.push(`description = $${idx++}`);
       values.push(body.description?.trim() || null);
+    }
+    if (body.avatar !== undefined) {
+      if (body.avatar && typeof body.avatar === "string" && body.avatar.length > 300000) return err("Avatar must be under 200KB");
+      if (body.avatar && typeof body.avatar === "string" && !body.avatar.startsWith("data:image/")) return err("Avatar must be a data:image URL (JPEG, PNG, or WebP)");
+      updates.push(`avatar = $${idx++}`);
+      values.push(body.avatar || null);
     }
 
     if (updates.length === 0) return err("No fields to update");

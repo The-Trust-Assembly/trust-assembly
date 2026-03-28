@@ -10,6 +10,18 @@ import { UsernameLink, SubHeadline, StatusPill, InviteCTA, Empty, Loader, Icon }
 import AssemblyGuide from "../components/AssemblyGuide";
 import { queryKeys } from "../lib/queryKeys";
 
+function OrgAvatar({ org, size = 48 }) {
+  return (
+    <div style={{ width: size, height: size, flexShrink: 0, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg)" }}>
+      {org.avatar ? (
+        <img src={org.avatar} width={size} height={size} alt={org.name} style={{ objectFit: "cover", display: "block" }} />
+      ) : (
+        <div style={{ width: size, height: size, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.4, fontWeight: 900, color: "var(--text-muted)", fontFamily: "var(--serif)" }}>{(org.name || "?")[0]}</div>
+      )}
+    </div>
+  );
+}
+
 async function proposeConcession(orgId, proposerUsername, subId, reasoning) {
   try {
     const res = await fetch("/api/concessions", {
@@ -325,7 +337,27 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
 
         {/* Assembly Identity */}
         <div className="ta-card" style={{ borderLeft: `4px solid ${vo.isGeneralPublic ? "#0D9488" : "var(--text)"}` }}>
-          <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 8 }}>{vo.description}</div>
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 8 }}>
+            {/* Assembly avatar — clickable for founders under 50 members */}
+            {(() => {
+              const isFounderForAvatar = (vo.founders || [vo.createdBy]).includes(user.username);
+              const canUploadAvatar = isFounderForAvatar && vo.members.length < 50 && !vo.isGeneralPublic;
+              return (
+                <div style={{ width: 80, height: 80, flexShrink: 0, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg)", cursor: canUploadAvatar ? "pointer" : "default", position: "relative" }}
+                  onClick={() => { if (!canUploadAvatar) return; const input = document.createElement("input"); input.type = "file"; input.accept = "image/jpeg,image/png,image/webp"; input.onchange = async (e) => { const file = e.target.files?.[0]; if (!file) return; const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext("2d"); const img = new Image(); img.onload = async () => { const s = Math.min(img.width, img.height); const sx = (img.width - s) / 2; const sy = (img.height - s) / 2; ctx.drawImage(img, sx, sy, s, s, 0, 0, 256, 256); const dataUrl = canvas.toDataURL("image/jpeg", 0.8); try { const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: dataUrl }) }); if (res.ok) { setSuccess("Assembly image updated."); load(); setTimeout(() => setSuccess(""), 3000); } else { const d = await res.json().catch(() => ({})); setError(d.error || "Failed to update image"); } } catch { setError("Network error"); } }; img.src = URL.createObjectURL(file); }; input.click(); }}>
+                  {vo.avatar ? (
+                    <img src={vo.avatar} width={80} height={80} alt={vo.name} style={{ objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <div style={{ width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 900, color: "var(--text-muted)", fontFamily: "var(--serif)" }}>{(vo.name || "?")[0]}</div>
+                  )}
+                  {canUploadAvatar && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 7, textAlign: "center", padding: "2px 0", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Change</div>}
+                </div>
+              );
+            })()}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{vo.description}</div>
+            </div>
+          </div>
           {vo.charter && !editingCharter && <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid var(--border)" }}>{vo.charter}</div>}
           {!vo.charter && !editingCharter && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }}>No charter set</div>}
           {(() => {
@@ -620,12 +652,15 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
         const inReview = Object.values(subs || {}).filter(s => s.orgId === o.id && ["pending_review", "pending_jury", "di_pending"].includes(s.status)).length;
         return (
           <div key={o.id} style={{ border: "1px solid rgba(212,168,67,0.27)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+              <OrgAvatar org={o} size={48} />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+                  <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "#4a9e55", fontWeight: 700, flexShrink: 0 }}>JOINED</span>
+                </div>
                 <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>{o.description}</div>
               </div>
-              <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "#4a9e55", fontWeight: 700, flexShrink: 0 }}>JOINED</span>
             </div>
 
             {/* Stat cards */}
@@ -675,12 +710,15 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
             const inReview = Object.values(subs || {}).filter(s => s.orgId === o.id && ["pending_review", "pending_jury", "di_pending"].includes(s.status)).length;
             return (
               <div key={o.id} style={{ border: "1px solid rgba(212,168,67,0.2)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 6 }}>
+                  <OrgAvatar org={o} size={48} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+                      <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, flexShrink: 0 }}>FOLLOWING</span>
+                    </div>
                     <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>{o.description}</div>
                   </div>
-                  <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, flexShrink: 0 }}>FOLLOWING</span>
                 </div>
                 <div style={{ display: "flex", gap: 16, fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
                   <span>{o.members.length} citizens</span><span>{st.total || 0} claims</span><span>{inReview} in review</span>
@@ -782,7 +820,8 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
           const atLimit = myOrgIds.length >= MAX_ORGS;
           return (
             <div key={o.id} style={{ border: "1px solid var(--border)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <OrgAvatar org={o} size={48} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
                   {o.description && <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, marginBottom: 6 }}>{o.description}</div>}
