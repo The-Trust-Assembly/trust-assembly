@@ -71,7 +71,7 @@ function formatNotification(n) {
   }
 }
 
-function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFeedback }) {
+function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFeedback, dropDown }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const allItems = [...items];
@@ -96,7 +96,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
         {label} <span style={{ fontSize: 8, marginLeft: 3, opacity: 0.6 }}>{open ? "\u25B4" : "\u25BE"}</span>
       </button>
       {open && (
-        <div className="ta-nav-dropdown-menu" role="menu">
+        <div className="ta-nav-dropdown-menu" role="menu" style={dropDown ? { top: "100%", bottom: "auto", right: 0, left: "auto", transform: "none", marginTop: 2, marginBottom: 0 } : undefined}>
           {allItems.map(n => (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
               style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
@@ -126,6 +126,9 @@ export default function TrustAssembly() {
 
   const [contentWidth, setContentWidthState] = useState(() => { try { return localStorage.getItem("ta-content-width") || "wide"; } catch { return "wide"; } });
   const setContentWidth = (w) => { setContentWidthState(w); try { localStorage.setItem("ta-content-width", w); } catch {} };
+
+  const [hideCarousel, setHideCarouselState] = useState(() => { try { return localStorage.getItem("ta-hide-carousel") === "true"; } catch { return false; } });
+  const setHideCarousel = (v) => { setHideCarouselState(v); try { localStorage.setItem("ta-hide-carousel", v ? "true" : "false"); } catch {} };
 
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
@@ -950,6 +953,9 @@ export default function TrustAssembly() {
                     {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
                   </span>
                 ))}
+                <NavDropdown label="More" dropDown items={[
+                  ...NAV_DROPDOWNS.flatMap(dd => dd.items)
+                ]} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -1006,14 +1012,14 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
+            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} hideCarousel={hideCarousel} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} hideCarousel={hideCarousel} setHideCarousel={setHideCarousel} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}

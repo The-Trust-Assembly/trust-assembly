@@ -161,7 +161,7 @@ export default function FeedScreen(props) {
   return <FeedErrorBoundary><FeedScreenInner {...props} /></FeedErrorBoundary>;
 }
 
-function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
+function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
@@ -300,7 +300,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
 
   return (
     <div className="ta-content">
-      <FeedHeroCarousel subs={subs} onViewRecord={onViewRecord} onViewAssembly={onViewAssembly} />
+      {!hideCarousel && <FeedHeroCarousel subs={subs} onViewRecord={onViewRecord} onViewAssembly={onViewAssembly} />}
 
       {/* Admin update box — driven by /api/admin/announcement */}
       {siteAnnouncement && typeof siteAnnouncement === "string" && (
