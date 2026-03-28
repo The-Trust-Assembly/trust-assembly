@@ -15,6 +15,7 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
   const [diAgents, setDiAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [showAssemblies, setShowAssemblies] = useState(false);
   const loadData = async () => {
     try {
       const all = (await sG(SK.USERS)) || {};
@@ -64,9 +65,23 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
-        {myOrgs.length > 0 && <div style={{ marginTop: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 0, background: o.isGeneralPublic ? "#F0FDFA" : "var(--card-bg)", color: o.isGeneralPublic ? "#0D9488" : "#475569" }}>{o.isGeneralPublic ? <><Icon name="vault" size={14} /> </> : ""}{o.name}</span>)}
-        </div>}
+        {myOrgs.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div onClick={() => setShowAssemblies(!showAssemblies)} style={{ cursor: "pointer", fontSize: 9, fontFamily: "var(--mono)", letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, marginBottom: 4, userSelect: "none" }}>
+              {myOrgs.length} assembl{myOrgs.length !== 1 ? "ies" : "y"} <span style={{ display: "inline-block", transform: showAssemblies ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+            </div>
+            {showAssemblies && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {myOrgs.map(o => (
+                  <span key={o.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", background: "var(--card-bg)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
+                    {o.avatar ? <img src={o.avatar} width={14} height={14} alt="" style={{ objectFit: "cover" }} /> : null}
+                    {o.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: pi.color, marginBottom: 4 }}>Profile: {p.profile}</div>
           <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{pi.desc}</div>
