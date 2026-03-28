@@ -5,6 +5,7 @@ import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { logError } from "@/lib/error-logger";
 import { createNotification } from "@/lib/notifications";
+import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 
 const SOURCE_FILE = "src/app/api/disputes/route.ts";
 
@@ -187,6 +188,40 @@ export async function POST(request: NextRequest) {
     entityType: "dispute",
     entityId: dispute.id as string,
   });
+
+  // ── Assign jury to the dispute ──
+  try {
+    const wildWest = await isWildWestMode();
+    const memberCount = await sql`SELECT COUNT(*) as count FROM organization_members WHERE org_id = ${org_id} AND is_active = TRUE`;
+    const count = parseInt(memberCount.rows[0].count);
+    const jurySize = wildWest ? 1 : getJurySize(count);
+    const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+
+    const pool = await sql.query(
+      `SELECT om.user_id FROM organization_members om
+       JOIN users u ON u.id = om.user_id
+       WHERE om.org_id = $1 AND om.is_active = TRUE AND u.is_di = FALSE
+         AND om.user_id != $2 AND om.user_id != $3
+       ORDER BY RANDOM() LIMIT $4`,
+      [org_id, session.sub, submitted_by, poolSize]
+    );
+
+    for (const juror of pool.rows) {
+      await sql.query(
+        `INSERT INTO jury_assignments (dispute_id, user_id, role, in_pool, accepted, accepted_at)
+         VALUES ($1, $2, 'dispute', TRUE, TRUE, now())
+         ON CONFLICT DO NOTHING`,
+        [dispute.id, juror.user_id]
+      );
+      createNotification({ userId: juror.user_id as string, type: "dispute_jury_assigned", title: "You've been assigned to a dispute jury.", body: "A submission dispute is ready for your review.", entityType: "dispute", entityId: dispute.id as string }).catch(() => {});
+    }
+
+    await sql`INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+      VALUES ('Dispute jury assigned', ${session.sub}, ${org_id}, 'dispute', ${dispute.id},
+        ${JSON.stringify({ jurySize, poolSize: pool.rows.length, wildWest })}::jsonb)`;
+  } catch (juryError) {
+    console.error("Dispute jury assignment failed:", juryError);
+  }
 
   return ok(dispute, 201);
 }

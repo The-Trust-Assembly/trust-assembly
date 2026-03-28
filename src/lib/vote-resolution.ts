@@ -722,3 +722,80 @@ function getVaultTable(entryType: string): string | null {
   };
   return map[entryType] || null;
 }
+
+// ---- Dispute Resolution ----
+
+export async function tryResolveDispute(disputeId: string): Promise<{ resolved: boolean; outcome?: string }> {
+  try {
+    // Read dispute and vote counts
+    const dispute = await sql`
+      SELECT d.id, d.submission_id, d.org_id, d.status, d.disputed_by, d.original_submitter
+      FROM disputes d WHERE d.id = ${disputeId}
+    `;
+    if (dispute.rows.length === 0 || dispute.rows[0].status !== "pending_review") return { resolved: false };
+
+    const d = dispute.rows[0];
+
+    // Count votes and expected jurors
+    const voteResult = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE approve = TRUE) AS approve_count,
+        COUNT(*) FILTER (WHERE approve = FALSE) AS reject_count,
+        COUNT(*) AS total_votes
+      FROM jury_votes WHERE dispute_id = ${disputeId}
+    `;
+    const approveCount = parseInt(voteResult.rows[0].approve_count);
+    const rejectCount = parseInt(voteResult.rows[0].reject_count);
+
+    const jurorResult = await sql`
+      SELECT COUNT(*) as count FROM jury_assignments WHERE dispute_id = ${disputeId} AND accepted = TRUE
+    `;
+    const expectedJurors = parseInt(jurorResult.rows[0].count);
+    if (expectedJurors === 0) return { resolved: false };
+
+    const majority = Math.floor(expectedJurors / 2) + 1;
+
+    // Check if majority reached
+    let outcome: string | null = null;
+    if (approveCount >= majority) outcome = "upheld";
+    else if (rejectCount >= majority) outcome = "dismissed";
+
+    if (!outcome) return { resolved: false };
+
+    const now = new Date().toISOString();
+    const client = await sql.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Update dispute status
+      await client.query(
+        "UPDATE disputes SET status = $1, resolved_at = $2 WHERE id = $3",
+        [outcome, now, disputeId]
+      );
+
+      // Audit log
+      await client.query(
+        "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata) VALUES ($1, $2, $3, $4, $5, $6)",
+        [`Dispute resolved: ${outcome.toUpperCase()}`, d.disputed_by, d.org_id, "dispute", disputeId,
+         JSON.stringify({ outcome, approveCount, rejectCount, expectedJurors })]
+      );
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      console.error("Dispute resolution transaction failed:", e);
+      return { resolved: false };
+    } finally {
+      client.release();
+    }
+
+    // Notify both parties
+    createNotification({ userId: d.disputed_by as string, type: "dispute_resolved", title: `Your dispute was ${outcome === "upheld" ? "upheld" : "dismissed"}.`, body: outcome === "upheld" ? "The jury agreed — the original submission was found to be wrong." : "The jury disagreed — the original submission stands.", entityType: "dispute", entityId: disputeId }).catch(() => {});
+    createNotification({ userId: d.original_submitter as string, type: "dispute_resolved", title: `A dispute on your submission was ${outcome === "upheld" ? "upheld" : "dismissed"}.`, body: outcome === "upheld" ? "The dispute jury found your submission to be wrong." : "The dispute was dismissed — your submission stands.", entityType: "dispute", entityId: disputeId }).catch(() => {});
+
+    return { resolved: true, outcome };
+  } catch (e) {
+    console.error("tryResolveDispute error:", e);
+    return { resolved: false };
+  }
+}
