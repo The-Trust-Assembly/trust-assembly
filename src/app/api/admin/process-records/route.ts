@@ -4,10 +4,8 @@ import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, serverError } from "@/lib/api-utils";
 import { tryResolveSubmission, tryResolveStory, tryResolveDispute } from "@/lib/vote-resolution";
 import { createNotification } from "@/lib/notifications";
-import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
-import { getMajority } from "@/lib/jury-rules";
+import { isWildWestMode, getJurySize, getMajority, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { assignDisputeJury } from "@/lib/jury-assignment";
-import { createNotification } from "@/lib/notifications";
 
 // POST /api/admin/process-records
 // Scans all in-flight records (submissions, stories, disputes, concessions)
