@@ -332,7 +332,7 @@ async function updateSubmitterReputation(
         "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, 'user', $4)",
         ["Earned Trusted Contributor status", targetUserId, sub.org_id, targetUserId]
       );
-      createNotification({ userId: targetUserId, type: "trusted_earned", title: "You've earned Trusted Contributor status!", body: `Your submissions in ${sub.org_name} now skip jury review.`, entityType: "user", entityId: targetUserId }).catch(() => {});
+      createNotification({ userId: targetUserId, type: "trusted_earned", title: "You've earned Trusted Contributor status!", body: "Your submissions now skip jury review in this assembly.", entityType: "user", entityId: targetUserId }).catch(() => {});
     }
   } else {
     // Loss: increment losses, reset streaks
@@ -365,7 +365,7 @@ async function updateSubmitterReputation(
         "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, 'user', $4)",
         ["Lost Trusted Contributor status", targetUserId, sub.org_id, targetUserId]
       );
-      createNotification({ userId: targetUserId, type: "trusted_lost", title: "Your Trusted Contributor status was revoked.", body: `Your streak was reset in ${sub.org_name}.`, entityType: "user", entityId: targetUserId }).catch(() => {});
+      createNotification({ userId: targetUserId, type: "trusted_lost", title: "Your Trusted Contributor status was revoked.", body: "Your streak was reset after a rejection.", entityType: "user", entityId: targetUserId }).catch(() => {});
     }
   }
 
