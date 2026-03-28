@@ -341,7 +341,8 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
             {/* Assembly avatar — clickable for founders under 50 members */}
             {(() => {
               const isFounderForAvatar = (vo.founders || [vo.createdBy]).includes(user.username);
-              const canUploadAvatar = isFounderForAvatar && vo.members.length < 50 && !vo.isGeneralPublic;
+              const isAdmin = user.username === ADMIN_USERNAME;
+              const canUploadAvatar = isAdmin || (isFounderForAvatar && vo.members.length < 50);
               const handleAvatarClick = () => {
                 if (!canUploadAvatar) return;
                 const input = document.createElement("input");

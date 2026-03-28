@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
-import { getCurrentUserFromRequest } from "@/lib/auth";
+import { getCurrentUserFromRequest, requireAdmin } from "@/lib/auth";
 import { ok, notFound, err, unauthorized, forbidden, serverError } from "@/lib/api-utils";
 import { isValidUUID, validateLength, MAX_LENGTHS } from "@/lib/validation";
 
@@ -79,15 +79,16 @@ export async function PATCH(
     const org = orgResult.rows[0];
     const memberCount = parseInt(org.member_count);
 
-    // Verify the user is a founder
+    // Verify the user is a founder or admin
+    const isAdmin = !!(await requireAdmin(request));
     const isFounder = await sql`
       SELECT 1 FROM organization_members
       WHERE org_id = ${id} AND user_id = ${session.sub} AND is_founder = TRUE AND is_active = TRUE
     `;
-    if (isFounder.rows.length === 0) return forbidden("Only founders can edit assembly details");
+    if (!isAdmin && isFounder.rows.length === 0) return forbidden("Only founders or admins can edit assembly details");
 
-    // Check member count threshold
-    if (memberCount >= 50) return err("Charter cannot be edited once the assembly has 50 or more members. The charter is now permanent.");
+    // Check member count threshold (admins bypass this for avatar-only updates)
+    if (!isAdmin && memberCount >= 50) return err("Charter cannot be edited once the assembly has 50 or more members. The charter is now permanent.");
 
     const body = await request.json();
     const updates: string[] = [];
