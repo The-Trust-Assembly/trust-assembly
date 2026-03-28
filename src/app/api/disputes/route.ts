@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
   // ── Assign jury to the dispute (only when no grace period) ──
   try {
     const wildWest = await isWildWestMode();
-    const memberCount = await sql`SELECT COUNT(*) as count FROM organization_members WHERE org_id = ${org_id} AND is_active = TRUE`;
+    const memberCount = await sql`SELECT COUNT(*) as count FROM organization_members WHERE org_id = ${org_id as string} AND is_active = TRUE`;
     const count = parseInt(memberCount.rows[0].count);
     const jurySize = wildWest ? 1 : getJurySize(count);
     const poolSize = jurySize * JURY_POOL_MULTIPLIER;
@@ -238,7 +238,7 @@ export async function POST(request: NextRequest) {
     }
 
     await sql`INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-      VALUES ('Dispute jury assigned', ${session.sub}, ${org_id}, 'dispute', ${dispute.id},
+      VALUES ('Dispute jury assigned', ${session.sub}, ${org_id as string}, 'dispute', ${dispute.id as string},
         ${JSON.stringify({ jurySize, poolSize: pool.rows.length, wildWest })}::jsonb)`;
   } catch (juryError) {
     console.error("Dispute jury assignment failed:", juryError);
