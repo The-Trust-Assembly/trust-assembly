@@ -516,9 +516,9 @@ function ReviewScreenInner({ user }) {
 
       {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>All voting rights suspended</strong> — Deception penalty active for {deceptionPenaltyRemaining(user)} more days. You cannot serve on juries during this period.</div>}
       {isDIUser(user) && <div style={{ padding: 10, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--gold)", lineHeight: 1.6 }}><Icon name="robot" size={14} /> <strong>Digital Intelligences cannot serve on juries or vote.</strong> Humans review, DIs submit. Your partner @{safe(user.diPartner)} handles review duties.</div>}
-      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid var(--border)" }}>
+      <div className="ta-review-tabs">
         {[["ingroup", "In-Group", igQ.length], ["crossgroup", "Cross-Group", cgQ.length], ["stories", "Stories", storyProposals.length], ["disputes", "Disputes / Concession", dQ.length + myDisputes.length + myRejected.length], ["myresults", "My Results", myApproved.length], ...(hasDIPartnership ? [["di", <><Icon name="robot" size={42} /> DI Queue</>, diQ.length]] : [])].map(([k, l, c]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: tab === k ? "2px solid var(--gold)" : "2px solid transparent", marginBottom: -2, fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", color: tab === k ? "var(--gold)" : "#64748B", fontWeight: tab === k ? 700 : 400 }}>
+          <button key={k} onClick={() => setTab(k)} className={`ta-review-tab${tab === k ? " active" : ""}`}>
             {l} {c > 0 && <span style={{ background: "var(--gold)", color: "#0d0d0a", borderRadius: "50%", padding: "1px 5px", fontSize: 10, marginLeft: 4 }}>{c}</span>}
           </button>
         ))}

@@ -519,6 +519,7 @@ export default function TrustAssembly() {
         .ta-field input,.ta-field textarea,.ta-field select { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
         .ta-field input:focus,.ta-field textarea:focus { border-color:var(--gold); }
         .ta-field textarea { resize:vertical; }
+<<<<<<< HEAD
         .field-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
         .field-input { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; margin-bottom:8px; }
         .field-textarea { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; resize:vertical; margin-bottom:8px; }
@@ -696,6 +697,12 @@ export default function TrustAssembly() {
         .di-banner { padding:8px 10px; background:var(--card-bg); border:1px solid var(--border); margin-bottom:6px; font-size:9px; color:var(--text-sec); line-height:1.6; }
         .penalty-banner { padding:8px 10px; background:rgba(196,74,58,0.08); border:1px solid rgba(196,74,58,0.27); margin-bottom:6px; font-size:9px; color:var(--red); line-height:1.6; }
         .grace-banner { padding:10px; background:rgba(74,158,85,0.08); border:1px solid rgba(74,158,85,0.27); margin-top:10px; }
+        /* ── REVIEW PAGE TABS ── */
+        .ta-review-tabs { display:flex; flex-wrap:wrap; gap:0; margin-bottom:16px; border-bottom:2px solid var(--border); }
+        .ta-review-tab { padding:8px 16px; background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; white-space:nowrap; color:var(--text-muted); transition:color 0.15s; }
+        .ta-review-tab:hover { color:var(--text); }
+        .ta-review-tab.active { color:var(--gold); font-weight:700; border-bottom-color:var(--gold); }
+        @media(max-width:640px) { .ta-review-tab{padding:6px 10px;font-size:9px} }
         /* ── MOBILE NAV ── */
         .ta-nav-mobile { display:none; background:var(--bg); padding:8px 24px; border-bottom:1px solid var(--border); position:relative; }
         .ta-hamburger { background:none; border:none; cursor:pointer; padding:6px 2px; display:flex; flex-direction:column; gap:4px; }
