@@ -3,6 +3,7 @@ import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, forbidden, notFound, serverError } from "@/lib/api-utils";
 import { isValidUUID } from "@/lib/validation";
+import { tryResolveDispute } from "@/lib/vote-resolution";
 
 // POST /api/disputes/[id]/vote — vote on a dispute
 export async function POST(
@@ -62,6 +63,9 @@ export async function POST(
 
       return result.rows[0];
     });
+
+    // Check for resolution after vote (fire-and-forget)
+    tryResolveDispute(id).catch(() => {});
 
     return ok(vote, 201);
   } catch (e) {

@@ -161,10 +161,12 @@ export default function FeedScreen(props) {
   return <FeedErrorBoundary><FeedScreenInner {...props} /></FeedErrorBoundary>;
 }
 
-function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
+function FeedScreenInner({ user, siteAnnouncement, hideCarousel, hideStatusCards, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
+  const [users, setUsers] = useState({});
+  const [activeTab, setActiveTab] = useState({}); // { [primarySubId]: tabIndex }
   const [expandedId, setExpandedId] = useState(null);
   const [disputingId, setDisputingId] = useState(null);
   const [disputeForm, setDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
@@ -182,8 +184,8 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
   const [loadError, setLoadError] = useState("");
   const load = async () => {
     try {
-      const [subsData, orgsData, storiesData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS), sG(SK.STORIES)]);
-      setSubs(subsData || {}); setOrgs(orgsData || {}); setStories(storiesData || {}); setLoadError("");
+      const [subsData, orgsData, storiesData, usersData] = await Promise.all([sG(SK.SUBS), sG(SK.ORGS), sG(SK.STORIES), sG(SK.USERS)]);
+      setSubs(subsData || {}); setOrgs(orgsData || {}); setStories(storiesData || {}); setUsers(usersData || {}); setLoadError("");
     } catch (e) {
       console.error("FeedScreen load error:", e);
       setLoadError("Failed to load data. Please refresh the page.");
@@ -253,7 +255,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
   if (loading) return <Loader />;
   if (loadError) return <div style={{ margin: 20, color: "var(--red)" }}>{loadError} <button className="card-btn" onClick={load}>Retry</button></div>;
 
-  // Deduplicate submissions by URL
+  // Deduplicate submissions by URL — keep full submission objects for per-assembly tabs
   const sorted = Object.values(subs || {}).sort((a, b) => hotScore(b) - hotScore(a));
   const seenUrls = new Map();
   const all = [];
@@ -261,15 +263,22 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
     const key = sub.url ? sub.url.replace(/\/$/, "").toLowerCase() : sub.id;
     if (seenUrls.has(key)) {
       const existing = seenUrls.get(key);
-      if (!existing._otherAssemblies) existing._otherAssemblies = [];
-      if (sub.orgName && !existing._otherAssemblies.includes(sub.orgName) && sub.orgName !== existing.orgName) {
-        existing._otherAssemblies.push(sub.orgName);
+      if (!existing._allSubmissions) existing._allSubmissions = [existing];
+      // Avoid duplicating same assembly
+      if (!existing._allSubmissions.some(s => s.orgId === sub.orgId)) {
+        existing._allSubmissions.push(sub);
       }
     } else {
       seenUrls.set(key, sub);
       all.push(sub);
     }
   }
+
+  // Helper: get the active assembly's submission for a deduplicated card
+  const getActiveSub = (sub) => {
+    const subs = sub._allSubmissions || [sub];
+    return subs[activeTab[sub.id] || 0] || subs[0];
+  };
 
   const filtered = all.filter(sub => matchesFilter(sub, activeFilter));
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -300,10 +309,10 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
 
   return (
     <div className="ta-content">
-      <FeedHeroCarousel subs={subs} onViewRecord={onViewRecord} onViewAssembly={onViewAssembly} />
+      {!hideCarousel && <FeedHeroCarousel subs={subs} onViewRecord={onViewRecord} onViewAssembly={onViewAssembly} />}
 
       {/* Admin update box — driven by /api/admin/announcement */}
-      {siteAnnouncement && typeof siteAnnouncement === "string" && (
+      {!hideStatusCards && siteAnnouncement && typeof siteAnnouncement === "string" && (
         <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Admin update</div>
           <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{siteAnnouncement}</div>
@@ -316,7 +325,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
         </div>
       )}
 
-      {/* Your Next Steps + Assembly Status */}
+      {/* Your Next Steps (always visible) + Assembly Status (hideable) */}
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
         <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Your next steps</div>
@@ -325,16 +334,18 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
             {trustedRemaining > 0 && gpOrg && <> Next milestone: <span style={{ color: "var(--gold)", fontWeight: 600 }}>{trustedRemaining} more approvals</span> for Trusted Contributor in {gpOrg.name}.</>}
           </div>
         </div>
-        <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
-          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Assembly status</div>
-          <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
-            Member of <span style={{ color: "var(--text)", fontWeight: 600 }}>{myOrgIds.length} assemblies</span>. {totalCitizens} citizens registered — <span style={{ color: "var(--gold)", fontWeight: 600 }}>{Math.max(0, 100 - totalCitizens)} more</span> until advanced jury rules activate.
+        {!hideStatusCards && (
+          <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Assembly status</div>
+            <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
+              Member of <span style={{ color: "var(--text)", fontWeight: 600 }}>{myOrgIds.length} assemblies</span>. {totalCitizens} citizens registered — <span style={{ color: "var(--gold)", fontWeight: 600 }}>{Math.max(0, 100 - totalCitizens)} more</span> until advanced jury rules activate.
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Wild West Rules */}
-      {totalCitizens < 100 && (
+      {!hideStatusCards && totalCitizens < 100 && (
         <div style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", padding: "8px 12px", marginBottom: 10 }}>
           <div style={{ fontSize: 9, fontWeight: 700, color: "var(--gold)", letterSpacing: 1, marginBottom: 3 }}>WILD WEST RULES — {totalCitizens}/100 CITIZENS</div>
           <div style={{ fontSize: 9, color: "var(--text-sec)", lineHeight: 1.5 }}>1. Any assembly with 2+ members can have jurors · 2. Submissions require one reviewer · 3. Deception findings disabled</div>
@@ -401,25 +412,42 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
       {paged.length === 0 ? <Empty text="No corrections yet." /> : paged.map(sub => {
         const isExpanded = expandedId === sub.id;
         const isAffirm = sub.submissionType === "affirmation";
-        const showUser = sub.resolvedAt;
+        const showUser = sub.resolvedAt || (user && sub.submittedBy === user.username);
         let domain = "";
         try { domain = new URL(String(sub.url)).hostname.replace(/^www\./, ""); } catch { domain = safe(sub.url) || ""; }
 
+        const activeSub = getActiveSub(sub);
+
         return (
-        <div key={sub.id} className="card">
+        <div key={sub.id}>
+          {/* Manila folder tabs — one per assembly */}
+          <div style={{ display: "flex", gap: 2 }}>
+            {(sub._allSubmissions || [sub]).map((aSub, idx) => {
+              const isActive = (activeTab[sub.id] || 0) === idx;
+              const org = orgs[aSub.orgId];
+              return (
+                <div key={aSub.orgId || idx} className={`manila-tab ${isActive ? "manila-tab-active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setActiveTab(prev => ({ ...prev, [sub.id]: idx })); }}>
+                  {org?.avatar && <img src={org.avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 4, verticalAlign: "middle" }} />}
+                  <span className="manila-tab-name">{safe(aSub.orgName)}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="card">
           {/* Card top: meta + status — ALWAYS visible */}
           <div className="card-top">
             <div className="card-meta">
               {showUser ? (
-                <UsernameLink username={sub.submittedBy} onClick={onViewCitizen} />
+                <UsernameLink username={sub.submittedBy} avatar={users[sub.submittedBy]?.avatar} onClick={onViewCitizen} />
               ) : (
                 <span className="hidden-user">Citizen (pending review)</span>
               )}
-              <span className="muted">· <span style={{ cursor: "pointer", color: "var(--gold)" }} onClick={(e) => { e.stopPropagation(); onViewAssembly && onViewAssembly(sub.orgId); }}>{safe(sub.orgName)}</span>{sub._otherAssemblies && sub._otherAssemblies.length > 0 && sub._otherAssemblies.map((a, i) => <span key={i} style={{ fontSize: 8, padding: "1px 5px", background: "rgba(212,168,67,0.13)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, letterSpacing: ".5px", marginLeft: 4, cursor: "pointer" }}>{safe(a)}</span>)} · {sDate(sub.createdAt)}</span>
-              {sub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
-              {sub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
+              <span className="muted">· {sDate(sub.createdAt)}</span>
+              {activeSub.trustedSkip && <span style={{ fontSize: 8, padding: "1px 5px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "var(--green)", fontWeight: 700 }}>TRUSTED</span>}
+              {activeSub.isDI && <span className="di-badge">DI PRE-REVIEW</span>}
             </div>
-            <StatusPill status={sub.status} />
+            <StatusPill status={activeSub.status} />
           </div>
 
           {!isExpanded && <>
@@ -446,18 +474,18 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
           {/* Actions */}
           <div className="card-actions">
             <span className="card-btn" onClick={() => setExpandedId(sub.id)}>Expand</span>
-            {onViewRecord && <span className="card-btn" onClick={() => onViewRecord(sub.id)}>Open Full Record</span>}
-            <span className="card-btn" onClick={() => { const url = window.location.origin + "/record/" + sub.id; navigator.clipboard?.writeText(url); }}>Copy Link</span>
+            {onViewRecord && <span className="card-btn" onClick={() => onViewRecord(activeSub.id)}>Open Full Record</span>}
+            <span className="card-btn" onClick={() => { const url = window.location.origin + "/record/" + activeSub.id; navigator.clipboard?.writeText(url); }}>Copy Link</span>
           </div>
           </>}
 
           {/* Expanded view */}
           {isExpanded && (
             <div>
-              <RecordDetailView sub={sub} onViewCitizen={onViewCitizen} />
+              <RecordDetailView sub={activeSub} onViewCitizen={onViewCitizen} status={activeSub.status} />
 
               {/* Tag to story */}
-              {["approved", "consensus", "cross_review"].includes(sub.status) && taggingId !== sub.id && (
+              {["approved", "consensus", "cross_review"].includes(activeSub.status) && taggingId !== sub.id && (
                 <button className="card-btn" style={{ color: "var(--gold)", borderColor: "var(--gold)", marginTop: 6, marginRight: 8 }} onClick={() => { setTaggingId(sub.id); setTagMsg(""); }}>
                   Tag to Story
                 </button>
@@ -485,9 +513,9 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
                 );
               })()}
 
-              {canDispute(sub) && disputingId !== sub.id && (
-                <button className="card-btn" style={{ color: "var(--red)", borderColor: "var(--red)", marginTop: 6 }} onClick={() => { setDisputingId(sub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} }); }}>
-                  {isRejectionDispute(sub) ? "Dispute This Rejection" : "Dispute This Submission"}
+              {canDispute(activeSub) && disputingId !== activeSub.id && (
+                <button className="card-btn" style={{ color: "var(--red)", borderColor: "var(--red)", marginTop: 6 }} onClick={() => { setDisputingId(activeSub.id); setDisputeError(""); setDisputeForm({ reasoning: "", evidence: [{ url: "", explanation: "" }], fieldResponses: {} }); }}>
+                  {isRejectionDispute(activeSub) ? "Dispute This Rejection" : "Dispute This Submission"}
                 </button>
               )}
 
@@ -561,6 +589,7 @@ function FeedScreenInner({ user, siteAnnouncement, onNavigate, onViewCitizen, on
               </div>
             </div>
           )}
+        </div>
         </div>
       );})}
       {/* Pagination */}

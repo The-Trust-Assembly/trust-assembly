@@ -10,6 +10,18 @@ import { UsernameLink, SubHeadline, StatusPill, InviteCTA, Empty, Loader, Icon }
 import AssemblyGuide from "../components/AssemblyGuide";
 import { queryKeys } from "../lib/queryKeys";
 
+function OrgAvatar({ org, size = 48 }) {
+  return (
+    <div style={{ width: size, height: size, flexShrink: 0, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg)" }}>
+      {org.avatar ? (
+        <img src={org.avatar} width={size} height={size} alt={org.name} style={{ objectFit: "cover", display: "block" }} />
+      ) : (
+        <div style={{ width: size, height: size, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.4, fontWeight: 900, color: "var(--text-muted)", fontFamily: "var(--serif)" }}>{(org.name || "?")[0]}</div>
+      )}
+    </div>
+  );
+}
+
 async function proposeConcession(orgId, proposerUsername, subId, reasoning) {
   try {
     const res = await fetch("/api/concessions", {
@@ -59,10 +71,17 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
   const setViewingOrg = (id) => { setViewingOrgRaw(id); if (!id && onViewingOrgChange) onViewingOrgChange(); };
   useEffect(() => { if (initialViewingOrg) setViewingOrgRaw(initialViewingOrg); }, [initialViewingOrg]);
   const [concessions, setConcessions] = useState(null);
+  const [editingCharter, setEditingCharter] = useState(false);
+  const [charterDraft, setCharterDraft] = useState("");
   const [concessionReason, setConcessionReason] = useState("");
 
   const load = useCallback(async () => {
     const [o, s, a, c] = await Promise.all([sG(SK.ORGS), sG(SK.SUBS), sG(SK.APPS), sG("ta-concessions")]);
+    // Debug: log which orgs have avatars in the fetched data
+    if (o) {
+      const avatarStatus = Object.values(o).map(org => `${org.name}: ${org.avatar ? 'HAS AVATAR (' + org.avatar.length + ' chars)' : 'no avatar'}`);
+      console.log("[OrgScreen load] Avatar status:", avatarStatus.join(", "));
+    }
     setOrgs(o || {}); setSubs(s || {}); setApps(a || {}); setConcessions(c || {}); setLoading(false);
     invalidateOrgs();
     // Load followed orgs from relational API
@@ -323,8 +342,114 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
 
         {/* Assembly Identity */}
         <div className="ta-card" style={{ borderLeft: `4px solid ${vo.isGeneralPublic ? "#0D9488" : "var(--text)"}` }}>
-          <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 8 }}>{vo.description}</div>
-          {vo.charter && <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid var(--border)" }}>{vo.charter}</div>}
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 8 }}>
+            {/* Assembly avatar — clickable for founders under 50 members */}
+            {(() => {
+              const isFounderForAvatar = (vo.founders || [vo.createdBy]).includes(user.username);
+              const isAdmin = user.username === ADMIN_USERNAME;
+              const canUploadAvatar = isAdmin || (isFounderForAvatar && vo.members.length < 50);
+              const handleAvatarClick = () => {
+                if (!canUploadAvatar) return;
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/jpeg,image/png,image/webp";
+                input.onchange = async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  // Client-side validation
+                  const validTypes = ["image/jpeg", "image/png", "image/webp"];
+                  if (!validTypes.includes(file.type)) {
+                    setError("Only JPEG, PNG, and WebP images are accepted.");
+                    return;
+                  }
+                  if (file.size > 2 * 1024 * 1024) {
+                    setError("Image must be under 2MB. Try a smaller file.");
+                    return;
+                  }
+                  // Resize to 256x256 square, then upload to Vercel Blob
+                  const canvas = document.createElement("canvas");
+                  canvas.width = 256; canvas.height = 256;
+                  const ctx = canvas.getContext("2d");
+                  const img = new Image();
+                  img.onload = async () => {
+                    const s = Math.min(img.width, img.height);
+                    const sx = (img.width - s) / 2;
+                    const sy = (img.height - s) / 2;
+                    ctx.drawImage(img, sx, sy, s, s, 0, 0, 256, 256);
+                    // Convert canvas to blob for upload
+                    canvas.toBlob(async (blob) => {
+                      if (!blob) { setError("Could not process image."); return; }
+                      try {
+                        // Step 1: Upload to Vercel Blob
+                        const formData = new FormData();
+                        formData.append("file", blob, "avatar.jpg");
+                        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+                        const uploadData = await uploadRes.json().catch(() => ({}));
+                        if (!uploadRes.ok) { setError(uploadData.error || "Failed to upload image."); return; }
+                        const avatarUrl = uploadData.url;
+                        // Step 2: Save URL to org record
+                        const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: avatarUrl }) });
+                        const responseData = await res.json().catch(() => ({}));
+                        if (res.ok) {
+                          setOrgs(prev => {
+                            const updated = { ...prev };
+                            if (updated[viewingOrg]) updated[viewingOrg] = { ...updated[viewingOrg], avatar: avatarUrl };
+                            return updated;
+                          });
+                          invalidateOrgs();
+                          load();
+                          setSuccess("Assembly image updated successfully.");
+                          setTimeout(() => setSuccess(""), 3000);
+                        } else {
+                          setError(responseData.error || "Failed to update image. Please try again.");
+                        }
+                      } catch { setError("Network error uploading image."); }
+                    }, "image/jpeg", 0.8);
+                  };
+                  img.onerror = () => { setError("Could not read image file. Try a different file."); };
+                  img.src = URL.createObjectURL(file);
+                };
+                input.click();
+              };
+              return (
+                <div title={canUploadAvatar ? "Click to upload image (JPEG, PNG, or WebP, max 2MB)" : ""} style={{ width: 80, height: 80, flexShrink: 0, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg)", cursor: canUploadAvatar ? "pointer" : "default", position: "relative" }} onClick={handleAvatarClick}>
+                  {vo.avatar ? (
+                    <img src={vo.avatar} width={80} height={80} alt={vo.name} style={{ objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <div style={{ width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 900, color: "var(--text-muted)", fontFamily: "var(--serif)" }}>{(vo.name || "?")[0]}</div>
+                  )}
+                  {canUploadAvatar && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 7, textAlign: "center", padding: "2px 0", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{vo.avatar ? "Change" : "Upload"}</div>}
+                </div>
+              );
+            })()}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{vo.description}</div>
+            </div>
+          </div>
+          {vo.charter && !editingCharter && <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", paddingLeft: 10, borderLeft: "2px solid var(--border)" }}>{vo.charter}</div>}
+          {!vo.charter && !editingCharter && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }}>No charter set</div>}
+          {(() => {
+            const isFounderOfThis = (vo.founders || [vo.createdBy]).includes(user.username);
+            const canEdit = isFounderOfThis && vo.members.length < 50 && !vo.isGeneralPublic;
+            if (!canEdit) return null;
+            if (editingCharter) return (
+              <div style={{ marginTop: 6 }}>
+                <textarea value={charterDraft} onChange={e => setCharterDraft(e.target.value)} rows={3} placeholder="Write your assembly's charter..." maxLength={10000} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text)", fontSize: 12, borderRadius: 0, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <button className="ta-btn-primary" style={{ fontSize: 10, padding: "4px 12px" }} onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ charter: charterDraft }) });
+                      if (res.ok) { setEditingCharter(false); setSuccess("Charter updated."); load(); setTimeout(() => setSuccess(""), 3000); }
+                      else { const d = await res.json().catch(() => ({})); setError(d.error || "Failed to update charter"); }
+                    } catch { setError("Network error updating charter"); }
+                  }}>Save Charter</button>
+                  <button className="ta-btn-ghost" style={{ fontSize: 10, padding: "4px 8px" }} onClick={() => setEditingCharter(false)}>Cancel</button>
+                </div>
+                <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 4 }}>Charter becomes permanent at 50 members ({vo.members.length}/50)</div>
+              </div>
+            );
+            return <button className="ta-btn-ghost" style={{ fontSize: 9, color: "var(--gold)", marginTop: 4 }} onClick={() => { setEditingCharter(true); setCharterDraft(vo.charter || ""); }}>Edit Charter</button>;
+          })()}
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 8 }}>
             Founded by @{vo.createdBy} · {sDate(vo.createdAt)} · {vo.members.length} members · {enrollment.label} · Jury: {wildWest ? 1 : getJurySize(vo.members.length)} · Super jury: {wildWest ? "N/A" : getSuperJurySize(vo.members.length)}
           </div>
@@ -595,12 +720,15 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
         const inReview = Object.values(subs || {}).filter(s => s.orgId === o.id && ["pending_review", "pending_jury", "di_pending"].includes(s.status)).length;
         return (
           <div key={o.id} style={{ border: "1px solid rgba(212,168,67,0.27)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+              <OrgAvatar org={o} size={48} />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+                  <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "#4a9e55", fontWeight: 700, flexShrink: 0 }}>JOINED</span>
+                </div>
                 <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>{o.description}</div>
               </div>
-              <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(74,158,85,0.09)", border: "1px solid rgba(74,158,85,0.27)", color: "#4a9e55", fontWeight: 700, flexShrink: 0 }}>JOINED</span>
             </div>
 
             {/* Stat cards */}
@@ -650,12 +778,15 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
             const inReview = Object.values(subs || {}).filter(s => s.orgId === o.id && ["pending_review", "pending_jury", "di_pending"].includes(s.status)).length;
             return (
               <div key={o.id} style={{ border: "1px solid rgba(212,168,67,0.2)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 6 }}>
+                  <OrgAvatar org={o} size={48} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
+                      <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, flexShrink: 0 }}>FOLLOWING</span>
+                    </div>
                     <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>{o.description}</div>
                   </div>
-                  <span style={{ fontSize: 8, padding: "2px 8px", background: "rgba(212,168,67,0.09)", border: "1px solid rgba(212,168,67,0.27)", color: "var(--gold)", fontWeight: 700, flexShrink: 0 }}>FOLLOWING</span>
                 </div>
                 <div style={{ display: "flex", gap: 16, fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
                   <span>{o.members.length} citizens</span><span>{st.total || 0} claims</span><span>{inReview} in review</span>
@@ -757,7 +888,8 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
           const atLimit = myOrgIds.length >= MAX_ORGS;
           return (
             <div key={o.id} style={{ border: "1px solid var(--border)", background: "var(--card-bg)", padding: 14, marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <OrgAvatar org={o} size={48} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
                   {o.description && <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, marginBottom: 6 }}>{o.description}</div>}

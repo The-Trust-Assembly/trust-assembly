@@ -11,6 +11,7 @@ const NO_CACHE_HEADERS = {
 };
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET /api/data/submissions — returns ALL submissions keyed by ID
 // in the format the v5 SPA expects (camelCase, nested votes/jurors/evidence).

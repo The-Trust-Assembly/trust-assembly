@@ -81,6 +81,7 @@ function ReviewScreenInner({ user }) {
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(null); // holds submission id
   const [concedeReason, setConcedeReason] = useState("");
   const [concedeError, setConcedeError] = useState("");
+  const [orgsData, setOrgsData] = useState({});
   const [concedeSuccess, setConcedeSuccess] = useState("");
   const [disputingResultId, setDisputingResultId] = useState(null);
   const [resultDisputeForm, setResultDisputeForm] = useState({ reasoning: "", evidence: [{ url: "", explanation: "" }] });
@@ -93,6 +94,8 @@ function ReviewScreenInner({ user }) {
     // ── Load all data from relational API (single source of truth) ──
     const allSubs = (await sG(SK.SUBS)) || {};
     const allDisputes = (await sG(SK.DISPUTES)) || {};
+    const allOrgs = (await sG(SK.ORGS)) || {};
+    setOrgsData(allOrgs);
     // Also merge review queue items (may include jury-specific data)
     try {
       const [queueRes, diRes] = await Promise.all([
@@ -346,7 +349,7 @@ function ReviewScreenInner({ user }) {
     return (
     <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={14} /> DI</>}</span>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{orgsData[sub.orgId]?.avatar && <img src={orgsData[sub.orgId].avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 3, verticalAlign: "middle" }} />}{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={14} /> DI</>}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px", borderRadius: 0 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
           <StatusPill status={sub.status} />

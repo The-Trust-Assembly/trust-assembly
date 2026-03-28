@@ -75,10 +75,10 @@ function captureFormFields() {
   if (replacement) formState.replacement = replacement.value;
   if (reasoning) formState.reasoning = reasoning.value;
 
-  // Capture selected org checkboxes
-  const checkboxes = document.querySelectorAll(".org-checkbox:checked");
-  if (checkboxes.length > 0) {
-    formState.selectedOrgIds = Array.from(checkboxes).map(cb => cb.value);
+  // Capture selected org chips
+  const selectedChips = document.querySelectorAll(".org-chip.selected");
+  if (selectedChips.length > 0) {
+    formState.selectedOrgIds = Array.from(selectedChips).map(c => c.getAttribute("data-org-id"));
   }
 }
 
@@ -418,13 +418,13 @@ async function renderSubmitTab() {
 
   const isAffirm = formState.submitType === "affirmation";
 
-  // Multi-assembly checkboxes
-  const orgCheckboxesHtml = joinedOrgs.map(o => {
-    const checked = formState.selectedOrgIds.length > 0
-      ? formState.selectedOrgIds.includes(o.id) ? "checked" : ""
-      : joinedOrgs.length === 1 ? "checked" : "";
-    return `<label class="org-checkbox-label"><input type="checkbox" class="org-checkbox" value="${escapeHtml(o.id)}" ${checked}> ${escapeHtml(o.name)}</label>`;
-  }).join("");
+  // Multi-assembly clickable chips (compact grid)
+  const orgCheckboxesHtml = `<div style="display:flex;flex-wrap:wrap;gap:4px">` + joinedOrgs.map(o => {
+    const selected = formState.selectedOrgIds.length > 0
+      ? formState.selectedOrgIds.includes(o.id)
+      : joinedOrgs.length === 1;
+    return `<span class="org-chip${selected ? " selected" : ""}" data-org-id="${escapeHtml(o.id)}" style="padding:4px 10px;font-size:10px;cursor:pointer;border:1px solid ${selected ? "#d4a843" : "#2a2518"};background:${selected ? "rgba(212,168,67,0.13)" : "transparent"};color:${selected ? "#d4a843" : "#8a8278"};font-weight:${selected ? "700" : "400"};font-family:monospace;letter-spacing:0.5px">${escapeHtml(o.name)}</span>`;
+  }).join("") + `</div>`;
 
   // Author tags HTML
   let authorTagsHtml = formState.selectedAuthors.map((a, i) =>
@@ -525,8 +525,8 @@ async function renderSubmitTab() {
 
       ${isAffirm ? '<div class="affirm-banner">You are affirming this headline is <strong>accurate</strong>. The original headline will be wrapped in green to signal accuracy. No replacement needed.</div>' : ''}
 
-      <label>Submit to Assembly(s) ${joinedOrgs.length > 1 ? '<span style="font-size:9px;color:#B0A89C;font-weight:400">— select one or more</span>' : ''}</label>
-      <div class="org-checkboxes" id="org-checkboxes">${orgCheckboxesHtml}</div>
+      <label>Submit to Assembly(s) ${joinedOrgs.length > 1 ? '<span style="font-size:9px;color:#B0A89C;font-weight:400">— click to select</span>' : ''}</label>
+      <div id="org-checkboxes">${orgCheckboxesHtml}</div>
 
       <label>Article URL</label>
       <input type="text" id="sub-url" value="${escapeHtml(currentUrl || "")}" readonly>
@@ -695,10 +695,13 @@ async function renderSubmitTab() {
     }
   });
 
-  // Org checkbox persistence
-  document.querySelectorAll(".org-checkbox").forEach(cb => {
-    cb.addEventListener("change", () => {
-      formState.selectedOrgIds = Array.from(document.querySelectorAll(".org-checkbox:checked")).map(c => c.value);
+  // Org chip click toggle
+  document.querySelectorAll(".org-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const orgId = chip.getAttribute("data-org-id");
+      const idx = formState.selectedOrgIds.indexOf(orgId);
+      if (idx >= 0) { formState.selectedOrgIds.splice(idx, 1); chip.classList.remove("selected"); chip.style.border = "1px solid #2a2518"; chip.style.background = "transparent"; chip.style.color = "#8a8278"; chip.style.fontWeight = "400"; }
+      else { formState.selectedOrgIds.push(orgId); chip.classList.add("selected"); chip.style.border = "1px solid #d4a843"; chip.style.background = "rgba(212,168,67,0.13)"; chip.style.color = "#d4a843"; chip.style.fontWeight = "700"; }
       debouncedSave();
     });
   });
@@ -1026,8 +1029,8 @@ async function doSubmit() {
   const reasoning = document.getElementById("sub-reasoning").value.trim();
   const isAffirm = formState.submitType === "affirmation";
 
-  // Get selected assemblies
-  const selectedOrgs = Array.from(document.querySelectorAll(".org-checkbox:checked")).map(c => c.value);
+  // Get selected assemblies from chip state
+  const selectedOrgs = formState.selectedOrgIds.length > 0 ? [...formState.selectedOrgIds] : [];
 
   if (selectedOrgs.length === 0) {
     msgEl.className = "submit-msg error";

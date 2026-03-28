@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET /api/data/users — returns ALL users keyed by username
 // in the format the v5 SPA expects. Excludes password hashes.
@@ -20,7 +21,7 @@ export async function GET() {
 
   const result = await sql`
     SELECT
-      u.id, u.username, u.display_name, u.real_name, u.email,
+      u.id, u.username, u.display_name, u.real_name, u.email, u.avatar,
       u.gender, u.age, u.country, u.state, u.political_affiliation, u.bio,
       u.is_di, u.di_approved, u.is_admin,
       u.total_wins, u.total_losses, u.current_streak,
@@ -126,6 +127,7 @@ export async function GET() {
       id: uid,
       username,
       displayName: row.display_name,
+      avatar: row.avatar,
       realName: row.real_name,
       email: row.email,
       gender: row.gender,

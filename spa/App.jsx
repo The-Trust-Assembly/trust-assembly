@@ -49,24 +49,29 @@ const NAV_DROPDOWNS = [
 
 function formatNotification(n) {
   const d = n.data || {};
+  const title = n.title || "";
+  const body = n.body || "";
+  const entityId = n.entity_id || d.entityId;
   switch (n.type) {
-    case "jury_assigned": return { text: `You've been selected as a juror for a ${d.submissionType || "submission"}.`, screen: "review" };
-    case "submission_resolved": return { text: `Your submission was ${d.outcome === "approved" ? "approved" : d.outcome === "rejected" ? "rejected" : d.outcome || "resolved"}.`, screen: null };
-    case "cross_group_started": return { text: "Your submission has been promoted to cross-group review!", screen: null };
-    case "consensus_reached": return { text: "Your submission achieved cross-group consensus!", screen: null };
-    case "consensus_rejected": return { text: "Your submission was rejected in cross-group review.", screen: null };
-    case "dispute_jury_assigned": return { text: "You've been assigned to a dispute jury.", screen: "review" };
-    case "submission_disputed": return { text: "Your approved submission has been disputed.", screen: "review" };
-    case "dispute_resolved": return { text: `A dispute was resolved: ${d.outcome || "see details"}.`, screen: null };
-    case "di_needs_approval": return { text: `Your DI @${d.submittedBy || "agent"} submitted a correction for review.`, screen: "review" };
-    case "di_approved": return { text: "Your DI submission was approved by your human partner.", screen: null };
-    case "trusted_earned": return { text: "You've earned Trusted Contributor status! Your submissions now skip jury review.", screen: null };
-    case "trusted_lost": return { text: "Your Trusted Contributor status was revoked after a rejection.", screen: null };
-    default: return { text: d.message || "New notification", screen: null };
+    case "jury_assigned": return { text: title || "You've been selected as a juror.", screen: "review" };
+    case "submission_resolved": return { text: title || "Your submission was resolved.", screen: null, recordId: entityId };
+    case "cross_group_started": return { text: title || "Your submission has been promoted to cross-group review!", screen: null, recordId: entityId };
+    case "consensus_reached": return { text: title || "Your submission achieved cross-group consensus!", screen: null, recordId: entityId };
+    case "consensus_rejected": return { text: title || "Your submission was rejected in cross-group review.", screen: "review" };
+    case "dispute_jury_assigned": return { text: title || "You've been assigned to a dispute jury.", screen: "review" };
+    case "dispute_filed": return { text: title || "Your submission has been disputed.", screen: "review" };
+    case "submission_disputed": return { text: title || "Your submission has been disputed.", screen: "review" };
+    case "dispute_resolved": return { text: title || "A dispute was resolved.", screen: "review" };
+    case "di_needs_approval": return { text: title || "A DI submission needs your pre-approval.", screen: "review" };
+    case "di_approved": return { text: title || "Your DI submission was approved.", screen: "feed" };
+    case "trusted_earned": return { text: title || "You've earned Trusted Contributor status!", screen: "profile" };
+    case "trusted_lost": return { text: title || "Your Trusted Contributor status was revoked.", screen: "profile" };
+    case "story_resolved": return { text: title || "Your story proposal was resolved.", screen: "stories" };
+    default: return { text: title || d.message || body || "New notification", screen: null };
   }
 }
 
-function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFeedback }) {
+function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFeedback, dropDown }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const allItems = [...items];
@@ -91,7 +96,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
         {label} <span style={{ fontSize: 8, marginLeft: 3, opacity: 0.6 }}>{open ? "\u25B4" : "\u25BE"}</span>
       </button>
       {open && (
-        <div className="ta-nav-dropdown-menu" role="menu">
+        <div className="ta-nav-dropdown-menu" role="menu" style={dropDown ? { top: "100%", bottom: "auto", right: 0, left: "auto", transform: "none", marginTop: 2, marginBottom: 0 } : undefined}>
           {allItems.map(n => (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
               style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
@@ -122,6 +127,12 @@ export default function TrustAssembly() {
   const [contentWidth, setContentWidthState] = useState(() => { try { return localStorage.getItem("ta-content-width") || "wide"; } catch { return "wide"; } });
   const setContentWidth = (w) => { setContentWidthState(w); try { localStorage.setItem("ta-content-width", w); } catch {} };
 
+  const [hideCarousel, setHideCarouselState] = useState(() => { try { return localStorage.getItem("ta-hide-carousel") === "true"; } catch { return false; } });
+  const setHideCarousel = (v) => { setHideCarouselState(v); try { localStorage.setItem("ta-hide-carousel", v ? "true" : "false"); } catch {} };
+
+  const [hideStatusCards, setHideStatusCardsState] = useState(() => { try { return localStorage.getItem("ta-hide-status-cards") === "true"; } catch { return false; } });
+  const setHideStatusCards = (v) => { setHideStatusCardsState(v); try { localStorage.setItem("ta-hide-status-cards", v ? "true" : "false"); } catch {} };
+
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -142,6 +153,7 @@ export default function TrustAssembly() {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackPrompt, setFeedbackPrompt] = useState("");
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -391,9 +403,9 @@ export default function TrustAssembly() {
     trackAction("button", "click:submit_feedback", { component: "FeedbackModal", screen: "feedback" });
     setFeedbackSending(true); setFeedbackError("");
     try {
-      const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: feedbackText.trim() }) });
+      const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: feedbackText.trim(), promptSuggestion: feedbackPrompt.trim() || null }) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setFeedbackError(d.error || "Failed to send"); setFeedbackSending(false); return; }
-      setFeedbackSent(true); setFeedbackText(""); setFeedbackSending(false); setHasSubmittedFeedback(true);
+      setFeedbackSent(true); setFeedbackText(""); setFeedbackPrompt(""); setFeedbackSending(false); setHasSubmittedFeedback(true);
       setTimeout(() => { setShowFeedbackModal(false); setFeedbackSent(false); }, 2000);
     } catch (e) { setFeedbackError("Network error"); setFeedbackSending(false); }
   };
@@ -450,7 +462,12 @@ export default function TrustAssembly() {
         .ta-section-head { font-family:var(--font); font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin:0 0 6px; font-weight:600; }
         /* ── CARDS ── */
         .ta-card { border:1px solid var(--border); background:var(--card-bg); padding:10px 12px; margin-bottom:6px; }
-        .card { border:1px solid var(--border); background:var(--card-bg); margin-bottom:6px; padding:10px 12px; }
+        .manila-tab { display:inline-flex; align-items:center; background:var(--card-bg); border:1px solid var(--border); border-bottom:none; padding:3px 12px; font-size:9px; font-family:var(--mono); letter-spacing:1px; color:var(--gold); font-weight:700; cursor:pointer; margin-left:0; margin-bottom:-1px; position:relative; z-index:1; border-radius:4px 4px 0 0; text-transform:uppercase; text-decoration:underline; }
+        .manila-tab:hover { color:var(--text); }
+        .manila-tab-active { background:var(--gold); color:var(--bg); text-decoration:none; }
+        .manila-tab-active:hover { color:var(--bg); }
+        .manila-tab-name { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle; }
+        .card { border:1px solid var(--border); background:var(--card-bg); margin-bottom:6px; padding:10px 12px; position:relative; }
         .card-top { display:flex; justify-content:space-between; margin-bottom:4px; }
         .card-meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:10px; }
         .card-meta .muted { color:var(--text-muted); }
@@ -942,6 +959,9 @@ export default function TrustAssembly() {
                     {n.key === "review" && (reviewCount + crossCount + disputeCount) > 0 && <span className="ta-nav-badge">{reviewCount + crossCount + disputeCount}</span>}
                   </span>
                 ))}
+                <NavDropdown label="More" dropDown items={[
+                  ...NAV_DROPDOWNS.flatMap(dd => dd.items)
+                ]} screen={screen} setScreen={setScreen} isAdmin={isAdmin} hasSubmittedFeedback={hasSubmittedFeedback} />
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -963,7 +983,7 @@ export default function TrustAssembly() {
                         {notifications.slice(0, 20).map(n => {
                           const info = formatNotification(n);
                           return (
-                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} onClick={() => { if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }} style={info.screen ? { cursor: "pointer" } : {}}>
+                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} onClick={() => { if (info.recordId) { navigateToRecord(info.recordId); setShowNotifDropdown(false); } else if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }} style={info.screen || info.recordId ? { cursor: "pointer" } : {}}>
                             <div className="ta-notif-text">{info.text}{info.screen && <span style={{ fontSize: 10, color: "var(--gold)", marginLeft: 4 }}>&rarr; Go</span>}</div>
                             <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
                           </div>
@@ -998,14 +1018,14 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
+            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} hideCarousel={hideCarousel} setHideCarousel={setHideCarousel} hideStatusCards={hideStatusCards} setHideStatusCards={setHideStatusCards} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}
@@ -1046,10 +1066,20 @@ export default function TrustAssembly() {
                         value={feedbackText}
                         onChange={e => { if (e.target.value.length <= 1000) setFeedbackText(e.target.value); }}
                         placeholder="What's on your mind? Describe a bug, suggest a feature, or share your thoughts..."
-                        rows={5}
+                        rows={4}
                         style={{ fontSize: 14 }}
                       />
                       <div className="ta-feedback-charcount">{feedbackText.length} / 1,000</div>
+                    </div>
+                    <div className="ta-field" style={{ marginTop: 8 }}>
+                      <label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", fontWeight: 600 }}>Suggest a Prompt</label>
+                      <textarea
+                        value={feedbackPrompt}
+                        onChange={e => { if (e.target.value.length <= 5000) setFeedbackPrompt(e.target.value); }}
+                        placeholder="What do you want changed and in what part of the system? Try writing a prompt that the admin can copy and paste into Claude Code to get your change delivered more quickly."
+                        rows={3}
+                        style={{ fontSize: 12, color: "var(--text-sec)" }}
+                      />
                     </div>
                     <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                       <button className="ta-btn-secondary" onClick={() => setShowFeedbackModal(false)}>Cancel</button>

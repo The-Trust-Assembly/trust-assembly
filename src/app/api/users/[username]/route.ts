@@ -54,7 +54,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const allowedFields = ["displayName", "bio", "gender", "age", "country", "state", "politicalAffiliation"];
+  const allowedFields = ["displayName", "bio", "gender", "age", "country", "state", "politicalAffiliation", "avatar"];
   // orgId is mapped to primary_org_id (special handling, not a simple camelCase→snake_case)
   const updates: string[] = [];
   const values: unknown[] = [];
@@ -63,6 +63,21 @@ export async function PATCH(
   if (body.orgId !== undefined) {
     updates.push("primary_org_id");
     values.push(body.orgId || null);
+  }
+
+  // Validate avatar if provided — accept both data:image/ URLs (legacy) and https:// blob URLs
+  if (body.avatar !== undefined && body.avatar !== null) {
+    if (typeof body.avatar !== "string") return err("Avatar must be a string");
+    const isDataUrl = body.avatar.startsWith("data:image/");
+    const isBlobUrl = body.avatar.startsWith("https://");
+    if (!isDataUrl && !isBlobUrl) return err("Avatar must be an image URL");
+    if (isDataUrl) {
+      const allowedMimes = ["data:image/jpeg", "data:image/png", "data:image/webp"];
+      if (!allowedMimes.some(m => body.avatar.startsWith(m))) return err("Avatar must be JPEG, PNG, or WebP");
+      const base64Part = body.avatar.split(",")[1] || "";
+      const approxBytes = base64Part.length * 0.75;
+      if (approxBytes > 200 * 1024) return err("Avatar must be under 200KB");
+    }
   }
 
   // Build dynamic update — only allowed fields

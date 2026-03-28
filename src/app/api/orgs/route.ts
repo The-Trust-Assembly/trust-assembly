@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
   const result = await sql`
     SELECT
-      o.id, o.name, o.description, o.charter, o.is_general_public,
+      o.id, o.name, o.description, o.charter, o.avatar, o.is_general_public,
       o.enrollment_mode, o.sponsors_required, o.created_at,
       u.username AS created_by,
       (SELECT COUNT(*) FROM organization_members om WHERE om.org_id = o.id AND om.is_active = TRUE) AS member_count

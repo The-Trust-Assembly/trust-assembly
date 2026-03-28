@@ -280,7 +280,7 @@ export function SubHeadline({ sub, size = 12 }) {
   );
 }
 
-export function StatusPill({ status }) {
+export function StatusPill({ status, size = 48 }) {
   const iconMap = {
     approved: "status-approved", dismissed: "status-approved",
     rejected: "status-rejected", consensus_rejected: "status-rejected", upheld: "status-rejected",
@@ -294,7 +294,7 @@ export function StatusPill({ status }) {
     consensus: "CONSENSUS", consensus_rejected: "CONSENSUS REJECTED",
     disputed: "DISPUTED", upheld: "DISPUTE UPHELD", dismissed: "DISPUTE DISMISSED",
   }[status] || (typeof status === "string" ? status.toUpperCase() : "UNKNOWN");
-  return <img src={ICON_MAP[name] || `/icons/${name}.png`} alt={label} title={label} width={48} height={48} style={{ display: "inline-block", objectFit: "contain", verticalAlign: "middle" }} />;
+  return <img src={ICON_MAP[name] || `/icons/${name}.png`} alt={label} title={label} width={size} height={size} style={{ display: "inline-block", objectFit: "contain", verticalAlign: "middle" }} />;
 }
 
 export function LegalDisclaimer({ short }) {
@@ -525,8 +525,13 @@ export function StandingCorrectionInput({ value, onChange }) {
   );
 }
 
-export function UsernameLink({ username, onClick, style: userStyle }) {
-  return <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold)", fontSize: 11, textDecoration: "underline", textDecorationColor: "var(--border)", ...userStyle }}>{username === ADMIN_USERNAME ? <><Icon name="crown" size={14} /> </> : ""}@{username}</button>;
+export function UsernameLink({ username, avatar, onClick, style: userStyle }) {
+  return (
+    <button onClick={() => onClick && onClick(username)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--gold)", fontSize: 11, textDecoration: "underline", textDecorationColor: "var(--border)", display: "inline-flex", alignItems: "center", gap: 3, ...userStyle }}>
+      {avatar && <img src={avatar} alt="" style={{ width: 14, height: 14, borderRadius: "50%", objectFit: "cover" }} />}
+      {username === ADMIN_USERNAME ? <><Icon name="crown" size={14} /> </> : ""}@{username}
+    </button>
+  );
 }
 
 export function Empty({ text }) { return <div style={{ textAlign: "center", padding: 36, color: "var(--text-muted)", fontSize: 11 }}>{text}</div>; }

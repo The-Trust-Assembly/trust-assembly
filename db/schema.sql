@@ -92,6 +92,9 @@ CREATE TABLE users (
   -- Primary assembly
   primary_org_id UUID,
 
+  -- Profile
+  avatar        TEXT,          -- base64 data URL for profile picture (max ~200KB)
+
   -- Timestamps
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   ip_hash       TEXT
@@ -120,6 +123,7 @@ CREATE TABLE organizations (
   cross_group_deception_findings INTEGER NOT NULL DEFAULT 0,
   cassandra_wins INTEGER NOT NULL DEFAULT 0,
 
+  avatar          TEXT,         -- base64 data URL for assembly picture (square, max ~200KB)
   created_by      UUID NOT NULL REFERENCES users(id),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -596,8 +600,19 @@ CREATE TABLE feedback (
   user_resolution      VARCHAR(20) DEFAULT NULL,
   user_resolution_note TEXT DEFAULT NULL,
   user_resolution_at   TIMESTAMPTZ DEFAULT NULL,
+  prompt_suggestion    TEXT CHECK (length(prompt_suggestion) <= 5000),
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS feedback_replies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  feedback_id UUID NOT NULL REFERENCES feedback(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id),
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  message TEXT NOT NULL CHECK (length(message) <= 2000),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_replies_feedback_id ON feedback_replies(feedback_id);
 
 CREATE INDEX idx_feedback_created ON feedback(created_at DESC);
 

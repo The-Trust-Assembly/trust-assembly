@@ -7,7 +7,7 @@ import { hasActiveDeceptionPenalty, deceptionPenaltyRemaining, isDIUser, getTrus
 import { Badge, ScoreBreakdown, CitizenBadges, UsernameLink, StatusPill, SubHeadline, Icon } from "../components/ui";
 import JuryScoreCard from "../components/JuryScoreCard";
 
-export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fontSize, setFontSize, contentWidth, setContentWidth }) {
+export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fontSize, setFontSize, contentWidth, setContentWidth, hideCarousel, setHideCarousel, hideStatusCards, setHideStatusCards }) {
   const [u, setU] = useState(user);
   const [orgs, setOrgs] = useState({});
   const [allUsers, setAllUsers] = useState({});
@@ -53,7 +53,14 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
     <div>
       {/* Profile header */}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 16 }}>
-        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: "var(--bg)", flexShrink: 0 }}>{initials}</div>
+        <div style={{ position: "relative", cursor: "pointer" }} onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/jpeg,image/png,image/webp"; input.onchange = async (e) => { const file = e.target.files[0]; if (!file) return; if (file.size > 2 * 1024 * 1024) { alert("Image must be under 2MB"); return; } const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128; const ctx = canvas.getContext("2d"); const img = new Image(); img.onload = async () => { const s = Math.min(img.width, img.height); const sx = (img.width - s) / 2, sy = (img.height - s) / 2; ctx.drawImage(img, sx, sy, s, s, 0, 0, 128, 128); canvas.toBlob(async (blob) => { if (!blob) { alert("Could not process image"); return; } try { const formData = new FormData(); formData.append("file", blob, "avatar.jpg"); const uploadRes = await fetch("/api/upload", { method: "POST", body: formData }); const uploadData = await uploadRes.json().catch(() => ({})); if (!uploadRes.ok) { alert(uploadData.error || "Failed to upload image"); return; } const res = await fetch(`/api/users/${u.username}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: uploadData.url }) }); if (res.ok) { setU(prev => ({ ...prev, avatar: uploadData.url })); } else { alert("Failed to upload avatar"); } } catch { alert("Network error"); } }, "image/jpeg", 0.8); }; img.src = URL.createObjectURL(file); }; input.click(); }}>
+          {u.avatar ? (
+            <img src={u.avatar} alt="avatar" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover" }} />
+          ) : (
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: "var(--bg)" }}>{initials}</div>
+          )}
+          <div style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: "var(--card-bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>+</div>
+        </div>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>{u.displayName || u.username}</div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>@{u.username} · Joined {fDate(u.signupDate)}</div>
@@ -218,6 +225,24 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
               <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
                 {[["compact", "Compact"], ["wide", "Wide"]].map(([k, label]) => (
                   <button key={k} onClick={() => setContentWidth && setContentWidth(k)} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: contentWidth === k ? "var(--gold)" : "transparent", color: contentWidth === k ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
+                ))}
+              </div>
+            </div>
+            {/* Hide Home Page Hero Carousel */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Hide Home Page Hero Carousel</div>
+              <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
+                {[["show", "Show"], ["hide", "Hide"]].map(([k, label]) => (
+                  <button key={k} onClick={() => setHideCarousel && setHideCarousel(k === "hide")} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: (k === "hide" ? hideCarousel : !hideCarousel) ? "var(--gold)" : "transparent", color: (k === "hide" ? hideCarousel : !hideCarousel) ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
+                ))}
+              </div>
+            </div>
+            {/* Hide Home Page Status & Admin Announcements */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Hide Home Page Status & Admin Announcements</div>
+              <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
+                {[["show", "Show"], ["hide", "Hide"]].map(([k, label]) => (
+                  <button key={k} onClick={() => setHideStatusCards && setHideStatusCards(k === "hide")} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: (k === "hide" ? hideStatusCards : !hideStatusCards) ? "var(--gold)" : "transparent", color: (k === "hide" ? hideStatusCards : !hideStatusCards) ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
                 ))}
               </div>
             </div>

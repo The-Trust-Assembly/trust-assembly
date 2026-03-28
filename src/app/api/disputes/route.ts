@@ -5,6 +5,7 @@ import { ok, err, unauthorized } from "@/lib/api-utils";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { logError } from "@/lib/error-logger";
 import { createNotification } from "@/lib/notifications";
+import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 
 const SOURCE_FILE = "src/app/api/disputes/route.ts";
 
@@ -114,16 +115,23 @@ export async function POST(request: NextRequest) {
   // Determine dispute type from body or infer from submission status
   const resolvedType = (disputeType as string) || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
 
+  // Check if this is a third-party dispute on a rejection (grace period applies)
+  const isSelfDispute = session.sub === submitted_by;
+  const isRejectionDispute = resolvedType === "challenge_rejection";
+  const needsGracePeriod = !isSelfDispute && isRejectionDispute;
+  const initialStatus = needsGracePeriod ? "grace_period" : "pending_review";
+  const gracePeriodUntil = needsGracePeriod ? new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() : null;
+
   let dispute: Record<string, unknown>;
 
   try {
     dispute = await withTransaction(async (client) => {
       const result = await client.query(
-        `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, submission_id, org_id, status, dispute_type, created_at`,
+        `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses, status, grace_period_until)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id, submission_id, org_id, status, dispute_type, grace_period_until, created_at`,
         [submissionId, org_id, session.sub, submitted_by, reasoning, resolvedType,
-         fieldResponses ? JSON.stringify(fieldResponses) : null]
+         fieldResponses ? JSON.stringify(fieldResponses) : null, initialStatus, gracePeriodUntil]
       );
       const d = result.rows[0];
 
@@ -178,15 +186,63 @@ export async function POST(request: NextRequest) {
     return err("Failed to create dispute. Please try again.", 500);
   }
 
-  // Notify the original submitter about the dispute (fire-and-forget)
-  await createNotification({
+  if (needsGracePeriod) {
+    // Notify original submitter about the grace period
+    createNotification({
+      userId: submitted_by as string,
+      type: "dispute_filed",
+      title: "Someone has disputed the rejection of your submission",
+      body: "You have 48 hours to take over this dispute. If you don't act, the original filer's dispute will proceed to jury.",
+      entityType: "dispute",
+      entityId: dispute.id as string,
+    }).catch(() => {});
+
+    return ok({ ...dispute, gracePeriod: true, gracePeriodUntil }, 201);
+  }
+
+  // Notify the original submitter about the dispute (no grace period)
+  createNotification({
     userId: submitted_by as string,
     type: "dispute_filed",
     title: "Your submission has been disputed",
     body: `A ${resolvedType === "challenge_rejection" ? "challenge to rejection" : "challenge to approval"} was filed`,
     entityType: "dispute",
     entityId: dispute.id as string,
-  });
+  }).catch(() => {});
+
+  // ── Assign jury to the dispute (only when no grace period) ──
+  try {
+    const wildWest = await isWildWestMode();
+    const memberCount = await sql`SELECT COUNT(*) as count FROM organization_members WHERE org_id = ${org_id as string} AND is_active = TRUE`;
+    const count = parseInt(memberCount.rows[0].count);
+    const jurySize = wildWest ? 1 : getJurySize(count);
+    const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+
+    const pool = await sql.query(
+      `SELECT om.user_id FROM organization_members om
+       JOIN users u ON u.id = om.user_id
+       WHERE om.org_id = $1 AND om.is_active = TRUE AND u.is_di = FALSE
+         AND om.user_id != $2 AND om.user_id != $3
+       ORDER BY RANDOM() LIMIT $4`,
+      [org_id, session.sub, submitted_by, poolSize]
+    );
+
+    for (const juror of pool.rows) {
+      await sql.query(
+        `INSERT INTO jury_assignments (dispute_id, user_id, role, in_pool, accepted, accepted_at)
+         VALUES ($1, $2, 'dispute', TRUE, TRUE, now())
+         ON CONFLICT DO NOTHING`,
+        [dispute.id, juror.user_id]
+      );
+      createNotification({ userId: juror.user_id as string, type: "dispute_jury_assigned", title: "You've been assigned to a dispute jury.", body: "A submission dispute is ready for your review.", entityType: "dispute", entityId: dispute.id as string }).catch(() => {});
+    }
+
+    await sql`INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+      VALUES ('Dispute jury assigned', ${session.sub}, ${org_id as string}, 'dispute', ${dispute.id as string},
+        ${JSON.stringify({ jurySize, poolSize: pool.rows.length, wildWest })}::jsonb)`;
+  } catch (juryError) {
+    console.error("Dispute jury assignment failed:", juryError);
+  }
 
   return ok(dispute, 201);
 }

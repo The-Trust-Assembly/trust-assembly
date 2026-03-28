@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET /api/data/audit — returns audit log entries as an array
 // in the format the v5 SPA expects: [{ time, action }, ...]

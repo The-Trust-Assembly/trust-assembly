@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { serverError } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET /api/data/orgs — returns ALL organizations keyed by ID
 // with member username arrays, in the format the v5 SPA expects.
@@ -11,7 +12,7 @@ export async function GET() {
   try {
   const result = await sql`
     SELECT
-      o.id, o.name, o.description, o.charter, o.is_general_public,
+      o.id, o.name, o.description, o.charter, o.avatar, o.is_general_public,
       o.enrollment_mode, o.sponsors_required,
       o.cross_group_deception_findings, o.cassandra_wins,
       o.created_at,
@@ -57,6 +58,7 @@ export async function GET() {
       name: row.name,
       description: row.description,
       charter: row.charter,
+      avatar: row.avatar,
       isGeneralPublic: row.is_general_public,
       enrollmentMode: row.enrollment_mode,
       sponsorsRequired: row.sponsors_required,
@@ -71,11 +73,7 @@ export async function GET() {
 
   return NextResponse.json(orgs, {
     status: 200,
-    headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate",
-      "Surrogate-Control": "no-store",
-      "CDN-Cache-Control": "no-store",
-    },
+    headers: noCacheHeaders,
   });
   } catch (error) {
     return serverError("GET /api/data/orgs", error);

@@ -15,6 +15,7 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
   const [diAgents, setDiAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [showAssemblies, setShowAssemblies] = useState(false);
   const loadData = async () => {
     try {
       const all = (await sG(SK.USERS)) || {};
@@ -48,18 +49,39 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
       <h2 className="ta-section-head">Citizen Record</h2>
       <div className="ta-card" style={{ borderLeft: `4px solid ${isDIUser(u) ? "#4F46E5" : pi.color}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            {u.avatar ? (
+              <img src={u.avatar} alt="" style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: "var(--bg)", flexShrink: 0 }}>{((u.displayName || u.username || "?")[0] + ((u.displayName || u.username || "?")[1] || "")).toUpperCase()}</div>
+            )}
+            <div>
             <h3 style={{ margin: 0, fontSize: 22, fontFamily: "var(--serif)" }}>
               {isDIUser(u) ? <span style={{ marginRight: 6 }}><Icon name="robot" size={14} /></span> : u.username === ADMIN_USERNAME ? <span style={{ marginRight: 6 }}><Icon name="crown" size={14} /></span> : null}
               @{u.displayName || u.username}
             </h3>
             {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "var(--gold)" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "Pending"}</div>}
+            </div>
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
-        {myOrgs.length > 0 && <div style={{ marginTop: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {myOrgs.map(o => <span key={o.id} style={{ fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", borderRadius: 0, background: o.isGeneralPublic ? "#F0FDFA" : "var(--card-bg)", color: o.isGeneralPublic ? "#0D9488" : "#475569" }}>{o.isGeneralPublic ? <><Icon name="vault" size={14} /> </> : ""}{o.name}</span>)}
-        </div>}
+        {myOrgs.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div onClick={() => setShowAssemblies(!showAssemblies)} style={{ cursor: "pointer", fontSize: 9, fontFamily: "var(--mono)", letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, marginBottom: 4, userSelect: "none" }}>
+              {myOrgs.length} assembl{myOrgs.length !== 1 ? "ies" : "y"} <span style={{ display: "inline-block", transform: showAssemblies ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+            </div>
+            {showAssemblies && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {myOrgs.map(o => (
+                  <span key={o.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 7px", fontFamily: "var(--mono)", background: "var(--card-bg)", border: "1px solid var(--border)", color: "var(--text-sec)" }}>
+                    {o.avatar ? <img src={o.avatar} width={14} height={14} alt="" style={{ objectFit: "cover" }} /> : null}
+                    {o.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: pi.color, marginBottom: 4 }}>Profile: {p.profile}</div>
           <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{pi.desc}</div>

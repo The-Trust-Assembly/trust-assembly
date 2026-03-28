@@ -87,6 +87,15 @@ export async function GET(request: NextRequest) {
     params.push(status);
   }
 
+  // URL filtering: restrict non-translation vault entries to those linked to submissions for this URL.
+  // Translations are GLOBAL (assembly-wide) and should appear everywhere.
+  const filterUrl = searchParams.get("url");
+  if (filterUrl && type !== "translation") {
+    query += ` AND submission_id IN (SELECT id FROM submissions WHERE normalized_url = $${paramIndex} OR url = $${paramIndex})`;
+    params.push(filterUrl.trim().replace(/\/+$/, "").toLowerCase());
+    paramIndex++;
+  }
+
   query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
   params.push(limit, offset);
 
