@@ -180,6 +180,7 @@ export default function TrustAssembly() {
   const setScreen = useCallback((s) => {
     trackAction("nav", `screen:${s}`, { screen: s });
     setScreenRaw(s);
+    setViewingCitizen(null);
     setViewingRecord(null);
     if (!skipPush.current) {
       window.history.pushState({ screen: s, citizen: null, record: null }, "", "/" + s);
