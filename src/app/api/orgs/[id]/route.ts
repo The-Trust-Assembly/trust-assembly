@@ -110,8 +110,12 @@ export async function PATCH(
       values.push(body.description?.trim() || null);
     }
     if (body.avatar !== undefined) {
-      if (body.avatar && typeof body.avatar === "string" && body.avatar.length > 300000) return err("Avatar must be under 200KB");
-      if (body.avatar && typeof body.avatar === "string" && !body.avatar.startsWith("data:image/")) return err("Avatar must be a data:image URL (JPEG, PNG, or WebP)");
+      if (body.avatar && typeof body.avatar === "string") {
+        const isDataUrl = body.avatar.startsWith("data:image/");
+        const isBlobUrl = body.avatar.startsWith("https://");
+        if (!isDataUrl && !isBlobUrl) return err("Avatar must be an image URL");
+        if (isDataUrl && body.avatar.length > 300000) return err("Avatar must be under 200KB");
+      }
       updates.push(`avatar = $${idx++}`);
       values.push(body.avatar || null);
     }

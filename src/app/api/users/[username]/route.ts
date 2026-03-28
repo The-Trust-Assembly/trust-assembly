@@ -65,20 +65,18 @@ export async function PATCH(
     values.push(body.orgId || null);
   }
 
-  // Validate avatar if provided
+  // Validate avatar if provided — accept both data:image/ URLs (legacy) and https:// blob URLs
   if (body.avatar !== undefined && body.avatar !== null) {
-    if (typeof body.avatar !== "string" || !body.avatar.startsWith("data:image/")) {
-      return err("Avatar must be a data:image/ URL");
-    }
-    const allowedMimes = ["data:image/jpeg", "data:image/png", "data:image/webp"];
-    if (!allowedMimes.some(m => body.avatar.startsWith(m))) {
-      return err("Avatar must be JPEG, PNG, or WebP");
-    }
-    // Check approximate size (base64 is ~4/3 of binary)
-    const base64Part = body.avatar.split(",")[1] || "";
-    const approxBytes = base64Part.length * 0.75;
-    if (approxBytes > 200 * 1024) {
-      return err("Avatar must be under 200KB");
+    if (typeof body.avatar !== "string") return err("Avatar must be a string");
+    const isDataUrl = body.avatar.startsWith("data:image/");
+    const isBlobUrl = body.avatar.startsWith("https://");
+    if (!isDataUrl && !isBlobUrl) return err("Avatar must be an image URL");
+    if (isDataUrl) {
+      const allowedMimes = ["data:image/jpeg", "data:image/png", "data:image/webp"];
+      if (!allowedMimes.some(m => body.avatar.startsWith(m))) return err("Avatar must be JPEG, PNG, or WebP");
+      const base64Part = body.avatar.split(",")[1] || "";
+      const approxBytes = base64Part.length * 0.75;
+      if (approxBytes > 200 * 1024) return err("Avatar must be under 200KB");
     }
   }
 
