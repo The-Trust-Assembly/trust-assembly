@@ -30,12 +30,10 @@ export async function GET() {
   `;
 
   const disputeIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  const noCacheHeaders = {
-    "Cache-Control": "no-store, no-cache, must-revalidate",
-    "Surrogate-Control": "no-store",
-    "CDN-Cache-Control": "no-store",
+  const cacheHeaders = {
+    "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
   };
-  if (disputeIds.length === 0) return NextResponse.json({}, { status: 200, headers: noCacheHeaders });
+  if (disputeIds.length === 0) return NextResponse.json({}, { status: 200, headers: cacheHeaders });
 
   // Batch load jurors
   const jurors = await sql.query(
@@ -113,7 +111,7 @@ export async function GET() {
     };
   }
 
-  return NextResponse.json(disputes, { status: 200, headers: noCacheHeaders });
+  return NextResponse.json(disputes, { status: 200, headers: cacheHeaders });
   } catch (error) {
     return serverError("GET /api/data/disputes", error);
   }

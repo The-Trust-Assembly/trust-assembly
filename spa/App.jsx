@@ -162,9 +162,15 @@ export default function TrustAssembly() {
   const [siteAnnouncement, setSiteAnnouncement] = useState(null);
   const notifRef = useRef(null);
 
-  // Load full profile data for navbar trust score (matches citizen page)
+  // Load full profile data for navbar trust score.
+  // Only re-fetch when the user object itself changes (login, profile update),
+  // NOT on every screen change — avoids 3 massive API calls per navigation.
+  const navProfileLoaded = useRef(false);
   useEffect(() => {
     if (!user) return;
+    // Skip if we already loaded once this session and user hasn't changed
+    if (navProfileLoaded.current) return;
+    navProfileLoaded.current = true;
     (async () => {
       try {
         const [allUsers, allOrgs, allSubs] = await Promise.all([sG(SK.USERS), sG(SK.ORGS), sG(SK.SUBS)]);
@@ -173,7 +179,7 @@ export default function TrustAssembly() {
         setNavProfile(p);
       } catch {}
     })();
-  }, [user, screen]);
+  }, [user]);
 
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
@@ -302,22 +308,22 @@ export default function TrustAssembly() {
     return () => clearInterval(t);
   }, [user, heroPaused]);
 
+  // Poll review queue for badge counts — 30s interval (was 5s).
+  // Full data is loaded by ReviewScreen itself when the user navigates there.
   useEffect(() => {
     if (!user) return;
     const check = async () => { try {
       const qRes = await fetch("/api/reviews/queue"); if (!qRes.ok) return;
       const q = await qRes.json();
-      const ww = q.wildWest;
-      const myOrgs = new Set(user.orgIds || (user.orgId ? [user.orgId] : []));
       const isEligible = (s) => s.submittedBy !== user.username && s.diPartner !== user.username;
       setReviewCount((q.submissions || []).filter(s => s.status !== "cross_review" && isEligible(s)).length);
       setCrossCount((q.submissions || []).filter(s => s.status === "cross_review").length);
       setDisputeCount((q.disputes || []).length);
     } catch {} };
-    check(); const i = setInterval(check, 5000); return () => clearInterval(i);
-  }, [user, screen]);
+    check(); const i = setInterval(check, 30000); return () => clearInterval(i);
+  }, [user]);
 
-  const refreshUser = async () => { try { if (!user) return; const users = (await sG(SK.USERS)) || {}; const u = users[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); } } catch {} };
+  const refreshUser = async () => { try { if (!user) return; const users = (await sG(SK.USERS)) || {}; const u = users[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); navProfileLoaded.current = false; } } catch {} };
   useEffect(() => {
     if (user) refreshUser();
     // Mark review-related notifications as read when the Review tab is opened

@@ -4,10 +4,9 @@ import { ok, serverError } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 import { assertTransition } from "@/lib/submission-states";
 
-const NO_CACHE_HEADERS = {
-  "Cache-Control": "no-store, no-cache, must-revalidate",
-  "Surrogate-Control": "no-store",
-  "CDN-Cache-Control": "no-store",
+// Allow browsers to briefly cache this heavy endpoint (15 seconds).
+const CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
 };
 
 export const dynamic = "force-dynamic";
@@ -20,6 +19,7 @@ export async function GET() {
   try {
   // ── Auto-promote pending_jury → pending_review ──
   // Wrapped in try-catch so promotion failures never crash the read endpoint.
+  // Uses a single batched member-count query instead of N+1 individual queries.
   try {
     const wildWest = await isWildWestMode();
     const threshold = wildWest ? 2 : 5;
@@ -30,63 +30,73 @@ export async function GET() {
       WHERE s.status = 'pending_jury'
     `;
 
-    for (const sub of stuckSubs.rows) {
-      try {
-        const memberCount = await sql`
-          SELECT COUNT(*) as count FROM organization_members
-          WHERE org_id = ${sub.org_id} AND is_active = TRUE
-        `;
-        const count = parseInt(memberCount.rows[0].count);
-        if (count >= threshold) {
-          assertTransition("pending_jury", "pending_review");
-          await withTransaction(async (client) => {
-            const jurySize = wildWest ? 1 : getJurySize(count);
-            const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+    if (stuckSubs.rows.length > 0) {
+      // Batch: get member counts for all relevant orgs in one query
+      const orgIds = [...new Set(stuckSubs.rows.map((s: Record<string, unknown>) => s.org_id as string))];
+      const memberCounts = await sql.query(
+        `SELECT org_id, COUNT(*)::int AS count FROM organization_members
+         WHERE org_id = ANY($1) AND is_active = TRUE GROUP BY org_id`,
+        [orgIds]
+      );
+      const countByOrg: Record<string, number> = {};
+      for (const row of memberCounts.rows) {
+        countByOrg[row.org_id] = row.count;
+      }
 
-            const excluded = [sub.submitted_by];
-            if (sub.di_partner_id) excluded.push(sub.di_partner_id);
+      for (const sub of stuckSubs.rows) {
+        try {
+          const count = countByOrg[sub.org_id as string] || 0;
+          if (count >= threshold) {
+            assertTransition("pending_jury", "pending_review");
+            await withTransaction(async (client) => {
+              const jurySize = wildWest ? 1 : getJurySize(count);
+              const poolSize = jurySize * JURY_POOL_MULTIPLIER;
 
-            const pool = await client.query(
-              `SELECT om.user_id
-               FROM organization_members om
-               JOIN users u ON u.id = om.user_id
-               WHERE om.org_id = $1
-                 AND om.is_active = TRUE
-                 AND u.is_di = FALSE
-                 AND om.user_id != ALL($2::uuid[])
-               ORDER BY RANDOM()
-               LIMIT $3`,
-              [sub.org_id, excluded, poolSize]
-            );
+              const excluded = [sub.submitted_by];
+              if (sub.di_partner_id) excluded.push(sub.di_partner_id);
 
-            for (const juror of pool.rows) {
-              await client.query(
-                `INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
-                 VALUES ($1, $2, 'in_group', TRUE, FALSE)
-                 ON CONFLICT DO NOTHING`,
-                [sub.id, juror.user_id]
+              const pool = await client.query(
+                `SELECT om.user_id
+                 FROM organization_members om
+                 JOIN users u ON u.id = om.user_id
+                 WHERE om.org_id = $1
+                   AND om.is_active = TRUE
+                   AND u.is_di = FALSE
+                   AND om.user_id != ALL($2::uuid[])
+                 ORDER BY RANDOM()
+                 LIMIT $3`,
+                [sub.org_id, excluded, poolSize]
               );
-            }
 
-            await client.query(
-              "UPDATE submissions SET status = 'pending_review', jury_seats = $1 WHERE id = $2",
-              [jurySize, sub.id]
-            );
+              for (const juror of pool.rows) {
+                await client.query(
+                  `INSERT INTO jury_assignments (submission_id, user_id, role, in_pool, accepted)
+                   VALUES ($1, $2, 'in_group', TRUE, FALSE)
+                   ON CONFLICT DO NOTHING`,
+                  [sub.id, juror.user_id]
+                );
+              }
 
-            await client.query(
-              `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [
-                "Submission promoted from pending_jury to pending_review (auto)",
-                sub.org_id, "submission", sub.id,
-                JSON.stringify({ memberCount: count, jurySize, wildWest }),
-              ]
-            );
-          });
+              await client.query(
+                "UPDATE submissions SET status = 'pending_review', jury_seats = $1 WHERE id = $2",
+                [jurySize, sub.id]
+              );
+
+              await client.query(
+                `INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [
+                  "Submission promoted from pending_jury to pending_review (auto)",
+                  sub.org_id, "submission", sub.id,
+                  JSON.stringify({ memberCount: count, jurySize, wildWest }),
+                ]
+              );
+            });
+          }
+        } catch (promoteErr) {
+          // Log but don't crash — this submission stays pending_jury
+          console.error(`Auto-promote failed for submission ${sub.id}:`, promoteErr);
         }
-      } catch (promoteErr) {
-        // Log but don't crash — this submission stays pending_jury
-        console.error(`Auto-promote failed for submission ${sub.id}:`, promoteErr);
       }
     }
   } catch (autoPromoteErr) {
@@ -115,7 +125,7 @@ export async function GET() {
   `;
 
   const subIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  if (subIds.length === 0) return NextResponse.json({}, { status: 200, headers: NO_CACHE_HEADERS });
+  if (subIds.length === 0) return NextResponse.json({}, { status: 200, headers: CACHE_HEADERS });
 
   // Batch load evidence
   const ev = await sql.query(
@@ -272,7 +282,7 @@ export async function GET() {
     };
   }
 
-  return NextResponse.json(subs, { status: 200, headers: NO_CACHE_HEADERS });
+  return NextResponse.json(subs, { status: 200, headers: CACHE_HEADERS });
   } catch (error) {
     return serverError("GET /api/data/submissions", error);
   }

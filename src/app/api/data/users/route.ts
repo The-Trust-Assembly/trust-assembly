@@ -10,13 +10,10 @@ export const fetchCache = "force-no-store";
 // Serves sG(SK.USERS) reads from the relational database.
 export async function GET() {
   try {
-  // Belt-and-suspenders: explicit no-cache headers prevent Vercel edge/CDN
-  // from serving stale user data (supplements middleware Cache-Control).
+  // Allow browsers to briefly cache this heavy endpoint (15 seconds).
+  // stale-while-revalidate lets the browser serve stale data while fetching fresh.
   const headers = {
-    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-    "Pragma": "no-cache",
-    "Surrogate-Control": "no-store",
-    "CDN-Cache-Control": "no-store",
+    "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
   };
 
   const result = await sql`
@@ -95,24 +92,26 @@ export async function GET() {
     diPartnersMap[row.partner_user_id].push(row.di_username);
   }
 
-  // Get notifications (last 50 per user)
+  // Get notifications (last 50 per user, filtered at database level)
   const notifications = await sql`
     SELECT user_id, id, type, title, body, entity_type, entity_id, "read", created_at
-    FROM notifications
+    FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn
+      FROM notifications
+    ) ranked
+    WHERE rn <= 50
     ORDER BY created_at DESC
   `;
   const notifsMap: Record<string, Array<Record<string, unknown>>> = {};
   for (const row of notifications.rows) {
     if (!notifsMap[row.user_id]) notifsMap[row.user_id] = [];
-    if (notifsMap[row.user_id].length < 50) {
-      notifsMap[row.user_id].push({
-        id: row.id,
-        type: row.type,
-        data: { title: row.title, body: row.body, entityType: row.entity_type, entityId: row.entity_id },
-        read: row.read,
-        createdAt: row.created_at,
-      });
-    }
+    notifsMap[row.user_id].push({
+      id: row.id,
+      type: row.type,
+      data: { title: row.title, body: row.body, entityType: row.entity_type, entityId: row.entity_id },
+      read: row.read,
+      createdAt: row.created_at,
+    });
   }
 
   const users: Record<string, unknown> = {};

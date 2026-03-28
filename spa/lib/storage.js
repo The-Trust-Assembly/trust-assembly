@@ -2,10 +2,10 @@ import { SK } from "./constants";
 
 const WILD_WEST_THRESHOLD = 100;
 
-// Append a cache-busting timestamp to any URL to prevent CDN/browser stale responses.
+// Fetch helper. Bulk data endpoints now set short-TTL Cache-Control headers,
+// so we no longer need cache-busting timestamps or no-store directives.
 function noCacheFetch(url, opts) {
-  const sep = url.includes("?") ? "&" : "?";
-  return fetch(url + sep + "_t=" + Date.now(), { cache: "no-store", ...opts });
+  return fetch(url, opts);
 }
 
 // checkSignupRate is a no-op — rate limiting is handled server-side.
