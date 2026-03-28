@@ -77,6 +77,11 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
 
   const load = useCallback(async () => {
     const [o, s, a, c] = await Promise.all([sG(SK.ORGS), sG(SK.SUBS), sG(SK.APPS), sG("ta-concessions")]);
+    // Debug: log which orgs have avatars in the fetched data
+    if (o) {
+      const avatarStatus = Object.values(o).map(org => `${org.name}: ${org.avatar ? 'HAS AVATAR (' + org.avatar.length + ' chars)' : 'no avatar'}`);
+      console.log("[OrgScreen load] Avatar status:", avatarStatus.join(", "));
+    }
     setOrgs(o || {}); setSubs(s || {}); setApps(a || {}); setConcessions(c || {}); setLoading(false);
     invalidateOrgs();
     // Load followed orgs from relational API
