@@ -342,15 +342,65 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
             {(() => {
               const isFounderForAvatar = (vo.founders || [vo.createdBy]).includes(user.username);
               const canUploadAvatar = isFounderForAvatar && vo.members.length < 50 && !vo.isGeneralPublic;
+              const handleAvatarClick = () => {
+                if (!canUploadAvatar) return;
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/jpeg,image/png,image/webp";
+                input.onchange = async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  // Client-side validation
+                  const validTypes = ["image/jpeg", "image/png", "image/webp"];
+                  if (!validTypes.includes(file.type)) {
+                    setError("Only JPEG, PNG, and WebP images are accepted.");
+                    return;
+                  }
+                  if (file.size > 2 * 1024 * 1024) {
+                    setError("Image must be under 2MB. Try a smaller file.");
+                    return;
+                  }
+                  // Resize to 256x256 square
+                  const canvas = document.createElement("canvas");
+                  canvas.width = 256; canvas.height = 256;
+                  const ctx = canvas.getContext("2d");
+                  const img = new Image();
+                  img.onload = async () => {
+                    const s = Math.min(img.width, img.height);
+                    const sx = (img.width - s) / 2;
+                    const sy = (img.height - s) / 2;
+                    ctx.drawImage(img, sx, sy, s, s, 0, 0, 256, 256);
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+                    try {
+                      const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: dataUrl }) });
+                      if (res.ok) {
+                        // Update local state immediately so image displays without waiting for refetch
+                        setOrgs(prev => {
+                          const updated = { ...prev };
+                          if (updated[viewingOrg]) updated[viewingOrg] = { ...updated[viewingOrg], avatar: dataUrl };
+                          return updated;
+                        });
+                        setSuccess("Assembly image updated successfully.");
+                        setTimeout(() => setSuccess(""), 3000);
+                      } else {
+                        const d = await res.json().catch(() => ({}));
+                        setError(d.error || "Failed to update image. Please try again.");
+                      }
+                    } catch { setError("Network error uploading image."); }
+                  };
+                  img.onerror = () => { setError("Could not read image file. Try a different file."); };
+                  img.src = URL.createObjectURL(file);
+                };
+                input.click();
+              };
               return (
-                <div style={{ width: 80, height: 80, flexShrink: 0, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg)", cursor: canUploadAvatar ? "pointer" : "default", position: "relative" }}
-                  onClick={() => { if (!canUploadAvatar) return; const input = document.createElement("input"); input.type = "file"; input.accept = "image/jpeg,image/png,image/webp"; input.onchange = async (e) => { const file = e.target.files?.[0]; if (!file) return; const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext("2d"); const img = new Image(); img.onload = async () => { const s = Math.min(img.width, img.height); const sx = (img.width - s) / 2; const sy = (img.height - s) / 2; ctx.drawImage(img, sx, sy, s, s, 0, 0, 256, 256); const dataUrl = canvas.toDataURL("image/jpeg", 0.8); try { const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: dataUrl }) }); if (res.ok) { setSuccess("Assembly image updated."); load(); setTimeout(() => setSuccess(""), 3000); } else { const d = await res.json().catch(() => ({})); setError(d.error || "Failed to update image"); } } catch { setError("Network error"); } }; img.src = URL.createObjectURL(file); }; input.click(); }}>
+                <div title={canUploadAvatar ? "Click to upload image (JPEG, PNG, or WebP, max 2MB)" : ""} style={{ width: 80, height: 80, flexShrink: 0, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg)", cursor: canUploadAvatar ? "pointer" : "default", position: "relative" }} onClick={handleAvatarClick}>
                   {vo.avatar ? (
                     <img src={vo.avatar} width={80} height={80} alt={vo.name} style={{ objectFit: "cover", display: "block" }} />
                   ) : (
                     <div style={{ width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 900, color: "var(--text-muted)", fontFamily: "var(--serif)" }}>{(vo.name || "?")[0]}</div>
                   )}
-                  {canUploadAvatar && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 7, textAlign: "center", padding: "2px 0", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Change</div>}
+                  {canUploadAvatar && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 7, textAlign: "center", padding: "2px 0", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{vo.avatar ? "Change" : "Upload"}</div>}
                 </div>
               );
             })()}
