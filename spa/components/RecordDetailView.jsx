@@ -52,18 +52,6 @@ export default function RecordDetailView({ sub, onViewCitizen, status }) {
 
   return (
     <div>
-      {/* Card header: submitter identity + status stamp */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
-          <UsernameLink username={sub.resolvedAt ? sub.submittedBy : null} onClick={onViewCitizen} />
-          {!sub.resolvedAt && <span className="hidden-user">{anonName(sub.submittedBy, sub.anonMap, false)}</span>}
-          <span style={{ marginLeft: 4 }}>· {sub.orgName} · {sDate(sub.createdAt)}</span>
-          {sub.trustedSkip && <span> · <Icon name="trust-badge" size={14} /> Trusted</span>}
-          {sub.isDI && <span> · <Icon name="robot" size={14} /> DI</span>}
-        </div>
-        {status && <StatusPill status={status} />}
-      </div>
-
       {/* 01: The Article */}
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.article ? "open" : "closed"}`} onClick={() => toggle("article")}>
