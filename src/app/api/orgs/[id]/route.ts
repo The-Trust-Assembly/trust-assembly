@@ -138,7 +138,11 @@ export async function PATCH(
         ${JSON.stringify({ updatedFields: Object.keys(body).filter(k => body[k] !== undefined), memberCount })}::jsonb)
     `;
 
-    return ok({ success: true });
+    // Read back avatar to confirm persistence
+    const readBack = await sql`SELECT avatar IS NOT NULL as has_avatar, length(avatar) as avatar_length FROM organizations WHERE id = ${id}`;
+    const avatarInfo = readBack.rows[0] || {};
+
+    return ok({ success: true, avatarSaved: !!avatarInfo.has_avatar, avatarLength: avatarInfo.avatar_length || 0, updatedFields: updates.map(u => u.split(" = ")[0]) });
   } catch (e) {
     return serverError("PATCH /api/orgs/[id]", e);
   }

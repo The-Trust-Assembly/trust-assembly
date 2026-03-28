@@ -374,6 +374,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
                     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
                     try {
                       const res = await fetch(`/api/orgs/${viewingOrg}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatar: dataUrl }) });
+                      const responseData = await res.json().catch(() => ({}));
                       if (res.ok) {
                         // Update local state immediately so image displays without waiting for refetch
                         setOrgs(prev => {
@@ -381,11 +382,12 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
                           if (updated[viewingOrg]) updated[viewingOrg] = { ...updated[viewingOrg], avatar: dataUrl };
                           return updated;
                         });
+                        // Also refetch to confirm persistence
+                        load();
                         setSuccess("Assembly image updated successfully.");
                         setTimeout(() => setSuccess(""), 3000);
                       } else {
-                        const d = await res.json().catch(() => ({}));
-                        setError(d.error || "Failed to update image. Please try again.");
+                        setError(responseData.error || "Failed to update image. Please try again.");
                       }
                     } catch { setError("Network error uploading image."); }
                   };
