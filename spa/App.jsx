@@ -130,6 +130,9 @@ export default function TrustAssembly() {
   const [hideCarousel, setHideCarouselState] = useState(() => { try { return localStorage.getItem("ta-hide-carousel") === "true"; } catch { return false; } });
   const setHideCarousel = (v) => { setHideCarouselState(v); try { localStorage.setItem("ta-hide-carousel", v ? "true" : "false"); } catch {} };
 
+  const [hideStatusCards, setHideStatusCardsState] = useState(() => { try { return localStorage.getItem("ta-hide-status-cards") === "true"; } catch { return false; } });
+  const setHideStatusCards = (v) => { setHideStatusCardsState(v); try { localStorage.setItem("ta-hide-status-cards", v ? "true" : "false"); } catch {} };
+
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -1015,14 +1018,14 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} hideCarousel={hideCarousel} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
+            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} hideCarousel={hideCarousel} setHideCarousel={setHideCarousel} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} hideCarousel={hideCarousel} setHideCarousel={setHideCarousel} hideStatusCards={hideStatusCards} setHideStatusCards={setHideStatusCards} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}

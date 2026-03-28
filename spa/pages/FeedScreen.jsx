@@ -161,7 +161,7 @@ export default function FeedScreen(props) {
   return <FeedErrorBoundary><FeedScreenInner {...props} /></FeedErrorBoundary>;
 }
 
-function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
+function FeedScreenInner({ user, siteAnnouncement, hideCarousel, hideStatusCards, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
@@ -312,7 +312,7 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
       {!hideCarousel && <FeedHeroCarousel subs={subs} onViewRecord={onViewRecord} onViewAssembly={onViewAssembly} />}
 
       {/* Admin update box — driven by /api/admin/announcement */}
-      {siteAnnouncement && typeof siteAnnouncement === "string" && (
+      {!hideStatusCards && siteAnnouncement && typeof siteAnnouncement === "string" && (
         <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Admin update</div>
           <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{siteAnnouncement}</div>
@@ -325,7 +325,7 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
         </div>
       )}
 
-      {/* Your Next Steps + Assembly Status */}
+      {/* Your Next Steps (always visible) + Assembly Status (hideable) */}
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
         <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Your next steps</div>
@@ -334,16 +334,18 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, onNavigate, onV
             {trustedRemaining > 0 && gpOrg && <> Next milestone: <span style={{ color: "var(--gold)", fontWeight: 600 }}>{trustedRemaining} more approvals</span> for Trusted Contributor in {gpOrg.name}.</>}
           </div>
         </div>
-        <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
-          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Assembly status</div>
-          <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
-            Member of <span style={{ color: "var(--text)", fontWeight: 600 }}>{myOrgIds.length} assemblies</span>. {totalCitizens} citizens registered — <span style={{ color: "var(--gold)", fontWeight: 600 }}>{Math.max(0, 100 - totalCitizens)} more</span> until advanced jury rules activate.
+        {!hideStatusCards && (
+          <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Assembly status</div>
+            <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
+              Member of <span style={{ color: "var(--text)", fontWeight: 600 }}>{myOrgIds.length} assemblies</span>. {totalCitizens} citizens registered — <span style={{ color: "var(--gold)", fontWeight: 600 }}>{Math.max(0, 100 - totalCitizens)} more</span> until advanced jury rules activate.
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Wild West Rules */}
-      {totalCitizens < 100 && (
+      {!hideStatusCards && totalCitizens < 100 && (
         <div style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", padding: "8px 12px", marginBottom: 10 }}>
           <div style={{ fontSize: 9, fontWeight: 700, color: "var(--gold)", letterSpacing: 1, marginBottom: 3 }}>WILD WEST RULES — {totalCitizens}/100 CITIZENS</div>
           <div style={{ fontSize: 9, color: "var(--text-sec)", lineHeight: 1.5 }}>1. Any assembly with 2+ members can have jurors · 2. Submissions require one reviewer · 3. Deception findings disabled</div>

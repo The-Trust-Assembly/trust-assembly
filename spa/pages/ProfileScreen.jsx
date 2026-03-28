@@ -7,7 +7,7 @@ import { hasActiveDeceptionPenalty, deceptionPenaltyRemaining, isDIUser, getTrus
 import { Badge, ScoreBreakdown, CitizenBadges, UsernameLink, StatusPill, SubHeadline, Icon } from "../components/ui";
 import JuryScoreCard from "../components/JuryScoreCard";
 
-export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fontSize, setFontSize, contentWidth, setContentWidth, hideCarousel, setHideCarousel }) {
+export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fontSize, setFontSize, contentWidth, setContentWidth, hideCarousel, setHideCarousel, hideStatusCards, setHideStatusCards }) {
   const [u, setU] = useState(user);
   const [orgs, setOrgs] = useState({});
   const [allUsers, setAllUsers] = useState({});
@@ -228,12 +228,21 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
                 ))}
               </div>
             </div>
-            {/* Hero carousel visibility */}
+            {/* Hide Home Page Hero Carousel */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Hero Carousel</div>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Hide Home Page Hero Carousel</div>
               <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
                 {[["show", "Show"], ["hide", "Hide"]].map(([k, label]) => (
                   <button key={k} onClick={() => setHideCarousel && setHideCarousel(k === "hide")} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: (k === "hide" ? hideCarousel : !hideCarousel) ? "var(--gold)" : "transparent", color: (k === "hide" ? hideCarousel : !hideCarousel) ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
+                ))}
+              </div>
+            </div>
+            {/* Hide Home Page Status & Admin Announcements */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Hide Home Page Status & Admin Announcements</div>
+              <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
+                {[["show", "Show"], ["hide", "Hide"]].map(([k, label]) => (
+                  <button key={k} onClick={() => setHideStatusCards && setHideStatusCards(k === "hide")} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: (k === "hide" ? hideStatusCards : !hideStatusCards) ? "var(--gold)" : "transparent", color: (k === "hide" ? hideStatusCards : !hideStatusCards) ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
                 ))}
               </div>
             </div>
