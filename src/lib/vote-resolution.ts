@@ -202,6 +202,13 @@ export async function tryResolveSubmission(
     entityId: submissionId,
   });
 
+  // Additional cross-group-specific notifications
+  if (outcome === "consensus") {
+    createNotification({ userId: sub.submitted_by, type: "consensus_reached", title: "Your submission achieved cross-group consensus!", body: "Approved by both your assembly and cross-group jurors.", entityType: "submission", entityId: submissionId }).catch(() => {});
+  } else if (outcome === "consensus_rejected") {
+    createNotification({ userId: sub.submitted_by, type: "consensus_rejected", title: "Your submission was rejected in cross-group review.", body: "The cross-group jury did not support your submission.", entityType: "submission", entityId: submissionId }).catch(() => {});
+  }
+
   return { resolved: true, outcome, promotedToCrossGroup };
  } catch (outerError) {
     // Catch errors from pre-transaction reads (submission/vote queries)
@@ -325,6 +332,7 @@ async function updateSubmitterReputation(
         "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, 'user', $4)",
         ["Earned Trusted Contributor status", targetUserId, sub.org_id, targetUserId]
       );
+      createNotification({ userId: targetUserId, type: "trusted_earned", title: "You've earned Trusted Contributor status!", body: `Your submissions in ${sub.org_name} now skip jury review.`, entityType: "user", entityId: targetUserId }).catch(() => {});
     }
   } else {
     // Loss: increment losses, reset streaks
@@ -357,6 +365,7 @@ async function updateSubmitterReputation(
         "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id) VALUES ($1, $2, $3, 'user', $4)",
         ["Lost Trusted Contributor status", targetUserId, sub.org_id, targetUserId]
       );
+      createNotification({ userId: targetUserId, type: "trusted_lost", title: "Your Trusted Contributor status was revoked.", body: `Your streak was reset in ${sub.org_name}.`, entityType: "user", entityId: targetUserId }).catch(() => {});
     }
   }
 
@@ -470,6 +479,9 @@ async function promoteEntityToCrossGroup(
       JSON.stringify({ qualifyingOrgs: qualifyingOrgs.rows.length, poolSize: crossPool.rows.length, jurySize: crossJurySize }),
     ]
   );
+
+  // Notify original submitter about cross-group promotion
+  createNotification({ userId: submittedBy, type: "cross_group_started", title: "Your submission has been promoted to cross-group review!", body: "Approved in-group — now being reviewed by other assemblies.", entityType: entityType, entityId: entityId }).catch(() => {});
 
   return true;
 }

@@ -8,6 +8,7 @@ import { slugify } from "@/lib/slugify";
 import { reconcileStalledSubmissions } from "@/lib/vote-resolution";
 import { logError } from "@/lib/error-logger";
 import { assertTransition } from "@/lib/submission-states";
+import { createNotification } from "@/lib/notifications";
 import { normalizeUrl } from "@/lib/normalize-url";
 
 const SOURCE_FILE = "src/app/api/submissions/route.ts";
@@ -378,6 +379,11 @@ export async function POST(request: NextRequest) {
         }
 
         await juryClient.query("COMMIT");
+
+        // Notify jurors (fire-and-forget)
+        for (const juror of pool.rows) {
+          createNotification({ userId: juror.user_id as string, type: "jury_assigned", title: "You've been selected as a juror", body: `A submission is ready for your review.`, entityType: "submission", entityId: sub.id as string }).catch(() => {});
+        }
       } catch (e) {
         await juryClient.query("ROLLBACK");
         console.error("Jury assignment transaction failed, rolled back:", e);

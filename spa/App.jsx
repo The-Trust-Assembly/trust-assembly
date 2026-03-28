@@ -49,20 +49,25 @@ const NAV_DROPDOWNS = [
 
 function formatNotification(n) {
   const d = n.data || {};
+  const title = n.title || "";
+  const body = n.body || "";
+  const entityId = n.entity_id || d.entityId;
   switch (n.type) {
-    case "jury_assigned": return { text: `You've been selected as a juror for a ${d.submissionType || "submission"}.`, screen: "review" };
-    case "submission_resolved": return { text: `Your submission was ${d.outcome === "approved" ? "approved" : d.outcome === "rejected" ? "rejected" : d.outcome || "resolved"}.`, screen: null };
-    case "cross_group_started": return { text: "Your submission has been promoted to cross-group review!", screen: null };
-    case "consensus_reached": return { text: "Your submission achieved cross-group consensus!", screen: null };
-    case "consensus_rejected": return { text: "Your submission was rejected in cross-group review.", screen: null };
-    case "dispute_jury_assigned": return { text: "You've been assigned to a dispute jury.", screen: "review" };
-    case "submission_disputed": return { text: "Your approved submission has been disputed.", screen: "review" };
-    case "dispute_resolved": return { text: `A dispute was resolved: ${d.outcome || "see details"}.`, screen: null };
-    case "di_needs_approval": return { text: `Your DI @${d.submittedBy || "agent"} submitted a correction for review.`, screen: "review" };
-    case "di_approved": return { text: "Your DI submission was approved by your human partner.", screen: null };
-    case "trusted_earned": return { text: "You've earned Trusted Contributor status! Your submissions now skip jury review.", screen: null };
-    case "trusted_lost": return { text: "Your Trusted Contributor status was revoked after a rejection.", screen: null };
-    default: return { text: d.message || "New notification", screen: null };
+    case "jury_assigned": return { text: title || "You've been selected as a juror.", screen: "review" };
+    case "submission_resolved": return { text: title || "Your submission was resolved.", screen: null, recordId: entityId };
+    case "cross_group_started": return { text: title || "Your submission has been promoted to cross-group review!", screen: null, recordId: entityId };
+    case "consensus_reached": return { text: title || "Your submission achieved cross-group consensus!", screen: null, recordId: entityId };
+    case "consensus_rejected": return { text: title || "Your submission was rejected in cross-group review.", screen: "review" };
+    case "dispute_jury_assigned": return { text: title || "You've been assigned to a dispute jury.", screen: "review" };
+    case "dispute_filed": return { text: title || "Your submission has been disputed.", screen: "review" };
+    case "submission_disputed": return { text: title || "Your submission has been disputed.", screen: "review" };
+    case "dispute_resolved": return { text: title || "A dispute was resolved.", screen: "review" };
+    case "di_needs_approval": return { text: title || "A DI submission needs your pre-approval.", screen: "review" };
+    case "di_approved": return { text: title || "Your DI submission was approved.", screen: "feed" };
+    case "trusted_earned": return { text: title || "You've earned Trusted Contributor status!", screen: "profile" };
+    case "trusted_lost": return { text: title || "Your Trusted Contributor status was revoked.", screen: "profile" };
+    case "story_resolved": return { text: title || "Your story proposal was resolved.", screen: "stories" };
+    default: return { text: title || d.message || body || "New notification", screen: null };
   }
 }
 
@@ -966,7 +971,7 @@ export default function TrustAssembly() {
                         {notifications.slice(0, 20).map(n => {
                           const info = formatNotification(n);
                           return (
-                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} onClick={() => { if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }} style={info.screen ? { cursor: "pointer" } : {}}>
+                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} onClick={() => { if (info.recordId) { navigateToRecord(info.recordId); setShowNotifDropdown(false); } else if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }} style={info.screen || info.recordId ? { cursor: "pointer" } : {}}>
                             <div className="ta-notif-text">{info.text}{info.screen && <span style={{ fontSize: 10, color: "var(--gold)", marginLeft: 4 }}>&rarr; Go</span>}</div>
                             <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
                           </div>
