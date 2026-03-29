@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { SK } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { useDraft, clearDraft } from "../lib/hooks";
+import { detectPlatform, CLAIM_CATEGORIES, LISTING_LOCATIONS } from "../lib/platforms";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrustedProgress, getDISubmissionLimit } from "../lib/permissions";
 import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer, Icon } from "../components/ui";
 import { queryKeys } from "../lib/queryKeys";
@@ -41,51 +42,110 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const [importMsg, setImportMsg] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [previewMode, setPreviewMode] = useState("diff"); // "clean" or "diff"
+  const [platform, setPlatform] = useState(null); // detected platform config from platforms.js
+  const [platformTransitioning, setPlatformTransitioning] = useState(false);
+  // Template-specific extra fields
+  const [podcastShowName, setPodcastShowName] = useState("");
+  const [podcastGuest, setPodcastGuest] = useState("");
+  const [episodeDuration, setEpisodeDuration] = useState("");
+  const [claimTimestamp, setClaimTimestamp] = useState("");
+  const [transcriptExcerpt, setTranscriptExcerpt] = useState("");
+  const [productClaimCategory, setProductClaimCategory] = useState("");
+  const [productBrandSeller, setProductBrandSeller] = useState("");
+  const [productMarketplace, setProductMarketplace] = useState("");
+  const [claimLocation, setClaimLocation] = useState("");
+  const [publicationName, setPublicationName] = useState("");
+  const [threadPosition, setThreadPosition] = useState("");
+  const [referencedLink, setReferencedLink] = useState("");
   const importTimerRef = useRef(null);
   const lastImportedUrlRef = useRef(null);
+  const platformTimerRef = useRef(null);
 
-  // Auto-import article headline and author when a valid URL is entered
-  const importArticleMeta = useCallback(async (url) => {
+  // Auto-import content via the import service (/api/import)
+  // Uses the 5-layer extraction waterfall: site registry → platform APIs → meta tags → JSON-LD → Readability
+  const importContent = useCallback(async (url) => {
     const normalized = url?.trim().replace(/\/+$/, "").toLowerCase();
-    if (normalized && normalized === lastImportedUrlRef.current) return; // skip if already imported this URL
+    if (normalized && normalized === lastImportedUrlRef.current) return;
     if (!url || !/^https?:\/\/.+\..+/.test(url.trim())) return;
     setImporting(true); setImportMsg("");
     try {
-      const res = await fetch(`/api/article-meta?url=${encodeURIComponent(url.trim())}`);
-      if (!res.ok) { const d = await res.json().catch(() => ({})); setImportMsg(d.error || "Could not fetch article."); setImporting(false); return; }
-      const data = await res.json();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch("/api/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) { setImportMsg("Could not fetch content."); setImporting(false); return; }
+      const result = (await res.json()).data || await res.json();
+      const fields = result.fields || {};
       let imported = [];
-      if (data.headline && !form.originalHeadline.trim()) {
-        setForm(f => ({ ...f, originalHeadline: data.headline }));
-        imported.push("headline");
+
+      // Auto-fill fields based on confidence scores
+      if (fields.title?.value && fields.title.confidence >= 0.5 && !form.originalHeadline.trim()) {
+        setForm(f => ({ ...f, originalHeadline: fields.title.value }));
+        imported.push("title");
       }
-      if (data.authors && data.authors.length > 0 && authors.length === 0) {
-        setAuthors(data.authors);
-        setForm(f => ({ ...f, author: data.authors.join(", ") }));
-        imported.push(data.authors.length === 1 ? "author" : "authors");
+      if (fields.author?.value && fields.author.confidence >= 0.5 && authors.length === 0) {
+        const authorNames = fields.author.value.split(/,\s*/).filter(Boolean);
+        setAuthors(authorNames);
+        setForm(f => ({ ...f, author: fields.author.value }));
+        imported.push(authorNames.length === 1 ? "author" : "authors");
       }
-      if (data.bodyText) setBodyText(data.bodyText);
+      if (fields.body?.value) setBodyText(fields.body.value);
+      if (fields.publication?.value && !publicationName) setPublicationName(fields.publication.value);
+      if (fields.showName?.value && !podcastShowName) setPodcastShowName(fields.showName.value);
+      if (fields.brand?.value && !productBrandSeller) setProductBrandSeller(fields.brand.value);
+      if (fields.duration?.value && !episodeDuration) setEpisodeDuration(fields.duration.value);
+
       if (imported.length > 0) {
-        setImportMsg(`Imported ${imported.join(" and ")} from article.`);
-      } else if (data.headline || data.authors) {
+        setImportMsg(`Imported ${imported.join(" and ")} from ${result.recipeUsed || result.platform || "page"}.`);
+      } else if (Object.keys(fields).length > 0) {
         setImportMsg("Fields already filled — import skipped.");
       } else {
-        setImportMsg("No headline or author found on page.");
+        setImportMsg("No content found on page.");
       }
-    } catch { setImportMsg("Failed to fetch article."); }
+    } catch (e) {
+      if (e.name === "AbortError") {
+        setImportMsg("Import timed out — fill in fields manually.");
+      } else {
+        setImportMsg("Failed to fetch content.");
+      }
+    }
     lastImportedUrlRef.current = normalized;
     setImporting(false);
     setTimeout(() => setImportMsg(""), 5000);
-  }, [form.originalHeadline, authors]);
+  }, [form.originalHeadline, authors, publicationName, podcastShowName, productBrandSeller, episodeDuration]);
 
-  // Debounced auto-import on URL paste/change
+  // Debounced auto-import on URL paste/change + platform detection
   const handleUrlChange = useCallback((newUrl) => {
     setForm(f => ({ ...f, url: newUrl }));
     clearTimeout(importTimerRef.current);
+    clearTimeout(platformTimerRef.current);
+    // Platform detection (fast, client-side, 400ms debounce)
+    platformTimerRef.current = setTimeout(() => {
+      const detected = detectPlatform(newUrl);
+      if (detected?.key !== platform?.key) {
+        setPlatformTransitioning(true);
+        setTimeout(() => { setPlatform(detected); setPlatformTransitioning(false); }, 150);
+      }
+    }, 400);
+    // Auto-import (600ms debounce)
     if (/^https?:\/\/.+\..+/.test(newUrl.trim()) && !form.originalHeadline.trim()) {
-      importTimerRef.current = setTimeout(() => importArticleMeta(newUrl), 600);
+      importTimerRef.current = setTimeout(() => importContent(newUrl), 600);
     }
-  }, [form.originalHeadline, importArticleMeta]);
+  }, [form.originalHeadline, importContent, platform]);
+
+  // Accept ?url= query parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get("url");
+    if (urlParam && !form.url) {
+      handleUrlChange(urlParam);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Server-side drafts
   const [savedDrafts, setSavedDrafts] = useState([]);
@@ -555,16 +615,26 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 1 ? 0 : 1 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
           <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>1</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>The article</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{platform?.section1Title || "The article"}</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 1 && <div style={{ marginTop: 12 }}>
+          {/* Platform badge */}
+          {platform && <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 10px", background: "rgba(184,150,62,0.1)", border: "1px solid rgba(184,150,62,0.3)", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 12 }}>
+            {platform.label}
+            <span style={{ fontSize: 7, padding: "1px 4px", background: "var(--gold)", color: "var(--bg)", fontWeight: 700 }}>{platform.template.toUpperCase()}</span>
+          </div>}
+          {/* Jury grace period notice (audio/podcast) */}
+          {platform?.juryGracePeriod && <div style={{ padding: "12px 14px", background: "rgba(212,133,10,0.08)", border: "1.5px solid #D4850A", marginBottom: 14 }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.5px", fontWeight: 700, color: "#D4850A", marginBottom: 4 }}>{platform.juryGracePeriod.label}</div>
+            <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>{platform.juryGracePeriod.reason} Jury window: <strong>{platform.juryGracePeriod.days}</strong>.</div>
+          </div>}
           <div className="ta-field">
-            <label>Article URL *</label>
+            <label>{platform ? "URL *" : "Article URL *"}</label>
             <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-              <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importArticleMeta(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1 }} />
-              <button type="button" disabled={importing || !form.url.trim()} onClick={() => importArticleMeta(form.url)} style={{
+              <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importContent(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1 }} />
+              <button type="button" disabled={importing || !form.url.trim()} onClick={() => importContent(form.url)} style={{
                 padding: "0 12px", fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600,
                 background: importing ? "var(--card-bg)" : "#EFF6FF", color: importing ? "#94A3B8" : "var(--gold)",
                 border: "1.5px solid", borderColor: importing ? "var(--border)" : "var(--gold)",
@@ -574,8 +644,13 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
             {importMsg && <div style={{ fontSize: 11, marginTop: 4, color: importMsg.includes("Imported") ? "#059669" : importMsg.includes("skipped") ? "#64748B" : "#DC2626" }}>{importMsg}</div>}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
-            <div className="ta-field"><label>Author(s) <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional — up to 10)</span></label>
+            <div className="ta-field"><label>{platform?.headlineLabel || "Original Headline *"}</label>
+              {platform?.headlineMultiline
+                ? <textarea value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder={platform?.template === "shortform" ? `Paste the full ${(platform?.contentUnit || "post").toLowerCase()} text` : "The headline as published"} maxLength={500} rows={3} />
+                : <input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder={platform?.template === "product" ? "Full product name as listed" : "The headline as published"} maxLength={500} />}
+            </div>
+            {platform?.showSubtitle && <div className="ta-field"><label>{platform.subtitleLabel || "Subtitle (optional)"}</label><input value={form.subtitle || ""} onChange={e => setForm({ ...form, subtitle: e.target.value })} placeholder="Subtitle if present" maxLength={500} /></div>}
+            <div className="ta-field"><label>{platform?.authorLabel || "Author(s)"} <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6, minHeight: 24 }}>
                 {authors.map((a, i) => (
                   <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 11, color: "var(--text)" }}>
@@ -595,9 +670,32 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
                     setForm(f => ({ ...f, author: [...authors, name].join(", ") }));
                   }
                 }
-              }} placeholder="Type author name and press Enter" maxLength={200} />}
+              }} placeholder={platform?.authorPlaceholder || "Type author name and press Enter"} maxLength={200} />}
             </div>
           </div>
+          {/* Template-specific extra fields */}
+          {platform?.extraFields === "podcastFields" && <>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>SHOW / PODCAST NAME *</label><input value={podcastShowName} onChange={e => setPodcastShowName(e.target.value)} placeholder='e.g. "The Joe Rogan Experience"' /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>The show name, distinct from the episode title</div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>GUEST / SPEAKER (IF NOT THE HOST)</label><input value={podcastGuest} onChange={e => setPodcastGuest(e.target.value)} placeholder="Who made the specific claim being corrected" /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Podcasts often have guests — identify who said it</div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>APPROXIMATE EPISODE DURATION</label><input value={episodeDuration} onChange={e => setEpisodeDuration(e.target.value)} placeholder="e.g. 2:34:00" style={{ width: 140 }} /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Helps jurors gauge the review commitment</div></div>
+          </>}
+          {platform?.extraFields === "productFields" && <>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>MARKETPLACE / RETAILER</label><input value={productMarketplace} onChange={e => setProductMarketplace(e.target.value)} placeholder='e.g. "Amazon", "Walmart.com", "Etsy"' /></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>CLAIM CATEGORY</label>
+              <select value={productClaimCategory} onChange={e => setProductClaimCategory(e.target.value)} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, color: productClaimCategory ? "var(--text)" : "var(--text-muted)" }}>
+                <option value="">Select claim type...</option>
+                {(CLAIM_CATEGORIES || []).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Helps assemblies prioritize — safety claims are more urgent</div>
+            </div>
+            {productClaimCategory === "Safety" && <div style={{ padding: "8px 12px", background: "rgba(192,57,43,0.08)", border: "1px solid #C0392B", fontSize: 12, color: "var(--text)", lineHeight: 1.5, marginBottom: 10 }}><strong style={{ color: "#C0392B" }}>Safety claim:</strong> False safety claims may endanger consumers. Consider also reporting to CPSC, FDA, or FTC.</div>}
+          </>}
+          {platform?.extraFields === "publication" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>PUBLICATION NAME</label><input value={publicationName} onChange={e => setPublicationName(e.target.value)} placeholder='e.g. "Astral Codex Ten"' /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>The publication name, distinct from the author</div></div>}
+          {platform?.extraFields === "referencedLink" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>REFERENCED LINK (OPTIONAL)</label><input value={referencedLink} onChange={e => setReferencedLink(e.target.value)} placeholder="URL the note is commenting on" /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>If this note is reacting to another URL, the real claim may live there</div></div>}
+          {platform?.extraFields === "threadPosition" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>THREAD POSITION (OPTIONAL)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={threadPosition} onChange={e => setThreadPosition(e.target.value)} placeholder="e.g. 3 of 7" style={{ width: 100 }} /><span style={{ fontSize: 9, color: "var(--text-muted)" }}>Post N of M in thread</span></div></div>}
+          {platform?.extraFields === "titleCompany" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>AUTHOR'S TITLE / COMPANY (OPTIONAL)</label><input value={form.titleCompany || ""} onChange={e => setForm({ ...form, titleCompany: e.target.value })} placeholder='e.g. "VP of Engineering at Acme Corp"' /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>LinkedIn claims often carry implicit authority</div></div>}
+          {platform?.extraFields === "privateWarning" && <div style={{ padding: "8px 12px", background: "rgba(184,150,62,0.08)", border: "1px solid var(--gold)", fontSize: 12, color: "var(--text)", lineHeight: 1.5, marginBottom: 10 }}><strong style={{ color: "var(--gold)" }}>Note:</strong> This post may be private or restricted. If auto-import fails, paste the content manually. Jurors will need to verify access independently.</div>}
+          {platform?.extraFields === "timestamp" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>TIMESTAMP (OPTIONAL)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={claimTimestamp} onChange={e => setClaimTimestamp(e.target.value)} placeholder="e.g. 14:32" style={{ width: 100 }} /><span style={{ fontSize: 9, color: "var(--text-muted)" }}>MM:SS — helps jurors verify the claim</span></div></div>}
         </div>}
       </div>
 
@@ -606,12 +704,16 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 2 ? 0 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
           <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>2</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>Rewrite the headline</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{platform?.section2Title || "Rewrite the headline"}</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 2 && <div style={{ marginTop: 12 }}>
-          {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder="Your corrected headline" maxLength={500} /></div>}
+          {form.submissionType === "correction" && <div className="ta-field"><label>{platform?.replacementLabel || "Proposed Replacement *"} <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label>
+            {platform?.headlineMultiline
+              ? <textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "shortform" ? `Your corrected version of the ${(platform?.contentUnit || "post").toLowerCase()}` : "Your corrected headline"} maxLength={500} rows={3} />
+              : <input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "product" ? "What the listing should actually say" : "Your corrected headline"} maxLength={500} />}
+          </div>}
           {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
           <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
           <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
@@ -621,20 +723,45 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>}
       </div>
 
-      {/* ── STEP 3: In-Line Edits (optional) ── */}
-      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
+      {/* ── STEP 3: Template-specific content section ── */}
+      {/* Hidden for shortform platforms that have no section 3 */}
+      {(platform?.section3Title || !platform) && <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 3 ? 0 : 3 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
           <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>3</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>Edit the article <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>up to 20</span></div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{platform?.section3Title || "Edit the article"} {platform?.section3Subtitle ? <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>{platform.section3Subtitle}</span> : <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>up to 20</span>}</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 3 && <div style={{ marginTop: 12 }}>
-          <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.</p>
-          <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />
+          <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 10, lineHeight: 1.6 }}>{platform?.section3Desc || 'Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.'}</p>
+          {/* Article template: standard inline edits */}
+          {(!platform || platform.template === "article") && <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />}
+          {/* Video template: spoken claims with optional timestamp */}
+          {platform?.template === "video" && <div style={{ border: "1px solid var(--border)", padding: 14, marginBottom: 10 }}>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editOrigLabel || "TRANSCRIPT EXCERPT"}</label><textarea value={transcriptExcerpt} onChange={e => setTranscriptExcerpt(e.target.value)} placeholder={platform.editOrigPlaceholder || "What was said or shown"} rows={3} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>TIMESTAMP (OPTIONAL)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={claimTimestamp} onChange={e => setClaimTimestamp(e.target.value)} placeholder="e.g. 14:32" style={{ width: 100, padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12 }} /><span style={{ fontSize: 9, color: "var(--text-muted)" }}>MM:SS — helps jurors verify</span></div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editReplLabel || "THE TRUTH"} <span style={{ color: "var(--red)" }}>— RED PEN</span></label><textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} placeholder="The factual truth" rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--red)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+          </div>}
+          {/* Audio template: transcript-driven claims with REQUIRED timestamp */}
+          {platform?.template === "audio" && <div style={{ border: "1px solid var(--border)", padding: 14, marginBottom: 10 }}>
+            <div style={{ padding: "8px 12px", background: "rgba(212,133,10,0.08)", border: "1px solid #D4850A", marginBottom: 12, fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}><strong style={{ color: "#D4850A", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: 1 }}>JURORS MUST LISTEN:</strong> There is no text for jurors to scan — they must listen to the audio at your timestamp. Provide exact words and a precise timestamp.</div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>TIMESTAMP * (REQUIRED FOR AUDIO)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={claimTimestamp} onChange={e => setClaimTimestamp(e.target.value)} placeholder="e.g. 14:32" style={{ width: 100, padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12 }} /><span style={{ fontSize: 9, color: "var(--text)" }}>MM:SS — required for audio claims</span></div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editOrigLabel}</label><textarea value={transcriptExcerpt} onChange={e => setTranscriptExcerpt(e.target.value)} placeholder={platform.editOrigPlaceholder} rows={4} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Transcribe the exact words. Jurors will listen and compare.</div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editReplLabel || "THE TRUTH"} <span style={{ color: "var(--red)" }}>— RED PEN</span></label><textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} placeholder="The factual truth" rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--red)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+          </div>}
+          {/* Product template: claim flagging with location toggle */}
+          {platform?.template === "product" && <div style={{ border: "1px solid var(--border)", padding: 14, marginBottom: 10 }}>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editOrigLabel}</label><textarea value={transcriptExcerpt} onChange={e => setTranscriptExcerpt(e.target.value)} placeholder={platform.editOrigPlaceholder} rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>WHERE ON THE LISTING</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 0, marginBottom: 8 }}>
+                {(LISTING_LOCATIONS || []).map((loc, i, arr) => <button key={loc} onClick={() => setClaimLocation(loc)} style={{ padding: "5px 8px", fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.5px", background: claimLocation === loc ? "var(--gold)" : "transparent", color: claimLocation === loc ? "var(--bg)" : "var(--text-muted)", border: "1px solid var(--border)", borderRight: i < arr.length - 1 ? "none" : undefined, cursor: "pointer" }}>{loc}</button>)}
+              </div>
+            </div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editReplLabel || "THE TRUTH"} <span style={{ color: "var(--red)" }}>— RED PEN</span></label><textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} placeholder="What the truth actually is" rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--red)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+          </div>}
         </div>}
-      </div>
+      </div>}
 
       {/* ── STEP 4: Assembly Vault (optional) ── */}
       <div className="ta-card" style={{ borderRadius: "0 0 2px 2px" }}>
