@@ -2266,6 +2266,11 @@
         sendResponse({ authors: authors });
         return true;
       }
+      if (message.type === "TA_GET_CONTENT_TYPE") {
+        const siteInfo = detectSiteType();
+        sendResponse({ contentType: siteInfo.contentType || "article", siteName: siteInfo.name || "generic" });
+        return true;
+      }
       // Live preview: update headline text in real-time as user types
       if (message.type === "TA_PREVIEW_HEADLINE") {
         handleLivePreview(message.text, message.originalHeadline, message.isAffirm);

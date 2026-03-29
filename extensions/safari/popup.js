@@ -380,6 +380,18 @@ function relBadge(orgId) {
 
 // ── Submit tab ──
 let detectedAuthors = []; // auto-detected from page
+let detectedContentType = "article"; // auto-detected from page
+
+// Platform-adaptive labels for the submit form
+function getFormLabels(contentType) {
+  switch (contentType) {
+    case "video": return { headline: "Video Title", replacement: "Corrected Title", author: "Channel / Creator", url: "Video URL" };
+    case "shortform": return { headline: "Original Post Text", replacement: "Corrected Post", author: "Account", url: "Post URL" };
+    case "audio": return { headline: "Episode Title", replacement: "Corrected Title", author: "Host / Speaker", url: "Episode URL" };
+    case "product": return { headline: "Product Name / Title", replacement: "Corrected Claim", author: "Brand / Seller", url: "Product URL" };
+    default: return { headline: "Original Headline", replacement: "Corrected Headline", author: "Author(s)", url: "Article URL" };
+  }
+}
 
 async function renderSubmitTab() {
   const gate = document.getElementById("submit-gate");
@@ -528,18 +540,18 @@ async function renderSubmitTab() {
       <label>Submit to Assembly(s) ${joinedOrgs.length > 1 ? '<span style="font-size:9px;color:#B0A89C;font-weight:400">— click to select</span>' : ''}</label>
       <div id="org-checkboxes">${orgCheckboxesHtml}</div>
 
-      <label>Article URL</label>
+      <label>${getFormLabels(detectedContentType).url}</label>
       <input type="text" id="sub-url" value="${escapeHtml(currentUrl || "")}" readonly>
 
-      <label>Original Headline</label>
-      <input type="text" id="sub-headline" placeholder="Detecting headline…" value="${escapeHtml(formState.headline || "")}">
+      <label>${getFormLabels(detectedContentType).headline}</label>
+      <input type="text" id="sub-headline" placeholder="Detecting…" value="${escapeHtml(formState.headline || "")}">
 
       ${!isAffirm ? `
-        <label>Corrected Headline</label>
+        <label>${getFormLabels(detectedContentType).replacement}</label>
         <input type="text" id="sub-replacement" placeholder="Your proposed correction" value="${escapeHtml(formState.replacement || "")}">
       ` : ''}
 
-      <label>Author(s) <span style="font-size:9px;color:#B0A89C;font-weight:400">— auto-detected from page</span></label>
+      <label>${getFormLabels(detectedContentType).author} <span style="font-size:9px;color:#B0A89C;font-weight:400">— auto-detected from page</span></label>
       <div class="author-tags" id="author-tags">${authorTagsHtml}</div>
       ${detectedAuthors.length > 0 && formState.selectedAuthors.length < 10 ? `
         <select id="author-select" style="margin-bottom:4px">
@@ -969,6 +981,13 @@ async function renderSubmitTab() {
       const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
         ? chrome.tabs.sendMessage.bind(chrome.tabs)
         : browser.tabs.sendMessage.bind(browser.tabs);
+      // Detect content type for platform-adaptive form labels
+      sendMsg(tab.id, { type: "TA_GET_CONTENT_TYPE" }, (response) => {
+        if (response && response.contentType) {
+          detectedContentType = response.contentType;
+          renderSubmitTab(); // Re-render with platform-adaptive labels
+        }
+      });
       sendMsg(tab.id, { type: "TA_GET_HEADLINE" }, (response) => {
         const headlineInput = document.getElementById("sub-headline");
         if (response && response.headline && headlineInput && !headlineInput.value) {
