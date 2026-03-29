@@ -494,7 +494,13 @@ function ReviewScreenInner({ user }) {
     </div>
   ); };
 
-  const renderDisputeVotingItem = (d) => (
+  const renderDisputeVotingItem = (d) => {
+    const jurors = d.jurors || [];
+    const votes = d.votes || {};
+    const seats = d.jurySeats || jurors.length;
+    const votesIn = Object.keys(votes).length;
+    const needed = Math.floor(seats / 2) + 1;
+    return (
     <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="jury" size={14} /> {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
@@ -510,8 +516,9 @@ function ReviewScreenInner({ user }) {
         <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8 }}>{safe(d.reasoning)}</div>
         {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
       </div>
+      <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px" }}>Voted {votesIn}/{seats} · need {needed}</span>
       {reviewingId === d.id ? (
-        <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+        <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginTop: 8 }}>
           <div style={{ padding: 8, background: "rgba(212,168,67,0.09)", border: "1px solid #CA8A04", borderRadius: 0, marginBottom: 10, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
             <strong style={{ color: "var(--gold)" }}>Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
           </div>
@@ -523,10 +530,18 @@ function ReviewScreenInner({ user }) {
             <button className="ta-btn-ghost" onClick={() => setReviewingId(null)}>Cancel</button>
           </div>
         </div>
-      ) : <button className="ta-btn-secondary" style={{ marginTop: 6 }} onClick={() => { setReviewingId(d.id); setVoteNote(""); setLieChecked(false); }}>Review Dispute</button>}
+      ) : (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, padding: "6px 8px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+            Accept this dispute review seat to begin evaluating the evidence. Read both sides carefully before voting.
+          </div>
+          <button className="ta-btn-secondary" onClick={() => { setReviewingId(d.id); setVoteNote(""); setLieChecked(false); }}>Accept Seat & Review Dispute</button>
+        </div>
+      )}
       <AuditTrail entries={d.auditTrail} />
     </div>
-  );
+    );
+  };
 
   return (
     <div>
