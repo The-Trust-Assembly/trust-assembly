@@ -84,6 +84,8 @@ export default function SystemHealthPage() {
   const [recomputeResult, setRecomputeResult] = useState(null);
   const [importTestResult, setImportTestResult] = useState(null);
   const [importTestLoading, setImportTestLoading] = useState(false);
+  const [juryTestResult, setJuryTestResult] = useState(null);
+  const [juryTestLoading, setJuryTestLoading] = useState(false);
   const [repairResult, setRepairResult] = useState(null);
   const [diLinkResult, setDiLinkResult] = useState(null);
   const [adminFlagResult, setAdminFlagResult] = useState(null);
@@ -500,6 +502,58 @@ export default function SystemHealthPage() {
         {importTestResult?.error && (
           <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 6, border: "1px solid #ef4444" }}>
             <div style={{ fontSize: 12, color: "#ef4444" }}>Error: {importTestResult.error}</div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Jury Integrity Tests ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #8b5cf6" }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#8b5cf6" }}>Jury Integrity Tests</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>
+          Audits all jury assignments for conflicts of interest: self-review, AI Agent partner cross-review, dispute jurors who voted on the original, repeat jurors across rounds, invalid state transitions, stale assignments, resolution vote count integrity, stuck records, and duplicate votes.
+        </p>
+        <button onClick={async () => {
+          setJuryTestLoading(true); setJuryTestResult(null);
+          try {
+            const res = await fetch("/api/admin/test-jury-integrity", { method: "POST" });
+            const data = await res.json();
+            setJuryTestResult(data.data || data);
+          } catch (e) { setJuryTestResult({ error: e.message || "Failed" }); }
+          setJuryTestLoading(false);
+        }} disabled={juryTestLoading} style={{ ...btnStyle, background: "#8b5cf6" }}>
+          {juryTestLoading ? "Running Tests..." : "Run Jury Integrity Tests"}
+        </button>
+        {juryTestResult && !juryTestResult.error && (
+          <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 6, border: `1px solid ${juryTestResult.summary?.failed === 0 ? "#22c55e" : "#ef4444"}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: juryTestResult.summary?.failed === 0 ? "#22c55e" : "#ef4444", marginBottom: 8 }}>
+              {juryTestResult.summary?.passed}/{juryTestResult.summary?.total} passed
+              {juryTestResult.summary?.warned > 0 && `, ${juryTestResult.summary.warned} warnings`}
+              {juryTestResult.summary?.failed > 0 && `, ${juryTestResult.summary.failed} FAILED`}
+              {" "}({juryTestResult.summary?.durationMs}ms)
+            </div>
+            {juryTestResult.tests && juryTestResult.tests.map((t, i) => (
+              <div key={i} style={{ marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                  <span style={{ color: t.status === "pass" ? "#22c55e" : t.status === "warn" ? "#f59e0b" : "#ef4444", fontWeight: 700, fontFamily: "monospace", minWidth: 36 }}>
+                    {t.status === "pass" ? "PASS" : t.status === "warn" ? "WARN" : "FAIL"}
+                  </span>
+                  <span style={{ color: "#e2e8f0" }}>{t.name}</span>
+                  {t.count > 0 && <span style={{ color: t.status === "pass" ? "#22c55e" : t.status === "warn" ? "#f59e0b" : "#ef4444", fontFamily: "monospace", fontSize: 11 }}>({t.count})</span>}
+                </div>
+                {t.details.length > 0 && (
+                  <div style={{ paddingLeft: 42, marginTop: 2 }}>
+                    {t.details.map((d, j) => (
+                      <div key={j} style={{ fontSize: 10, color: t.status === "fail" ? "#ef4444" : "#f59e0b", fontFamily: "monospace" }}>{d}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {juryTestResult?.error && (
+          <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 6, border: "1px solid #ef4444" }}>
+            <div style={{ fontSize: 12, color: "#ef4444" }}>Error: {juryTestResult.error}</div>
           </div>
         )}
       </div>
