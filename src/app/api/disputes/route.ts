@@ -115,6 +115,32 @@ export async function POST(request: NextRequest) {
   // Determine dispute type from body or infer from submission status
   const resolvedType = (disputeType as string) || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
 
+  // ── Escalating dispute cooldown and stakes ──
+  // Count previous disputes on this submission to determine the round
+  const prevDisputes = await sql`
+    SELECT id, dispute_round, stake_points, resolved_at, cooldown_until
+    FROM disputes
+    WHERE submission_id = ${submissionId as string}
+    ORDER BY created_at DESC
+  `;
+  const disputeRound = prevDisputes.rows.length + 1;
+  const stakePoints = Math.pow(2, disputeRound); // 2, 4, 8, 16, 32...
+  const cooldownDays = Math.pow(2, disputeRound); // 2, 4, 8, 16, 32...
+  const cooldownUntil = new Date(Date.now() + cooldownDays * 24 * 60 * 60 * 1000).toISOString();
+
+  // Enforce cooldown from the most recent dispute on this submission
+  if (prevDisputes.rows.length > 0) {
+    const lastDispute = prevDisputes.rows[0];
+    if (lastDispute.cooldown_until && new Date(lastDispute.cooldown_until as string) > new Date()) {
+      const remaining = Math.ceil((new Date(lastDispute.cooldown_until as string).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return err(`This submission is in a ${remaining}-day dispute cooldown. Next dispute can be filed after ${new Date(lastDispute.cooldown_until as string).toLocaleDateString()}.`);
+    }
+    // Also require previous dispute to be resolved before filing another
+    if (lastDispute.resolved_at === null) {
+      return err("The current dispute on this submission must be resolved before filing another.");
+    }
+  }
+
   // Check if this is a third-party dispute on a rejection (grace period applies)
   const isSelfDispute = session.sub === submitted_by;
   const isRejectionDispute = resolvedType === "challenge_rejection";
@@ -127,11 +153,12 @@ export async function POST(request: NextRequest) {
   try {
     dispute = await withTransaction(async (client) => {
       const result = await client.query(
-        `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses, status, grace_period_until)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING id, submission_id, org_id, status, dispute_type, grace_period_until, created_at`,
+        `INSERT INTO disputes (submission_id, org_id, disputed_by, original_submitter, reasoning, dispute_type, field_responses, status, grace_period_until, dispute_round, stake_points, cooldown_until)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         RETURNING id, submission_id, org_id, status, dispute_type, grace_period_until, dispute_round, stake_points, created_at`,
         [submissionId, org_id, session.sub, submitted_by, reasoning, resolvedType,
-         fieldResponses ? JSON.stringify(fieldResponses) : null, initialStatus, gracePeriodUntil]
+         fieldResponses ? JSON.stringify(fieldResponses) : null, initialStatus, gracePeriodUntil,
+         disputeRound, stakePoints, cooldownUntil]
       );
       const d = result.rows[0];
 
