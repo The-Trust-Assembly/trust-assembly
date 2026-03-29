@@ -69,28 +69,39 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
           {HERO_SLIDES[heroIdx]?.label}
         </div>
 
-        {/* Before / After slides — compact */}
-        <div style={{ maxWidth: 660, margin: "0 auto", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(4px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
-          onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
-          {HERO_SLIDES[heroIdx]?.layout === "columns" ? (
-            <>
-              <div style={{ display: "flex", gap: 12, marginBottom: 4, padding: "0 4px" }}>
-                <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
-                <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
-              </div>
-              <div style={{ display: "flex", gap: 12, maxHeight: 280, overflow: "hidden" }}>
-                <div style={{ flex: 1, borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.72 }}>{HERO_SLIDES[heroIdx]?.before}</div>
-                <div style={{ flex: 1, borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx]?.after}</div>
-              </div>
-            </>
-          ) : (
-            <div style={{ maxWidth: 480, margin: "0 auto" }}>
-              <div style={{ textAlign: "left", marginBottom: 4 }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
-              <div style={{ borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.72, marginBottom: 8 }}>{HERO_SLIDES[heroIdx]?.before}</div>
-              <div style={{ textAlign: "left", marginBottom: 4 }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
-              <div style={{ borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.25), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx]?.after}</div>
+        {/* Before / After slides — fixed height container to prevent layout shift */}
+        <div style={{ maxWidth: 660, margin: "0 auto", position: "relative" }}>
+          {HERO_SLIDES.map((slide, i) => (
+            <div key={slide.id || i} style={{
+              opacity: i === heroIdx && !heroFading ? 1 : 0,
+              transform: i === heroIdx && !heroFading ? "translateY(0)" : "translateY(4px)",
+              transition: "opacity 0.25s ease, transform 0.25s ease",
+              position: i === 0 ? "relative" : "absolute",
+              top: i === 0 ? undefined : 0, left: i === 0 ? undefined : 0, right: i === 0 ? undefined : 0,
+              pointerEvents: i === heroIdx ? "auto" : "none",
+            }}
+              onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
+              {slide.layout === "columns" ? (
+                <>
+                  <div style={{ display: "flex", gap: 12, marginBottom: 4, padding: "0 4px" }}>
+                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ flex: 1, borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.72 }}>{slide.before}</div>
+                    <div style={{ flex: 1, borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{slide.after}</div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ maxWidth: 480, margin: "0 auto" }}>
+                  <div style={{ textAlign: "left", marginBottom: 4 }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
+                  <div style={{ borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.72, marginBottom: 8 }}>{slide.before}</div>
+                  <div style={{ textAlign: "left", marginBottom: 4 }}><span style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
+                  <div style={{ borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.25), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{slide.after}</div>
+                </div>
+              )}
             </div>
-          )}
+          ))}
         </div>
 
         <div style={{ maxWidth: 440, margin: "20px auto 0" }}>
