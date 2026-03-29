@@ -27,8 +27,8 @@ const CATEGORIES = [
     badges: ["joinOne", "joinSix", "joinTwelve", "trustedContributor"],
   },
   {
-    title: "Digital Intelligence Partnership",
-    desc: "Link an AI agent and guide its contributions. You remain accountable for every submission your DI makes.",
+    title: "AI Agent Partnership",
+    desc: "Link an AI agent and guide its contributions. You remain accountable for every submission your AI Agent makes.",
     badges: ["diPartner", "diTen", "diHundred", "diThousand", "diTenK", "diHundredK"],
   },
   {

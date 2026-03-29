@@ -110,7 +110,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
 
   const rejectDISub = async (subId) => {
     // ── Reject DI submission — deletes all records (quality gate, not a verdict) ──
-    const reason = window.prompt("Optional: reason for rejecting this DI submission\n(Leave blank to use default)");
+    const reason = window.prompt("Optional: reason for rejecting this AI Agent submission\n(Leave blank to use default)");
     if (reason === null) return; // user cancelled prompt
     try {
       const res = await fetch(`/api/submissions/${subId}/di-review`, {
@@ -131,14 +131,14 @@ export default function DIPanelContent({ user, subs, onReload }) {
 
   return (
     <div>
-      {/* DI Link Requests */}
+      {/* AI Agent Partnership Requests */}
       {pendingLinks.length > 0 && <div style={{ marginBottom: 16 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={16} /> DI Link Requests</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={16} /> AI Agent Partnership Requests</div>
         {pendingLinks.map(r => (
           <div key={r.diUsername} className="ta-card" style={{ borderLeft: "4px solid #4F46E5", padding: 12 }}>
-            <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{safe(r.diUsername)}</strong> wants to register as your Digital Intelligence</div>
+            <div style={{ fontSize: 13, marginBottom: 6 }}><strong>@{safe(r.diUsername)}</strong> wants to register as your AI Agent</div>
             <div style={{ padding: 10, background: "#EEF2FF", borderRadius: 0, marginBottom: 8, fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
-              By approving, you accept responsibility for all of this DI's submissions. <strong>You receive the scoring</strong> — wins, losses, and deliberate deception penalties. You must pre-approve each submission before it enters jury review.
+              By approving, you accept responsibility for all of this AI Agent's submissions. <strong>You receive the scoring</strong> — wins, losses, and deliberate deception penalties. You must pre-approve each submission before it enters jury review.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="ta-btn-primary" style={{ background: "#4F46E5" }} onClick={() => approveDILink(r.diUsername)}>✓ Accept Responsibility</button>
@@ -150,12 +150,12 @@ export default function DIPanelContent({ user, subs, onReload }) {
 
       {error && <div className="ta-error">{error}</div>}
 
-      {/* DI Pre-Review Queue */}
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={42} /> DI Submissions Awaiting Your Approval ({diQueue.length})</div>
+      {/* AI Agent Pre-Review Queue */}
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", color: "#4F46E5", marginBottom: 8 }}><Icon name="robot" size={42} /> AI Agent Submissions Awaiting Your Approval ({diQueue.length})</div>
       {diQueue.length > 0 && <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
         {confirmAll ? (
           <div style={{ padding: 10, background: "#FFF7ED", border: "1.5px solid #EA580C", borderRadius: 0, flex: 1 }}>
-            <div style={{ fontSize: 12, color: "#EA580C", fontWeight: 600, marginBottom: 6 }}>⚠ Confirm: I have personally reviewed all {diQueue.length} pending DI submissions</div>
+            <div style={{ fontSize: 12, color: "#EA580C", fontWeight: 600, marginBottom: 6 }}>⚠ Confirm: I have personally reviewed all {diQueue.length} pending AI Agent submissions</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="ta-btn-primary" style={{ background: "#EA580C" }} onClick={approveAllDI}>Yes, Approve All {diQueue.length}</button>
               <button className="ta-btn-ghost" onClick={() => setConfirmAll(false)}>Cancel</button>
@@ -165,7 +165,7 @@ export default function DIPanelContent({ user, subs, onReload }) {
           <button className="ta-btn-secondary" style={{ fontSize: 10 }} onClick={approveAllDI}>Approve All ({diQueue.length})</button>
         )}
       </div>}
-      {diQueue.length === 0 ? <Empty text="No DI submissions awaiting your pre-approval." /> : diQueue.map(sub => (
+      {diQueue.length === 0 ? <Empty text="No AI Agent submissions awaiting your pre-approval." /> : diQueue.map(sub => (
         <div key={sub.id} className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="robot" size={14} /> @{safe(sub.submittedBy)} · {safe(sub.orgName)} · {sDate(sub.createdAt)}</span>

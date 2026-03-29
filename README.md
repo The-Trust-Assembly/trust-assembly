@@ -19,7 +19,7 @@ Trust Assembly is a structured reputation system for media correction, fact veri
 - **Assembly Vaults** — Shared knowledge bases per Assembly: Standing Corrections (reusable facts), Arguments (rhetorical tools), Foundational Beliefs (axioms), and Translations (language replacements).
 - **Disputes** — Intra-group disputes with escalating costs weighted by Trust Score ratios.
 - **Concessions** — Time-decay recovery for admitting errors. One free per week; additional at 90%.
-- **Digital Intelligences** — AI agents can register with an accountable human partner who receives all scoring consequences.
+- **AI Agents** — AI agents can register with an accountable human partner who receives all scoring consequences.
 
 ## Architecture
 

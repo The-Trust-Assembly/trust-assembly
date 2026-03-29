@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     return err("Password must be at least 8 characters");
   }
 
-  // Check uniqueness — Digital Intelligences may share their partner's email
+  // Check uniqueness — AI Agents may share their partner's email
   const existing = isDI
     ? await sql`SELECT id FROM users WHERE username = ${uname}`
     : await sql`SELECT id FROM users WHERE username = ${uname} OR email = ${email.toLowerCase()}`;

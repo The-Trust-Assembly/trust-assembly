@@ -289,7 +289,7 @@ export function StatusPill({ status, size = 48 }) {
   };
   const name = iconMap[status] || "status-pending";
   const label = {
-    di_pending: "DI PRE-REVIEW", pending_jury: "PENDING", pending_review: "UNDER REVIEW",
+    di_pending: "AI PRE-REVIEW", pending_jury: "PENDING", pending_review: "UNDER REVIEW",
     approved: "APPROVED", rejected: "REJECTED", cross_review: "CROSS-GROUP",
     consensus: "CONSENSUS", consensus_rejected: "CONSENSUS REJECTED",
     disputed: "DISPUTED", upheld: "DISPUTE UPHELD", dismissed: "DISPUTE DISMISSED",

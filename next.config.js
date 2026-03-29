@@ -16,6 +16,7 @@ const nextConfig = {
       { source: '/badges', destination: '/' },
       { source: '/vision', destination: '/' },
       { source: '/about', destination: '/' },
+      { source: '/ai-agents', destination: '/' },
       { source: '/consensus', destination: '/' },
       { source: '/stories', destination: '/' },
       { source: '/audit', destination: '/' },

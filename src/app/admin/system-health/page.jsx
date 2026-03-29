@@ -82,6 +82,8 @@ export default function SystemHealthPage() {
   const [announcementSaving, setAnnouncementSaving] = useState(false);
   const [announcementMsg, setAnnouncementMsg] = useState(null);
   const [recomputeResult, setRecomputeResult] = useState(null);
+  const [importTestResult, setImportTestResult] = useState(null);
+  const [importTestLoading, setImportTestLoading] = useState(false);
   const [repairResult, setRepairResult] = useState(null);
   const [diLinkResult, setDiLinkResult] = useState(null);
   const [adminFlagResult, setAdminFlagResult] = useState(null);
@@ -449,6 +451,55 @@ export default function SystemHealthPage() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Import Service Tests ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #b45309" }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#b45309" }}>Import Service &amp; Platform Detection Tests</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>
+          Tests the URL import pipeline: platform detection (26 URL patterns across 5 templates), URL normalization (tracking param stripping), and live import extraction (fetches a real URL and verifies field extraction). Safe to run anytime.
+        </p>
+        <button onClick={async () => {
+          setImportTestLoading(true); setImportTestResult(null);
+          try {
+            const res = await fetch("/api/admin/test-import", { method: "POST" });
+            const data = await res.json();
+            setImportTestResult(data.data || data);
+          } catch (e) { setImportTestResult({ error: e.message || "Failed" }); }
+          setImportTestLoading(false);
+        }} disabled={importTestLoading} style={{ ...btnStyle, background: "#b45309" }}>
+          {importTestLoading ? "Running Tests..." : "Run Import Tests"}
+        </button>
+        {importTestResult && !importTestResult.error && (
+          <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 6, border: `1px solid ${importTestResult.summary?.failed === 0 ? "#22c55e" : "#ef4444"}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: importTestResult.summary?.failed === 0 ? "#22c55e" : "#ef4444", marginBottom: 8 }}>
+              {importTestResult.summary?.passed}/{importTestResult.summary?.total} passed
+              {importTestResult.summary?.skipped > 0 && `, ${importTestResult.summary.skipped} skipped`}
+              {importTestResult.summary?.failed > 0 && `, ${importTestResult.summary.failed} FAILED`}
+              {" "}({importTestResult.summary?.durationMs}ms)
+            </div>
+            {importTestResult.suites && Object.entries(importTestResult.suites).map(([suite, data]) => (
+              <div key={suite} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+                  {suite.replace(/([A-Z])/g, " $1").trim()} — {data.passed}/{data.total}
+                </div>
+                {data.tests.filter(t => t.status !== "pass").map((t, i) => (
+                  <div key={i} style={{ fontSize: 11, color: t.status === "fail" ? "#ef4444" : "#f59e0b", fontFamily: "monospace", paddingLeft: 12, marginBottom: 2 }}>
+                    {t.status === "fail" ? "FAIL" : "SKIP"}: {t.name} — {t.details}
+                  </div>
+                ))}
+                {data.tests.every(t => t.status === "pass") && (
+                  <div style={{ fontSize: 11, color: "#22c55e", fontFamily: "monospace", paddingLeft: 12 }}>All {data.total} tests passed</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {importTestResult?.error && (
+          <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 6, border: "1px solid #ef4444" }}>
+            <div style={{ fontSize: 12, color: "#ef4444" }}>Error: {importTestResult.error}</div>
           </div>
         )}
       </div>

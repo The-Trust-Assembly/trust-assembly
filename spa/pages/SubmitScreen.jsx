@@ -3,11 +3,24 @@ import { useQueryClient } from "@tanstack/react-query";
 import { SK } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { useDraft, clearDraft } from "../lib/hooks";
+import { detectPlatform, CLAIM_CATEGORIES, LISTING_LOCATIONS } from "../lib/platforms";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrustedProgress, getDISubmissionLimit } from "../lib/permissions";
 import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer, Icon } from "../components/ui";
 import { queryKeys } from "../lib/queryKeys";
 
-export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded }) {
+function EducationHelper({ storageKey, children }) {
+  const key = `ta_helper_${storageKey}`;
+  const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem(key) === "1"; } catch { return false; } });
+  if (dismissed) return null;
+  return (
+    <div style={{ padding: "10px 14px", background: "rgba(212,168,67,0.06)", borderLeft: "3px solid var(--gold)", marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
+      {children}
+      <button onClick={() => { setDismissed(true); try { localStorage.setItem(key, "1"); } catch {} }} style={{ display: "block", marginTop: 6, background: "none", border: "none", color: "var(--gold)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", letterSpacing: "0.5px", padding: 0 }}>Got it</button>
+    </div>
+  );
+}
+
+export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, onShowRegistration }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [authors, setAuthors] = useState([]);
@@ -41,51 +54,111 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const [importMsg, setImportMsg] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [previewMode, setPreviewMode] = useState("diff"); // "clean" or "diff"
+  const [platform, setPlatform] = useState(null); // detected platform config from platforms.js
+  const [platformTransitioning, setPlatformTransitioning] = useState(false);
+  // Template-specific extra fields
+  const [podcastShowName, setPodcastShowName] = useState("");
+  const [podcastGuest, setPodcastGuest] = useState("");
+  const [episodeDuration, setEpisodeDuration] = useState("");
+  const [claimTimestamp, setClaimTimestamp] = useState("");
+  const [transcriptExcerpt, setTranscriptExcerpt] = useState("");
+  const [productClaimCategory, setProductClaimCategory] = useState("");
+  const [productBrandSeller, setProductBrandSeller] = useState("");
+  const [productMarketplace, setProductMarketplace] = useState("");
+  const [claimLocation, setClaimLocation] = useState("");
+  const [publicationName, setPublicationName] = useState("");
+  const [threadPosition, setThreadPosition] = useState("");
+  const [referencedLink, setReferencedLink] = useState("");
   const importTimerRef = useRef(null);
   const lastImportedUrlRef = useRef(null);
+  const platformTimerRef = useRef(null);
 
-  // Auto-import article headline and author when a valid URL is entered
-  const importArticleMeta = useCallback(async (url) => {
+  // Auto-import content via the import service (/api/import)
+  // Uses the 5-layer extraction waterfall: site registry → platform APIs → meta tags → JSON-LD → Readability
+  const importContent = useCallback(async (url) => {
     const normalized = url?.trim().replace(/\/+$/, "").toLowerCase();
-    if (normalized && normalized === lastImportedUrlRef.current) return; // skip if already imported this URL
+    if (normalized && normalized === lastImportedUrlRef.current) return;
     if (!url || !/^https?:\/\/.+\..+/.test(url.trim())) return;
     setImporting(true); setImportMsg("");
     try {
-      const res = await fetch(`/api/article-meta?url=${encodeURIComponent(url.trim())}`);
-      if (!res.ok) { const d = await res.json().catch(() => ({})); setImportMsg(d.error || "Could not fetch article."); setImporting(false); return; }
-      const data = await res.json();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      const res = await fetch("/api/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) { setImportMsg("Could not fetch content."); setImporting(false); return; }
+      const rawResult = await res.json();
+      const result = rawResult.data || rawResult;
+      const fields = result.fields || {};
       let imported = [];
-      if (data.headline && !form.originalHeadline.trim()) {
-        setForm(f => ({ ...f, originalHeadline: data.headline }));
-        imported.push("headline");
+
+      // Auto-fill fields based on confidence scores
+      if (fields.title?.value && fields.title.confidence >= 0.5 && !form.originalHeadline.trim()) {
+        setForm(f => ({ ...f, originalHeadline: fields.title.value }));
+        imported.push("title");
       }
-      if (data.authors && data.authors.length > 0 && authors.length === 0) {
-        setAuthors(data.authors);
-        setForm(f => ({ ...f, author: data.authors.join(", ") }));
-        imported.push(data.authors.length === 1 ? "author" : "authors");
+      if (fields.author?.value && fields.author.confidence >= 0.5 && authors.length === 0) {
+        const authorNames = fields.author.value.split(/,\s*/).filter(Boolean);
+        setAuthors(authorNames);
+        setForm(f => ({ ...f, author: fields.author.value }));
+        imported.push(authorNames.length === 1 ? "author" : "authors");
       }
-      if (data.bodyText) setBodyText(data.bodyText);
+      if (fields.body?.value) setBodyText(fields.body.value);
+      if (fields.publication?.value && !publicationName) setPublicationName(fields.publication.value);
+      if (fields.showName?.value && !podcastShowName) setPodcastShowName(fields.showName.value);
+      if (fields.brand?.value && !productBrandSeller) setProductBrandSeller(fields.brand.value);
+      if (fields.duration?.value && !episodeDuration) setEpisodeDuration(fields.duration.value);
+
       if (imported.length > 0) {
-        setImportMsg(`Imported ${imported.join(" and ")} from article.`);
-      } else if (data.headline || data.authors) {
+        setImportMsg(`Imported ${imported.join(" and ")} from ${result.recipeUsed || result.platform || "page"}.`);
+      } else if (Object.keys(fields).length > 0) {
         setImportMsg("Fields already filled — import skipped.");
       } else {
-        setImportMsg("No headline or author found on page.");
+        setImportMsg("No content found on page.");
       }
-    } catch { setImportMsg("Failed to fetch article."); }
+    } catch (e) {
+      if (e.name === "AbortError") {
+        setImportMsg("Import timed out — fill in fields manually.");
+      } else {
+        setImportMsg("Failed to fetch content.");
+      }
+    }
     lastImportedUrlRef.current = normalized;
     setImporting(false);
     setTimeout(() => setImportMsg(""), 5000);
-  }, [form.originalHeadline, authors]);
+  }, [form.originalHeadline, authors, publicationName, podcastShowName, productBrandSeller, episodeDuration]);
 
-  // Debounced auto-import on URL paste/change
+  // Debounced auto-import on URL paste/change + platform detection
   const handleUrlChange = useCallback((newUrl) => {
     setForm(f => ({ ...f, url: newUrl }));
     clearTimeout(importTimerRef.current);
+    clearTimeout(platformTimerRef.current);
+    // Platform detection (fast, client-side, 400ms debounce)
+    platformTimerRef.current = setTimeout(() => {
+      const detected = detectPlatform(newUrl);
+      if (detected?.key !== platform?.key) {
+        setPlatformTransitioning(true);
+        setTimeout(() => { setPlatform(detected); setPlatformTransitioning(false); }, 150);
+      }
+    }, 400);
+    // Auto-import (600ms debounce)
     if (/^https?:\/\/.+\..+/.test(newUrl.trim()) && !form.originalHeadline.trim()) {
-      importTimerRef.current = setTimeout(() => importArticleMeta(newUrl), 600);
+      importTimerRef.current = setTimeout(() => importContent(newUrl), 600);
     }
-  }, [form.originalHeadline, importArticleMeta]);
+  }, [form.originalHeadline, importContent, platform]);
+
+  // Accept ?url= query parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get("url");
+    if (urlParam && !form.url) {
+      handleUrlChange(urlParam);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Server-side drafts
   const [savedDrafts, setSavedDrafts] = useState([]);
@@ -116,13 +189,14 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   });
 
   useEffect(() => { (async () => {
+    if (!user) return; // Anonymous users default to General Public (handled at submission time)
     const allOrgs = (await sG(SK.ORGS)) || {};
     const ids = user.orgIds || (user.orgId ? [user.orgId] : []);
     const orgs = ids.map(id => allOrgs[id]).filter(Boolean);
     setMyOrgs(orgs);
     // Default to user's active org (only if no draft restored)
     if (user.orgId && selectedOrgIds.length === 0) setSelectedOrgIds([user.orgId]);
-  })(); }, [user.orgId, user.orgIds]);
+  })(); }, [user?.orgId, user?.orgIds]);
 
   // Load saved drafts list from server
   const fetchDrafts = async () => {
@@ -203,7 +277,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
     } catch {}
   };
 
-  const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || myOrgs.find(o => o.id === user.orgId);
+  const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || (user ? myOrgs.find(o => o.id === user.orgId) : null);
 
   const toggleOrg = (oid) => {
     setSelectedOrgIds(prev => prev.includes(oid) ? prev.filter(id => id !== oid) : [...prev, oid]);
@@ -212,17 +286,17 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
   const searchVault = async (query) => {
     setVaultSearch(query);
-    if (!query.trim() || !user.orgId) { setVaultResults([]); return; }
+    if (!query.trim() || !user?.orgId) { setVaultResults([]); return; }
     const q = query.toLowerCase().trim();
     const [v, a, b] = await Promise.all([sG(SK.VAULT), sG(SK.ARGS), sG(SK.BELIEFS)]);
     const results = [];
-    Object.values(v || {}).filter(x => x.orgId === user.orgId).forEach(x => {
+    Object.values(v || {}).filter(x => x.orgId === user?.orgId).forEach(x => {
       if (x.assertion && x.assertion.toLowerCase().includes(q)) results.push({ id: x.id, type: "correction", label: x.assertion, detail: x.evidence, survivalCount: x.survivalCount || 0 });
     });
-    Object.values(a || {}).filter(x => x.orgId === user.orgId).forEach(x => {
+    Object.values(a || {}).filter(x => x.orgId === user?.orgId).forEach(x => {
       if (x.content && x.content.toLowerCase().includes(q)) results.push({ id: x.id, type: "argument", label: x.content, survivalCount: x.survivalCount || 0 });
     });
-    Object.values(b || {}).filter(x => x.orgId === user.orgId).forEach(x => {
+    Object.values(b || {}).filter(x => x.orgId === user?.orgId).forEach(x => {
       if (x.content && x.content.toLowerCase().includes(q)) results.push({ id: x.id, type: "belief", label: x.content, survivalCount: x.survivalCount || 0 });
     });
     setVaultResults(results);
@@ -256,7 +330,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
   const validate = () => {
     setError("");
-    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
+    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user?.orgId ? [user.orgId] : []);
     if (targetOrgIds.length === 0) { setError("Select at least one Assembly."); return false; }
     if (!form.url.trim() || !form.originalHeadline.trim()) { setError("URL and original headline required."); return false; }
     if (form.submissionType === "correction" && !form.replacement.trim()) { setError("Corrected headline required for corrections."); return false; }
@@ -278,7 +352,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const go = async () => {
     setShowConfirm(false);
     setError(""); setSuccess("");
-    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
+    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user?.orgId ? [user.orgId] : []);
     setLoading(true);
     // Filter non-empty inline edits and evidence (shared across all assemblies)
     const validEdits = inlineEdits.filter(e => e.original.trim() && e.replacement.trim());
@@ -447,13 +521,74 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
   return (
     <div>
-      <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
+      <div className="ta-section-rule" />
+
+      {/* ── URL-FIRST HERO ── */}
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>
+        SUBMIT {form.submissionType === "correction" ? "CORRECTION" : "AFFIRMATION"}
+      </div>
+      <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, marginBottom: 4, color: "var(--text)" }}>
+        {form.submissionType === "correction"
+          ? "You're correcting misleading content and submitting it for jury review."
+          : "You're affirming accurate content and lending it the weight of evidence."}
+      </div>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
+        Identify the content, propose a truthful replacement, explain your reasoning, and submit.
+        A jury of fellow citizens will review your {form.submissionType}.
+      </div>
+
+      {/* ── PROMINENT URL INPUT ── */}
+      <div style={{ background: "rgba(212,168,67,0.06)", border: `1.5px solid var(--gold)`, padding: "16px 18px", marginBottom: 20 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>
+          PASTE A URL TO BEGIN
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importContent(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, outline: "none" }} />
+          <button type="button" disabled={importing || !form.url.trim()} onClick={() => importContent(form.url)} style={{
+            padding: "10px 18px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, letterSpacing: "1.5px",
+            background: importing ? "var(--card-bg)" : "var(--gold)", color: importing ? "var(--text-muted)" : "var(--bg)",
+            border: importing ? "1px solid var(--border)" : "none",
+            cursor: importing ? "default" : "pointer", whiteSpace: "nowrap",
+          }}>{importing ? "IMPORTING..." : "IMPORT"}</button>
+        </div>
+        {importMsg && <div style={{ fontSize: 11, marginTop: 6, color: importMsg.includes("Imported") ? "var(--green)" : importMsg.includes("skipped") ? "var(--text-muted)" : "var(--red)" }}>{importMsg}</div>}
+
+        {/* Platform badge */}
+        {platform && <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 12px", background: "rgba(184,150,62,0.1)", border: "1px solid rgba(184,150,62,0.3)", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>
+          {platform.label}
+          <span style={{ fontSize: 7, padding: "1px 5px", background: "var(--gold)", color: "var(--bg)", fontWeight: 700 }}>{platform.template.toUpperCase()}</span>
+        </div>}
+        {platform && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+          Detected <strong style={{ color: "var(--text)" }}>{platform.label}</strong> — form adjusted for {platform.contentUnit.toLowerCase()} content.
+        </div>}
+
+        <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", letterSpacing: "0.5px", marginTop: 10 }}>
+          News articles / YouTube videos / Tweets / Podcasts / Product listings / Reddit posts / and more
+        </div>
+      </div>
+
+      {/* ── EMPTY STATE (no URL yet) ── */}
+      {!platform && !form.url.trim() && (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 28, color: "var(--border)", marginBottom: 12 }}>^</div>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-muted)", marginBottom: 6 }}>
+            Paste a URL to begin
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, maxWidth: 380, margin: "0 auto" }}>
+            The form adapts to the content type — articles, social posts, videos, podcasts, product listings, and more.
+          </div>
+        </div>
+      )}
+
+      {/* ── ADAPTIVE FORM (only shown after URL/platform detected) ── */}
+      {(platform || form.url.trim()) && (
+      <div style={{ opacity: platformTransitioning ? 0.3 : 1, transition: "opacity 0.15s" }}>
       <div style={{ display: "flex", height: "calc(100vh - 120px)", gap: 0 }}>
       {/* ── LEFT: FORM SIDE ── */}
       <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingRight: 8 }}>
 
       {/* Saved drafts banner */}
-      {savedDrafts.length > 0 && (
+      {user && savedDrafts.length > 0 && (
         <div style={{ marginBottom: 14, padding: "10px 14px", background: "rgba(212,168,67,0.09)", border: "1.5px solid #CA8A04", borderRadius: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>
@@ -500,18 +635,18 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>
       </div>
 
-      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
+      {user && hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
 
       {/* DI Status Banner */}
-      {isDIUser(user) && <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="robot" size={14} /> Digital Intelligence</div>
+      {user && isDIUser(user) && <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="robot" size={14} /> AI Agent</div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
           Partner: <strong>@{user.diPartner}</strong> · {!user.diApproved ? <span style={{ color: "var(--red)" }}>Awaiting partner approval — submissions disabled</span> : "Approved"}
           {activeOrg && user.diApproved && <span> · Limit: {getDISubmissionLimit(activeOrg)}/day in this Assembly</span>}
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4 }}>Your submissions will be flagged as DI-generated and require partner pre-approval before entering jury review.</div>
+        <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4 }}>Your submissions will be flagged as AI-generated and require partner pre-approval before entering jury review.</div>
       </div>}
-      {activeOrg && (() => {
+      {user && activeOrg && (() => {
         const tp = getTrustedProgress(user, user.orgId);
         if (tp.isTrusted) return <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)", lineHeight: 1.6, display: "flex", alignItems: "center", gap: 4 }}><Icon name="trust-badge" size={14} /> <strong>Trusted Contributor</strong> in {activeOrg.name} — your submissions skip jury review and go straight to approved. Still disputable by any member.</div>;
         if (tp.current > 0) return <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
@@ -540,8 +675,13 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </button>
       </div>
 
+      {/* Anonymous user assembly notice */}
+      {!user && <div style={{ marginBottom: 14, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 4 }}>Assembly: The General Public</div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Join more assemblies after registration to submit corrections to specialized groups.</div>
+      </div>}
       {/* Org picker — multi-select */}
-      {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+      {user && myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
         <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "3px 7px", fontSize: 8, fontFamily: "var(--mono)", border: sel ? "1px solid var(--gold)" : "1px solid var(--border)", background: sel ? "var(--gold)" : "transparent", color: sel ? "var(--bg)" : "var(--text-muted)", borderRadius: 0, cursor: "pointer", fontWeight: sel ? 700 : 400, display: "inline-flex", alignItems: "center", gap: 3 }}>{sel && "+ "}{o.name}</button>; })}
@@ -555,27 +695,30 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 1 ? 0 : 1 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
           <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>1</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>The article</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{platform?.section1Title || "The article"}</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 1 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 1 && <div style={{ marginTop: 12 }}>
-          <div className="ta-field">
-            <label>Article URL *</label>
-            <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-              <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importArticleMeta(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1 }} />
-              <button type="button" disabled={importing || !form.url.trim()} onClick={() => importArticleMeta(form.url)} style={{
-                padding: "0 12px", fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600,
-                background: importing ? "var(--card-bg)" : "#EFF6FF", color: importing ? "#94A3B8" : "var(--gold)",
-                border: "1.5px solid", borderColor: importing ? "var(--border)" : "var(--gold)",
-                borderRadius: 0, cursor: importing ? "default" : "pointer", whiteSpace: "nowrap",
-              }}>{importing ? "Importing..." : "Import"}</button>
-            </div>
-            {importMsg && <div style={{ fontSize: 11, marginTop: 4, color: importMsg.includes("Imported") ? "#059669" : importMsg.includes("skipped") ? "#64748B" : "#DC2626" }}>{importMsg}</div>}
-          </div>
+          {/* Platform badge */}
+          {platform && <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 10px", background: "rgba(184,150,62,0.1)", border: "1px solid rgba(184,150,62,0.3)", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 12 }}>
+            {platform.label}
+            <span style={{ fontSize: 7, padding: "1px 4px", background: "var(--gold)", color: "var(--bg)", fontWeight: 700 }}>{platform.template.toUpperCase()}</span>
+          </div>}
+          <EducationHelper storageKey="section1">Identify the content you want to correct. The more accurately you describe the original, the easier it is for jurors to verify.</EducationHelper>
+          {/* Jury grace period notice (audio/podcast) */}
+          {platform?.juryGracePeriod && <div style={{ padding: "12px 14px", background: "rgba(212,133,10,0.08)", border: "1.5px solid #D4850A", marginBottom: 14 }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.5px", fontWeight: 700, color: "#D4850A", marginBottom: 4 }}>{platform.juryGracePeriod.label}</div>
+            <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>{platform.juryGracePeriod.reason} Jury window: <strong>{platform.juryGracePeriod.days}</strong>.</div>
+          </div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="ta-field"><label>Original Headline *</label><input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder="The headline as published" maxLength={500} /></div>
-            <div className="ta-field"><label>Author(s) <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional — up to 10)</span></label>
+            <div className="ta-field"><label>{platform?.headlineLabel || "Original Headline *"}</label>
+              {platform?.headlineMultiline
+                ? <textarea value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder={platform?.template === "shortform" ? `Paste the full ${(platform?.contentUnit || "post").toLowerCase()} text` : "The headline as published"} maxLength={500} rows={3} />
+                : <input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder={platform?.template === "product" ? "Full product name as listed" : "The headline as published"} maxLength={500} />}
+            </div>
+            {platform?.showSubtitle && <div className="ta-field"><label>{platform.subtitleLabel || "Subtitle (optional)"}</label><input value={form.subtitle || ""} onChange={e => setForm({ ...form, subtitle: e.target.value })} placeholder="Subtitle if present" maxLength={500} /></div>}
+            <div className="ta-field"><label>{platform?.authorLabel || "Author(s)"} <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6, minHeight: 24 }}>
                 {authors.map((a, i) => (
                   <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 11, color: "var(--text)" }}>
@@ -595,9 +738,32 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
                     setForm(f => ({ ...f, author: [...authors, name].join(", ") }));
                   }
                 }
-              }} placeholder="Type author name and press Enter" maxLength={200} />}
+              }} placeholder={platform?.authorPlaceholder || "Type author name and press Enter"} maxLength={200} />}
             </div>
           </div>
+          {/* Template-specific extra fields */}
+          {platform?.extraFields === "podcastFields" && <>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>SHOW / PODCAST NAME *</label><input value={podcastShowName} onChange={e => setPodcastShowName(e.target.value)} placeholder='e.g. "The Joe Rogan Experience"' /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>The show name, distinct from the episode title</div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>GUEST / SPEAKER (IF NOT THE HOST)</label><input value={podcastGuest} onChange={e => setPodcastGuest(e.target.value)} placeholder="Who made the specific claim being corrected" /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Podcasts often have guests — identify who said it</div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>APPROXIMATE EPISODE DURATION</label><input value={episodeDuration} onChange={e => setEpisodeDuration(e.target.value)} placeholder="e.g. 2:34:00" style={{ width: 140 }} /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Helps jurors gauge the review commitment</div></div>
+          </>}
+          {platform?.extraFields === "productFields" && <>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>MARKETPLACE / RETAILER</label><input value={productMarketplace} onChange={e => setProductMarketplace(e.target.value)} placeholder='e.g. "Amazon", "Walmart.com", "Etsy"' /></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>CLAIM CATEGORY</label>
+              <select value={productClaimCategory} onChange={e => setProductClaimCategory(e.target.value)} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, color: productClaimCategory ? "var(--text)" : "var(--text-muted)" }}>
+                <option value="">Select claim type...</option>
+                {(CLAIM_CATEGORIES || []).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Helps assemblies prioritize — safety claims are more urgent</div>
+            </div>
+            {productClaimCategory === "Safety" && <div style={{ padding: "8px 12px", background: "rgba(192,57,43,0.08)", border: "1px solid #C0392B", fontSize: 12, color: "var(--text)", lineHeight: 1.5, marginBottom: 10 }}><strong style={{ color: "#C0392B" }}>Safety claim:</strong> False safety claims may endanger consumers. Consider also reporting to CPSC, FDA, or FTC.</div>}
+          </>}
+          {platform?.extraFields === "publication" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>PUBLICATION NAME</label><input value={publicationName} onChange={e => setPublicationName(e.target.value)} placeholder='e.g. "Astral Codex Ten"' /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>The publication name, distinct from the author</div></div>}
+          {platform?.extraFields === "referencedLink" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>REFERENCED LINK (OPTIONAL)</label><input value={referencedLink} onChange={e => setReferencedLink(e.target.value)} placeholder="URL the note is commenting on" /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>If this note is reacting to another URL, the real claim may live there</div></div>}
+          {platform?.extraFields === "threadPosition" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>THREAD POSITION (OPTIONAL)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={threadPosition} onChange={e => setThreadPosition(e.target.value)} placeholder="e.g. 3 of 7" style={{ width: 100 }} /><span style={{ fontSize: 9, color: "var(--text-muted)" }}>Post N of M in thread</span></div></div>}
+          {platform?.extraFields === "titleCompany" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>AUTHOR'S TITLE / COMPANY (OPTIONAL)</label><input value={form.titleCompany || ""} onChange={e => setForm({ ...form, titleCompany: e.target.value })} placeholder='e.g. "VP of Engineering at Acme Corp"' /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>LinkedIn claims often carry implicit authority</div></div>}
+          {platform?.extraFields === "privateWarning" && <div style={{ padding: "8px 12px", background: "rgba(184,150,62,0.08)", border: "1px solid var(--gold)", fontSize: 12, color: "var(--text)", lineHeight: 1.5, marginBottom: 10 }}><strong style={{ color: "var(--gold)" }}>Note:</strong> This post may be private or restricted. If auto-import fails, paste the content manually. Jurors will need to verify access independently.</div>}
+          {platform?.extraFields === "timestamp" && <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>TIMESTAMP (OPTIONAL)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={claimTimestamp} onChange={e => setClaimTimestamp(e.target.value)} placeholder="e.g. 14:32" style={{ width: 100 }} /><span style={{ fontSize: 9, color: "var(--text-muted)" }}>MM:SS — helps jurors verify the claim</span></div></div>}
         </div>}
       </div>
 
@@ -606,12 +772,17 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 2 ? 0 : 2 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
           <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>2</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>Rewrite the headline</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{platform?.section2Title || "Rewrite the headline"}</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 2 && <div style={{ marginTop: 12 }}>
-          {form.submissionType === "correction" && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label><input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder="Your corrected headline" maxLength={500} /></div>}
+          <EducationHelper storageKey="section2">Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence.</EducationHelper>
+          {form.submissionType === "correction" && <div className="ta-field"><label>{platform?.replacementLabel || "Proposed Replacement *"} <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label>
+            {platform?.headlineMultiline
+              ? <textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "shortform" ? `Your corrected version of the ${(platform?.contentUnit || "post").toLowerCase()}` : "Your corrected headline"} maxLength={500} rows={3} />
+              : <input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "product" ? "What the listing should actually say" : "Your corrected headline"} maxLength={500} />}
+          </div>}
           {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
           <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
           <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
@@ -621,20 +792,46 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>}
       </div>
 
-      {/* ── STEP 3: In-Line Edits (optional) ── */}
-      <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
+      {/* ── STEP 3: Template-specific content section ── */}
+      {/* Hidden for shortform platforms that have no section 3 */}
+      {(platform?.section3Title || !platform) && <div className="ta-card" style={{ marginBottom: 2, borderBottom: "none", borderRadius: 0 }}>
         <button onClick={() => setForm(f => ({ ...f, _step: f._step === 3 ? 0 : 3 }))} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
           <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>3</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>Edit the article <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>up to 20</span></div>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{platform?.section3Title || "Edit the article"} {platform?.section3Subtitle ? <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>{platform.section3Subtitle}</span> : <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 9, letterSpacing: 1 }}>up to 20</span>}</div>
           </div>
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 3 && <div style={{ marginTop: 12 }}>
-          <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 10, lineHeight: 1.6 }}>Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.</p>
-          <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />
+          <EducationHelper storageKey="section3">{platform?.template === "article" ? "You can edit specific passages in the article body. The system finds each passage by exact text match." : platform?.template === "audio" ? "Audio content has no text for jurors to scan. Your transcript excerpt and timestamp are the primary evidence." : platform?.template === "product" ? "Flag each misleading claim separately so jurors can evaluate them independently." : "Describe the claims you want to correct with as much specificity as possible."}</EducationHelper>
+          <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 10, lineHeight: 1.6 }}>{platform?.section3Desc || 'Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.'}</p>
+          {/* Article template: standard inline edits */}
+          {(!platform || platform.template === "article") && <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />}
+          {/* Video template: spoken claims with optional timestamp */}
+          {platform?.template === "video" && <div style={{ border: "1px solid var(--border)", padding: 14, marginBottom: 10 }}>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editOrigLabel || "TRANSCRIPT EXCERPT"}</label><textarea value={transcriptExcerpt} onChange={e => setTranscriptExcerpt(e.target.value)} placeholder={platform.editOrigPlaceholder || "What was said or shown"} rows={3} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>TIMESTAMP (OPTIONAL)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={claimTimestamp} onChange={e => setClaimTimestamp(e.target.value)} placeholder="e.g. 14:32" style={{ width: 100, padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12 }} /><span style={{ fontSize: 9, color: "var(--text-muted)" }}>MM:SS — helps jurors verify</span></div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editReplLabel || "THE TRUTH"} <span style={{ color: "var(--red)" }}>— RED PEN</span></label><textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} placeholder="The factual truth" rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--red)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+          </div>}
+          {/* Audio template: transcript-driven claims with REQUIRED timestamp */}
+          {platform?.template === "audio" && <div style={{ border: "1px solid var(--border)", padding: 14, marginBottom: 10 }}>
+            <div style={{ padding: "8px 12px", background: "rgba(212,133,10,0.08)", border: "1px solid #D4850A", marginBottom: 12, fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}><strong style={{ color: "#D4850A", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: 1 }}>JURORS MUST LISTEN:</strong> There is no text for jurors to scan — they must listen to the audio at your timestamp. Provide exact words and a precise timestamp.</div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>TIMESTAMP * (REQUIRED FOR AUDIO)</label><div style={{ display: "flex", gap: 6, alignItems: "center" }}><input value={claimTimestamp} onChange={e => setClaimTimestamp(e.target.value)} placeholder="e.g. 14:32" style={{ width: 100, padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12 }} /><span style={{ fontSize: 9, color: "var(--text)" }}>MM:SS — required for audio claims</span></div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editOrigLabel}</label><textarea value={transcriptExcerpt} onChange={e => setTranscriptExcerpt(e.target.value)} placeholder={platform.editOrigPlaceholder} rows={4} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /><div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>Transcribe the exact words. Jurors will listen and compare.</div></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editReplLabel || "THE TRUTH"} <span style={{ color: "var(--red)" }}>— RED PEN</span></label><textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} placeholder="The factual truth" rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--red)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+          </div>}
+          {/* Product template: claim flagging with location toggle */}
+          {platform?.template === "product" && <div style={{ border: "1px solid var(--border)", padding: 14, marginBottom: 10 }}>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editOrigLabel}</label><textarea value={transcriptExcerpt} onChange={e => setTranscriptExcerpt(e.target.value)} placeholder={platform.editOrigPlaceholder} rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>WHERE ON THE LISTING</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 0, marginBottom: 8 }}>
+                {(LISTING_LOCATIONS || []).map((loc, i, arr) => <button key={loc} onClick={() => setClaimLocation(loc)} style={{ padding: "5px 8px", fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.5px", background: claimLocation === loc ? "var(--gold)" : "transparent", color: claimLocation === loc ? "var(--bg)" : "var(--text-muted)", border: "1px solid var(--border)", borderRight: i < arr.length - 1 ? "none" : undefined, cursor: "pointer" }}>{loc}</button>)}
+              </div>
+            </div>
+            <div className="ta-field"><label style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{platform.editReplLabel || "THE TRUTH"} <span style={{ color: "var(--red)" }}>— RED PEN</span></label><textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} placeholder="What the truth actually is" rows={2} style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--red)", background: "var(--card-bg)", fontSize: 12, resize: "vertical" }} /></div>
+          </div>}
         </div>}
-      </div>
+      </div>}
 
       {/* ── STEP 4: Assembly Vault (optional) ── */}
       <div className="ta-card" style={{ borderRadius: "0 0 2px 2px" }}>
@@ -646,6 +843,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 4 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 4 && <div style={{ marginTop: 12 }}>
+          <EducationHelper storageKey="section4">Vault entries are reusable across submissions. A standing correction can be linked to every article that gets it wrong.</EducationHelper>
           <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Link existing vault entries to strengthen your correction, or propose new ones. Linked entries are voted on by jurors — each time one survives review, it gains reputation.</p>
 
           {/* Linked entries chips */}
@@ -909,7 +1107,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       {/* ── Submit & Save Draft Buttons ── */}
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-          <button className="ta-btn-primary" onClick={handleSubmitClick} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
+          <button className="ta-btn-primary" onClick={() => { if (!user && onShowRegistration) { onShowRegistration(); return; } handleSubmitClick(); }} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : user ? "Submit for Review" : "Sign up to submit"}</button>
           <button onClick={saveDraft} disabled={savingDraft} style={{
             padding: "12px 16px", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 600,
             background: "rgba(212,168,67,0.09)", color: "var(--gold)", border: "1.5px solid #CA8A04",
@@ -1035,6 +1233,8 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>
       </div>
       </div>{/* end split */}
+      </div>
+      )}
     </div>
   );
 }

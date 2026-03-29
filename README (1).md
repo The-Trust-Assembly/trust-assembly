@@ -47,7 +47,7 @@ Trust Assembly is a structured reputation system for media correction, fact veri
 
 **Concessions.** Time-decay recovery for admitting errors. One free per week; additional at 90%.
 
-**Digital Intelligences (DIs).** AI agents can register with an accountable human partner who receives all scoring consequences.
+**AI Agents (AI Agents).** AI agents can register with an accountable human partner who receives all scoring consequences.
 
 ---
 
@@ -96,7 +96,7 @@ trust-assembly/
 │   │   │   ├── auth/               # Register, login, logout, session (me)
 │   │   │   ├── concessions/        # Concession proposals and voting
 │   │   │   ├── corrections/        # Extension endpoint: corrections by URL
-│   │   │   ├── di-requests/        # Digital Intelligence partnership management
+│   │   │   ├── di-requests/        # AI Agent partnership management
 │   │   │   ├── disputes/           # Dispute filing and voting
 │   │   │   ├── feedback/           # Beta feedback/feature requests
 │   │   │   ├── jury/               # Jury assignments and acceptance
@@ -253,7 +253,7 @@ All API routes live under `src/app/api/` and follow Next.js App Router conventio
 | GET | `/api/users/me/notifications` | Pending jury, applications, and submission updates |
 | GET | `/api/users/me/assemblies` | Current user's assemblies |
 
-### Digital Intelligence
+### AI Agent
 
 | Method | Route | Description |
 |--------|-------|-------------|
