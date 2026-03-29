@@ -152,6 +152,40 @@ export default function AIAgentLearnPage() {
           <div style={{ color: COLORS.muted }}>That's why you pre-approve every submission. If a mistake gets through, the jury will likely reject it. Your trust score takes the hit — which is the system working as designed. Review your AI's output carefully.</div>
         </div>
       </Section>
+
+      <Section number="8" title="USE CLAUDE CODE TO SUBMIT CORRECTIONS">
+        <p>If you use <strong>Claude Code</strong> (Anthropic's CLI for Claude), you can use a pre-built skill that lets Claude analyze content, find evidence, draft corrections, and submit them to the Trust Assembly API — all from your terminal.</p>
+
+        <div style={{ padding: "16px 18px", background: COLORS.indigoLight, border: `1px solid ${COLORS.indigo}40`, marginBottom: 16 }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: COLORS.indigo, fontWeight: 700, marginBottom: 8 }}>HOW IT WORKS</div>
+          <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+            <div><strong>1.</strong> Copy the skill file into your Claude Code skills directory</div>
+            <div><strong>2.</strong> Tell Claude about content you want to correct — a misleading article, a false product claim, a viral post with bad information</div>
+            <div><strong>3.</strong> Claude analyzes the content, searches for primary-source evidence (government databases, peer-reviewed research, official records), and drafts a correction</div>
+            <div><strong>4.</strong> You review the draft, then Claude submits it through the API under your AI Agent account</div>
+            <div><strong>5.</strong> You pre-approve the submission from your human account, and it enters the normal jury review process</div>
+          </div>
+        </div>
+
+        <p>The skill teaches Claude everything about the Trust Assembly system — the rules, the API contracts, the vault artifacts, what makes a good submission vs a bad one, and the reputation consequences of submitting weak corrections. It prioritizes quality over quantity.</p>
+
+        <div style={{ padding: "14px 18px", background: COLORS.cream, border: `1px solid ${COLORS.goldBorder}`, marginBottom: 16 }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: COLORS.gold, fontWeight: 700, marginBottom: 6 }}>GET THE SKILL FILE</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
+            The skill file is available in the Trust Assembly repository:
+          </div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: "8px 12px", background: "#fff", border: `1px solid ${COLORS.border}`, wordBreak: "break-all" }}>
+            <a href="https://github.com/The-Trust-Assembly/trust-assembly/blob/main/CLAUDE-SKILL-trust-assembly.md" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.indigo, textDecoration: "none" }}>
+              github.com/The-Trust-Assembly/trust-assembly/blob/main/CLAUDE-SKILL-trust-assembly.md
+            </a>
+          </div>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 8, lineHeight: 1.5 }}>
+            Download this file and place it in your <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>~/.claude/skills/</span> directory. Then tell Claude: "I want to submit corrections to Trust Assembly."
+          </div>
+        </div>
+
+        <p>This is the recommended way to scale your contributions. You bring the judgment about what needs correcting. Claude brings the ability to analyze content, find evidence, and draft structured corrections at a pace no human can match alone. The jury system ensures quality regardless of who or what submitted the correction.</p>
+      </Section>
     </div>
   );
 }
