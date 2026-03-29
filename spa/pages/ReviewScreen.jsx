@@ -340,6 +340,19 @@ function ReviewScreenInner({ user }) {
     setReviewingId(null); setVoteNote(""); setLieChecked(false); load(); invalidateAll();
   };
 
+  // Assembly manila tab — matches feed page styling
+  const AssemblyTab = ({ orgId, orgName }) => {
+    const org = orgsData[orgId];
+    return (
+      <div style={{ display: "flex", gap: 2, marginBottom: 0 }}>
+        <div className="manila-tab manila-tab-active">
+          {org?.avatar && <img src={org.avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 4, verticalAlign: "middle" }} />}
+          <span className="manila-tab-name">{safe(orgName)}</span>
+        </div>
+      </div>
+    );
+  };
+
   const renderItem = (sub, isCross) => {
     if (!sub || !sub.id) return null;
     const seats = isCross ? (sub.crossGroupJurySize || (sub.crossGroupJurors || []).length) : (sub.jurySeats || (sub.jurors || []).length);
@@ -347,7 +360,9 @@ function ReviewScreenInner({ user }) {
     const votesIn = isCross ? Object.keys(sub.crossGroupVotes || {}).length : Object.keys(sub.votes || {}).length;
     const needed = getMajority(seats);
     return (
-    <div key={sub.id} className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
+    <div key={sub.id}>
+    <AssemblyTab orgId={sub.orgId} orgName={sub.orgName} />
+    <div className="ta-card" style={{ borderLeft: `4px solid ${isCross ? "#0D9488" : "#D97706"}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{orgsData[sub.orgId]?.avatar && <img src={orgsData[sub.orgId].avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 3, verticalAlign: "middle" }} />}{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={14} /> DI</>}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -492,6 +507,7 @@ function ReviewScreenInner({ user }) {
       })()}
       <AuditTrail entries={sub.auditTrail} />
     </div>
+    </div>
   ); };
 
   const renderDisputeVotingItem = (d) => {
@@ -501,7 +517,9 @@ function ReviewScreenInner({ user }) {
     const votesIn = Object.keys(votes).length;
     const needed = Math.floor(seats / 2) + 1;
     return (
-    <div key={d.id} className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
+    <div key={d.id}>
+    <AssemblyTab orgId={d.orgId} orgName={d.orgName} />
+    <div className="ta-card" style={{ borderLeft: "4px solid #EA580C" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><Icon name="jury" size={14} /> {anonName(d.disputedBy, d.anonMap, d.resolvedAt)} vs {anonName(d.originalSubmitter, d.anonMap, d.resolvedAt)} · {safe(d.orgName)} · {sDate(d.createdAt)}</span>
         <span style={{ fontSize: 10, padding: "2px 7px", background: "rgba(212,168,67,0.09)", color: "#EA580C", borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Dispute</span>
@@ -539,6 +557,7 @@ function ReviewScreenInner({ user }) {
         </div>
       )}
       <AuditTrail entries={d.auditTrail} />
+    </div>
     </div>
     );
   };
@@ -596,10 +615,12 @@ function ReviewScreenInner({ user }) {
           // Collect rejection notes from jurors
           const jurorNotes = Object.values(d.votes || {}).filter(v => v.note && v.note.trim()).map(v => ({ note: v.note, approve: v.approve, time: v.time }));
           return (
-            <div key={d.id} className="ta-card" style={{ borderLeft: `4px solid ${statusColor}` }}>
+            <div key={d.id}>
+            <AssemblyTab orgId={d.orgId} orgName={d.orgName} />
+            <div className="ta-card" style={{ borderLeft: `4px solid ${statusColor}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
-                  {isDisputer ? "You disputed" : "Disputed against you"} · {safe(d.orgName)} · {sDate(d.createdAt)}
+                  {isDisputer ? "You disputed" : "Disputed against you"} · {sDate(d.createdAt)}
                 </span>
                 <StatusPill status={d.status} />
               </div>
@@ -627,6 +648,7 @@ function ReviewScreenInner({ user }) {
               </div>}
               <AuditTrail entries={d.auditTrail} />
             </div>
+            </div>
           );
         })}
       </div>}
@@ -644,10 +666,12 @@ function ReviewScreenInner({ user }) {
           const hasDisputed = myDisputedSubs.has(s.id);
           const recovery = s.resolvedAt ? getConcessionRecovery(s.resolvedAt) : 0;
           return (
-            <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #DC2626" }}>
+            <div key={s.id}>
+            <AssemblyTab orgId={s.orgId} orgName={s.orgName} />
+            <div className="ta-card" style={{ borderLeft: "4px solid #DC2626" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
-                  {safe(s.orgName)}{s._otherAssemblies && s._otherAssemblies.length > 0 && s._otherAssemblies.map((a, i) => <span key={i} style={{ background: "var(--card-bg)", color: "var(--gold)", padding: "1px 5px", borderRadius: 0, fontSize: 9, marginLeft: 4 }}>{a}</span>)} · Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
+                  Rejected {sDate(s.resolvedAt)} · {approveCount}↑ {rejectCount}↓
                 </span>
                 <StatusPill status={s.status} />
               </div>
@@ -721,6 +745,7 @@ function ReviewScreenInner({ user }) {
                 </div>
               )}
             </div>
+            </div>
           );
         })}
       </div>}
@@ -733,9 +758,11 @@ function ReviewScreenInner({ user }) {
           let domain = "";
           try { domain = new URL(String(s.url)).hostname.replace(/^www\./, ""); } catch {}
           return (
-          <div key={s.id} className="ta-card" style={{ borderLeft: `4px solid ${s.status === "consensus" ? "#7C3AED" : "#059669"}` }}>
+          <div key={s.id}>
+          <AssemblyTab orgId={s.orgId} orgName={s.orgName} />
+          <div className="ta-card" style={{ borderLeft: `4px solid ${s.status === "consensus" ? "#7C3AED" : "#059669"}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(s.orgName)} · {sDate(s.resolvedAt || s.createdAt)}</span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{sDate(s.resolvedAt || s.createdAt)}</span>
               <StatusPill status={s.status} />
             </div>
             {domain && <div style={{ fontSize: 10, color: "var(--gold)", marginBottom: 4 }}>{domain}</div>}
@@ -746,6 +773,7 @@ function ReviewScreenInner({ user }) {
               <button className="ta-btn-ghost" style={{ fontSize: 10, color: "var(--gold)" }} onClick={() => { if (typeof navigateToRecord === "function") navigateToRecord(s.id); else window.open("/record/" + s.id, "_blank"); }}>Open Full Record</button>
               <button className="ta-btn-ghost" style={{ fontSize: 10, color: "var(--text-muted)" }} onClick={() => { const url = window.location.origin + "/record/" + s.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
             </div>
+          </div>
           </div>
           );
         })}
