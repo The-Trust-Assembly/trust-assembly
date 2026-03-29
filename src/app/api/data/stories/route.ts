@@ -3,10 +3,8 @@ import { sql } from "@/lib/db";
 import { ok, serverError } from "@/lib/api-utils";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
 
-const NO_CACHE_HEADERS = {
-  "Cache-Control": "no-store, no-cache, must-revalidate",
-  "Surrogate-Control": "no-store",
-  "CDN-Cache-Control": "no-store",
+const CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
 };
 
 export const dynamic = "force-dynamic";
@@ -17,6 +15,7 @@ export const fetchCache = "force-no-store";
 export async function GET() {
   try {
   // ── Auto-promote pending_jury → pending_review ──
+  // Uses a single batched member-count query instead of N+1 individual queries.
   try {
     const wildWest = await isWildWestMode();
     const threshold = wildWest ? 2 : 5;
@@ -27,49 +26,59 @@ export async function GET() {
       WHERE st.status = 'pending_jury'
     `;
 
-    for (const story of stuckStories.rows) {
-      try {
-        const memberCount = await sql`
-          SELECT COUNT(*) as count FROM organization_members
-          WHERE org_id = ${story.org_id} AND is_active = TRUE
-        `;
-        const count = parseInt(memberCount.rows[0].count);
-        if (count >= threshold) {
-          const jurySize = wildWest ? 1 : getJurySize(count);
-          const poolSize = jurySize * JURY_POOL_MULTIPLIER;
+    if (stuckStories.rows.length > 0) {
+      // Batch: get member counts for all relevant orgs in one query
+      const orgIds = [...new Set(stuckStories.rows.map((s: Record<string, unknown>) => s.org_id as string))];
+      const memberCounts = await sql.query(
+        `SELECT org_id, COUNT(*)::int AS count FROM organization_members
+         WHERE org_id = ANY($1) AND is_active = TRUE GROUP BY org_id`,
+        [orgIds]
+      );
+      const countByOrg: Record<string, number> = {};
+      for (const row of memberCounts.rows) {
+        countByOrg[row.org_id] = row.count;
+      }
 
-          const pool = await sql.query(
-            `SELECT om.user_id
-             FROM organization_members om
-             WHERE om.org_id = $1
-               AND om.is_active = TRUE
-               AND om.user_id != $2
-             ORDER BY RANDOM()
-             LIMIT $3`,
-            [story.org_id, story.submitted_by, poolSize]
-          );
+      for (const story of stuckStories.rows) {
+        try {
+          const count = countByOrg[story.org_id as string] || 0;
+          if (count >= threshold) {
+            const jurySize = wildWest ? 1 : getJurySize(count);
+            const poolSize = jurySize * JURY_POOL_MULTIPLIER;
 
-          for (const juror of pool.rows) {
+            const pool = await sql.query(
+              `SELECT om.user_id
+               FROM organization_members om
+               WHERE om.org_id = $1
+                 AND om.is_active = TRUE
+                 AND om.user_id != $2
+               ORDER BY RANDOM()
+               LIMIT $3`,
+              [story.org_id, story.submitted_by, poolSize]
+            );
+
+            for (const juror of pool.rows) {
+              await sql`
+                INSERT INTO jury_assignments (story_id, user_id, role, in_pool, accepted)
+                VALUES (${story.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
+                ON CONFLICT DO NOTHING
+              `;
+            }
+
             await sql`
-              INSERT INTO jury_assignments (story_id, user_id, role, in_pool, accepted)
-              VALUES (${story.id}, ${juror.user_id}, 'in_group', TRUE, FALSE)
-              ON CONFLICT DO NOTHING
+              UPDATE stories SET status = 'pending_review', jury_seats = ${jurySize}
+              WHERE id = ${story.id}
+            `;
+
+            await sql`
+              INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
+              VALUES ('Story promoted from pending_jury to pending_review (auto)', ${story.org_id}, 'story', ${story.id},
+                      ${JSON.stringify({ memberCount: count, jurySize, wildWest })})
             `;
           }
-
-          await sql`
-            UPDATE stories SET status = 'pending_review', jury_seats = ${jurySize}
-            WHERE id = ${story.id}
-          `;
-
-          await sql`
-            INSERT INTO audit_log (action, org_id, entity_type, entity_id, metadata)
-            VALUES ('Story promoted from pending_jury to pending_review (auto)', ${story.org_id}, 'story', ${story.id},
-                    ${JSON.stringify({ memberCount: count, jurySize, wildWest })})
-          `;
+        } catch (promoteErr) {
+          console.error(`Auto-promote failed for story ${story.id}:`, promoteErr);
         }
-      } catch (promoteErr) {
-        console.error(`Auto-promote failed for story ${story.id}:`, promoteErr);
       }
     }
   } catch (autoPromoteErr) {
@@ -91,7 +100,7 @@ export async function GET() {
   `;
 
   const storyIds = result.rows.map((r: Record<string, unknown>) => r.id as string);
-  if (storyIds.length === 0) return NextResponse.json({}, { status: 200, headers: NO_CACHE_HEADERS });
+  if (storyIds.length === 0) return NextResponse.json({}, { status: 200, headers: CACHE_HEADERS });
 
   // Batch load submission counts
   const subCounts = await sql.query(
@@ -182,7 +191,7 @@ export async function GET() {
     };
   }
 
-  return NextResponse.json(stories, { status: 200, headers: NO_CACHE_HEADERS });
+  return NextResponse.json(stories, { status: 200, headers: CACHE_HEADERS });
   } catch (error) {
     return serverError("GET /api/data/stories", error);
   }

@@ -24,6 +24,7 @@ import CitizenLookupScreen from "./pages/CitizenLookupScreen";
 import RecordScreen from "./pages/RecordScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
+import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 // DiagnosticScreen moved to /admin/system-health page
 
@@ -147,6 +148,7 @@ export default function TrustAssembly() {
   const [extCta, setExtCta] = useState(null); // null | "install" | "update"
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
+  const [resetToken, setResetToken] = useState(null);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
@@ -162,9 +164,15 @@ export default function TrustAssembly() {
   const [siteAnnouncement, setSiteAnnouncement] = useState(null);
   const notifRef = useRef(null);
 
-  // Load full profile data for navbar trust score (matches citizen page)
+  // Load full profile data for navbar trust score.
+  // Only re-fetch when the user object itself changes (login, profile update),
+  // NOT on every screen change — avoids 3 massive API calls per navigation.
+  const navProfileLoaded = useRef(false);
   useEffect(() => {
     if (!user) return;
+    // Skip if we already loaded once this session and user hasn't changed
+    if (navProfileLoaded.current) return;
+    navProfileLoaded.current = true;
     (async () => {
       try {
         const [allUsers, allOrgs, allSubs] = await Promise.all([sG(SK.USERS), sG(SK.ORGS), sG(SK.SUBS)]);
@@ -173,13 +181,14 @@ export default function TrustAssembly() {
         setNavProfile(p);
       } catch {}
     })();
-  }, [user, screen]);
+  }, [user]);
 
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
   const setScreen = useCallback((s) => {
     trackAction("nav", `screen:${s}`, { screen: s });
     setScreenRaw(s);
+    setViewingCitizen(null);
     setViewingRecord(null);
     if (!skipPush.current) {
       window.history.pushState({ screen: s, citizen: null, record: null }, "", "/" + s);
@@ -232,7 +241,11 @@ export default function TrustAssembly() {
 
     // On mount: restore from pathname if present (deep link / reload support)
     const path = window.location.pathname.slice(1);
-    if (path.startsWith("citizen/")) {
+    if (path === "reset-password") {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      if (token) setResetToken(token);
+    } else if (path.startsWith("citizen/")) {
       const username = decodeURIComponent(path.slice(8));
       setViewingCitizen(username);
     } else if (path.startsWith("record/")) {
@@ -301,22 +314,22 @@ export default function TrustAssembly() {
     return () => clearInterval(t);
   }, [user, heroPaused]);
 
+  // Poll review queue for badge counts — 30s interval (was 5s).
+  // Full data is loaded by ReviewScreen itself when the user navigates there.
   useEffect(() => {
     if (!user) return;
     const check = async () => { try {
       const qRes = await fetch("/api/reviews/queue"); if (!qRes.ok) return;
       const q = await qRes.json();
-      const ww = q.wildWest;
-      const myOrgs = new Set(user.orgIds || (user.orgId ? [user.orgId] : []));
       const isEligible = (s) => s.submittedBy !== user.username && s.diPartner !== user.username;
       setReviewCount((q.submissions || []).filter(s => s.status !== "cross_review" && isEligible(s)).length);
       setCrossCount((q.submissions || []).filter(s => s.status === "cross_review").length);
       setDisputeCount((q.disputes || []).length);
     } catch {} };
-    check(); const i = setInterval(check, 5000); return () => clearInterval(i);
-  }, [user, screen]);
+    check(); const i = setInterval(check, 30000); return () => clearInterval(i);
+  }, [user]);
 
-  const refreshUser = async () => { try { if (!user) return; const users = (await sG(SK.USERS)) || {}; const u = users[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); } } catch {} };
+  const refreshUser = async () => { try { if (!user) return; const users = (await sG(SK.USERS)) || {}; const u = users[user.username]; if (u) { setUser(u); setNotifications(u.notifications || []); navProfileLoaded.current = false; } } catch {} };
   useEffect(() => {
     if (user) refreshUser();
     // Mark review-related notifications as read when the Review tab is opened
@@ -512,6 +525,7 @@ export default function TrustAssembly() {
         .ta-field input,.ta-field textarea,.ta-field select { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
         .ta-field input:focus,.ta-field textarea:focus { border-color:var(--gold); }
         .ta-field textarea { resize:vertical; }
+<<<<<<< HEAD
         .field-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
         .field-input { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; margin-bottom:8px; }
         .field-textarea { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; resize:vertical; margin-bottom:8px; }
@@ -689,6 +703,12 @@ export default function TrustAssembly() {
         .di-banner { padding:8px 10px; background:var(--card-bg); border:1px solid var(--border); margin-bottom:6px; font-size:9px; color:var(--text-sec); line-height:1.6; }
         .penalty-banner { padding:8px 10px; background:rgba(196,74,58,0.08); border:1px solid rgba(196,74,58,0.27); margin-bottom:6px; font-size:9px; color:var(--red); line-height:1.6; }
         .grace-banner { padding:10px; background:rgba(74,158,85,0.08); border:1px solid rgba(74,158,85,0.27); margin-top:10px; }
+        /* ── REVIEW PAGE TABS ── */
+        .ta-review-tabs { display:flex; flex-wrap:wrap; gap:0; margin-bottom:16px; border-bottom:2px solid var(--border); }
+        .ta-review-tab { padding:8px 16px; background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; white-space:nowrap; color:var(--text-muted); transition:color 0.15s; }
+        .ta-review-tab:hover { color:var(--text); }
+        .ta-review-tab.active { color:var(--gold); font-weight:700; border-bottom-color:var(--gold); }
+        @media(max-width:640px) { .ta-review-tab{padding:6px 10px;font-size:9px} }
         /* ── MOBILE NAV ── */
         .ta-nav-mobile { display:none; background:var(--bg); padding:8px 24px; border-bottom:1px solid var(--border); position:relative; }
         .ta-hamburger { background:none; border:none; cursor:pointer; padding:6px 2px; display:flex; flex-direction:column; gap:4px; }
@@ -740,7 +760,11 @@ export default function TrustAssembly() {
       `}</style>
 
 
-      {!user && viewingRecord ? (
+      {resetToken ? (
+        <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
+          <ResetPasswordScreen token={resetToken} onDone={() => { setResetToken(null); setScreenRaw("login"); window.history.replaceState(null, "", "/login"); }} />
+        </div>
+      ) : !user && viewingRecord ? (
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
           <RecordScreen recordId={viewingRecord} onBack={() => { setViewingRecord(null); window.history.back(); }} onViewCitizen={navigateToCitizen} />
         </div>

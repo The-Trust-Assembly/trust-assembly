@@ -118,8 +118,12 @@ export function middleware(request: NextRequest) {
     addCorsHeaders(response, origin, extOrSame);
   }
 
-  // Prevent edge/CDN/browser caching of API responses so data is always fresh.
-  response.headers.set("Cache-Control", "no-store, must-revalidate");
+  // Prevent edge/CDN/browser caching of most API responses.
+  // Bulk data endpoints (/api/data/*) set their own short-TTL Cache-Control
+  // headers to allow brief browser caching of heavy responses.
+  if (!pathname.startsWith("/api/data/")) {
+    response.headers.set("Cache-Control", "no-store, must-revalidate");
+  }
 
   // Content Security Policy — mitigates XSS by restricting script sources.
   // 'self' allows scripts from the same origin; 'unsafe-inline' is needed

@@ -302,7 +302,7 @@ export async function GET(request: NextRequest) {
   const disputesResult = await sql`
     SELECT
       d.id, d.submission_id, d.org_id, d.reasoning, d.status,
-      d.deliberate_lie_finding, d.created_at, d.resolved_at,
+      d.deliberate_lie_finding, d.jury_seats, d.created_at, d.resolved_at,
       disputer.username AS disputed_by,
       orig_user.username AS original_submitter,
       s.original_headline AS submission_headline,
@@ -387,6 +387,7 @@ export async function GET(request: NextRequest) {
       reasoning: row.reasoning,
       status: row.status,
       deliberateLieFinding: row.deliberate_lie_finding,
+      jurySeats: row.jury_seats,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
       disputedBy: row.disputed_by || "unknown",
@@ -413,7 +414,7 @@ export async function GET(request: NextRequest) {
   const myDisputesResult = await sql`
     SELECT
       d.id, d.submission_id, d.org_id, d.reasoning, d.status,
-      d.deliberate_lie_finding, d.created_at, d.resolved_at,
+      d.deliberate_lie_finding, d.jury_seats, d.created_at, d.resolved_at,
       disputer.username AS disputed_by,
       orig_user.username AS original_submitter,
       s.original_headline AS submission_headline,
@@ -478,6 +479,7 @@ export async function GET(request: NextRequest) {
       reasoning: row.reasoning,
       status: row.status,
       deliberateLieFinding: row.deliberate_lie_finding,
+      jurySeats: row.jury_seats,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
       disputedBy: row.disputed_by || "unknown",

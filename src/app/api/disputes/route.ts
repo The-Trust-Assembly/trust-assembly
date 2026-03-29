@@ -237,6 +237,9 @@ export async function POST(request: NextRequest) {
       createNotification({ userId: juror.user_id as string, type: "dispute_jury_assigned", title: "You've been assigned to a dispute jury.", body: "A submission dispute is ready for your review.", entityType: "dispute", entityId: dispute.id as string }).catch(() => {});
     }
 
+    // Store jury size on the dispute for display purposes
+    await sql`UPDATE disputes SET jury_seats = ${jurySize} WHERE id = ${dispute.id as string}`;
+
     await sql`INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
       VALUES ('Dispute jury assigned', ${session.sub}, ${org_id as string}, 'dispute', ${dispute.id as string},
         ${JSON.stringify({ jurySize, poolSize: pool.rows.length, wildWest })}::jsonb)`;

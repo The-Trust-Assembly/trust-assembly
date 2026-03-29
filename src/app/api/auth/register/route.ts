@@ -4,6 +4,7 @@ import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 import { logError } from "@/lib/error-logger";
+import { sendWelcomeEmail } from "@/lib/email";
 
 // Email is intentionally NOT unique in the schema — DIs may share their
 // partner's email. Uniqueness for non-DI accounts is enforced in
@@ -137,6 +138,11 @@ export async function POST(request: NextRequest) {
   // Create session — only after the transaction commits successfully
   const token = await createToken({ sub: user.id as string, username: user.username as string });
   await setSessionCookie(token);
+
+  // Welcome email (fire-and-forget)
+  if (email && !isDI) {
+    sendWelcomeEmail(email as string, user.username as string).catch(() => {});
+  }
 
   return ok({
     id: user.id,

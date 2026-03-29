@@ -4,8 +4,8 @@ import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, serverError } from "@/lib/api-utils";
 import { tryResolveSubmission, tryResolveStory, tryResolveDispute } from "@/lib/vote-resolution";
 import { createNotification } from "@/lib/notifications";
-import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
-import { getMajority } from "@/lib/jury-rules";
+import { isWildWestMode, getJurySize, getMajority, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
+import { assignDisputeJury } from "@/lib/jury-assignment";
 
 // POST /api/admin/process-records
 // Scans all in-flight records (submissions, stories, disputes, concessions)
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const results = {
       submissions: { scanned: 0, advanced: 0, details: [] as string[] },
       stories: { scanned: 0, advanced: 0, details: [] as string[] },
+      disputeBackfills: { scanned: 0, backfilled: 0, details: [] as string[] },
       disputes: { scanned: 0, advanced: 0, details: [] as string[] },
       concessions: { scanned: 0, advanced: 0, details: [] as string[] },
     };
@@ -105,6 +106,59 @@ export async function POST(request: NextRequest) {
         } catch {
           // Logged inside tryResolveStory
         }
+      }
+    }
+
+    // ── Dispute Backfills: assign jurors to disputes that never got jury assignments ──
+    const unassignedDisputes = await sql`
+      SELECT d.id, d.submission_id, d.org_id, d.disputed_by, d.original_submitter
+      FROM disputes d
+      WHERE d.status = 'pending_review'
+        AND NOT EXISTS (
+          SELECT 1 FROM jury_assignments ja WHERE ja.dispute_id = d.id
+        )
+    `;
+
+    results.disputeBackfills.scanned = unassignedDisputes.rows.length;
+    for (const dispute of unassignedDisputes.rows) {
+      try {
+        const juryResult = await assignDisputeJury({
+          disputeId: dispute.id as string,
+          submissionId: dispute.submission_id as string,
+          orgId: dispute.org_id as string,
+          disputerId: dispute.disputed_by as string,
+          originalSubmitterId: dispute.original_submitter as string,
+        });
+
+        if (juryResult.assigned > 0) {
+          results.disputeBackfills.backfilled++;
+          results.disputeBackfills.details.push(
+            `${(dispute.id as string).slice(0, 8)}… assigned ${juryResult.assigned} jurors (jury size ${juryResult.jurySize})`
+          );
+
+          // Notify assigned jurors
+          await Promise.allSettled(
+            juryResult.jurorUserIds.map((userId) =>
+              createNotification({
+                userId,
+                type: "dispute_jury_assigned",
+                title: "You've been assigned to a dispute jury",
+                body: "A disputed submission requires your review",
+                entityType: "dispute",
+                entityId: dispute.id as string,
+              })
+            )
+          );
+        } else {
+          results.disputeBackfills.details.push(
+            `${(dispute.id as string).slice(0, 8)}… no eligible jurors found`
+          );
+        }
+      } catch (e) {
+        console.error("Dispute jury backfill failed:", e);
+        results.disputeBackfills.details.push(
+          `${(dispute.id as string).slice(0, 8)}… ERROR: ${e instanceof Error ? e.message : String(e)}`
+        );
       }
     }
 
@@ -269,12 +323,14 @@ export async function POST(request: NextRequest) {
 
     const totalAdvanced = results.submissions.advanced + results.stories.advanced + results.disputes.advanced + results.concessions.advanced;
     const totalScanned = results.submissions.scanned + results.stories.scanned + results.disputes.scanned + results.concessions.scanned;
+    const totalBackfilled = results.disputeBackfills.backfilled;
 
     return ok({
       success: true,
-      message: `Scanned ${totalScanned} in-flight records, advanced ${totalAdvanced}.`,
+      message: `Scanned ${totalScanned} in-flight records, advanced ${totalAdvanced}.${totalBackfilled > 0 ? ` Backfilled jury assignments for ${totalBackfilled} disputes.` : ""}`,
       totalScanned,
       totalAdvanced,
+      totalBackfilled,
       results,
     });
   } catch (e) {
