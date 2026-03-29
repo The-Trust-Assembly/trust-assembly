@@ -28,6 +28,7 @@ interface ImportResult {
   submitted: string;
   normalized: string;
   recipeUsed: string | null;
+  fetchError?: string;
   extractionTime: string;
   fromCache?: boolean;
 }
