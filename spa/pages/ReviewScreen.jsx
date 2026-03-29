@@ -729,15 +729,26 @@ function ReviewScreenInner({ user }) {
       {/* My Results Tab — submission history (approved/resolved) */}
       {tab === "myresults" && (myApproved.length === 0 ? <Empty text="No approved submissions yet. Your approved corrections and affirmations will appear here." /> : <div>
         <p style={{ fontSize: 13, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Your submissions that were approved by jury vote — your contribution to the assembly record.</p>
-        {myApproved.sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt)).map(s => (
-          <div key={s.id} className="ta-card" style={{ borderLeft: "4px solid #059669" }}>
+        {myApproved.sort((a, b) => new Date(b.resolvedAt || b.createdAt) - new Date(a.resolvedAt || a.createdAt)).map(s => {
+          let domain = "";
+          try { domain = new URL(String(s.url)).hostname.replace(/^www\./, ""); } catch {}
+          return (
+          <div key={s.id} className="ta-card" style={{ borderLeft: `4px solid ${s.status === "consensus" ? "#7C3AED" : "#059669"}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{safe(s.orgName)} · {sDate(s.resolvedAt || s.createdAt)}</span>
               <StatusPill status={s.status} />
             </div>
-            <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}><SubHeadline sub={s} /></div>
+            {domain && <div style={{ fontSize: 10, color: "var(--gold)", marginBottom: 4 }}>{domain}</div>}
+            <SubHeadline sub={s} size={14} />
+            {s.reasoning && <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6, marginTop: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.reasoning}</div>}
+            {s.evidence && s.evidence.length > 0 && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>{s.evidence.length} evidence source{s.evidence.length > 1 ? "s" : ""}</div>}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button className="ta-btn-ghost" style={{ fontSize: 10, color: "var(--gold)" }} onClick={() => { if (typeof navigateToRecord === "function") navigateToRecord(s.id); else window.open("/record/" + s.id, "_blank"); }}>Open Full Record</button>
+              <button className="ta-btn-ghost" style={{ fontSize: 10, color: "var(--text-muted)" }} onClick={() => { const url = window.location.origin + "/record/" + s.id; navigator.clipboard?.writeText(url); }}>Copy Link</button>
+            </div>
           </div>
-        ))}
+          );
+        })}
       </div>)}
 
       {/* Story Proposals Tab */}
