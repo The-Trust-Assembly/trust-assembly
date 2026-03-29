@@ -26,6 +26,7 @@ import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
+import LandingPage from "./pages/LandingPage";
 // DiagnosticScreen moved to /admin/system-health page
 
 import { ensureGeneralPublic } from "./lib/storage";
@@ -914,9 +915,13 @@ export default function TrustAssembly() {
             </div>
           )}
 
-          {/* DISCOVERY FEED */}
-          <div style={{ maxWidth: 580, margin: "0 auto", padding: "0 20px 40px" }}>
-            <DiscoveryFeed onLogin={() => { setLoginAccordion(true); setScreen("login"); }} onRegister={() => { setLoginAccordion(true); setScreen("register"); }} />
+          {/* LANDING PAGE with URL input + recent corrections */}
+          <div style={{ maxWidth: 780, margin: "0 auto" }}>
+            <LandingPage
+              onSubmitUrl={(url) => { setScreen("submit"); window.history.pushState({ screen: "submit" }, "", "/submit?url=" + encodeURIComponent(url)); }}
+              onLogin={() => { setLoginAccordion(true); setScreen("login"); }}
+              onRegister={() => { setLoginAccordion(true); setScreen("register"); }}
+            />
           </div>
         </div>
       ) : (
