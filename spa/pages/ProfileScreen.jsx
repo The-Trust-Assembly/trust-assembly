@@ -7,7 +7,7 @@ import { hasActiveDeceptionPenalty, deceptionPenaltyRemaining, isDIUser, getTrus
 import { Badge, ScoreBreakdown, CitizenBadges, UsernameLink, StatusPill, SubHeadline, Icon } from "../components/ui";
 import JuryScoreCard from "../components/JuryScoreCard";
 
-export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fontSize, setFontSize, contentWidth, setContentWidth, hideCarousel, setHideCarousel, hideStatusCards, setHideStatusCards }) {
+export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fontSize, setFontSize, contentWidth, setContentWidth, hideCarousel, setHideCarousel, hideStatusCards, setHideStatusCards, alertsEnabled, setAlertsEnabled }) {
   const [u, setU] = useState(user);
   const [orgs, setOrgs] = useState({});
   const [allUsers, setAllUsers] = useState({});
@@ -245,6 +245,16 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
                   <button key={k} onClick={() => setHideStatusCards && setHideStatusCards(k === "hide")} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: (k === "hide" ? hideStatusCards : !hideStatusCards) ? "var(--gold)" : "transparent", color: (k === "hide" ? hideStatusCards : !hideStatusCards) ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
                 ))}
               </div>
+            </div>
+            {/* Alerts On/Off */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Notification Alerts</div>
+              <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
+                {[["on", "On"], ["off", "Off"]].map(([k, label]) => (
+                  <button key={k} onClick={() => { const enabled = k === "on"; setAlertsEnabled && setAlertsEnabled(enabled); try { localStorage.setItem("ta_alerts_enabled", String(enabled)); } catch {} }} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: (k === "on" ? alertsEnabled : !alertsEnabled) ? "var(--gold)" : "transparent", color: (k === "on" ? alertsEnabled : !alertsEnabled) ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
+                ))}
+              </div>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 4 }}>When off, notification badges and the bell icon are hidden.</div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "3px 12px", fontSize: 11 }}>
               {[["Username", "@" + u.username], ["Signed Up", fDate(u.signupDate)], ["Account Age", daysSince(u.signupDate) + " days"]].map(([l, v], i) => (
