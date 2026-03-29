@@ -52,11 +52,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${APP_URL}/correction/${sub.slug || slug}`,
       siteName: "The Trust Assembly",
       type: "article",
+      authors: [`Trust Assembly — ${sub.org_name || "The General Public"}`],
+      publishedTime: sub.resolved_at || sub.created_at,
     },
     twitter: {
       card: "summary",
       title,
       description,
+      site: "@TrustAssembly",
     },
     alternates: {
       canonical: `${APP_URL}/correction/${sub.slug || slug}`,
@@ -86,10 +89,11 @@ export default async function CorrectionPage({ params }: Props) {
     },
     reviewRating: {
       "@type": "Rating",
+      ratingValue: sub.status === "consensus" ? 1 : sub.status === "approved" ? 2 : 4,
+      bestRating: 5,
+      worstRating: 1,
+      alternateName: sub.submission_type === "correction" ? "Misleading" : "Accurate",
       ratingExplanation: sub.reasoning,
-      bestRating: "consensus",
-      worstRating: "rejected",
-      ratingValue: sub.status,
     },
     itemReviewed: {
       "@type": "CreativeWork",
