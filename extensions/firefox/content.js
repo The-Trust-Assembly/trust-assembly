@@ -1141,13 +1141,15 @@
     const profile = sub.profile?.displayName || "Citizen";
     const score = sub.trustScore != null ? sub.trustScore : "—";
     const borderColor = statusBorderColor(sub.status);
+    const statusImg = sub.status === "consensus" ? "consensus" : sub.status === "approved" ? "approved" : sub.status === "rejected" ? "rejected" : "pending";
     return `
+      <div class="ta-ext-assembly-tab">${sub.orgName || "Assembly"}</div>
       <div class="ta-ext-card ta-ext-card-correction" style="border-left-color:${borderColor}">
         <div class="ta-ext-card-meta">
           <span class="ta-ext-profile-badge" style="border-color:${COLORS.red}; color:${COLORS.red}">
             ${profile} · ${score}
           </span>
-          <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}${relBadge(sub.orgId, assemblies)}</span>
+          <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${formatStatus(sub.status)}</span>
         </div>
         <div class="ta-ext-headline-replacement">${escapeHtml(sub.replacement)}<div class="ta-ext-headline-original-tooltip"><div class="ta-tooltip-label">Original Headline</div>${escapeHtml(sub.originalHeadline)}</div></div>
         ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
@@ -1156,7 +1158,6 @@
           <div class="ta-ext-evidence">
             ${sub.evidence.map(e => `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.explanation || e.url)}</a>`).join("")}
           </div>` : ""}
-        <div class="ta-ext-card-status ta-ext-status-${sub.status || "approved"}">${formatStatus(sub.status)}</div>
       </div>
     `;
   }
@@ -1218,22 +1219,23 @@
       const profile = sub.profile?.displayName || "Citizen";
       const score = sub.trustScore != null ? sub.trustScore : "—";
       const borderColor = statusBorderColor(sub.status);
+      const statusImg = sub.status === "consensus" ? "consensus" : sub.status === "approved" ? "approved" : "pending";
       html += `
+        <div class="ta-ext-assembly-tab ta-ext-assembly-tab-affirm">${sub.orgName || "Assembly"}</div>
         <div class="ta-ext-card ta-ext-card-affirmation" style="border-left-color:${borderColor}">
           <div class="ta-ext-card-meta">
             <span class="ta-ext-profile-badge" style="border-color:${COLORS.green}; color:${COLORS.green}">
               ${profile} · ${score}
             </span>
-            <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}${relBadge(sub.orgId, assemblies)}</span>
+            <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${formatStatus(sub.status)}</span>
           </div>
-          <div class="ta-ext-headline-affirmed">✓ ${escapeHtml(sub.originalHeadline)}</div>
+          <div class="ta-ext-headline-affirmed">${escapeHtml(sub.originalHeadline)}</div>
           ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
           <div class="ta-ext-reasoning">${escapeHtml(sub.reasoning)}</div>
           ${sub.evidence && sub.evidence.length > 0 ? `
             <div class="ta-ext-evidence">
               ${sub.evidence.map(e => `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.explanation || e.url)}</a>`).join("")}
             </div>` : ""}
-          <div class="ta-ext-card-status ta-ext-status-${sub.status || "approved"}">${formatStatus(sub.status)}</div>
         </div>
       `;
     });
