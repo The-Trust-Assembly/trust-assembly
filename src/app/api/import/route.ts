@@ -247,7 +247,9 @@ function extractWithReadability(html: string, url: string): Record<string, Field
       if (article.byline) result.author = { value: article.byline, source: "readability", confidence: 0.5 };
       return result;
     }
-  } catch { /* readability failed */ }
+  } catch (e) {
+    console.warn("[import] Readability failed (expected in some serverless envs):", e instanceof Error ? e.message : String(e));
+  }
   return {};
 }
 
@@ -378,6 +380,21 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
 
 // ─── API Route ─────────────────────────────────────────────────────
 
+// GET /api/import?url=... — debug endpoint for testing in browser
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const url = searchParams.get("url");
+  if (!url || !url.startsWith("http")) {
+    return ok({ error: "Pass ?url=https://... to test import" });
+  }
+  try {
+    const result = await importUrl(url);
+    return ok(result);
+  } catch (e) {
+    return ok({ error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack?.split("\n").slice(0, 5) : undefined });
+  }
+}
+
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try {
@@ -410,6 +427,7 @@ export async function POST(request: NextRequest) {
 
     return ok(result);
   } catch (e) {
+    console.error("[import] importUrl crashed:", e);
     // Import failed — return empty result, never block the user
     return ok({
       success: false,
@@ -421,6 +439,7 @@ export async function POST(request: NextRequest) {
       submitted: url,
       normalized: url,
       recipeUsed: null,
+      fetchError: e instanceof Error ? e.message : String(e),
       extractionTime: "0ms",
     });
   }
