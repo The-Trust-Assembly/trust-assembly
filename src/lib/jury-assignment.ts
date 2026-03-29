@@ -91,6 +91,12 @@ export async function assignDisputeJury(
       );
     }
 
+    // Store jury size on the dispute for display purposes
+    await client.query(
+      `UPDATE disputes SET jury_seats = $1 WHERE id = $2`,
+      [jurySize, disputeId]
+    );
+
     await client.query("COMMIT");
   } catch (e) {
     await client.query("ROLLBACK");

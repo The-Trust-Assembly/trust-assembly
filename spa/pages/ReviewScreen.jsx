@@ -598,7 +598,7 @@ function ReviewScreenInner({ user }) {
                 <div style={{ fontSize: 13, color: "var(--text)" }}>{d.status === "upheld" ? "The dispute was upheld — the original submission was found to be wrong." : "The dispute was dismissed — the original submission stands."}</div>
                 <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>Votes: {upheldCount} uphold / {rejectedCount} dismiss</div>
               </div>}
-              {d.status === "pending_review" && <div style={{ fontSize: 11, color: "var(--gold)" }}>Jury review in progress — {voteCount}/{(d.jurors || []).length} votes cast</div>}
+              {d.status === "pending_review" && <div style={{ fontSize: 11, color: "var(--gold)" }}>Jury review in progress — {voteCount}/{d.jurySeats || (d.jurors || []).length} votes cast</div>}
               {jurorNotes.length > 0 && <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 4 }}>Juror Notes</div>
                 {jurorNotes.map((jn, i) => <div key={i} style={{ fontSize: 12, padding: "6px 8px", marginBottom: 4, background: jn.approve ? "#ECFDF5" : "#FEF2F2", borderRadius: 0, borderLeft: `3px solid ${jn.approve ? "#059669" : "#DC2626"}`, lineHeight: 1.5 }}>
