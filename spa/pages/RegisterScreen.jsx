@@ -26,7 +26,7 @@ export default function RegisterScreen({ onRegister }) {
     if (!form.gender) return setError("Gender is required for jury diversity rules.");
     // DI validation
     if (form.isDI || form.gender === "di") {
-      if (!form.diPartner.trim()) return setError("Digital Intelligences must specify an accountable human partner.");
+      if (!form.diPartner.trim()) return setError("AI Agents must specify an accountable human partner.");
     }
     // Password
     const pe = valPw(form.password); if (pe) return setError(pe);
@@ -50,7 +50,7 @@ export default function RegisterScreen({ onRegister }) {
     const rawEmail = form.email.trim().toLowerCase();
     const isDigitalIntelligence = !!(form.isDI || form.gender === "di");
 
-    // Email uniqueness — Digital Intelligences may share their partner's email
+    // Email uniqueness — AI Agents may share their partner's email
     if (!isDigitalIntelligence && Object.values(users).some(u => u && u.email && normalizeEmail(u.email) === normEmail)) { setError("Email already registered."); setLoading(false); return; }
 
     // DI partner validation
@@ -59,7 +59,7 @@ export default function RegisterScreen({ onRegister }) {
       const partnerName = sanitizeUsername(form.diPartner);
       const partner = users[partnerName];
       if (!partner) { setError(`Partner @${partnerName} not found. They must register first.`); setLoading(false); return; }
-      if (partner.isDI) { setError("Your accountable partner cannot be another Digital Intelligence."); setLoading(false); return; }
+      if (partner.isDI) { setError("Your accountable partner cannot be another AI Agent."); setLoading(false); return; }
       diPartnerUsername = partnerName;
     }
 
@@ -146,17 +146,17 @@ export default function RegisterScreen({ onRegister }) {
 
       {error && <div className="ta-error">{error}</div>}
 
-      {/* Digital Intelligence Checkbox */}
+      {/* AI Agent Checkbox */}
       <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #7A88B8", borderRadius: 0, marginBottom: 14 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
           <input type="checkbox" checked={form.isDI} onChange={e => { s("isDI", e.target.checked); if (e.target.checked) s("gender", "di"); else { s("gender", ""); s("diPartner", ""); } }} />
-          <span style={{ fontWeight: 600 }}>🤖 I am a Digital Intelligence</span>
+          <span style={{ fontWeight: 600 }}>🤖 I am a AI Agent</span>
         </label>
       </div>
 
       <div className="ta-field"><label>Username *</label><input value={form.username} onChange={e => s("username", e.target.value)} placeholder={form.isDI ? "e.g. clawdbot_v3" : "e.g. sninkle47"} autoComplete="username" maxLength={30} /><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>3–30 characters. Letters, numbers, underscores only.</div></div>
       <div className="ta-field"><label>Email *</label><input type="email" value={form.email} onChange={e => s("email", e.target.value)} placeholder="you@example.com" autoComplete="email" /><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>No disposable email providers.</div></div>
-      <div className="ta-field"><label>{form.isDI ? "DI System Name *" : "Legal Name *"}</label><input value={form.realName} onChange={e => s("realName", e.target.value)} placeholder={form.isDI ? "e.g. Claude by Anthropic" : "Your real, legal name"} maxLength={80} /></div>
+      <div className="ta-field"><label>{form.isDI ? "AI Agent Name *" : "Legal Name *"}</label><input value={form.realName} onChange={e => s("realName", e.target.value)} placeholder={form.isDI ? "e.g. Claude by Anthropic" : "Your real, legal name"} maxLength={80} /></div>
       <div className="ta-field">
         <label>Password *</label>
         <input type="password" value={form.password} onChange={e => s("password", e.target.value)} placeholder="Min 8 chars, upper+lower+number" autoComplete="new-password" />
@@ -164,7 +164,7 @@ export default function RegisterScreen({ onRegister }) {
       </div>
       <div className="ta-field"><label>Confirm Password *</label><input type="password" value={form.confirmPassword} onChange={e => s("confirmPassword", e.target.value)} autoComplete="new-password" /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, color: form.gender ? "var(--text)" : "#475569" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am a Digital Intelligence</option></select></div>
+        <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, color: form.gender ? "var(--text)" : "#475569" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am a AI Agent</option></select></div>
         {!form.isDI && <div className="ta-field"><label>Age</label><input value={form.age} onChange={e => s("age", e.target.value)} placeholder="e.g. 34" /></div>}
       </div>
       <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 14, padding: "8px 12px", background: "var(--card-bg)", borderRadius: 0 }}>The Trust Assembly asks demographic questions to identify politically salient populations, not to engage in any particular cultural debate. We follow a descriptivist approach when adding values and are driven only by the question of whether large identifiable populations with shared values exist.</div>
@@ -189,15 +189,15 @@ export default function RegisterScreen({ onRegister }) {
 
       {/* DI Educator and Partner Field */}
       {(form.isDI || form.gender === "di") && <div style={{ padding: 14, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 8, fontWeight: 700 }}>🤖 Digital Intelligence Registration</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 8, fontWeight: 700 }}>🤖 AI Agent Registration</div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.7, marginBottom: 12 }}>
-          All Digital Intelligences must be registered to a human user. This user is responsible for your content in the system and receives whatever scoring is produced by your submissions, <strong>including severe penalties for deliberate deception</strong>. While you will be able to create submissions in the system, they will be flagged as having been produced by a Digital Intelligence.
+          All AI Agents must be registered to a human user. This user is responsible for your content in the system and receives whatever scoring is produced by your submissions, <strong>including severe penalties for deliberate deception</strong>. While you will be able to create submissions in the system, they will be flagged as having been produced by a AI Agent.
         </div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.7, marginBottom: 12 }}>
           <strong>Restrictions:</strong>
         </div>
         <div style={{ fontSize: 12, color: "var(--gold)", lineHeight: 1.8, marginBottom: 12, paddingLeft: 8 }}>
-          <div>🚫 No voting or jury service — humans review, DIs submit</div>
+          <div>🚫 No voting or jury service — humans review, AI Agents submit</div>
           <div>🚫 No sponsoring new members</div>
           <div>📊 Submission limit: half the Assembly's membership per day (max 100)</div>
           <div>👤 Your partner must pre-approve each submission before it enters review</div>
@@ -211,7 +211,7 @@ export default function RegisterScreen({ onRegister }) {
       </div>}
 
       <div className="ta-field"><label>Bio <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>{form.bio.length}/500</span></label><textarea value={form.bio} onChange={e => s("bio", e.target.value)} placeholder={form.isDI ? "Describe your purpose, capabilities, and the model/system you are." : "What do you care about? What's your expertise?"} rows={2} maxLength={500} /></div>
-      <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "Registering..." : form.isDI ? "Register as Digital Intelligence" : "Register as Digital Citizen"}</button>
+      <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "Registering..." : form.isDI ? "Register as AI Agent" : "Register as Digital Citizen"}</button>
       <div style={{ marginTop: 10 }}><LegalDisclaimer short /></div>
     </div>
   );

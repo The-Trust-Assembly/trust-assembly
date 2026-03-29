@@ -56,7 +56,7 @@ export async function POST(
 
   // Can't vote if you're the DI partner of the submitter
   if (sub.rows[0].di_partner_id === session.sub) {
-    return forbidden("Cannot vote on a submission from your DI partner");
+    return forbidden("Cannot vote on a submission from your AI Agent partner");
   }
 
   const wildWest = await isWildWestMode();

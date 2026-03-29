@@ -177,7 +177,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         {openRibbons.di && (
           <div className="ribbon-body">
             {diAgents.length === 0 ? (
-              <div style={{ fontSize: 10, color: "var(--text-muted)" }}>No DI agents registered. Register an AI agent to pre-screen articles and prepare draft submissions.</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)" }}>No AI Agents registered. Register an AI agent to pre-screen articles and prepare draft submissions.</div>
             ) : (
               diAgents.map(di => (
                 <div key={di.username} style={{ background: "var(--card-bg)", border: "1px solid rgba(74,158,85,0.27)", padding: 12, marginBottom: 6 }}>

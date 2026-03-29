@@ -62,8 +62,8 @@ function formatNotification(n) {
     case "dispute_filed": return { text: title || "Your submission has been disputed.", screen: "review" };
     case "submission_disputed": return { text: title || "Your submission has been disputed.", screen: "review" };
     case "dispute_resolved": return { text: title || "A dispute was resolved.", screen: "review" };
-    case "di_needs_approval": return { text: title || "A DI submission needs your pre-approval.", screen: "review" };
-    case "di_approved": return { text: title || "Your DI submission was approved.", screen: "feed" };
+    case "di_needs_approval": return { text: title || "An AI Agent submission needs your pre-approval.", screen: "review" };
+    case "di_approved": return { text: title || "Your AI Agent submission was approved.", screen: "feed" };
     case "trusted_earned": return { text: title || "You've earned Trusted Contributor status!", screen: "profile" };
     case "trusted_lost": return { text: title || "Your Trusted Contributor status was revoked.", screen: "profile" };
     case "story_resolved": return { text: title || "Your story proposal was resolved.", screen: "stories" };

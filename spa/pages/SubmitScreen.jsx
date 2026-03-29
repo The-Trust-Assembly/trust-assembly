@@ -504,12 +504,12 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
       {/* DI Status Banner */}
       {isDIUser(user) && <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12 }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="robot" size={14} /> Digital Intelligence</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="robot" size={14} /> AI Agent</div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
           Partner: <strong>@{user.diPartner}</strong> · {!user.diApproved ? <span style={{ color: "var(--red)" }}>Awaiting partner approval — submissions disabled</span> : "Approved"}
           {activeOrg && user.diApproved && <span> · Limit: {getDISubmissionLimit(activeOrg)}/day in this Assembly</span>}
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4 }}>Your submissions will be flagged as DI-generated and require partner pre-approval before entering jury review.</div>
+        <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4 }}>Your submissions will be flagged as AI-generated and require partner pre-approval before entering jury review.</div>
       </div>}
       {activeOrg && (() => {
         const tp = getTrustedProgress(user, user.orgId);

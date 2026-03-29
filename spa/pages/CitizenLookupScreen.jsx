@@ -25,7 +25,7 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
       setAllUsers(all);
       setOrgs((await sG(SK.ORGS)) || {});
       setSubs((await sG(SK.SUBS)) || {});
-      // Find DI agents registered to this user
+      // Find AI Agents registered to this user
       const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
       setDiAgents(agents);
       setNotFound(false);
@@ -60,7 +60,7 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
               {isDIUser(u) ? <span style={{ marginRight: 6 }}><Icon name="robot" size={14} /></span> : u.username === ADMIN_USERNAME ? <span style={{ marginRight: 6 }}><Icon name="crown" size={14} /></span> : null}
               @{u.displayName || u.username}
             </h3>
-            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "var(--gold)" }}>Digital Intelligence · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "Pending"}</div>}
+            {isDIUser(u) && <div style={{ marginTop: 4, fontSize: 12, fontFamily: "var(--mono)", color: "var(--gold)" }}>AI Agent · Partner: <UsernameLink username={u.diPartner} onClick={onViewCitizen} /> · {u.diApproved ? "✓ Approved" : "Pending"}</div>}
             </div>
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
@@ -102,9 +102,9 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 10, fontWeight: 700 }}>Badges</div>
         <CitizenBadges badges={computeBadges(u, allUsers, orgs, subs)} />
       </div>
-      {/* Registered Digital Intelligences */}
+      {/* Registered AI Agents */}
       {diAgents.length > 0 && <div className="ta-card" style={{ borderLeft: "4px solid #4F46E5" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 8, fontWeight: 700 }}><Icon name="robot" size={16} /> Registered Digital Intelligences</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 8, fontWeight: 700 }}><Icon name="robot" size={16} /> Registered AI Agents</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {diAgents.map(di => <UsernameLink key={di.username} username={di.username} onClick={onViewCitizen} style={{ fontSize: 12 }} />)}
         </div>

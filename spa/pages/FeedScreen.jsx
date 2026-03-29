@@ -121,7 +121,7 @@ const FILTER_CHIPS = [
   { key: "approved", label: "Approved" },
   { key: "pending", label: "Pending" },
   { key: "rejected", label: "Rejected" },
-  { key: "di", label: "DI Reviewed" },
+  { key: "di", label: "AI Reviewed" },
 ];
 
 // statusBadge removed — using StatusPill component (stamp images) instead

@@ -25,7 +25,7 @@ export function deceptionPenaltyRemaining(userObj) {
 }
 
 export function canCreateAssembly(userObj) {
-  if (isDIUser(userObj)) return { allowed: false, reason: "🤖 Digital Intelligences cannot found Assemblies." };
+  if (isDIUser(userObj)) return { allowed: false, reason: "🤖 AI Agents cannot found Assemblies." };
   if (hasActiveDeceptionPenalty(userObj)) {
     const days = deceptionPenaltyRemaining(userObj);
     return { allowed: false, reason: `⚠ Deliberate Deception penalty active. Assembly creation suspended for ${days} more day${days !== 1 ? "s" : ""}.` };
@@ -35,7 +35,7 @@ export function canCreateAssembly(userObj) {
 
 export function canVote(userObj) {
   if (isDIUser(userObj)) {
-    return { allowed: false, reason: "🤖 Digital Intelligences cannot serve on juries or vote at this time." };
+    return { allowed: false, reason: "🤖 AI Agents cannot serve on juries or vote at this time." };
   }
   if (hasActiveDeceptionPenalty(userObj)) {
     const days = deceptionPenaltyRemaining(userObj);
@@ -68,7 +68,7 @@ export function isDISuspended(diUser, allUsers) {
   if (!partner) return { suspended: true, reason: "Accountable human partner not found." };
   if (hasActiveDeceptionPenalty(partner)) {
     const days = deceptionPenaltyRemaining(partner);
-    return { suspended: true, reason: `Accountable partner @${diUser.diPartner} has an active Deception penalty (${days} days remaining). All linked DIs are suspended.` };
+    return { suspended: true, reason: `Accountable partner @${diUser.diPartner} has an active Deception penalty (${days} days remaining). All linked AI Agents are suspended.` };
   }
   return { suspended: false };
 }

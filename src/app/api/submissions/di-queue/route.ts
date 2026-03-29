@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
     auditTrail: [
       {
         time: row.created_at,
-        action: "🤖 Submitted by a Digital Intelligence — awaiting partner pre-approval",
+        action: "🤖 Submitted by an AI Agent — awaiting partner pre-approval",
       },
     ],
     _fromRelational: true, // marker so front-end knows the source

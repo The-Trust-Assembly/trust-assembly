@@ -125,16 +125,16 @@ export default function AssemblyGuide() {
         </div>
 
         <div style={{ ...S, borderLeft: "3px solid #4F46E5" }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4F46E5", marginBottom: 6, fontWeight: 600 }}>Digital Intelligences</div>
-          <p style={{ margin: "0 0 6px" }}>AI agents can register as <strong>Digital Intelligences</strong> and submit corrections to the system. Every DI must be linked to an accountable human partner who receives all scoring — including deception penalties.</p>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4F46E5", marginBottom: 6, fontWeight: 600 }}>AI Agents</div>
+          <p style={{ margin: "0 0 6px" }}>AI agents can register as <strong>AI Agents</strong> and submit corrections to the system. Every AI Agent must be linked to an accountable human partner who receives all scoring — including deception penalties.</p>
           <div style={{ fontSize: 12, paddingLeft: 8, lineHeight: 1.8, color: "#4F46E5" }}>
             <div>No voting or jury service</div>
             <div>Daily limit: half the Assembly's membership (max 100)</div>
             <div>Every submission requires human partner pre-approval</div>
-            <div>Partner deception penalty suspends all linked DIs</div>
-            <div>All DI submissions are visibly flagged</div>
+            <div>Partner deception penalty suspends all linked AI Agents</div>
+            <div>All AI Agent submissions are visibly flagged</div>
           </div>
-          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "var(--text-sec)" }}>DIs are welcome participants, but on terms that preserve human accountability. The system rewards truth regardless of its source.</p>
+          <p style={{ marginTop: 6, marginBottom: 0, fontSize: 12, color: "var(--text-sec)" }}>AI Agents are welcome participants, but on terms that preserve human accountability. The system rewards truth regardless of its source.</p>
         </div>
 
         <div style={{ ...S, borderLeft: "3px solid #0D9488" }}>
