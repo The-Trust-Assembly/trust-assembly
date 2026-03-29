@@ -4,6 +4,7 @@ import { sG } from "../lib/storage";
 
 export default function LoginScreen({ onLogin, onGoRegister }) {
   const [username, setUsername] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false); const [forgotEmail, setForgotEmail] = useState(""); const [forgotMsg, setForgotMsg] = useState(""); const [forgotError, setForgotError] = useState(""); const [forgotLoading, setForgotLoading] = useState(false);
   const go = async () => {
     setError(""); if (!username.trim()) return setError("Enter username."); if (!password) return setError("Enter password.");
     setLoading(true);
@@ -54,7 +55,33 @@ export default function LoginScreen({ onLogin, onGoRegister }) {
       <div className="ta-field"><label>Username</label><input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" /></div>
       <div className="ta-field"><label>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && go()} autoComplete="current-password" /></div>
       <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "..." : "Enter"}</button>
-      <div style={{ textAlign: "center", marginTop: 16 }}><span style={{ color: "var(--text-sec)", fontSize: 13 }}>New? </span><button className="ta-link-btn" onClick={onGoRegister}>Register</button></div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+        <div><span style={{ color: "var(--text-sec)", fontSize: 13 }}>New? </span><button className="ta-link-btn" onClick={onGoRegister}>Register</button></div>
+        <button className="ta-link-btn" style={{ fontSize: 12 }} onClick={() => { setShowForgot(true); setForgotMsg(""); setForgotError(""); }}>Forgot password?</button>
+      </div>
+      {showForgot && (
+        <div style={{ marginTop: 16, padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "1px", color: "var(--text-muted)", marginBottom: 8, fontWeight: 700 }}>Reset Password</div>
+          {forgotMsg && <div className="ta-success">{forgotMsg}</div>}
+          {forgotError && <div className="ta-error">{forgotError}</div>}
+          {!forgotMsg && <>
+            <div className="ta-field"><label>Email address</label><input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="Enter your account email" /></div>
+            <button className="ta-btn-primary" disabled={forgotLoading} onClick={async () => {
+              setForgotError(""); setForgotMsg("");
+              if (!forgotEmail.trim() || !forgotEmail.includes("@")) { setForgotError("Enter a valid email address."); return; }
+              setForgotLoading(true);
+              try {
+                const res = await fetch("/api/auth/forgot-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: forgotEmail.trim() }) });
+                const data = await res.json();
+                if (res.ok) { setForgotMsg(data.data?.message || data.message || "If an account with that email exists, a reset link has been sent."); }
+                else { setForgotError(data.error || "Something went wrong."); }
+              } catch { setForgotError("Network error. Please try again."); }
+              setForgotLoading(false);
+            }}>{forgotLoading ? "Sending..." : "Send Reset Link"}</button>
+          </>}
+          <button className="ta-link-btn" style={{ fontSize: 11, marginTop: 8, display: "block" }} onClick={() => setShowForgot(false)}>Cancel</button>
+        </div>
+      )}
     </div>
   );
 }

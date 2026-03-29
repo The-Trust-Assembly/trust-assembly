@@ -24,6 +24,7 @@ import CitizenLookupScreen from "./pages/CitizenLookupScreen";
 import RecordScreen from "./pages/RecordScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
+import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 // DiagnosticScreen moved to /admin/system-health page
 
@@ -147,6 +148,7 @@ export default function TrustAssembly() {
   const [extCta, setExtCta] = useState(null); // null | "install" | "update"
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
+  const [resetToken, setResetToken] = useState(null);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
@@ -239,7 +241,11 @@ export default function TrustAssembly() {
 
     // On mount: restore from pathname if present (deep link / reload support)
     const path = window.location.pathname.slice(1);
-    if (path.startsWith("citizen/")) {
+    if (path === "reset-password") {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      if (token) setResetToken(token);
+    } else if (path.startsWith("citizen/")) {
       const username = decodeURIComponent(path.slice(8));
       setViewingCitizen(username);
     } else if (path.startsWith("record/")) {
@@ -754,7 +760,11 @@ export default function TrustAssembly() {
       `}</style>
 
 
-      {!user && viewingRecord ? (
+      {resetToken ? (
+        <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
+          <ResetPasswordScreen token={resetToken} onDone={() => { setResetToken(null); setScreenRaw("login"); window.history.replaceState(null, "", "/login"); }} />
+        </div>
+      ) : !user && viewingRecord ? (
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
           <RecordScreen recordId={viewingRecord} onBack={() => { setViewingRecord(null); window.history.back(); }} onViewCitizen={navigateToCitizen} />
         </div>

@@ -25,6 +25,8 @@ const nextConfig = {
       { source: '/feedback', destination: '/' },
       { source: '/login', destination: '/' },
       { source: '/register', destination: '/' },
+      { source: '/forgot-password', destination: '/' },
+      { source: '/reset-password', destination: '/' },
       { source: '/citizen/:slug', destination: '/' },
       { source: '/record/:slug', destination: '/' },
     ];
