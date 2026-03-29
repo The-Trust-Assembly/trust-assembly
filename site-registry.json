@@ -1,0 +1,552 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "Trust Assembly Site Recipe Registry — hand-tuned extraction configs for top domains. Each recipe defines CSS selectors and extraction strategies per field. The import parser checks the domain against this registry first; if no recipe exists, it falls through to generic meta/JSON-LD/Readability extraction.",
+    "fieldConfidence": "Fields extracted via site-specific selectors get confidence 0.9. Fields from meta tags get 0.7. Fields from heuristic/Readability get 0.5.",
+    "lastUpdated": "2026-03-28"
+  },
+
+  "recipes": {
+
+    "_template": {
+      "_comment": "TEMPLATE — copy this to create a new recipe",
+      "domains": [],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "", "attr": null, "fallback": null },
+        "author": { "css": "", "attr": null, "multi": false, "fallback": "meta[name='author']" },
+        "publishDate": { "css": "", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": null }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "reuters": {
+      "domains": ["reuters.com", "www.reuters.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1[data-testid='Heading']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "[data-testid='paragraph-0']", "attr": null, "fallback": "og:description" },
+        "author": { "css": "[rel='author'], a[data-testid='AuthorName']", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time[data-testid='Text']", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "[data-testid='paragraph']" }
+      },
+      "urlNormalization": { "stripParams": ["utm_*"] },
+      "notes": "Reuters uses data-testid attributes extensively"
+    },
+
+    "nytimes": {
+      "domains": ["nytimes.com", "www.nytimes.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1[data-testid='headline']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "p#article-summary, p[data-testid='standfirst']", "attr": null, "fallback": "og:description" },
+        "author": { "css": "span.byline-author a, p[itemprop='author'] span[itemprop='name']", "attr": null, "multi": true, "separator": " and ", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "section[name='articleBody'] p" }
+      },
+      "urlNormalization": { "stripParams": ["smid", "smtyp", "algo", "module", "action"] },
+      "notes": "NYT often paywalled — meta tags still work, body extraction may fail"
+    },
+
+    "washingtonpost": {
+      "domains": ["washingtonpost.com", "www.washingtonpost.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1#main-content, h1.headline", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": ".subtitle, .dek", "attr": null, "fallback": "og:description" },
+        "author": { "css": ".author-name a, span.author-name", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "article p, .article-body p" }
+      },
+      "urlNormalization": { "stripParams": ["utm_*", "itid"] },
+      "notes": "WaPo sometimes uses dynamic rendering"
+    },
+
+    "cnn": {
+      "domains": ["cnn.com", "www.cnn.com", "edition.cnn.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.headline__text, h1[data-editable='headlineText']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": null, "attr": null, "fallback": "og:description" },
+        "author": { "css": ".byline__name, span.metadata__byline__author", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": ".timestamp", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": ".article__content p, .zn-body__paragraph" }
+      },
+      "urlNormalization": { "stripParams": ["utm_*"] },
+      "notes": ""
+    },
+
+    "bbc": {
+      "domains": ["bbc.com", "www.bbc.com", "bbc.co.uk", "www.bbc.co.uk"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1#main-heading, h1[data-testid='hero-headline']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "b.ssrcss-hmf8ql-BoldText, div[data-component='standfirst']", "attr": null, "fallback": "og:description" },
+        "author": { "css": "div[data-component='byline'] span span, .byline__name", "attr": null, "multi": false, "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time[data-testid='timestamp']", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "article p, [data-component='text-block'] p" }
+      },
+      "urlNormalization": null,
+      "notes": "BBC restructured late 2024, check selectors periodically"
+    },
+
+    "foxnews": {
+      "domains": ["foxnews.com", "www.foxnews.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.headline", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "h2.sub-headline", "attr": null, "fallback": "og:description" },
+        "author": { "css": "div.author-byline a span", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='dc.creator']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.article-body p" }
+      },
+      "urlNormalization": { "stripParams": ["intcmp"] },
+      "notes": ""
+    },
+
+    "guardian": {
+      "domains": ["theguardian.com", "www.theguardian.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1[data-gu-name='headline']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "div[data-gu-name='standfirst'] p", "attr": null, "fallback": "og:description" },
+        "author": { "css": "a[rel='author'], address[data-component='meta-byline'] a", "attr": null, "multi": true, "separator": " and ", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "details[data-component='meta-dates'] time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div[data-gu-name='body'] p" }
+      },
+      "urlNormalization": { "stripParams": ["CMP", "utm_*"] },
+      "notes": "Guardian has excellent structured data"
+    },
+
+    "apnews": {
+      "domains": ["apnews.com", "www.apnews.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.Page-headline, div.RichTextStoryBody h1", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": null, "attr": null, "fallback": "og:description" },
+        "author": { "css": ".Page-authors a, .Component-bylines a", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "bsp-timestamp", "attr": "data-timestamp", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": ".RichTextStoryBody p, .Article p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "wsj": {
+      "domains": ["wsj.com", "www.wsj.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.wsj-article-headline, h1.StyledHeadline--headline", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "h2.sub-head, h2.StyledHeadline--dek", "attr": null, "fallback": "og:description" },
+        "author": { "css": "span.author-name a, button.author-name", "attr": null, "multi": true, "separator": " and ", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time.timestamp", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.article-content p" }
+      },
+      "urlNormalization": { "stripParams": ["mod"] },
+      "notes": "WSJ is hard paywalled — meta tags usually work, body won't"
+    },
+
+    "bloomberg": {
+      "domains": ["bloomberg.com", "www.bloomberg.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.lede-text-v2__hed, h1[data-component='hed']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "h2.lede-text-v2__dek", "attr": null, "fallback": "og:description" },
+        "author": { "css": ".author-v2 a, a[rel='author']", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time[data-component='timestamp']", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.body-content p" }
+      },
+      "urlNormalization": null,
+      "notes": "Bloomberg paywalled — meta tags are your best bet"
+    },
+
+    "cnbc": {
+      "domains": ["cnbc.com", "www.cnbc.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.ArticleHeader-headline", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "div.RenderKeyPoints li, .ArticleHeader-subtitle", "attr": null, "fallback": "og:description" },
+        "author": { "css": "a.Author-authorName, div.Author-authorNameAndSocial a", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time[data-testid='published-timestamp']", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.ArticleBody-articleBody p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "forbes": {
+      "domains": ["forbes.com", "www.forbes.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.fs-headline, h1.article-headline", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "h2.fs-subheadline", "attr": null, "fallback": "og:description" },
+        "author": { "css": "a.contrib-link--name, .fs-author-name a", "attr": null, "multi": false, "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.article-body p, .body-container p" }
+      },
+      "urlNormalization": { "stripParams": ["sh"] },
+      "notes": ""
+    },
+
+    "nbcnews": {
+      "domains": ["nbcnews.com", "www.nbcnews.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.article-hero-headline__htag, h1[data-testid='article-hero-headline']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "div.article-dek", "attr": null, "fallback": "og:description" },
+        "author": { "css": "span.byline-name a, a[data-testid='byline-link']", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time.relative-time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.article-body__content p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "cbsnews": {
+      "domains": ["cbsnews.com", "www.cbsnews.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.content__title", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "p.content__dek", "attr": null, "fallback": "og:description" },
+        "author": { "css": ".content__meta-byline a, .byline a", "attr": null, "multi": true, "separator": "/", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time.content__meta-timestamp", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "section.content__body p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "abcnews": {
+      "domains": ["abcnews.go.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.Article__Headline__Title", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": null, "attr": null, "fallback": "og:description" },
+        "author": { "css": ".Byline__Author a, .byline a", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "article p, .Article__Content p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "npr": {
+      "domains": ["npr.org", "www.npr.org"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.storytitle, .story-wrap h1", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "p.teaser", "attr": null, "fallback": "og:description" },
+        "author": { "css": "p.byline__name a, div.byline a", "attr": null, "multi": true, "separator": ",", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time[datetime]", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.storytext p, #storytext p" }
+      },
+      "urlNormalization": null,
+      "notes": "NPR also has audio — check og:type for audio detection"
+    },
+
+    "politico": {
+      "domains": ["politico.com", "www.politico.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h2.headline, h1.article-header__headline", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "p.dek, .article-header__dek", "attr": null, "fallback": "og:description" },
+        "author": { "css": "p.story-meta__authors a, a.vcard", "attr": null, "multi": true, "separator": " and ", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time.timestamp", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.story-text p, .article__content p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "thehill": {
+      "domains": ["thehill.com", "www.thehill.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.page-title, h1[data-cy='page-title']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": null, "attr": null, "fallback": "og:description" },
+        "author": { "css": "a.author-name, .submitted-by a", "attr": null, "multi": false, "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.field-items p, .article__text p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "dailymail": {
+      "domains": ["dailymail.co.uk", "www.dailymail.co.uk"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h2#js-article-text", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "ul.mol-bullets-with-font li", "attr": null, "fallback": "og:description" },
+        "author": { "css": "a.author", "attr": null, "multi": true, "separator": " and ", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time.article-timestamp", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div[itemprop='articleBody'] p" }
+      },
+      "urlNormalization": null,
+      "notes": "Daily Mail has verbose HTML — Readability recommended"
+    },
+
+    "aljazeera": {
+      "domains": ["aljazeera.com", "www.aljazeera.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.article-header, header h1", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "p.article__subhead, .article-heading-two", "attr": null, "fallback": "og:description" },
+        "author": { "css": "a.author-link, .article-author-name-item a", "attr": null, "multi": false, "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.wysiwyg p, .article-p-wrapper p" }
+      },
+      "urlNormalization": null,
+      "notes": ""
+    },
+
+    "theatlantic": {
+      "domains": ["theatlantic.com", "www.theatlantic.com"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1.ArticleHeader_hed, h1[data-testid='hed']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "h2.ArticleHeader_dek, p[data-testid='dek']", "attr": null, "fallback": "og:description" },
+        "author": { "css": "address a[rel='author'], a[data-testid='AuthorLink']", "attr": null, "multi": true, "separator": " and ", "fallback": "meta[name='author']" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "section[data-testid='ArticleBody'] p" }
+      },
+      "urlNormalization": null,
+      "notes": "Atlantic has a robust paywall — meta tags usually work"
+    },
+
+    "substack": {
+      "domains": ["substack.com"],
+      "platform": "substack_article",
+      "template": "article",
+      "domainPattern": "*.substack.com",
+      "selectors": {
+        "title": { "css": "h1.post-title, h1[data-testid='post-title']", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "h3.subtitle, .subtitle", "attr": null, "fallback": "og:description" },
+        "author": { "css": "a.frontend-pencraft-Text-module__decoration-hover-underline--BEYAn, .byline-names a", "attr": null, "multi": false, "fallback": "meta[name='author']" },
+        "publication": { "css": "a.frontend-pencraft-Text-module__decoration-hover-underline--BEYAn[href*='/'], .publication-name", "attr": null, "fallback": "og:site_name" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "div.body.markup p, .available-content p" }
+      },
+      "urlNormalization": null,
+      "urlOverrides": {
+        "_comment": "If /notes or /note is in the URL path, override platform to substack_note",
+        "pathContains": { "/notes": "substack_note", "/note/": "substack_note" }
+      },
+      "notes": "Substack custom domains also match — need the domainPattern fallback logic"
+    },
+
+    "medium": {
+      "domains": ["medium.com", "*.medium.com"],
+      "platform": "substack_article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": "h2", "attr": null, "fallback": "og:description" },
+        "author": { "css": "a[data-testid='authorName'], a[rel='author']", "attr": null, "multi": false, "fallback": "meta[name='author']" },
+        "publication": { "css": null, "attr": null, "fallback": "og:site_name" },
+        "publishDate": { "css": "time", "attr": "datetime", "fallback": "article:published_time" },
+        "body": { "strategy": "readability", "css": "article p, section p" }
+      },
+      "urlNormalization": { "stripParams": ["source", "sk"] },
+      "notes": "Medium uses shadow DOM in some cases — Readability may struggle"
+    },
+
+    "wikipedia": {
+      "domains": ["en.wikipedia.org", "wikipedia.org"],
+      "platform": "article",
+      "template": "article",
+      "selectors": {
+        "title": { "css": "h1#firstHeading", "attr": null, "fallback": "og:title" },
+        "subtitle": { "css": null, "attr": null, "fallback": null },
+        "author": { "css": null, "attr": null, "multi": false, "fallback": null },
+        "publishDate": { "css": null, "attr": null, "fallback": null },
+        "body": { "strategy": "readability", "css": "#mw-content-text .mw-parser-output > p" }
+      },
+      "urlNormalization": null,
+      "notes": "Wikipedia has no single author — author field will be empty. Body extraction is clean."
+    },
+
+    "amazon": {
+      "domains": ["amazon.com", "www.amazon.com", "amazon.co.uk", "amazon.ca", "amazon.de", "amazon.fr", "amazon.co.jp"],
+      "platform": "product",
+      "template": "product",
+      "selectors": {
+        "title": { "css": "#productTitle, span#productTitle", "attr": null, "fallback": "og:title" },
+        "brand": { "css": "#bylineInfo a, .po-brand .a-span9 span", "attr": null, "fallback": null },
+        "price": { "css": "span.a-price .a-offscreen, #priceblock_ourprice", "attr": null, "fallback": null },
+        "rating": { "css": "span[data-hook='rating-out-of-text'], #acrPopover span.a-icon-alt", "attr": null, "fallback": null },
+        "bulletPoints": { "css": "#feature-bullets ul li span.a-list-item", "attr": null, "multi": true },
+        "description": { "css": "#productDescription p, div[data-hook='product-description'] p", "attr": null, "fallback": "og:description" },
+        "category": { "css": "#wayfinding-breadcrumbs_feature_div a", "attr": null, "multi": true }
+      },
+      "urlNormalization": {
+        "stripParams": ["ref", "ref_", "pf_rd_*", "content-id", "tag", "linkCode", "th", "psc"],
+        "extractASIN": true
+      },
+      "notes": "Amazon has excellent meta tags and JSON-LD Product schema. ASIN in URL is the canonical ID."
+    },
+
+    "walmart": {
+      "domains": ["walmart.com", "www.walmart.com"],
+      "platform": "product",
+      "template": "product",
+      "selectors": {
+        "title": { "css": "h1[itemprop='name'], h1.prod-ProductTitle", "attr": null, "fallback": "og:title" },
+        "brand": { "css": "a[itemprop='brand'] span, .prod-brandName a", "attr": null, "fallback": null },
+        "price": { "css": "span[itemprop='price']", "attr": "content", "fallback": null },
+        "rating": { "css": "span.rating-number, span.stars-container", "attr": null, "fallback": null },
+        "description": { "css": "div[itemprop='description']", "attr": null, "fallback": "og:description" }
+      },
+      "urlNormalization": null,
+      "notes": "Walmart uses schema.org Product markup"
+    },
+
+    "ebay": {
+      "domains": ["ebay.com", "www.ebay.com"],
+      "platform": "product",
+      "template": "product",
+      "selectors": {
+        "title": { "css": "h1.x-item-title__mainTitle span", "attr": null, "fallback": "og:title" },
+        "brand": { "css": "div.x-item-title span.SECONDARY_INFO", "attr": null, "fallback": null },
+        "price": { "css": "div.x-price-primary span.ux-textspans", "attr": null, "fallback": null },
+        "seller": { "css": "div.x-sellercard-atf__info a span", "attr": null, "fallback": null },
+        "description": { "css": null, "attr": null, "fallback": "og:description" }
+      },
+      "urlNormalization": { "stripParams": ["hash", "var", "mkevt", "mkcid"] },
+      "notes": "eBay item descriptions are often in an iframe — extract from meta tags"
+    },
+
+    "etsy": {
+      "domains": ["etsy.com", "www.etsy.com"],
+      "platform": "product",
+      "template": "product",
+      "selectors": {
+        "title": { "css": "h1[data-buy-box-listing-title]", "attr": null, "fallback": "og:title" },
+        "brand": { "css": "a[data-appears-component-name='shop_name_and_icon']", "attr": null, "fallback": null },
+        "price": { "css": "p[data-buy-box-region='price'] span.currency-value", "attr": null, "fallback": null },
+        "description": { "css": "p[data-product-details-description-text-content]", "attr": null, "fallback": "og:description" }
+      },
+      "urlNormalization": { "stripParams": ["ref", "click_key", "click_sum"] },
+      "notes": ""
+    },
+
+    "youtube_meta": {
+      "_comment": "Fallback selectors for YouTube when API is unavailable",
+      "domains": ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"],
+      "platform": "youtube",
+      "template": "video",
+      "selectors": {
+        "title": { "css": null, "attr": null, "fallback": "og:title" },
+        "author": { "css": null, "attr": null, "fallback": "og:video:tag" },
+        "description": { "css": null, "attr": null, "fallback": "og:description" },
+        "duration": { "css": null, "attr": null, "jsonLd": "duration" }
+      },
+      "urlNormalization": {
+        "stripParams": ["t", "si", "feature", "list", "index", "ab_channel"],
+        "extractVideoId": true
+      },
+      "notes": "Prefer YouTube Data API v3 when available. This recipe is the no-API fallback using meta tags which YouTube renders server-side."
+    },
+
+    "twitter_meta": {
+      "_comment": "Meta tag fallback for X/Twitter — oEmbed preferred",
+      "domains": ["x.com", "twitter.com", "mobile.twitter.com", "mobile.x.com"],
+      "platform": "twitter",
+      "template": "shortform",
+      "selectors": {
+        "title": { "css": null, "attr": null, "fallback": "og:title" },
+        "author": { "css": null, "attr": null, "fallback": "og:title" },
+        "description": { "css": null, "attr": null, "fallback": "og:description" }
+      },
+      "urlNormalization": {
+        "stripParams": ["s", "t", "ref_src"],
+        "normalizeDomain": "x.com"
+      },
+      "notes": "X renders client-side — meta tags are your only option without API. og:title contains 'Author on X: \"tweet text\"' which can be parsed."
+    },
+
+    "reddit_json": {
+      "_comment": "Reddit has a free JSON API — append .json to any URL",
+      "domains": ["reddit.com", "www.reddit.com", "old.reddit.com"],
+      "platform": "reddit",
+      "template": "shortform",
+      "extractionStrategy": "reddit_json",
+      "selectors": {
+        "_comment": "Not used — Reddit JSON API is used instead",
+        "title": { "css": null, "attr": null, "fallback": "og:title" },
+        "author": { "css": null, "attr": null, "fallback": null }
+      },
+      "urlNormalization": {
+        "stripParams": ["utm_*", "context", "share_id"],
+        "normalizeDomain": "www.reddit.com"
+      },
+      "notes": "Append .json to URL for structured data. Returns title, author (u/handle), selftext (body), post type, score, subreddit."
+    },
+
+    "linkedin_meta": {
+      "domains": ["linkedin.com", "www.linkedin.com"],
+      "platform": "linkedin",
+      "template": "shortform",
+      "selectors": {
+        "title": { "css": null, "attr": null, "fallback": "og:title" },
+        "author": { "css": null, "attr": null, "fallback": "og:title" },
+        "description": { "css": null, "attr": null, "fallback": "og:description" }
+      },
+      "urlNormalization": { "stripParams": ["utm_*", "trk", "lipi"] },
+      "notes": "LinkedIn is mostly client-rendered. Meta tags work for articles but posts are thin."
+    },
+
+    "tiktok_oembed": {
+      "domains": ["tiktok.com", "www.tiktok.com", "vm.tiktok.com"],
+      "platform": "tiktok",
+      "template": "video",
+      "extractionStrategy": "oembed",
+      "oembedEndpoint": "https://www.tiktok.com/oembed?url=",
+      "selectors": {
+        "title": { "css": null, "attr": null, "fallback": "og:title" },
+        "author": { "css": null, "attr": null, "fallback": "og:title" }
+      },
+      "urlNormalization": null,
+      "notes": "TikTok oEmbed returns title, author_name, author_url, thumbnail. No duration."
+    },
+
+    "instagram_oembed": {
+      "domains": ["instagram.com", "www.instagram.com"],
+      "platform": "instagram",
+      "template": "visual",
+      "extractionStrategy": "oembed",
+      "oembedEndpoint": "https://api.instagram.com/oembed?url=",
+      "selectors": {
+        "title": { "css": null, "attr": null, "fallback": "og:title" },
+        "author": { "css": null, "attr": null, "fallback": "og:title" }
+      },
+      "urlNormalization": { "stripParams": ["igsh", "utm_*"] },
+      "notes": "Instagram oEmbed works for public posts. Private posts will fail — trigger the private warning UI."
+    }
+  }
+}

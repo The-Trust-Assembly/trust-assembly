@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trust Assembly — Adaptive Submit Form Prototype</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState, useEffect } = React;
+
+// ─── Platform Detection ────────────────────────────────────────────
+const PLATFORMS = {
+  article: {
+    key: "article",
+    icon: "📰",
+    label: "News Article",
+    template: "article",
+    contentUnit: "Article",
+    section1Title: "THE ARTICLE",
+    headlineLabel: "ORIGINAL HEADLINE *",
+    subtitleLabel: "SUBTITLE (OPTIONAL)",
+    authorLabel: "AUTHOR(S) (OPTIONAL — UP TO 10)",
+    authorPlaceholder: "Type author name and press Enter",
+    section2Title: "REWRITE THE HEADLINE",
+    replacementLabel: "PROPOSED REPLACEMENT * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "EDIT THE ARTICLE",
+    section3Subtitle: "UP TO 20",
+    section3Desc: "Copy the exact text from the article you want corrected into \"Original Text.\" The system uses exact text matching to locate each passage. Up to 20 edits per article.",
+    editOrigLabel: "ORIGINAL TEXT (COPY FROM ARTICLE)",
+    editOrigPlaceholder: "Paste the exact text from the article you want to correct",
+    editReplLabel: "REPLACEMENT TEXT",
+    showInlineEdits: true,
+    showSubtitle: true,
+    extraFields: null,
+    juryGracePeriod: null,
+  },
+  youtube: {
+    key: "youtube",
+    icon: "▶",
+    label: "YouTube Video",
+    template: "video",
+    contentUnit: "Video",
+    section1Title: "THE VIDEO",
+    headlineLabel: "VIDEO TITLE *",
+    subtitleLabel: null,
+    authorLabel: "CHANNEL",
+    authorPlaceholder: "Channel name",
+    section2Title: "CORRECT THE TITLE",
+    replacementLabel: "PROPOSED REPLACEMENT * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "CORRECT SPOKEN CLAIMS",
+    section3Subtitle: null,
+    section3Desc: "Transcribe or describe the claim being made in the video. Include a timestamp so jurors can verify.",
+    editOrigLabel: "TRANSCRIPT EXCERPT OR SPOKEN CLAIM",
+    editOrigPlaceholder: "What was said or shown in the video",
+    editReplLabel: "THE TRUTH",
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "timestamp",
+    juryGracePeriod: null,
+  },
+  twitter: {
+    key: "twitter",
+    icon: "𝕏",
+    label: "X / Twitter Post",
+    template: "shortform",
+    contentUnit: "Post",
+    section1Title: "THE POST",
+    headlineLabel: "ORIGINAL POST TEXT *",
+    subtitleLabel: null,
+    authorLabel: "ACCOUNT (@HANDLE)",
+    authorPlaceholder: "@handle",
+    section2Title: "CORRECT THE POST",
+    replacementLabel: "CORRECTED VERSION * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: null,
+    section3Subtitle: null,
+    section3Desc: null,
+    editOrigLabel: null,
+    editOrigPlaceholder: null,
+    editReplLabel: null,
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "threadPosition",
+    juryGracePeriod: null,
+  },
+  substack_article: {
+    key: "substack_article",
+    icon: "◉",
+    label: "Substack Article",
+    template: "article",
+    contentUnit: "Article",
+    section1Title: "THE ARTICLE",
+    headlineLabel: "ORIGINAL HEADLINE *",
+    subtitleLabel: "SUBTITLE (OPTIONAL)",
+    authorLabel: "AUTHOR",
+    authorPlaceholder: "Author name",
+    section2Title: "REWRITE THE HEADLINE",
+    replacementLabel: "PROPOSED REPLACEMENT * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "EDIT THE ARTICLE",
+    section3Subtitle: "UP TO 20",
+    section3Desc: "Copy the exact text from the article you want corrected into \"Original Text.\" The system uses exact text matching to locate each passage. Up to 20 edits per article.",
+    editOrigLabel: "ORIGINAL TEXT (COPY FROM ARTICLE)",
+    editOrigPlaceholder: "Paste the exact text from the article you want to correct",
+    editReplLabel: "REPLACEMENT TEXT",
+    showInlineEdits: true,
+    showSubtitle: true,
+    extraFields: "publication",
+    juryGracePeriod: null,
+  },
+  substack_note: {
+    key: "substack_note",
+    icon: "◉",
+    label: "Substack Note",
+    template: "shortform",
+    contentUnit: "Note",
+    section1Title: "THE NOTE",
+    headlineLabel: "ORIGINAL NOTE TEXT *",
+    subtitleLabel: null,
+    authorLabel: "AUTHOR",
+    authorPlaceholder: "Author name",
+    section2Title: "CORRECT THE NOTE",
+    replacementLabel: "CORRECTED VERSION * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: null,
+    section3Subtitle: null,
+    section3Desc: null,
+    editOrigLabel: null,
+    editOrigPlaceholder: null,
+    editReplLabel: null,
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "referencedLink",
+    juryGracePeriod: null,
+  },
+  reddit: {
+    key: "reddit",
+    icon: "◆",
+    label: "Reddit Post",
+    template: "shortform",
+    contentUnit: "Post",
+    section1Title: "THE POST",
+    headlineLabel: "POST TITLE *",
+    subtitleLabel: null,
+    authorLabel: "USER (u/)",
+    authorPlaceholder: "u/username",
+    section2Title: "CORRECT THE TITLE",
+    replacementLabel: "CORRECTED VERSION * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "EDIT THE POST BODY",
+    section3Subtitle: "UP TO 20",
+    section3Desc: "For text posts with a body, copy the exact text you want corrected.",
+    editOrigLabel: "ORIGINAL TEXT (COPY FROM POST)",
+    editOrigPlaceholder: "Paste the exact text from the post body",
+    editReplLabel: "REPLACEMENT TEXT",
+    showInlineEdits: "conditional",
+    showSubtitle: false,
+    extraFields: "redditType",
+    juryGracePeriod: null,
+  },
+  facebook: {
+    key: "facebook",
+    icon: "f",
+    label: "Facebook Post",
+    template: "shortform",
+    contentUnit: "Post",
+    section1Title: "THE POST",
+    headlineLabel: "ORIGINAL POST TEXT *",
+    subtitleLabel: null,
+    authorLabel: "ACCOUNT",
+    authorPlaceholder: "Account name",
+    section2Title: "CORRECT THE POST",
+    replacementLabel: "CORRECTED VERSION * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: null,
+    section3Subtitle: null,
+    section3Desc: null,
+    editOrigLabel: null,
+    editOrigPlaceholder: null,
+    editReplLabel: null,
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "privateWarning",
+    juryGracePeriod: null,
+  },
+  instagram: {
+    key: "instagram",
+    icon: "◎",
+    label: "Instagram Post",
+    template: "visual",
+    contentUnit: "Post",
+    section1Title: "THE POST",
+    headlineLabel: "ORIGINAL CAPTION *",
+    subtitleLabel: null,
+    authorLabel: "ACCOUNT (@HANDLE)",
+    authorPlaceholder: "@handle",
+    section2Title: "CORRECT THE CAPTION",
+    replacementLabel: "CORRECTED VERSION * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "CORRECT VISUAL CLAIMS",
+    section3Subtitle: null,
+    section3Desc: "Describe what the image or video claims or implies that is false or misleading.",
+    editOrigLabel: "VISUAL CLAIM (DESCRIBE WHAT IS SHOWN)",
+    editOrigPlaceholder: "What the image/video shows or implies",
+    editReplLabel: "THE TRUTH",
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "visualClaim",
+    juryGracePeriod: null,
+  },
+  tiktok: {
+    key: "tiktok",
+    icon: "♪",
+    label: "TikTok Video",
+    template: "video",
+    contentUnit: "Video",
+    section1Title: "THE VIDEO",
+    headlineLabel: "VIDEO DESCRIPTION *",
+    subtitleLabel: null,
+    authorLabel: "CREATOR (@HANDLE)",
+    authorPlaceholder: "@creator",
+    section2Title: "CORRECT THE DESCRIPTION",
+    replacementLabel: "CORRECTED VERSION * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "CORRECT SPOKEN / VISUAL CLAIMS",
+    section3Subtitle: null,
+    section3Desc: "Transcribe or describe the claim being made. TikTok content is primarily audio/visual — tell the jury what was said or shown.",
+    editOrigLabel: "SPOKEN OR VISUAL CLAIM",
+    editOrigPlaceholder: "What was said or shown in the video",
+    editReplLabel: "THE TRUTH",
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "timestamp",
+    juryGracePeriod: null,
+  },
+  linkedin: {
+    key: "linkedin",
+    icon: "in",
+    label: "LinkedIn Post",
+    template: "shortform",
+    contentUnit: "Post",
+    section1Title: "THE POST",
+    headlineLabel: "ORIGINAL POST TEXT *",
+    subtitleLabel: null,
+    authorLabel: "AUTHOR",
+    authorPlaceholder: "Author name",
+    section2Title: "CORRECT THE POST",
+    replacementLabel: "CORRECTED VERSION * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: null,
+    section3Subtitle: null,
+    section3Desc: null,
+    editOrigLabel: null,
+    editOrigPlaceholder: null,
+    editReplLabel: null,
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "titleCompany",
+    juryGracePeriod: null,
+  },
+
+  // ─── Audio / Podcast ────────────────────────────────────────────
+  podcast: {
+    key: "podcast",
+    icon: "🎙",
+    label: "Podcast / Audio",
+    template: "audio",
+    contentUnit: "Episode",
+    section1Title: "THE EPISODE",
+    headlineLabel: "EPISODE TITLE *",
+    subtitleLabel: null,
+    authorLabel: "HOST / SPEAKER",
+    authorPlaceholder: "Who made the claim",
+    section2Title: "CORRECT THE EPISODE TITLE",
+    replacementLabel: "PROPOSED REPLACEMENT * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "CORRECT SPOKEN CLAIMS",
+    section3Subtitle: "TRANSCRIPT REQUIRED",
+    section3Desc: "Audio content has no text to match against — the transcript excerpt IS the evidence. Jurors must be able to listen and verify, so timestamps and exact words are critical.",
+    editOrigLabel: "TRANSCRIPT EXCERPT — WHAT WAS SAID *",
+    editOrigPlaceholder: "Type or paste the exact words spoken in the episode",
+    editReplLabel: "THE TRUTH",
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "podcastFields",
+    juryGracePeriod: {
+      label: "EXTENDED JURY REVIEW",
+      days: "14 days",
+      reason: "Audio corrections require jurors to listen to the source material, which takes significantly longer than reading text. This submission type receives an extended review window to ensure fair and thorough evaluation.",
+    },
+  },
+
+  // ─── Product / Listing ──────────────────────────────────────────
+  product: {
+    key: "product",
+    icon: "🏷",
+    label: "Product Listing",
+    template: "product",
+    contentUnit: "Listing",
+    section1Title: "THE PRODUCT",
+    headlineLabel: "PRODUCT NAME / TITLE *",
+    subtitleLabel: null,
+    authorLabel: "BRAND / SELLER",
+    authorPlaceholder: "Who sells or manufactures this",
+    section2Title: "CORRECT THE LISTING",
+    replacementLabel: "CORRECTED CLAIM * — ",
+    replacementAccent: "THE RED PEN",
+    section3Title: "FLAG SPECIFIC CLAIMS",
+    section3Subtitle: null,
+    section3Desc: "Product listings often contain multiple misleading claims — certifications, specifications, sourcing, efficacy. Flag each one separately so jurors can evaluate them independently.",
+    editOrigLabel: "EXACT CLAIM FROM LISTING *",
+    editOrigPlaceholder: 'e.g. "100% Organic" or "Made in USA" or "Clinically proven"',
+    editReplLabel: "THE TRUTH",
+    showInlineEdits: false,
+    showSubtitle: false,
+    extraFields: "productFields",
+    juryGracePeriod: null,
+  },
+};
+
+function detectPlatform(url) {
+  if (!url) return null;
+  const u = url.toLowerCase();
+
+  // Video platforms
+  if (u.includes("youtube.com/watch") || u.includes("youtu.be/") || u.includes("youtube.com/shorts")) return PLATFORMS.youtube;
+  if (u.includes("tiktok.com")) return PLATFORMS.tiktok;
+  if (u.includes("vimeo.com") || u.includes("dailymotion.com") || u.includes("rumble.com") || u.includes("bitchute.com")) return PLATFORMS.youtube;
+
+  // Audio / Podcast — check BEFORE generic youtube/spotify
+  if (u.includes("open.spotify.com/episode") || u.includes("open.spotify.com/show")) return PLATFORMS.podcast;
+  if (u.includes("podcasts.apple.com")) return PLATFORMS.podcast;
+  if (u.includes("soundcloud.com")) return PLATFORMS.podcast;
+  if (u.includes("podbean.com") || u.includes("anchor.fm") || u.includes("overcast.fm")) return PLATFORMS.podcast;
+  if (u.includes("castbox.fm") || u.includes("pocketcasts.com") || u.includes("pod.link")) return PLATFORMS.podcast;
+  if (u.includes("iheart.com/podcast") || u.includes("stitcher.com")) return PLATFORMS.podcast;
+  if (u.includes("music.youtube.com") && u.includes("podcast")) return PLATFORMS.podcast;
+
+  // Social — shortform text
+  if (u.includes("x.com") || u.includes("twitter.com")) return PLATFORMS.twitter;
+  if (u.includes("threads.net")) return PLATFORMS.twitter;
+  if (u.includes("bsky.app") || u.includes("bsky.social")) return PLATFORMS.twitter;
+  if (u.includes("mastodon.") || u.includes("mstdn.")) return PLATFORMS.twitter;
+  if (u.includes("truthsocial.com")) return PLATFORMS.twitter;
+
+  // Substack (notes vs articles)
+  if (u.includes("substack.com") && (u.includes("/note") || u.includes("/notes"))) return PLATFORMS.substack_note;
+  if (u.includes("substack.com")) return PLATFORMS.substack_article;
+
+  // Social — other
+  if (u.includes("reddit.com")) return PLATFORMS.reddit;
+  if (u.includes("facebook.com") || u.includes("fb.com") || u.includes("fb.watch")) return PLATFORMS.facebook;
+  if (u.includes("instagram.com")) return PLATFORMS.instagram;
+  if (u.includes("pinterest.com") || u.includes("pin.it")) return PLATFORMS.instagram;
+  if (u.includes("linkedin.com")) return PLATFORMS.linkedin;
+  if (u.includes("tumblr.com")) return PLATFORMS.twitter;
+
+  // E-commerce / Product
+  if (u.includes("amazon.com") || u.includes("amazon.co.")) return PLATFORMS.product;
+  if (u.includes("ebay.com")) return PLATFORMS.product;
+  if (u.includes("walmart.com") && (u.includes("/ip/") || u.includes("/product/"))) return PLATFORMS.product;
+  if (u.includes("target.com") && u.includes("/p/")) return PLATFORMS.product;
+  if (u.includes("bestbuy.com") && u.includes("/site/")) return PLATFORMS.product;
+  if (u.includes("etsy.com") && u.includes("/listing/")) return PLATFORMS.product;
+  if (u.includes("aliexpress.com") && u.includes("/item/")) return PLATFORMS.product;
+  if (u.includes("shopify.com") && u.includes("/products/")) return PLATFORMS.product;
+
+  // Q&A → reddit model (title + body)
+  if (u.includes("quora.com")) return PLATFORMS.reddit;
+  if (u.includes("stackoverflow.com") || u.includes("stackexchange.com")) return PLATFORMS.reddit;
+
+  // Blog platforms → article
+  if (u.includes("medium.com")) return PLATFORMS.substack_article;
+  if (u.includes("wordpress.com") || u.includes("wp.com")) return PLATFORMS.article;
+  if (u.includes("ghost.io") || u.includes("ghost.org")) return PLATFORMS.article;
+  if (u.includes("blogger.com") || u.includes("blogspot.com")) return PLATFORMS.article;
+
+  // News aggregators → article
+  if (u.includes("news.google.com") || u.includes("msn.com") || u.includes("news.yahoo.com")) return PLATFORMS.article;
+  if (u.includes("flipboard.com") || u.includes("apple.news")) return PLATFORMS.article;
+
+  // Wikipedia → article
+  if (u.includes("wikipedia.org")) return PLATFORMS.article;
+
+  // Default to article for any other URL with http
+  if (u.startsWith("http")) return PLATFORMS.article;
+  return null;
+}
+
+// ─── Styles ────────────────────────────────────────────────────────
+const COLORS = {
+  bg: "#FAF8F0",
+  card: "#FFFFFF",
+  gold: "#B8963E",
+  goldLight: "#B8963E22",
+  goldBorder: "#B8963E55",
+  red: "#C0392B",
+  redLight: "#C0392B15",
+  redBorder: "#C0392B",
+  green: "#27AE60",
+  greenLight: "#27AE6015",
+  text: "#1a1a1a",
+  muted: "#888888",
+  subtle: "#aaaaaa",
+  border: "#e0dcd0",
+  inputBg: "#FFFFFF",
+  inputBorder: "#d4d0c4",
+  cream: "#f5f0e0",
+  amber: "#D4850A",
+  amberLight: "#D4850A12",
+};
+
+const FONT = {
+  serif: "'Georgia', 'Newsreader', serif",
+  mono: "'IBM Plex Mono', 'Courier New', monospace",
+  sans: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+};
+
+// ─── Shared Components ─────────────────────────────────────────────
+
+function Label({ children, style }) {
+  return (
+    <div style={{
+      fontFamily: FONT.mono, fontSize: 10, letterSpacing: "1.5px",
+      textTransform: "uppercase", color: COLORS.muted, marginBottom: 6, fontWeight: 500, ...style,
+    }}>{children}</div>
+  );
+}
+
+function Input({ placeholder, value, onChange, multiline, style, redBorder }) {
+  const base = {
+    width: "100%", boxSizing: "border-box", background: COLORS.inputBg,
+    border: `1px solid ${redBorder ? COLORS.redBorder : COLORS.inputBorder}`,
+    borderRadius: 0, padding: "10px 12px", fontSize: 14, fontFamily: FONT.sans,
+    color: COLORS.text, outline: "none", transition: "border-color 0.2s", ...style,
+  };
+  if (multiline) {
+    return <textarea placeholder={placeholder} value={value} onChange={onChange} rows={3}
+      style={{ ...base, resize: "vertical", minHeight: 72 }} />;
+  }
+  return <input type="text" placeholder={placeholder} value={value} onChange={onChange} style={base} />;
+}
+
+function AccordionSection({ number, title, subtitle, isOpen, onToggle, children, highlight }) {
+  return (
+    <div style={{
+      border: `1px solid ${COLORS.border}`, marginBottom: 0, borderBottom: "none",
+      background: isOpen ? COLORS.card : "#fdfcf8",
+    }}>
+      <button onClick={onToggle} style={{
+        width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
+        background: "none", border: "none", cursor: "pointer", fontFamily: FONT.mono,
+        fontSize: 12, letterSpacing: "2px", textTransform: "uppercase", color: COLORS.text,
+        fontWeight: 700, textAlign: "left",
+      }}>
+        <span style={{ fontFamily: FONT.serif, fontSize: 20, fontWeight: 700,
+          color: highlight || COLORS.gold, lineHeight: 1, minWidth: 20 }}>{number}</span>
+        <span style={{ flex: 1 }}>
+          {title}
+          {subtitle && <span style={{ fontWeight: 400, fontSize: 10, color: COLORS.muted,
+            marginLeft: 8, letterSpacing: "1px" }}>{subtitle}</span>}
+        </span>
+        <span style={{ fontSize: 10, color: COLORS.muted }}>{isOpen ? "▲" : "▼"}</span>
+      </button>
+      {isOpen && <div style={{ padding: "0 16px 20px", animation: "fadeIn 0.2s ease" }}>{children}</div>}
+    </div>
+  );
+}
+
+function PlatformBadge({ platform }) {
+  if (!platform) return null;
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px",
+      background: COLORS.goldLight, border: `1px solid ${COLORS.goldBorder}`, fontFamily: FONT.mono,
+      fontSize: 10, letterSpacing: "1.5px", textTransform: "uppercase", color: COLORS.gold,
+      fontWeight: 600, marginBottom: 16, transition: "all 0.3s ease",
+    }}>
+      <span style={{ fontSize: 16, lineHeight: 1 }}>{platform.icon}</span>
+      {platform.label}
+      <span style={{ fontSize: 8, padding: "2px 6px", background: COLORS.gold,
+        color: COLORS.bg, fontWeight: 700, marginLeft: 4 }}>{platform.template.toUpperCase()}</span>
+    </div>
+  );
+}
+
+// ─── Jury Grace Period Notice ──────────────────────────────────────
+
+function JuryGracePeriodNotice({ config }) {
+  if (!config) return null;
+  return (
+    <div style={{
+      padding: "16px 18px", background: COLORS.amberLight,
+      border: `1.5px solid ${COLORS.amber}`, marginBottom: 20, animation: "fadeIn 0.3s ease",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <span style={{ fontSize: 20 }}>⏳</span>
+        <div>
+          <div style={{ fontFamily: FONT.mono, fontSize: 11, letterSpacing: "2px", fontWeight: 700,
+            color: COLORS.amber, textTransform: "uppercase" }}>{config.label}</div>
+          <div style={{ fontFamily: FONT.mono, fontSize: 10, color: COLORS.text,
+            fontWeight: 600, marginTop: 2 }}>Jury window: {config.days}</div>
+        </div>
+      </div>
+      <div style={{ fontFamily: FONT.sans, fontSize: 13, color: COLORS.text, lineHeight: 1.55 }}>
+        {config.reason}
+      </div>
+    </div>
+  );
+}
+
+// ─── Extra Fields by Platform ──────────────────────────────────────
+
+function TimestampField({ required }) {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Label>TIMESTAMP {required ? "*" : "(OPTIONAL)"}</Label>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <Input placeholder="e.g. 14:32" style={{ width: 100, flex: "none" }} />
+        <span style={{ fontFamily: FONT.mono, fontSize: 10, color: required ? COLORS.text : COLORS.muted }}>
+          {required ? "MM:SS — required for audio claims" : "MM:SS — helps jurors verify the claim"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ThreadPositionField() {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Label>THREAD POSITION (OPTIONAL)</Label>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <Input placeholder="e.g. 3" style={{ width: 60, flex: "none" }} />
+        <span style={{ fontFamily: FONT.mono, fontSize: 10, color: COLORS.muted }}>of</span>
+        <Input placeholder="e.g. 7" style={{ width: 60, flex: "none" }} />
+        <span style={{ fontFamily: FONT.mono, fontSize: 10, color: COLORS.muted }}>posts in thread</span>
+      </div>
+    </div>
+  );
+}
+
+function PublicationField() {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Label>PUBLICATION NAME</Label>
+      <Input placeholder='e.g. "Astral Codex Ten"' />
+      <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 4 }}>
+        The Substack publication name, distinct from the author
+      </span>
+    </div>
+  );
+}
+
+function ReferencedLinkField() {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Label>REFERENCED LINK (OPTIONAL)</Label>
+      <Input placeholder="URL the note is commenting on" />
+      <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 4 }}>
+        If this note is primarily sharing or reacting to another URL, the real claim may live there
+      </span>
+    </div>
+  );
+}
+
+function TitleCompanyField() {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Label>AUTHOR'S TITLE / COMPANY (OPTIONAL)</Label>
+      <Input placeholder='e.g. "VP of Engineering at Acme Corp"' />
+      <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 4 }}>
+        LinkedIn claims often carry implicit authority — this context helps jurors
+      </span>
+    </div>
+  );
+}
+
+function PrivateWarning() {
+  return (
+    <div style={{ marginTop: 14, padding: "10px 14px", background: "#FFF8E0",
+      border: `1px solid ${COLORS.gold}`, fontFamily: FONT.sans, fontSize: 12,
+      color: COLORS.text, lineHeight: 1.5 }}>
+      <strong style={{ color: COLORS.gold, fontFamily: FONT.mono, fontSize: 10, letterSpacing: 1 }}>
+        ⚠ NOTE:</strong>{" "}
+      This post may be private or restricted. If auto-import fails, paste the content manually. Jurors will need to verify access independently.
+    </div>
+  );
+}
+
+function RedditTypeToggle() {
+  const [type, setType] = useState("link");
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Label>POST TYPE</Label>
+      <div style={{ display: "flex", gap: 0 }}>
+        {["link", "text", "image/video"].map(t => (
+          <button key={t} onClick={() => setType(t)} style={{
+            padding: "8px 16px", fontFamily: FONT.mono, fontSize: 10, letterSpacing: "1px",
+            textTransform: "uppercase",
+            background: type === t ? COLORS.gold : "transparent",
+            color: type === t ? COLORS.bg : COLORS.muted,
+            border: `1px solid ${type === t ? COLORS.gold : COLORS.inputBorder}`,
+            cursor: "pointer", fontWeight: type === t ? 700 : 400,
+            borderRight: t !== "image/video" ? "none" : undefined,
+          }}>{t}</button>
+        ))}
+      </div>
+      {type === "link" && (
+        <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 6 }}>
+          Are you correcting the Reddit title, or the linked content?
+        </span>
+      )}
+    </div>
+  );
+}
+
+function VisualClaimField() {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Label>IMAGE / VISUAL CLAIM (DESCRIBE)</Label>
+      <Input multiline placeholder="Describe what the image or video claims or implies that is false or misleading" />
+      <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 4 }}>
+        Since images can't be inline-edited, describe the visual claim for jurors
+      </span>
+    </div>
+  );
+}
+
+function PodcastFields() {
+  return (
+    <>
+      <div style={{ marginTop: 14 }}>
+        <Label>SHOW / PODCAST NAME *</Label>
+        <Input placeholder='e.g. "The Joe Rogan Experience"' />
+        <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 4 }}>
+          The show name, distinct from the episode title
+        </span>
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <Label>GUEST / SPEAKER (IF NOT THE HOST)</Label>
+        <Input placeholder="Who made the specific claim being corrected" />
+        <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 4 }}>
+          Podcasts often have guests — identify who said it
+        </span>
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <Label>APPROXIMATE EPISODE DURATION</Label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Input placeholder="e.g. 2:34:00" style={{ width: 120, flex: "none" }} />
+          <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle }}>
+            Helps jurors gauge the review commitment
+          </span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ProductFields() {
+  const [category, setCategory] = useState("");
+  const categories = [
+    { value: "", label: "Select claim type..." },
+    { value: "labeling", label: 'Labeling / Certification — "Organic", "Fair Trade", "FDA Approved"' },
+    { value: "specs", label: "Specifications — dimensions, materials, capacity" },
+    { value: "safety", label: "Safety — warnings, hazard claims, age ratings" },
+    { value: "efficacy", label: 'Efficacy — "Clinically proven", health claims, performance' },
+    { value: "origin", label: 'Origin / Sourcing — "Made in USA", country of manufacture' },
+    { value: "environmental", label: 'Environmental — "Biodegradable", "Carbon neutral", greenwashing' },
+    { value: "reviews", label: "Reviews / Ratings — suspected fake reviews, manipulated ratings" },
+    { value: "other", label: "Other" },
+  ];
+  return (
+    <>
+      <div style={{ marginTop: 14 }}>
+        <Label>MARKETPLACE / RETAILER</Label>
+        <Input placeholder='e.g. "Amazon", "Walmart.com", "Etsy"' />
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <Label>CLAIM CATEGORY</Label>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} style={{
+          width: "100%", padding: "10px 12px", fontFamily: FONT.sans, fontSize: 13,
+          color: category ? COLORS.text : COLORS.subtle, background: COLORS.inputBg,
+          border: `1px solid ${COLORS.inputBorder}`, borderRadius: 0, outline: "none",
+          cursor: "pointer", appearance: "auto",
+        }}>
+          {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle, display: "block", marginTop: 4 }}>
+          Helps assemblies prioritize — safety claims are more urgent than inflated thread counts
+        </span>
+      </div>
+      {category === "safety" && (
+        <div style={{ marginTop: 10, padding: "10px 14px", background: COLORS.redLight,
+          border: `1px solid ${COLORS.red}`, fontFamily: FONT.sans, fontSize: 12,
+          color: COLORS.text, lineHeight: 1.5 }}>
+          <strong style={{ color: COLORS.red, fontFamily: FONT.mono, fontSize: 10, letterSpacing: 1 }}>
+            ⚠ SAFETY CLAIM:</strong>{" "}
+          False safety claims may endanger consumers. If this product poses an immediate risk, consider also reporting to the relevant regulatory body (CPSC, FDA, FTC).
+        </div>
+      )}
+    </>
+  );
+}
+
+function renderExtraField(type) {
+  switch (type) {
+    case "timestamp": return <TimestampField />;
+    case "threadPosition": return <ThreadPositionField />;
+    case "publication": return <PublicationField />;
+    case "referencedLink": return <ReferencedLinkField />;
+    case "titleCompany": return <TitleCompanyField />;
+    case "privateWarning": return <PrivateWarning />;
+    case "redditType": return <RedditTypeToggle />;
+    case "visualClaim": return <VisualClaimField />;
+    case "podcastFields": return <PodcastFields />;
+    case "productFields": return <ProductFields />;
+    default: return null;
+  }
+}
+
+// ─── Main App ──────────────────────────────────────────────────────
+
+function AdaptiveSubmit() {
+  const [url, setUrl] = useState("");
+  const [platform, setPlatform] = useState(null);
+  const [correctionType, setCorrectionType] = useState("correction");
+  const [openSections, setOpenSections] = useState({ 1: true });
+  const [selectedAssemblies, setSelectedAssemblies] = useState(["The General Public"]);
+  const [transitioning, setTransitioning] = useState(false);
+
+  const assemblies = [
+    "The General Public", "The Discerners", "The Lie Loggers",
+    "The De-Spinners", "AI Watchdogs", "True Boring Alignment",
+    "Label AI-generated content",
+  ];
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const detected = detectPlatform(url);
+      if (detected?.key !== platform?.key) {
+        setTransitioning(true);
+        setTimeout(() => {
+          setPlatform(detected);
+          setTransitioning(false);
+          if (detected) setOpenSections({ 1: true });
+        }, 150);
+      }
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [url]);
+
+  const toggleSection = (n) => setOpenSections(prev => ({ ...prev, [n]: !prev[n] }));
+  const toggleAssembly = (name) => setSelectedAssemblies(prev =>
+    prev.includes(name) ? prev.filter(a => a !== name) : [...prev, name]);
+
+  const demoUrls = [
+    { label: "News Article", url: "https://reuters.com/economy/example-article-2025" },
+    { label: "YouTube", url: "https://youtube.com/watch?v=dQw4w9WgXcQ" },
+    { label: "X / Twitter", url: "https://x.com/elonmusk/status/123456" },
+    { label: "Substack Article", url: "https://astralcodexten.substack.com/p/some-article" },
+    { label: "Substack Note", url: "https://substack.com/notes/12345" },
+    { label: "Reddit", url: "https://reddit.com/r/news/comments/abc123" },
+    { label: "Facebook", url: "https://facebook.com/post/12345" },
+    { label: "Instagram", url: "https://instagram.com/p/ABC123" },
+    { label: "TikTok", url: "https://tiktok.com/@user/video/12345" },
+    { label: "LinkedIn", url: "https://linkedin.com/posts/user-12345" },
+    { label: "Podcast", url: "https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk" },
+    { label: "Product", url: "https://amazon.com/dp/B09V3KXJPB" },
+  ];
+
+  return (
+    <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: FONT.sans, color: COLORS.text }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&display=swap');
+        * { box-sizing: border-box; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes morphIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        textarea:focus, input:focus { border-color: ${COLORS.gold} !important; }
+        select:focus { border-color: ${COLORS.gold} !important; outline: none; }
+        ::placeholder { color: ${COLORS.subtle}; }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ background: COLORS.card, borderBottom: `2px solid ${COLORS.gold}`,
+        padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontFamily: FONT.mono, fontSize: 14, fontWeight: 700, letterSpacing: "4px", color: COLORS.text }}>
+            <span style={{ fontSize: 18 }}>T</span>RUST{" "}<span style={{ fontSize: 18 }}>A</span>SSEMBLY
+          </div>
+          <div style={{ fontFamily: FONT.mono, fontSize: 8, letterSpacing: "3px",
+            color: COLORS.gold, fontWeight: 600, marginTop: 2 }}>TRUTH WILL OUT</div>
+        </div>
+        <div style={{ fontFamily: FONT.mono, fontSize: 9, letterSpacing: "1px", padding: "4px 10px",
+          border: `1px solid ${COLORS.gold}`, color: COLORS.gold, fontWeight: 600 }}>BETA</div>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 80px" }}>
+
+        <div style={{ fontFamily: FONT.mono, fontSize: 11, letterSpacing: "4px", textTransform: "uppercase",
+          color: COLORS.gold, fontWeight: 600, marginBottom: 6 }}>
+          SUBMIT {correctionType === "correction" ? "CORRECTION" : "AFFIRMATION"}
+        </div>
+
+        <div style={{ fontFamily: FONT.serif, fontSize: 22, fontWeight: 700, lineHeight: 1.35,
+          marginBottom: 6, color: COLORS.text }}>
+          {correctionType === "correction"
+            ? "You're correcting misleading content and submitting it for jury review."
+            : "You're affirming accurate content and lending it the weight of evidence."}
+        </div>
+        <div style={{ fontFamily: FONT.sans, fontSize: 14, color: COLORS.muted, marginBottom: 20, lineHeight: 1.5 }}>
+          Identify the content, propose a truthful replacement, explain your reasoning, and submit.
+          A jury of fellow citizens will review your {correctionType}.
+        </div>
+
+        {/* Correction / Affirmation Toggle */}
+        <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
+          {[
+            { type: "correction", color: COLORS.red, label: "CORRECTION", desc: "Correct something false or misleading" },
+            { type: "affirmation", color: COLORS.green, label: "AFFIRMATION", desc: "Lend weight and evidence to confirm something true" },
+          ].map(({ type, color, label, desc }) => (
+            <button key={type} onClick={() => setCorrectionType(type)} style={{
+              flex: 1, padding: "14px 16px", display: "flex", flexDirection: "column",
+              alignItems: "center", gap: 4,
+              background: correctionType === type ? `${color}15` : "transparent",
+              border: `1.5px solid ${correctionType === type ? color : COLORS.inputBorder}`,
+              borderRight: type === "correction" ? "none" : undefined,
+              cursor: "pointer", fontFamily: FONT.mono, fontSize: 11, letterSpacing: "2px",
+              fontWeight: 700, color: correctionType === type ? color : COLORS.muted,
+            }}>
+              {label}
+              <span style={{ fontSize: 9, fontWeight: 400, letterSpacing: "0.5px",
+                color: correctionType === type ? color : COLORS.subtle, textTransform: "none" }}>{desc}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Assembly Selection */}
+        <Label>SUBMIT TO ASSEMBLIES: (select one or more)</Label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 24 }}>
+          {assemblies.map(a => {
+            const sel = selectedAssemblies.includes(a);
+            return (
+              <button key={a} onClick={() => toggleAssembly(a)} style={{
+                padding: "6px 12px", fontFamily: FONT.mono, fontSize: 9, letterSpacing: "0.5px",
+                background: sel ? COLORS.gold : "transparent",
+                color: sel ? COLORS.bg : COLORS.muted,
+                border: `1px solid ${sel ? COLORS.gold : COLORS.inputBorder}`,
+                cursor: "pointer", fontWeight: sel ? 700 : 400, transition: "all 0.15s ease",
+              }}>{sel ? "✕ " : ""}{a}</button>
+            );
+          })}
+        </div>
+
+        {/* URL Input */}
+        <div style={{ background: COLORS.cream, border: `1.5px solid ${COLORS.gold}`, padding: 20, marginBottom: 24 }}>
+          <Label style={{ color: COLORS.gold, fontWeight: 700, marginBottom: 10, fontSize: 11 }}>
+            PASTE A URL TO BEGIN
+          </Label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} style={{ flex: 1 }} />
+            <button style={{ padding: "10px 20px", background: COLORS.gold, color: COLORS.bg, border: "none",
+              fontFamily: FONT.mono, fontSize: 10, fontWeight: 700, letterSpacing: "1.5px",
+              cursor: "pointer", whiteSpace: "nowrap" }}>IMPORT</button>
+          </div>
+
+          {platform && (
+            <div style={{ marginTop: 14, animation: "morphIn 0.3s ease" }}>
+              <PlatformBadge platform={platform} />
+              <div style={{ fontFamily: FONT.sans, fontSize: 12, color: COLORS.muted, lineHeight: 1.5 }}>
+                Detected <strong style={{ color: COLORS.text }}>{platform.label}</strong> — form
+                adjusted for {platform.contentUnit.toLowerCase()} content.
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 14 }}>
+            <Label style={{ fontSize: 8, color: COLORS.subtle }}>QUICK TEST — click a platform:</Label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+              {demoUrls.map(d => (
+                <button key={d.label} onClick={() => setUrl(d.url)} style={{
+                  padding: "3px 8px", fontFamily: FONT.mono, fontSize: 8, letterSpacing: "0.5px",
+                  background: platform?.label === d.label ? COLORS.gold : "transparent",
+                  color: platform?.label === d.label ? COLORS.bg : COLORS.subtle,
+                  border: `1px solid ${platform?.label === d.label ? COLORS.gold : COLORS.border}`,
+                  cursor: "pointer", transition: "all 0.15s",
+                }}>{d.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Adaptive Form ── */}
+        {platform && (
+          <div style={{
+            opacity: transitioning ? 0 : 1,
+            transform: transitioning ? "translateY(8px)" : "translateY(0)",
+            transition: "all 0.2s ease",
+          }}>
+            {/* Jury Grace Period (audio) */}
+            <JuryGracePeriodNotice config={platform.juryGracePeriod} />
+
+            {/* Section 1: The Content */}
+            <AccordionSection number="1" title={platform.section1Title}
+              isOpen={openSections[1]} onToggle={() => toggleSection(1)}>
+              <div style={{ marginBottom: 14 }}>
+                <Label>{platform.headlineLabel}</Label>
+                <Input
+                  multiline={platform.template === "shortform"}
+                  placeholder={
+                    platform.template === "shortform" ? `Paste the full ${platform.contentUnit.toLowerCase()} text`
+                    : platform.template === "product" ? "Full product name as listed"
+                    : `${platform.contentUnit} title or headline`
+                  }
+                />
+              </div>
+              {platform.showSubtitle && (
+                <div style={{ marginBottom: 14 }}>
+                  <Label>{platform.subtitleLabel}</Label>
+                  <Input placeholder="Subtitle if present" />
+                </div>
+              )}
+              <div style={{ marginBottom: 0 }}>
+                <Label>{platform.authorLabel}</Label>
+                <Input placeholder={platform.authorPlaceholder} />
+              </div>
+              {platform.extraFields && renderExtraField(platform.extraFields)}
+            </AccordionSection>
+
+            {/* Section 2: Correct / Rewrite */}
+            <AccordionSection number="2" title={platform.section2Title}
+              isOpen={openSections[2]} onToggle={() => toggleSection(2)} highlight={COLORS.red}>
+              {correctionType === "correction" && (
+                <div style={{ marginBottom: 14 }}>
+                  <Label>
+                    {platform.replacementLabel}
+                    <span style={{ color: COLORS.red }}>{platform.replacementAccent}</span>
+                  </Label>
+                  <Input
+                    placeholder={
+                      platform.template === "shortform" ? `Your corrected version of the ${platform.contentUnit.toLowerCase()}`
+                      : platform.template === "product" ? "What the listing should actually say"
+                      : "Your proposed truthful replacement"
+                    }
+                    multiline={platform.template === "shortform"}
+                    redBorder
+                  />
+                </div>
+              )}
+              {correctionType === "affirmation" && (
+                <div style={{ padding: "12px 16px", background: COLORS.greenLight,
+                  border: `1px solid ${COLORS.green}`, fontFamily: FONT.sans, fontSize: 13,
+                  color: COLORS.text, lineHeight: 1.5, marginBottom: 14 }}>
+                  Affirmations confirm the original content is accurate — no replacement needed.
+                  Provide your reasoning and evidence below.
+                </div>
+              )}
+              <div style={{ marginBottom: 14 }}>
+                <Label>REASONING *</Label>
+                <Input multiline placeholder={correctionType === "correction"
+                  ? "Why is the original wrong or misleading?"
+                  : "Why is this content accurate and trustworthy?"} />
+              </div>
+              <Label>SUPPORTING EVIDENCE</Label>
+              <div style={{ border: `1px solid ${COLORS.inputBorder}`, padding: 14, marginBottom: 10 }}>
+                <Label style={{ fontSize: 9 }}>EVIDENCE URL #1</Label>
+                <Input placeholder="https://..." style={{ marginBottom: 8 }} />
+                <Label style={{ fontSize: 9 }}>WHY DOES THIS SUPPORT YOUR ARGUMENT?</Label>
+                <Input placeholder="What this source proves..." multiline />
+              </div>
+              <button style={{ fontFamily: FONT.mono, fontSize: 10, color: COLORS.gold,
+                background: "none", border: "none", cursor: "pointer", padding: "6px 0",
+                letterSpacing: "0.5px" }}>+ Add Evidence</button>
+              <div style={{ marginTop: 14, padding: "12px 16px", borderLeft: `3px solid ${COLORS.gold}`,
+                background: COLORS.cream, fontFamily: FONT.sans, fontSize: 12,
+                color: COLORS.text, lineHeight: 1.5 }}>
+                <strong style={{ color: COLORS.gold }}>Tip:</strong>{" "}
+                {platform.template === "audio"
+                  ? "Audio corrections rely heavily on your transcript and timestamp. Jurors will need to listen — make their job easier by being precise about what was said and when."
+                  : platform.template === "product"
+                    ? "Product claim corrections are strongest when backed by regulatory references, lab test results, or official certification databases. Link to the FTC, FDA, CPSC, or the certifying body."
+                    : `Stick to what you can prove. ${correctionType === "correction" ? "Corrections" : "Affirmations"} backed by evidence and clear reasoning survive review. Jurors respect intellectual honesty more than false confidence.`
+                }
+              </div>
+            </AccordionSection>
+
+            {/* Section 3: Inline Edits / Claims */}
+            {platform.section3Title && (
+              <AccordionSection number="3" title={platform.section3Title}
+                subtitle={platform.section3Subtitle}
+                isOpen={openSections[3]} onToggle={() => toggleSection(3)} highlight={COLORS.red}>
+                <div style={{ fontFamily: FONT.sans, fontSize: 13, color: COLORS.muted,
+                  lineHeight: 1.5, marginBottom: 16 }}>{platform.section3Desc}</div>
+
+                {/* Article: inline edits */}
+                {platform.template === "article" && (
+                  <>
+                    <Label style={{ marginBottom: 2 }}>
+                      IN-LINE {platform.contentUnit.toUpperCase()} EDITS
+                      <span style={{ float: "right", color: COLORS.subtle }}>0/20</span>
+                    </Label>
+                    <div style={{ border: `1px solid ${COLORS.inputBorder}`, padding: 16, marginBottom: 10 }}>
+                      <div style={{ fontFamily: FONT.mono, fontSize: 10, color: COLORS.subtle, marginBottom: 10 }}>Edit #1</div>
+                      <Label>{platform.editOrigLabel}</Label>
+                      <Input placeholder={platform.editOrigPlaceholder} multiline style={{ marginBottom: 12 }} />
+                      <Label>{platform.editReplLabel} <span style={{ color: COLORS.red }}>— RED PEN</span></Label>
+                      <Input placeholder="Your corrected version" redBorder style={{ marginBottom: 12 }} />
+                      <Label>REASONING</Label>
+                      <Input placeholder="Why is the original wrong or misleading?" multiline />
+                    </div>
+                  </>
+                )}
+
+                {/* Video / Visual: claims + optional timestamp */}
+                {(platform.template === "video" || platform.template === "visual") && (
+                  <div style={{ border: `1px solid ${COLORS.inputBorder}`, padding: 16, marginBottom: 10 }}>
+                    <Label>{platform.editOrigLabel}</Label>
+                    <Input placeholder={platform.editOrigPlaceholder} multiline style={{ marginBottom: 12 }} />
+                    {platform.extraFields === "timestamp" && <TimestampField />}
+                    <div style={{ marginTop: 12 }}>
+                      <Label>{platform.editReplLabel} <span style={{ color: COLORS.red }}>— RED PEN</span></Label>
+                      <Input placeholder="The factual truth" redBorder multiline style={{ marginBottom: 12 }} />
+                    </div>
+                    <Label>REASONING</Label>
+                    <Input placeholder="Why is this claim false or misleading?" multiline />
+                  </div>
+                )}
+
+                {/* Audio: transcript-driven claims */}
+                {platform.template === "audio" && (
+                  <div style={{ border: `1px solid ${COLORS.inputBorder}`, padding: 16, marginBottom: 10 }}>
+                    <div style={{ padding: "10px 14px", background: COLORS.amberLight,
+                      border: `1px solid ${COLORS.amber}`, fontFamily: FONT.sans, fontSize: 12,
+                      color: COLORS.text, lineHeight: 1.5, marginBottom: 14 }}>
+                      <strong style={{ color: COLORS.amber, fontFamily: FONT.mono, fontSize: 9, letterSpacing: 1 }}>
+                        JURORS MUST LISTEN:</strong>{" "}
+                      There is no text for jurors to scan — they must listen to the audio at your timestamp.
+                      Provide exact words and a precise timestamp to make verification possible.
+                    </div>
+                    <TimestampField required />
+                    <div style={{ marginTop: 14 }}>
+                      <Label>{platform.editOrigLabel}</Label>
+                      <Input placeholder={platform.editOrigPlaceholder} multiline
+                        style={{ marginBottom: 4, minHeight: 100 }} />
+                      <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle,
+                        display: "block", marginBottom: 12 }}>
+                        Transcribe the exact words. Jurors will listen and compare your transcript to what they hear.
+                      </span>
+                    </div>
+                    <Label>{platform.editReplLabel} <span style={{ color: COLORS.red }}>— RED PEN</span></Label>
+                    <Input placeholder="The factual truth" redBorder multiline style={{ marginBottom: 12 }} />
+                    <Label>REASONING</Label>
+                    <Input placeholder="Why is this claim false or misleading?" multiline />
+                  </div>
+                )}
+
+                {/* Product: structured claim flagging */}
+                {platform.template === "product" && (
+                  <>
+                    <div style={{ border: `1px solid ${COLORS.inputBorder}`, padding: 16, marginBottom: 10 }}>
+                      <div style={{ fontFamily: FONT.mono, fontSize: 10, color: COLORS.subtle, marginBottom: 10 }}>
+                        Claim #1
+                      </div>
+                      <Label>{platform.editOrigLabel}</Label>
+                      <Input placeholder={platform.editOrigPlaceholder} multiline style={{ marginBottom: 12 }} />
+                      <Label>WHERE ON THE LISTING</Label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 0, marginBottom: 12 }}>
+                        {["Title", "Description", "Bullet points", "Images", "Specs", "Reviews"].map((loc, i, arr) => (
+                          <button key={loc} style={{
+                            padding: "6px 10px", fontFamily: FONT.mono, fontSize: 8, letterSpacing: "0.5px",
+                            background: "transparent", color: COLORS.muted,
+                            border: `1px solid ${COLORS.inputBorder}`,
+                            borderRight: i < arr.length - 1 ? "none" : undefined, cursor: "pointer",
+                          }}>{loc}</button>
+                        ))}
+                      </div>
+                      <Label>{platform.editReplLabel} <span style={{ color: COLORS.red }}>— RED PEN</span></Label>
+                      <Input placeholder="What the truth actually is" redBorder multiline style={{ marginBottom: 12 }} />
+                      <Label>REASONING</Label>
+                      <Input placeholder="How do you know this claim is false? Cite regulatory filings, lab tests, certifications, etc." multiline />
+                    </div>
+                    <button style={{ fontFamily: FONT.mono, fontSize: 10, color: COLORS.gold,
+                      background: "none", border: `1px dashed ${COLORS.goldBorder}`, cursor: "pointer",
+                      padding: "10px 16px", width: "100%", textAlign: "center", letterSpacing: "0.5px" }}>
+                      + Flag another claim on this listing
+                    </button>
+                  </>
+                )}
+
+                {/* Reddit conditional */}
+                {platform.showInlineEdits === "conditional" && (
+                  <div style={{ padding: "10px 14px", background: COLORS.cream,
+                    border: `1px solid ${COLORS.goldBorder}`, fontFamily: FONT.sans, fontSize: 12,
+                    color: COLORS.muted, lineHeight: 1.5 }}>
+                    Inline body edits are available for text posts. If this is a link post or image post,
+                    use the claims section above instead.
+                  </div>
+                )}
+              </AccordionSection>
+            )}
+
+            {/* Section 4: Build the Case */}
+            <AccordionSection number={platform.section3Title ? "4" : "3"} title="BUILD THE CASE"
+              subtitle="SEARCH OR CREATE" isOpen={openSections[4]} onToggle={() => toggleSection(4)}>
+              <div style={{ fontFamily: FONT.sans, fontSize: 13, color: COLORS.muted, lineHeight: 1.6, marginBottom: 16 }}>
+                Link existing vault entries to strengthen your {correctionType}, or propose new ones.
+                Linked entries are voted on by jurors — each time one survives review, it gains reputation.
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {["LINK EXISTING SUBMISSION", "LINK EXISTING VAULT ENTRY"].map(label => (
+                  <button key={label} style={{
+                    padding: "10px 16px", fontFamily: FONT.mono, fontSize: 10, letterSpacing: "1px",
+                    background: "transparent", border: `1px solid ${COLORS.inputBorder}`,
+                    color: COLORS.text, cursor: "pointer", textAlign: "left", textTransform: "uppercase",
+                  }}>{label}</button>
+                ))}
+              </div>
+              <details style={{ cursor: "pointer" }}>
+                <summary style={{ fontFamily: FONT.mono, fontSize: 10, letterSpacing: "1px",
+                  color: COLORS.muted, marginBottom: 12, padding: "8px 0" }}>
+                  + PROPOSE NEW VAULT ENTRIES
+                </summary>
+                {[
+                  { icon: "⊞", name: "STANDING CORRECTIONS", desc: "— reusable facts",
+                    fieldLabel: "FACTUAL ASSERTION",
+                    placeholder: 'e.g. "The XYZ recall was a software update, not a physical recall"',
+                    addLabel: "+ Add another standing correction" },
+                  { icon: "⇆", name: "ARGUMENTS", desc: "— reusable rhetorical or logical tools",
+                    fieldLabel: null,
+                    placeholder: 'e.g. "When an article cites unnamed experts, the absence of names IS the story."',
+                    addLabel: "+ Add another argument" },
+                  { icon: "⚜", name: "FOUNDATIONAL BELIEFS", desc: "— axioms your Assembly holds",
+                    fieldLabel: null,
+                    placeholder: 'e.g. "Every person deserves to make informed decisions based on truthful reporting."',
+                    addLabel: "+ Add another belief" },
+                ].map(item => (
+                  <div key={item.name} style={{ border: `1px solid ${COLORS.border}`, padding: 16, marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 16 }}>{item.icon}</span>
+                      <span style={{ fontFamily: FONT.mono, fontSize: 10, letterSpacing: "1.5px",
+                        color: COLORS.gold, fontWeight: 600 }}>{item.name}</span>
+                      <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.muted }}>{item.desc}</span>
+                    </div>
+                    {item.fieldLabel && <Label>{item.fieldLabel}</Label>}
+                    <Input multiline placeholder={item.placeholder} />
+                    <button style={{ marginTop: 8, fontFamily: FONT.mono, fontSize: 9, color: COLORS.gold,
+                      background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                      {item.addLabel}
+                    </button>
+                  </div>
+                ))}
+                {/* Translations */}
+                <div style={{ border: `1px solid ${COLORS.border}`, padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 16 }}>⇔</span>
+                    <span style={{ fontFamily: FONT.mono, fontSize: 10, letterSpacing: "1.5px",
+                      color: COLORS.gold, fontWeight: 600 }}>TRANSLATIONS</span>
+                    <span style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.muted }}>
+                      — strip spin, jargon, or propaganda</span>
+                  </div>
+                  <div style={{ fontFamily: FONT.sans, fontSize: 12, color: COLORS.gold,
+                    fontWeight: 600, lineHeight: 1.5, marginBottom: 10 }}>
+                    Assembly-wide — every citizen sees these wherever the original terms appear.
+                  </div>
+                  <Label>ORIGINAL PHRASE</Label>
+                  <Input placeholder='e.g. "Enhanced interrogation techniques"' style={{ marginBottom: 10 }} />
+                  <Label>PLAIN-LANGUAGE REPLACEMENT</Label>
+                  <Input placeholder='e.g. "Torture"' />
+                  <button style={{ marginTop: 8, fontFamily: FONT.mono, fontSize: 9, color: COLORS.gold,
+                    background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                    + Add another translation
+                  </button>
+                </div>
+              </details>
+            </AccordionSection>
+
+            <div style={{ borderTop: `1px solid ${COLORS.border}` }} />
+
+            {/* Submit / Save */}
+            <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+              <button style={{ flex: 2, padding: "16px 24px",
+                background: correctionType === "correction" ? COLORS.red : COLORS.green,
+                color: "#fff", border: "none", fontFamily: FONT.mono, fontSize: 12,
+                fontWeight: 700, letterSpacing: "2px", cursor: "pointer" }}>Submit for Review</button>
+              <button style={{ flex: 1, padding: "16px 24px", background: "transparent",
+                color: COLORS.gold, border: `1.5px solid ${COLORS.gold}`, fontFamily: FONT.mono,
+                fontSize: 12, fontWeight: 700, letterSpacing: "2px", cursor: "pointer" }}>Save Draft</button>
+            </div>
+
+            {platform.juryGracePeriod && (
+              <div style={{ marginTop: 16, padding: "10px 14px", background: COLORS.amberLight,
+                border: `1px solid ${COLORS.amber}`, fontFamily: FONT.mono, fontSize: 9,
+                color: COLORS.amber, letterSpacing: "0.5px", textAlign: "center", lineHeight: 1.5 }}>
+                ⏳ This submission will have a {platform.juryGracePeriod.days} jury review window
+              </div>
+            )}
+
+            <div style={{ fontFamily: FONT.mono, fontSize: 9, color: COLORS.subtle,
+              textAlign: "center", marginTop: 12, lineHeight: 1.5 }}>
+              Digital Citizens are solely responsible for the content of their submissions.
+              The Trust Assembly makes no claims regarding the accuracy of submitted corrections.
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!platform && (
+          <div style={{ textAlign: "center", padding: "48px 24px", color: COLORS.subtle }}>
+            <div style={{ fontFamily: FONT.serif, fontSize: 36, color: COLORS.border, marginBottom: 16 }}>↑</div>
+            <div style={{ fontFamily: FONT.serif, fontSize: 18, color: COLORS.muted, marginBottom: 8 }}>
+              Paste a URL to begin
+            </div>
+            <div style={{ fontFamily: FONT.sans, fontSize: 13, color: COLORS.subtle,
+              lineHeight: 1.5, maxWidth: 400, margin: "0 auto" }}>
+              The form adapts to the content type — articles, social posts, videos, podcasts,
+              product listings, and more. Each gets the right fields and labels for its platform.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(AdaptiveSubmit));
+  </script>
+</body>
+</html>
