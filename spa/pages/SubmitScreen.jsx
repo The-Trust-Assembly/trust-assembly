@@ -195,7 +195,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
     setMyOrgs(orgs);
     // Default to user's active org (only if no draft restored)
     if (user.orgId && selectedOrgIds.length === 0) setSelectedOrgIds([user.orgId]);
-  })(); }, [user.orgId, user.orgIds]);
+  })(); }, [user?.orgId, user?.orgIds]);
 
   // Load saved drafts list from server
   const fetchDrafts = async () => {
