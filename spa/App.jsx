@@ -916,14 +916,21 @@ export default function TrustAssembly() {
             </div>
           )}
 
-          {/* LANDING PAGE with URL input + recent corrections */}
-          <div style={{ maxWidth: 780, margin: "0 auto" }}>
-            <LandingPage
-              onSubmitUrl={(url) => { setScreen("submit"); window.history.pushState({ screen: "submit" }, "", "/submit?url=" + encodeURIComponent(url)); }}
-              onLogin={() => { setLoginAccordion(true); setScreen("login"); }}
-              onRegister={() => { setLoginAccordion(true); setScreen("register"); }}
-            />
-          </div>
+          {/* Anonymous submit page */}
+          {screen === "submit" ? (
+            <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px" }}>
+              <SubmitScreen user={null} onShowRegistration={() => { setLoginAccordion(true); setScreen("register"); }} />
+            </div>
+          ) : (
+            /* LANDING PAGE with URL input + recent corrections */
+            <div style={{ maxWidth: 780, margin: "0 auto" }}>
+              <LandingPage
+                onSubmitUrl={(url) => { setScreen("submit"); window.history.pushState({ screen: "submit" }, "", "/submit?url=" + encodeURIComponent(url)); }}
+                onLogin={() => { setLoginAccordion(true); setScreen("login"); }}
+                onRegister={() => { setLoginAccordion(true); setScreen("register"); }}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div>
@@ -1048,7 +1055,7 @@ export default function TrustAssembly() {
             ) : <>
             {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
-            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} />}
+            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} onShowRegistration={() => { setLoginAccordion(true); setScreen("register"); }} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}

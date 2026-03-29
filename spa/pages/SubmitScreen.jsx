@@ -8,7 +8,19 @@ import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrus
 import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer, Icon } from "../components/ui";
 import { queryKeys } from "../lib/queryKeys";
 
-export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded }) {
+function EducationHelper({ storageKey, children }) {
+  const key = `ta_helper_${storageKey}`;
+  const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem(key) === "1"; } catch { return false; } });
+  if (dismissed) return null;
+  return (
+    <div style={{ padding: "10px 14px", background: "rgba(212,168,67,0.06)", borderLeft: "3px solid var(--gold)", marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
+      {children}
+      <button onClick={() => { setDismissed(true); try { localStorage.setItem(key, "1"); } catch {} }} style={{ display: "block", marginTop: 6, background: "none", border: "none", color: "var(--gold)", cursor: "pointer", fontSize: 10, fontFamily: "var(--mono)", letterSpacing: "0.5px", padding: 0 }}>Got it</button>
+    </div>
+  );
+}
+
+export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, onShowRegistration }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [authors, setAuthors] = useState([]);
@@ -176,6 +188,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   });
 
   useEffect(() => { (async () => {
+    if (!user) return; // Anonymous users default to General Public (handled at submission time)
     const allOrgs = (await sG(SK.ORGS)) || {};
     const ids = user.orgIds || (user.orgId ? [user.orgId] : []);
     const orgs = ids.map(id => allOrgs[id]).filter(Boolean);
@@ -263,7 +276,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
     } catch {}
   };
 
-  const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || myOrgs.find(o => o.id === user.orgId);
+  const activeOrg = myOrgs.find(o => selectedOrgIds.includes(o.id)) || (user ? myOrgs.find(o => o.id === user.orgId) : null);
 
   const toggleOrg = (oid) => {
     setSelectedOrgIds(prev => prev.includes(oid) ? prev.filter(id => id !== oid) : [...prev, oid]);
@@ -272,17 +285,17 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
   const searchVault = async (query) => {
     setVaultSearch(query);
-    if (!query.trim() || !user.orgId) { setVaultResults([]); return; }
+    if (!query.trim() || !user?.orgId) { setVaultResults([]); return; }
     const q = query.toLowerCase().trim();
     const [v, a, b] = await Promise.all([sG(SK.VAULT), sG(SK.ARGS), sG(SK.BELIEFS)]);
     const results = [];
-    Object.values(v || {}).filter(x => x.orgId === user.orgId).forEach(x => {
+    Object.values(v || {}).filter(x => x.orgId === user?.orgId).forEach(x => {
       if (x.assertion && x.assertion.toLowerCase().includes(q)) results.push({ id: x.id, type: "correction", label: x.assertion, detail: x.evidence, survivalCount: x.survivalCount || 0 });
     });
-    Object.values(a || {}).filter(x => x.orgId === user.orgId).forEach(x => {
+    Object.values(a || {}).filter(x => x.orgId === user?.orgId).forEach(x => {
       if (x.content && x.content.toLowerCase().includes(q)) results.push({ id: x.id, type: "argument", label: x.content, survivalCount: x.survivalCount || 0 });
     });
-    Object.values(b || {}).filter(x => x.orgId === user.orgId).forEach(x => {
+    Object.values(b || {}).filter(x => x.orgId === user?.orgId).forEach(x => {
       if (x.content && x.content.toLowerCase().includes(q)) results.push({ id: x.id, type: "belief", label: x.content, survivalCount: x.survivalCount || 0 });
     });
     setVaultResults(results);
@@ -316,7 +329,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
 
   const validate = () => {
     setError("");
-    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
+    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user?.orgId ? [user.orgId] : []);
     if (targetOrgIds.length === 0) { setError("Select at least one Assembly."); return false; }
     if (!form.url.trim() || !form.originalHeadline.trim()) { setError("URL and original headline required."); return false; }
     if (form.submissionType === "correction" && !form.replacement.trim()) { setError("Corrected headline required for corrections."); return false; }
@@ -338,7 +351,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
   const go = async () => {
     setShowConfirm(false);
     setError(""); setSuccess("");
-    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user.orgId ? [user.orgId] : []);
+    const targetOrgIds = selectedOrgIds.length > 0 ? selectedOrgIds : (user?.orgId ? [user.orgId] : []);
     setLoading(true);
     // Filter non-empty inline edits and evidence (shared across all assemblies)
     const validEdits = inlineEdits.filter(e => e.original.trim() && e.replacement.trim());
@@ -560,10 +573,10 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>
       </div>
 
-      {hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
+      {user && hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
 
       {/* DI Status Banner */}
-      {isDIUser(user) && <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12 }}>
+      {user && isDIUser(user) && <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 12 }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="robot" size={14} /> AI Agent</div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
           Partner: <strong>@{user.diPartner}</strong> · {!user.diApproved ? <span style={{ color: "var(--red)" }}>Awaiting partner approval — submissions disabled</span> : "Approved"}
@@ -571,7 +584,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </div>
         <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4 }}>Your submissions will be flagged as AI-generated and require partner pre-approval before entering jury review.</div>
       </div>}
-      {activeOrg && (() => {
+      {user && activeOrg && (() => {
         const tp = getTrustedProgress(user, user.orgId);
         if (tp.isTrusted) return <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)", lineHeight: 1.6, display: "flex", alignItems: "center", gap: 4 }}><Icon name="trust-badge" size={14} /> <strong>Trusted Contributor</strong> in {activeOrg.name} — your submissions skip jury review and go straight to approved. Still disputable by any member.</div>;
         if (tp.current > 0) return <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
@@ -600,8 +613,13 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
         </button>
       </div>
 
+      {/* Anonymous user assembly notice */}
+      {!user && <div style={{ marginBottom: 14, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+        <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 4 }}>Assembly: The General Public</div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Join more assemblies after registration to submit corrections to specialized groups.</div>
+      </div>}
       {/* Org picker — multi-select */}
-      {myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+      {user && myOrgs.length > 1 && <div style={{ marginBottom: 14, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
         <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6 }}>Submit to assemblies: <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select one or more)</span></div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {myOrgs.map(o => { const sel = selectedOrgIds.includes(o.id); return <button key={o.id} onClick={() => toggleOrg(o.id)} style={{ padding: "3px 7px", fontSize: 8, fontFamily: "var(--mono)", border: sel ? "1px solid var(--gold)" : "1px solid var(--border)", background: sel ? "var(--gold)" : "transparent", color: sel ? "var(--bg)" : "var(--text-muted)", borderRadius: 0, cursor: "pointer", fontWeight: sel ? 700 : 400, display: "inline-flex", alignItems: "center", gap: 3 }}>{sel && "+ "}{o.name}</button>; })}
@@ -625,6 +643,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
             {platform.label}
             <span style={{ fontSize: 7, padding: "1px 4px", background: "var(--gold)", color: "var(--bg)", fontWeight: 700 }}>{platform.template.toUpperCase()}</span>
           </div>}
+          <EducationHelper storageKey="section1">Identify the content you want to correct. The more accurately you describe the original, the easier it is for jurors to verify.</EducationHelper>
           {/* Jury grace period notice (audio/podcast) */}
           {platform?.juryGracePeriod && <div style={{ padding: "12px 14px", background: "rgba(212,133,10,0.08)", border: "1.5px solid #D4850A", marginBottom: 14 }}>
             <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.5px", fontWeight: 700, color: "#D4850A", marginBottom: 4 }}>{platform.juryGracePeriod.label}</div>
@@ -709,6 +728,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 2 && <div style={{ marginTop: 12 }}>
+          <EducationHelper storageKey="section2">Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence.</EducationHelper>
           {form.submissionType === "correction" && <div className="ta-field"><label>{platform?.replacementLabel || "Proposed Replacement *"} <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label>
             {platform?.headlineMultiline
               ? <textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "shortform" ? `Your corrected version of the ${(platform?.contentUnit || "post").toLowerCase()}` : "Your corrected headline"} maxLength={500} rows={3} />
@@ -734,6 +754,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 3 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 3 && <div style={{ marginTop: 12 }}>
+          <EducationHelper storageKey="section3">{platform?.template === "article" ? "You can edit specific passages in the article body. The system finds each passage by exact text match." : platform?.template === "audio" ? "Audio content has no text for jurors to scan. Your transcript excerpt and timestamp are the primary evidence." : platform?.template === "product" ? "Flag each misleading claim separately so jurors can evaluate them independently." : "Describe the claims you want to correct with as much specificity as possible."}</EducationHelper>
           <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 10, lineHeight: 1.6 }}>{platform?.section3Desc || 'Copy the exact text from the article you want corrected into "Original Text." The system uses exact text matching to locate each passage. Up to 20 edits per article.'}</p>
           {/* Article template: standard inline edits */}
           {(!platform || platform.template === "article") && <InlineEditsForm edits={inlineEdits} onChange={setInlineEdits} />}
@@ -773,6 +794,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 4 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 4 && <div style={{ marginTop: 12 }}>
+          <EducationHelper storageKey="section4">Vault entries are reusable across submissions. A standing correction can be linked to every article that gets it wrong.</EducationHelper>
           <p style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 12, lineHeight: 1.6 }}>Link existing vault entries to strengthen your correction, or propose new ones. Linked entries are voted on by jurors — each time one survives review, it gains reputation.</p>
 
           {/* Linked entries chips */}
@@ -1036,7 +1058,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded })
       {/* ── Submit & Save Draft Buttons ── */}
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-          <button className="ta-btn-primary" onClick={handleSubmitClick} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : "Submit for Review"}</button>
+          <button className="ta-btn-primary" onClick={() => { if (!user && onShowRegistration) { onShowRegistration(); return; } handleSubmitClick(); }} disabled={loading} style={{ flex: 1, padding: "12px 16px", fontSize: 14 }}>{loading ? "Filing..." : user ? "Submit for Review" : "Sign up to submit"}</button>
           <button onClick={saveDraft} disabled={savingDraft} style={{
             padding: "12px 16px", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 600,
             background: "rgba(212,168,67,0.09)", color: "var(--gold)", border: "1.5px solid #CA8A04",
