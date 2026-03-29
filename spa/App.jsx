@@ -786,11 +786,11 @@ export default function TrustAssembly() {
           </div>
         </div>
       ) : !user ? (
-        /* ═══════════════════════════════════
-           LANDING PAGE — Hero with showcase
-           ═══════════════════════════════════ */
-        <div style={{ minHeight: "100vh" }}>
-          {/* HEADER */}
+        /* ══════════════════════════════════════
+           ANONYMOUS LANDING / SUBMIT
+           ══════════════════════════════════════ */
+        <div>
+          {/* Header */}
           <div className="hdr">
             <div className="hdr-left">
               <div className="hdr-bar" />
@@ -801,95 +801,6 @@ export default function TrustAssembly() {
             <button onClick={() => { setScreen("login"); setLoginAccordion(true); }} style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", background: "none", border: "1px solid var(--gold)", cursor: "pointer", padding: "4px 12px", letterSpacing: "1px", textTransform: "uppercase" }}>Login</button>
           </div>
           <div className="gold-rule" />
-
-          {/* HERO SECTION */}
-          <div style={{ background: "linear-gradient(180deg, #0D0D0D 0%, #1B2A4A 100%)", padding: "40px 24px 40px", textAlign: "center", overflow: "hidden" }}>
-            <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, fontWeight: 400, color: "#F0EDE6", lineHeight: 1.3, maxWidth: 560, margin: "0 auto 16px", animation: "ta-fadeUp 0.6s ease" }}>
-              The internet's corrections layer.
-            </h1>
-
-            {/* CTAs */}
-            <div style={{ marginBottom: 28, display: "flex", justifyContent: "center", gap: 12 }}>
-              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a1a1a", backgroundColor: "var(--gold)", border: "none", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => setShowExtPage(true)}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#D4B45E"}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = "#B8963E"}
-              >Install Extension</button>
-              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 500, color: "#ccc", backgroundColor: "transparent", border: "1px solid #444", borderRadius: 6, padding: "12px 28px", cursor: "pointer" }}
-                onClick={() => { setScreen("register"); setLoginAccordion(true); }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "#888"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#444"}
-              >Register an Account</button>
-            </div>
-
-            {/* Slide label */}
-            <div style={{ fontFamily: "-apple-system, sans-serif", fontSize: 13, color: "#999", marginBottom: 14, fontStyle: "italic", opacity: heroFading ? 0 : 1, transition: "opacity 0.2s" }}>
-              {HERO_SLIDES[heroIdx].label}
-            </div>
-
-            {/* CONTENT AREA */}
-            <div style={{ maxWidth: 740, margin: "0 auto", height: 480, overflow: "hidden", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(5px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
-              onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
-              {HERO_SLIDES[heroIdx].layout === "columns" ? (
-                <>
-                  <div style={{ display: "flex", gap: 16, marginBottom: 6, padding: "0 4px" }}>
-                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
-                    <div style={{ flex: 1, textAlign: "left" }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
-                  </div>
-                  <div style={{ display: "flex", gap: 16, minHeight: 200 }}>
-                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3)", border: "1px solid #333", opacity: 0.72 }}>{HERO_SLIDES[heroIdx].before}</div>
-                    <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
-                  </div>
-                </>
-              ) : (
-                <div style={{ maxWidth: 520, margin: "0 auto" }}>
-                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "#94A3B8", letterSpacing: "0.06em" }}>BEFORE</span></div>
-                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #333", opacity: 0.72, marginBottom: 12 }}>{HERO_SLIDES[heroIdx].before}</div>
-                  <div style={{ textAlign: "left", marginBottom: 6 }}><span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 600, color: "var(--gold)", letterSpacing: "0.06em" }}>AFTER TRUST ASSEMBLY</span></div>
-                  <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px #B8963E33", border: "1px solid #B8963E44" }}>{HERO_SLIDES[heroIdx].after}</div>
-                </div>
-              )}
-            </div>
-
-
-            {/* Descriptive text */}
-            <div style={{ maxWidth: 480, margin: "28px auto 0" }}>
-              <p style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14.5, color: "#888", lineHeight: 1.65 }}>
-                Community juries review headlines and claims across the web.
-                Corrections appear right where the misinformation lives — in your browser,
-                on every platform. No algorithm decides what's true. People do.
-              </p>
-            </div>
-
-          </div>
-
-          {/* HOW IT WORKS */}
-          <div style={{ padding: "48px 24px", backgroundColor: "#fff", maxWidth: 660, margin: "0 auto" }}>
-            <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 400, color: "#1a1a1a", textAlign: "center", marginBottom: 32 }}>How it works</h2>
-            {[
-              { n: "1", title: "Someone notices a misleading claim", desc: "A citizen submits a correction with evidence. An affirmation if the reporting is accurate. Both go through the same jury process." },
-              { n: "2", title: "A random jury reviews it", desc: "Jurors are randomly drawn from the citizen's Assembly. They vote independently. The math rewards honesty and makes deception structurally irrational." },
-              { n: "3", title: "Independent groups verify it", desc: "Approved corrections advance to juries from other Assemblies — people with different perspectives reviewing the same evidence. What survives both achieves Consensus." },
-              { n: "4", title: "The correction appears in your browser", desc: "Misleading headlines turn red. Accurate reporting turns green. Correction cards appear in social feeds. The truth surfaces everywhere the original claim lives." },
-            ].map((step, i) => (
-              <div key={i} style={{ display: "flex", gap: 16, padding: "18px 0", borderBottom: i < 3 ? "1px solid #eee" : "none" }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", backgroundColor: "#1a1a1a", color: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{step.n}</div>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{step.title}</div>
-                  <div style={{ fontSize: 13.5, color: "#777", lineHeight: 1.6 }}>{step.desc}</div>
-                </div>
-              </div>
-            ))}
-
-            {/* Closing CTA */}
-            <div style={{ textAlign: "center", marginTop: 40, padding: "32px 0", borderTop: "1px solid #eee" }}>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#1a1a1a", marginBottom: 6 }}>Honesty has a browser extension.</div>
-              <div style={{ fontSize: 13, color: "#999", marginBottom: 20 }}>Free. Open. Jury-verified. No algorithm decides what's true.</div>
-              <button style={{ fontFamily: "-apple-system, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", backgroundColor: "#1a1a1a", border: "none", borderRadius: 6, padding: "12px 32px", cursor: "pointer" }}
-                onClick={() => setLoginAccordion(true)}
-              >Get Started</button>
-            </div>
-          </div>
 
           {/* LOGIN/REGISTER MODAL */}
           {loginAccordion && (
@@ -916,20 +827,17 @@ export default function TrustAssembly() {
             </div>
           )}
 
-          {/* Anonymous submit page */}
+          {/* Anonymous submit page or Landing page */}
           {screen === "submit" ? (
-            <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px" }}>
+            <div style={{ maxWidth: 660, margin: "0 auto", padding: "20px" }}>
               <SubmitScreen user={null} onShowRegistration={() => { setLoginAccordion(true); setScreen("register"); }} />
             </div>
           ) : (
-            /* LANDING PAGE with URL input + recent corrections */
-            <div style={{ maxWidth: 780, margin: "0 auto" }}>
-              <LandingPage
-                onSubmitUrl={(url) => { setScreen("submit"); window.history.pushState({ screen: "submit" }, "", "/submit?url=" + encodeURIComponent(url)); }}
-                onLogin={() => { setLoginAccordion(true); setScreen("login"); }}
-                onRegister={() => { setLoginAccordion(true); setScreen("register"); }}
-              />
-            </div>
+            <LandingPage
+              onSubmitUrl={(url) => { setScreen("submit"); window.history.pushState({ screen: "submit" }, "", "/submit?url=" + encodeURIComponent(url)); }}
+              onLogin={() => { setLoginAccordion(true); setScreen("login"); }}
+              onRegister={() => { setLoginAccordion(true); setScreen("register"); }}
+            />
           )}
         </div>
       ) : (
