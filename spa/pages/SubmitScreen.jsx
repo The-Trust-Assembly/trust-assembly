@@ -4,6 +4,8 @@ import { SK } from "../lib/constants";
 import { sG } from "../lib/storage";
 import { useDraft, clearDraft } from "../lib/hooks";
 import { detectPlatform, CLAIM_CATEGORIES, LISTING_LOCATIONS } from "../lib/platforms";
+import { getContentDisplayMode } from "../lib/embedResolver";
+import ContentEmbed from "../components/ContentEmbed";
 import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining, getTrustedProgress, getDISubmissionLimit } from "../lib/permissions";
 import { EvidenceFields, InlineEditsForm, StandingCorrectionInput, LegalDisclaimer, Icon } from "../components/ui";
 import { queryKeys } from "../lib/queryKeys";
@@ -69,6 +71,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
   const [publicationName, setPublicationName] = useState("");
   const [threadPosition, setThreadPosition] = useState("");
   const [referencedLink, setReferencedLink] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
   const importTimerRef = useRef(null);
   const lastImportedUrlRef = useRef(null);
   const platformTimerRef = useRef(null);
@@ -112,6 +115,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
       if (fields.showName?.value && !podcastShowName) setPodcastShowName(fields.showName.value);
       if (fields.brand?.value && !productBrandSeller) setProductBrandSeller(fields.brand.value);
       if (fields.duration?.value && !episodeDuration) setEpisodeDuration(fields.duration.value);
+      if (fields.thumbnail?.value && !thumbnailUrl) setThumbnailUrl(fields.thumbnail.value);
 
       if (imported.length > 0) {
         setImportMsg(`Imported ${imported.join(" and ")} from ${result.recipeUsed || result.platform || "page"}.`);
@@ -382,6 +386,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         evidence: validEvidence.map(e => ({ url: e.url.trim(), explanation: e.explanation?.trim() || "" })),
         inlineEdits: validEdits.map(e => ({ original: e.original.trim(), replacement: e.replacement.trim(), reasoning: e.reasoning?.trim() || null })),
         linkedSubmissionIds: linkedSubs.map(s => s.id),
+        thumbnailUrl: thumbnailUrl || null,
       }),
     });
 
@@ -1129,21 +1134,31 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
       </div>
       </div>{/* end form-side */}
 
-      {/* ── RIGHT: ARTICLE PREVIEW (hidden on mobile) ── */}
+      {/* ── RIGHT: CONTENT PREVIEW (hidden on mobile) ── */}
       <div className="ta-preview-panel" style={{ flex: "0 0 340px", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)" }}>
+        {(() => { const displayMode = getContentDisplayMode(form.url, bodyText); return <>
         <div style={{ background: "var(--bg)", padding: "6px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-          <span style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Article preview</span>
-          <div style={{ display: "flex", border: "1px solid var(--border)", cursor: "pointer" }}>
+          <span style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>
+            {displayMode === "embed" ? "Content preview" : displayMode === "og-card" ? "Link preview" : "Article preview"}
+          </span>
+          {displayMode === "article-with-card" && <div style={{ display: "flex", border: "1px solid var(--border)", cursor: "pointer" }}>
             <span onClick={() => setPreviewMode("clean")} style={{ padding: "3px 7px", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", background: previewMode === "clean" ? "var(--gold)" : "transparent", color: previewMode === "clean" ? "var(--bg)" : "var(--text-muted)", fontWeight: previewMode === "clean" ? 700 : 400 }}>Clean</span>
             <span onClick={() => setPreviewMode("diff")} style={{ padding: "3px 7px", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", background: previewMode === "diff" ? "var(--gold)" : "transparent", color: previewMode === "diff" ? "var(--bg)" : "var(--text-muted)", fontWeight: previewMode === "diff" ? 700 : 400 }}>Diff</span>
-          </div>
+          </div>}
         </div>
         <div style={{ flex: 1, overflowY: "auto", background: "#f8f8f6", padding: "14px 12px", fontFamily: "Georgia, serif" }}>
           {!form.originalHeadline && !form.url ? (
             <div style={{ textAlign: "center", padding: 40, color: "#999", fontSize: 11, fontFamily: "var(--mono)" }}>
-              Import an article to see preview
+              Paste a URL to see preview
             </div>
+          ) : displayMode === "embed" ? (
+            <ContentEmbed url={form.url} title={form.originalHeadline} thumbnailUrl={thumbnailUrl} />
+          ) : displayMode === "og-card" ? (
+            <ContentEmbed url={form.url} title={form.originalHeadline} description={form.reasoning} thumbnailUrl={thumbnailUrl} />
           ) : (
+            <>
+            {/* OG card at top + text diff below for articles */}
+            <ContentEmbed url={form.url} title={form.originalHeadline} thumbnailUrl={thumbnailUrl} compact />
             <>
               {/* Section label */}
               {urlDomain && <div style={{ fontSize: 9, color: "#c44a3a", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, fontFamily: "sans-serif" }}>{urlDomain}</div>}
@@ -1229,8 +1244,10 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
                 </div>
               )}
             </>
+            </>
           )}
         </div>
+        </>; })()}
       </div>
       </div>{/* end split */}
       </div>

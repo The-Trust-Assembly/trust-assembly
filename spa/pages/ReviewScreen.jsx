@@ -8,6 +8,7 @@ import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining } from "
 import { recuseJuror, getConcessionRecovery, fileDispute } from "../lib/jury";
 import { clearDraft } from "../lib/hooks";
 import { queryKeys } from "../lib/queryKeys";
+import ContentEmbed from "../components/ContentEmbed";
 import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader, Icon } from "../components/ui";
 import DIPanelContent from "../components/DIPanelContent";
 
@@ -370,7 +371,7 @@ function ReviewScreenInner({ user }) {
           <StatusPill status={sub.status} />
         </div>
       </div>
-      <a href={safeHref(sub.url)} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(sub.url)}</a>
+      <ContentEmbed url={sub.url} title={sub.originalHeadline} thumbnailUrl={sub.thumbnailUrl || sub.thumbnail_url} compact />
       {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", padding: "4px 8px", background: "var(--card-bg)", borderRadius: 0, marginTop: 6 }}>Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
       <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />

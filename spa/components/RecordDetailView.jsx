@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { anonName, sDate } from "../lib/utils";
 import { UsernameLink, SubHeadline, StatusPill, AuditTrail, Icon } from "./ui";
+import ContentEmbed from "./ContentEmbed";
 
 // Deterministic anonymous ID from a seed string — same input always produces same output
 function stableAnonId(prefix, seed) {
@@ -62,6 +63,7 @@ export default function RecordDetailView({ sub, onViewCitizen, status }) {
           <div className="ribbon-body">
             <a href={safeHref(sub.url)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--gold)", marginBottom: 4, textDecoration: "none", wordBreak: "break-all", display: "block" }}>{sub.url}</a>
             {domain && <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 4 }}>{domain}</div>}
+            <ContentEmbed url={sub.url} title={sub.originalHeadline} thumbnailUrl={sub.thumbnailUrl || sub.thumbnail_url} domain={domain} />
             <div style={{ fontSize: 10, color: "var(--text-sec)" }}>Author: {sub.author || <span style={{ fontStyle: "italic", color: "var(--text-muted)" }}>Not specified</span>}</div>
           </div>
         )}
