@@ -15,6 +15,7 @@ import RulesScreen from "./pages/RulesScreen";
 import BadgesScreen from "./pages/BadgesScreen";
 import VisionScreen from "./pages/VisionScreen";
 import AboutScreen from "./pages/AboutScreen";
+import AIAgentLearnPage from "./pages/AIAgentLearnPage";
 import VaultScreen from "./pages/VaultScreen";
 import ConsensusScreen from "./pages/ConsensusScreen";
 import AuditScreen from "./pages/AuditScreen";
@@ -43,7 +44,7 @@ const NAV_DROPDOWNS = [
   ]},
   { label: "Account", items: [
     { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
-    { key: "guide", label: "Learn" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
+    { key: "guide", label: "Learn" }, { key: "ai-agents", label: "AI Agents" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
   ]},
 ];
 
@@ -1058,6 +1059,7 @@ export default function TrustAssembly() {
             {screen === "rules" && <RulesScreen />}
             {screen === "badges" && <BadgesScreen />}
             {screen === "about" && <AboutScreen />}
+            {screen === "ai-agents" && <AIAgentLearnPage />}
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
