@@ -37,14 +37,12 @@ const NAV_PRIMARY = [
   { key: "feed", label: "Home" }, { key: "submit", label: "Submit", bold: true }, { key: "review", label: "Review", bold: true }, { key: "orgs", label: "Assemblies" },
 ];
 const NAV_DROPDOWNS = [
-  { label: "Learn", items: [
-    { key: "guide", label: "Guide" }, { key: "rules", label: "Rules" }, { key: "badges", label: "Badges" }, { key: "vision", label: "Vision" }, { key: "about", label: "About" },
-  ]},
-  { label: "Explore", items: [
+  { label: "More", items: [
     { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
   ]},
   { label: "Account", items: [
     { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
+    { key: "guide", label: "Learn" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
   ]},
 ];
 
