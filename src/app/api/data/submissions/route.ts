@@ -110,7 +110,7 @@ export async function GET() {
       s.original_headline, s.replacement, s.reasoning, s.author, s.body_text,
       s.trusted_skip, s.is_di, s.jury_seats, s.jury_seed,
       s.internal_jury_size, s.cross_group_jury_size, s.cross_group_seed,
-      s.deliberate_lie_finding, s.survival_count,
+      s.deliberate_lie_finding, s.survival_count, s.thumbnail_url,
       s.created_at, s.resolved_at,
       u.username AS submitted_by_username,
       s.org_id,
