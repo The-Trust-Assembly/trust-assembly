@@ -521,13 +521,74 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
 
   return (
     <div>
-      <div className="ta-section-rule" /><h2 className="ta-section-head">Submit {form.submissionType === "affirmation" ? "Affirmation" : "Correction"}</h2>
+      <div className="ta-section-rule" />
+
+      {/* ── URL-FIRST HERO ── */}
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>
+        SUBMIT {form.submissionType === "correction" ? "CORRECTION" : "AFFIRMATION"}
+      </div>
+      <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, marginBottom: 4, color: "var(--text)" }}>
+        {form.submissionType === "correction"
+          ? "You're correcting misleading content and submitting it for jury review."
+          : "You're affirming accurate content and lending it the weight of evidence."}
+      </div>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
+        Identify the content, propose a truthful replacement, explain your reasoning, and submit.
+        A jury of fellow citizens will review your {form.submissionType}.
+      </div>
+
+      {/* ── PROMINENT URL INPUT ── */}
+      <div style={{ background: "rgba(212,168,67,0.06)", border: `1.5px solid var(--gold)`, padding: "16px 18px", marginBottom: 20 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>
+          PASTE A URL TO BEGIN
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importContent(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, outline: "none" }} />
+          <button type="button" disabled={importing || !form.url.trim()} onClick={() => importContent(form.url)} style={{
+            padding: "10px 18px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, letterSpacing: "1.5px",
+            background: importing ? "var(--card-bg)" : "var(--gold)", color: importing ? "var(--text-muted)" : "var(--bg)",
+            border: importing ? "1px solid var(--border)" : "none",
+            cursor: importing ? "default" : "pointer", whiteSpace: "nowrap",
+          }}>{importing ? "IMPORTING..." : "IMPORT"}</button>
+        </div>
+        {importMsg && <div style={{ fontSize: 11, marginTop: 6, color: importMsg.includes("Imported") ? "var(--green)" : importMsg.includes("skipped") ? "var(--text-muted)" : "var(--red)" }}>{importMsg}</div>}
+
+        {/* Platform badge */}
+        {platform && <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 12px", background: "rgba(184,150,62,0.1)", border: "1px solid rgba(184,150,62,0.3)", fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>
+          {platform.label}
+          <span style={{ fontSize: 7, padding: "1px 5px", background: "var(--gold)", color: "var(--bg)", fontWeight: 700 }}>{platform.template.toUpperCase()}</span>
+        </div>}
+        {platform && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+          Detected <strong style={{ color: "var(--text)" }}>{platform.label}</strong> — form adjusted for {platform.contentUnit.toLowerCase()} content.
+        </div>}
+
+        <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", letterSpacing: "0.5px", marginTop: 10 }}>
+          News articles / YouTube videos / Tweets / Podcasts / Product listings / Reddit posts / and more
+        </div>
+      </div>
+
+      {/* ── EMPTY STATE (no URL yet) ── */}
+      {!platform && !form.url.trim() && (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 28, color: "var(--border)", marginBottom: 12 }}>^</div>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 16, color: "var(--text-muted)", marginBottom: 6 }}>
+            Paste a URL to begin
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, maxWidth: 380, margin: "0 auto" }}>
+            The form adapts to the content type — articles, social posts, videos, podcasts, product listings, and more.
+          </div>
+        </div>
+      )}
+
+      {/* ── ADAPTIVE FORM (only shown after URL/platform detected) ── */}
+      {(platform || form.url.trim()) && (
+      <div style={{ opacity: platformTransitioning ? 0.3 : 1, transition: "opacity 0.15s" }}>
       <div style={{ display: "flex", height: "calc(100vh - 120px)", gap: 0 }}>
       {/* ── LEFT: FORM SIDE ── */}
       <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingRight: 8 }}>
 
       {/* Saved drafts banner */}
-      {savedDrafts.length > 0 && (
+      {user && savedDrafts.length > 0 && (
         <div style={{ marginBottom: 14, padding: "10px 14px", background: "rgba(212,168,67,0.09)", border: "1.5px solid #CA8A04", borderRadius: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>
@@ -650,19 +711,6 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
             <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.5px", fontWeight: 700, color: "#D4850A", marginBottom: 4 }}>{platform.juryGracePeriod.label}</div>
             <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>{platform.juryGracePeriod.reason} Jury window: <strong>{platform.juryGracePeriod.days}</strong>.</div>
           </div>}
-          <div className="ta-field">
-            <label>{platform ? "URL *" : "Article URL *"}</label>
-            <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-              <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importContent(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1 }} />
-              <button type="button" disabled={importing || !form.url.trim()} onClick={() => importContent(form.url)} style={{
-                padding: "0 12px", fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600,
-                background: importing ? "var(--card-bg)" : "#EFF6FF", color: importing ? "#94A3B8" : "var(--gold)",
-                border: "1.5px solid", borderColor: importing ? "var(--border)" : "var(--gold)",
-                borderRadius: 0, cursor: importing ? "default" : "pointer", whiteSpace: "nowrap",
-              }}>{importing ? "Importing..." : "Import"}</button>
-            </div>
-            {importMsg && <div style={{ fontSize: 11, marginTop: 4, color: importMsg.includes("Imported") ? "#059669" : importMsg.includes("skipped") ? "#64748B" : "#DC2626" }}>{importMsg}</div>}
-          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="ta-field"><label>{platform?.headlineLabel || "Original Headline *"}</label>
               {platform?.headlineMultiline
@@ -1185,6 +1233,8 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         </div>
       </div>
       </div>{/* end split */}
+      </div>
+      )}
     </div>
   );
 }
