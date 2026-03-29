@@ -2282,6 +2282,13 @@
       // Clear preview: restore original headline
       if (message.type === "TA_CLEAR_PREVIEW") {
         clearLivePreview();
+        clearInlineEditPreviews();
+        sendResponse({ ok: true });
+        return true;
+      }
+      // Live preview: inline body edits
+      if (message.type === "TA_PREVIEW_INLINE_EDITS") {
+        handleInlineEditPreviews(message.edits || []);
         sendResponse({ ok: true });
         return true;
       }
@@ -2358,6 +2365,83 @@
     }
     el.style.removeProperty("font-style");
     previewState = null;
+  }
+
+  // ── Inline Edit Live Preview ──
+  let inlineEditPreviewNodes = []; // track preview wrappers for cleanup
+
+  function handleInlineEditPreviews(edits) {
+    // Clear previous previews first
+    clearInlineEditPreviews();
+
+    if (!edits || edits.length === 0) return;
+
+    // Find article body to search within
+    const siteInfo = detectSiteType();
+    const rootSelector = siteInfo.articleRoot || "article, [role='main'], main, body";
+    const articleRoot = document.querySelector(rootSelector);
+    if (!articleRoot) return;
+
+    for (const edit of edits) {
+      if (!edit.original || !edit.original.trim()) continue;
+      const searchText = edit.original.trim();
+
+      // Walk text nodes to find the original text
+      const walker = document.createTreeWalker(articleRoot, NodeFilter.SHOW_TEXT, null, false);
+      let node;
+      while ((node = walker.nextNode())) {
+        // Skip our own elements
+        if (node.parentElement?.closest("[class^='ta-inline'], [class^='ta-ext']")) continue;
+
+        const idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+
+        // Found it — split and wrap
+        const range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+
+        const wrapper = document.createElement("span");
+        wrapper.className = "ta-inline-preview-wrap";
+
+        // Original text with strikethrough
+        const origSpan = document.createElement("span");
+        origSpan.className = "ta-inline-preview-original";
+        origSpan.textContent = searchText;
+
+        wrapper.appendChild(origSpan);
+
+        // Replacement text (if provided)
+        if (edit.replacement && edit.replacement.trim()) {
+          const replSpan = document.createElement("span");
+          replSpan.className = "ta-inline-preview-replacement";
+          replSpan.textContent = edit.replacement.trim();
+          wrapper.appendChild(replSpan);
+        }
+
+        range.deleteContents();
+        range.insertNode(wrapper);
+
+        inlineEditPreviewNodes.push(wrapper);
+        break; // Only match first occurrence per edit
+      }
+    }
+  }
+
+  function clearInlineEditPreviews() {
+    for (const wrapper of inlineEditPreviewNodes) {
+      try {
+        // Restore original text node
+        const parent = wrapper.parentNode;
+        if (!parent) continue;
+        const origSpan = wrapper.querySelector(".ta-inline-preview-original");
+        const textNode = document.createTextNode(origSpan ? origSpan.textContent : "");
+        parent.replaceChild(textNode, wrapper);
+        // Merge adjacent text nodes
+        parent.normalize();
+      } catch (e) { /* element may have been removed by SPA */ }
+    }
+    inlineEditPreviewNodes = [];
   }
 
   // ── MutationObserver for dynamic content (SPAs, feeds) ──

@@ -745,6 +745,8 @@ async function renderSubmitTab() {
       if (formState.inlineEdits[idx]) {
         formState.inlineEdits[idx][field] = el.value;
         debouncedSave();
+        // Live preview inline edits on the page
+        debouncedInlinePreview();
       }
     });
   });
@@ -1344,6 +1346,29 @@ async function sendPreviewMessage(text) {
       originalHeadline: originalHeadline,
       isAffirm: formState.submitType === "affirmation"
     }, () => {
+      if (typeof chrome !== "undefined" && chrome.runtime?.lastError) {}
+    });
+  } catch (e) {}
+}
+
+let inlinePreviewTimer = null;
+function debouncedInlinePreview() {
+  clearTimeout(inlinePreviewTimer);
+  inlinePreviewTimer = setTimeout(() => sendInlineEditPreviews(), 200);
+}
+
+async function sendInlineEditPreviews() {
+  try {
+    const edits = (formState.inlineEdits || []).filter(e => e.original && e.original.trim());
+    const tabs = typeof chrome !== "undefined" && chrome.tabs
+      ? await chrome.tabs.query({ active: true, currentWindow: true })
+      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (!tab || !tab.id) return;
+    const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
+      ? chrome.tabs.sendMessage.bind(chrome.tabs)
+      : browser.tabs.sendMessage.bind(browser.tabs);
+    sendMsg(tab.id, { type: "TA_PREVIEW_INLINE_EDITS", edits }, () => {
       if (typeof chrome !== "undefined" && chrome.runtime?.lastError) {}
     });
   } catch (e) {}

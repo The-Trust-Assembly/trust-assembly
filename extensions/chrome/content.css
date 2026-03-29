@@ -276,6 +276,24 @@
 .ta-ext-status-pending_review { background: #FDF0E4; color: #C2632A; }
 .ta-ext-status-rejected { background: #FAE8E5; color: #C4573F; }
 
+/* ── Inline Edit Live Preview (while typing in extension) ── */
+.ta-inline-preview-wrap {
+  position: relative;
+  display: inline;
+}
+.ta-inline-preview-original {
+  text-decoration: line-through;
+  text-decoration-color: #9CA3AF;
+  color: #9CA3AF;
+  background: #f5f3f0;
+}
+.ta-inline-preview-replacement {
+  color: #9CA3AF;
+  font-style: italic;
+  border-bottom: 1px dashed #9CA3AF;
+  margin-left: 3px;
+}
+
 /* ── Translations ── */
 .ta-ext-section-title {
   font-size: 11px;
