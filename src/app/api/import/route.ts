@@ -9,7 +9,8 @@ import registryData from "../../../../site-registry.json";
 const cache = new Map<string, { data: ImportResult; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
-const USER_AGENT = "Mozilla/5.0 (compatible; TrustAssembly/1.0; +https://trustassembly.org)";
+// Use a browser-like User-Agent — many sites (CNN, NYT, etc.) block bot-like UAs
+const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 interface FieldResult {
   value: string;
@@ -276,17 +277,20 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     specialFields = await extractWithOembed(normalizedUrl, recipe);
   }
 
-  // Fetch HTML
+  // Fetch HTML (8-second timeout, browser-like headers to avoid blocks)
   let html: string | null = null;
   let $: cheerio.CheerioAPI | null = null;
+  let fetchError: string | null = null;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const response = await fetch(normalizedUrl, {
       headers: {
         "User-Agent": USER_AGENT,
-        "Accept": "text/html,application/xhtml+xml",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate",
+        "Cache-Control": "no-cache",
       },
       redirect: "follow",
       signal: controller.signal,
@@ -295,8 +299,14 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     if (response.ok) {
       html = await response.text();
       $ = cheerio.load(html);
+    } else {
+      fetchError = `HTTP ${response.status} ${response.statusText}`;
+      console.warn(`[import] Fetch failed for ${normalizedUrl}: ${fetchError}`);
     }
-  } catch { /* fetch failed — degrade gracefully */ }
+  } catch (e) {
+    fetchError = e instanceof Error ? e.message : String(e);
+    console.warn(`[import] Fetch error for ${normalizedUrl}: ${fetchError}`);
+  }
 
   // Run extraction layers — earlier layers win
   let fields: Record<string, FieldResult> = {};
@@ -360,6 +370,7 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     submitted: rawUrl,
     normalized: normalizedUrl,
     recipeUsed: recipeMatch?.key || null,
+    fetchError: fetchError || undefined,
     extractionTime: `${Date.now() - startTime}ms`,
   };
 }

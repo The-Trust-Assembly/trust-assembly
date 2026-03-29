@@ -82,7 +82,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
     setImporting(true); setImportMsg("");
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
+      const timeout = setTimeout(() => controller.abort(), 12000);
       const res = await fetch("/api/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,7 +91,8 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
       });
       clearTimeout(timeout);
       if (!res.ok) { setImportMsg("Could not fetch content."); setImporting(false); return; }
-      const result = (await res.json()).data || await res.json();
+      const rawResult = await res.json();
+      const result = rawResult.data || rawResult;
       const fields = result.fields || {};
       let imported = [];
 
