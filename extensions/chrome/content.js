@@ -517,6 +517,172 @@
       };
     }
 
+    // --- YouTube ---
+    if (host.includes("youtube.com") || host === "youtu.be") {
+      return {
+        name: "youtube",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.ytd-watch-metadata yt-formatted-string', 'h1.ytd-video-primary-info-renderer',
+          '#title h1 yt-formatted-string', '#title h1', 'h1[class*="title"]',
+          '[itemprop="name"]', 'h1',
+        ],
+        articleRoot: '#description, #content, ytd-watch-metadata',
+        waitSelector: 'h1.ytd-watch-metadata, h1 yt-formatted-string, h1',
+        contentType: "video",
+      };
+    }
+
+    // --- Twitter / X ---
+    if (host === "x.com" || host === "twitter.com") {
+      return {
+        name: "twitter",
+        dynamic: true,
+        headlineSelectors: [
+          'article [data-testid="tweetText"]', 'article div[lang]',
+          '[data-testid="tweetText"]', 'article p',
+        ],
+        articleRoot: 'article, [data-testid="tweet"]',
+        waitSelector: '[data-testid="tweetText"], article div[lang]',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Reddit ---
+    if (host.includes("reddit.com")) {
+      return {
+        name: "reddit",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[slot="title"]', 'h1._eYtD2XCVieq6emjKBH3m', 'h1[class*="title"]',
+          '[data-testid="post-title"]', 'h1', '.Post h1',
+        ],
+        articleRoot: '[data-testid="post-content"], .Post, .thing .entry',
+        waitSelector: 'h1[slot="title"], [data-testid="post-title"], h1',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Amazon ---
+    if (host.includes("amazon.com") || host.includes("amazon.co.")) {
+      return {
+        name: "amazon",
+        dynamic: true,
+        headlineSelectors: [
+          '#productTitle', '#title span#productTitle', 'h1#title span',
+          '#btAsinTitle', 'h1[class*="product"]', 'h1',
+        ],
+        articleRoot: '#feature-bullets, #productDescription, #aplus',
+        waitSelector: '#productTitle, #title, h1',
+        contentType: "product",
+      };
+    }
+
+    // --- Spotify ---
+    if (host.includes("open.spotify.com")) {
+      return {
+        name: "spotify",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-testid="entityTitle"]', 'h1[class*="Type__TypeElement"]',
+          'span[data-testid="entityTitle"]', 'h1',
+        ],
+        articleRoot: '[data-testid="description"], [data-testid="episodeDescription"]',
+        waitSelector: 'h1[data-testid="entityTitle"], h1',
+        contentType: "audio",
+      };
+    }
+
+    // --- Facebook ---
+    if (host.includes("facebook.com") || host === "fb.com") {
+      return {
+        name: "facebook",
+        dynamic: true,
+        headlineSelectors: [
+          '[data-ad-preview="message"]', '[data-testid="post_message"]',
+          'div[dir="auto"]', 'h1',
+        ],
+        articleRoot: '[role="article"], [data-testid="Keycommand_wrapper"]',
+        waitSelector: '[data-ad-preview="message"], [role="article"]',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Instagram ---
+    if (host.includes("instagram.com")) {
+      return {
+        name: "instagram",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[class*="caption"]', 'span[class*="caption"]',
+          'article span', 'h1',
+        ],
+        articleRoot: 'article, main',
+        waitSelector: 'article',
+        contentType: "shortform",
+      };
+    }
+
+    // --- TikTok ---
+    if (host.includes("tiktok.com")) {
+      return {
+        name: "tiktok",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-e2e="browse-video-desc"]', 'h1[class*="video-meta"]',
+          'span[data-e2e="browse-video-desc"]', 'h1',
+        ],
+        articleRoot: '[class*="video-meta"], [class*="DivVideoInfoContainer"]',
+        waitSelector: 'h1, [data-e2e="browse-video-desc"]',
+        contentType: "video",
+      };
+    }
+
+    // --- LinkedIn ---
+    if (host.includes("linkedin.com")) {
+      return {
+        name: "linkedin",
+        dynamic: true,
+        headlineSelectors: [
+          '.feed-shared-update-v2__description', '.update-components-text',
+          'h1.article-title', 'h1[class*="title"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .feed-shared-update-v2, .update-components-text',
+        waitSelector: '.feed-shared-update-v2, article, h1',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Substack ---
+    if (host.includes("substack.com") || document.querySelector('meta[content*="Substack"]')) {
+      return {
+        name: "substack",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.post-title', 'h1[class*="post-title"]', '.post-header h1',
+          'h1.pencraft', 'article h1', 'h1',
+        ],
+        articleRoot: '.body, .post-content, article, .available-content',
+        waitSelector: 'h1.post-title, article h1, h1',
+        contentType: "article",
+      };
+    }
+
+    // --- eBay ---
+    if (host.includes("ebay.com")) {
+      return {
+        name: "ebay",
+        dynamic: false,
+        headlineSelectors: [
+          'h1.x-item-title__mainTitle span', 'h1[class*="item-title"]',
+          '#itemTitle', 'h1',
+        ],
+        articleRoot: '#viTabs_0_is, .item-desc, #desc_wrapper_ctr',
+        waitSelector: 'h1',
+        contentType: "product",
+      };
+    }
+
     // --- Generic / unknown (broadest set of selectors) ---
     // Detect if the site appears to be an SPA by checking for common
     // framework markers (#app, #root, #__next, [data-reactroot], etc.)
