@@ -359,23 +359,141 @@ const vaultArtifacts = [
   },
 ];
 
+// ─── Affirmations (Good Reporting) ────────────────────────────────────────
+
+const affirmations = [
+  // ── 9. Meghann Cuniff — Brian Newland testimony ──
+  {
+    url: "https://www.tiktok.com/@meghannmcuniff/video/7618404854645411085",
+    originalHeadline:
+      "Brian Newland testimony — Afroman defamation trial (Meghann Cuniff court reporting)",
+    reasoning: `This court reporting by journalist Meghann Cuniff exemplifies responsible coverage of the Afroman defamation trial. It provides verbatim testimony transcripts that allow readers to draw their own conclusions, and critically:
+
+1. CLEARLY DISTINGUISHES Brian from William Newland — identifying William as the brother who was convicted of a misdemeanor, and Brian as the detective who participated in the raid and was never accused of any crime.
+
+2. INCLUDES Brian Newland's sworn testimony: "Have you ever been accused or convicted of pedophilia?" "No." This direct quote is essential context missing from many other outlets' coverage.
+
+3. REPORTS the Shop with a Cop context — explaining that the photo Afroman used to imply predatory behavior was actually from a program where officers take low-income children holiday shopping.
+
+4. LETS THE TESTIMONY SPEAK FOR ITSELF without editorializing or taking sides, allowing readers to understand both the First Amendment issues and the factual questions at the heart of the case.
+
+This kind of detailed, unvarnished court reporting is exactly what the public needs to understand complex cases where free speech rights and factual accuracy may point in different directions.`,
+    evidence: [
+      EVIDENCE.local12_william,
+      EVIDENCE.peoples_defender_william,
+      EVIDENCE.npr_verdict,
+    ],
+  },
+
+  // ── 10. Meghann Cuniff — Brian Newland cross-examination ──
+  {
+    url: "https://www.tiktok.com/@meghannmcuniff/video/7618725257242873101",
+    originalHeadline:
+      "Brian Newland cross-examination — Afroman defamation trial (Meghann Cuniff court reporting)",
+    reasoning: `This continuation of Meghann Cuniff's court reporting captures a crucial nuance that most other outlets missed entirely: Brian Newland testified that people in Adams County did NOT treat him differently after his brother William's original conviction and local news coverage — the social harm only began after Afroman's viral posts and music videos.
+
+This testimony is significant because it demonstrates:
+1. The community distinguished between the brothers before Afroman's posts conflated them.
+2. The scale and reach of social media amplification created harm beyond what local news coverage of William's case did.
+3. Brian's testimony that he "drifted apart" from William after William's legal issues shows he distanced himself from his brother's conduct.
+
+The reporting also captures the defense's strategy clearly and fairly, including attorney Osborne's line of questioning about whether the pedophile label predated Afroman's posts. This balanced presentation of both sides is essential for understanding the case.`,
+    evidence: [
+      EVIDENCE.brian_testimony_impact,
+      EVIDENCE.local12_william,
+      EVIDENCE.npr_verdict,
+    ],
+  },
+
+  // ── 11. Meghann Cuniff — Brian Newland career impact ──
+  {
+    url: "https://www.tiktok.com/@meghannmcuniff/video/7618440569534139661",
+    originalHeadline:
+      "Brian Newland testimony on career and family impact — Afroman defamation trial",
+    reasoning: `This reporting documents the human cost of false accusations, providing critical context that many celebratory articles about Afroman's victory omit entirely.
+
+Brian Newland's testimony includes: he dedicated 10+ years to Adams County law enforcement; he quit his "dream job" at the sheriff's office because of the public accusations; he felt people watching him at Walmart and his children's games; his daughters' friends stopped visiting — "they used to have huge slumber parties... once this started, it stopped."
+
+This testimony matters because it shows that while Afroman's speech was correctly found to be protected under the First Amendment, the speech had real consequences for real people. Articles that frame the case as purely comedic ("hilarious trial," "snowflake cops") erase this documented harm.
+
+Good reporting presents both dimensions: the importance of First Amendment protection for artistic expression about public officials AND the reality that protected speech can still cause genuine suffering when it includes false accusations.`,
+    evidence: [
+      EVIDENCE.trial_testimony_tiktok,
+      EVIDENCE.local12_william,
+      EVIDENCE.npr_verdict,
+    ],
+  },
+
+  // ── 12. NOLO — Legal analysis ──
+  {
+    url: "https://www.nolo.com/legal-encyclopedia/the-afroman-defamation-verdict-explained.html",
+    originalHeadline: "The Afroman Defamation Verdict Explained",
+    reasoning: `Legal explainers serve a vital educational function in cases like Cooley v. Foreman, where the public can easily confuse "the speech was legally protected" with "the speech was factually true."
+
+This article likely explains the key legal concepts: (1) the NYT v. Sullivan "actual malice" standard that applies when public officials sue for defamation; (2) the distinction between opinions/hyperbole (not actionable) and false statements of fact (potentially actionable, but only with actual malice for public officials); (3) why the jury's verdict means Afroman's speech didn't meet the legal threshold for defamation, which is a different finding from determining the speech was true.
+
+Legal analysis from established legal education publishers helps the public understand these distinctions that most entertainment and news coverage glosses over.`,
+    evidence: [EVIDENCE.npr_verdict, EVIDENCE.wcpo_verdict],
+  },
+
+  // ── 13. ACLU — Cooley v. Foreman case page ──
+  {
+    url: "https://www.aclu.org/cases/cooley-v-foreman-aka-afroman",
+    originalHeadline: "Cooley v. Foreman AKA Afroman",
+    reasoning: `The ACLU's amicus brief in this case provided essential legal analysis arguing that the deputies' lawsuit was a "classic SLAPP suit" — a Strategic Lawsuit Against Public Participation designed to silence criticism of public officials.
+
+The ACLU's involvement and case documentation is valuable because: (1) it frames the case within established First Amendment jurisprudence; (2) it explains WHY the bar for defaming public officials is set high (to protect democratic accountability); (3) it correctly identifies the tension between free expression rights and the harm from false accusations — without dismissing either concern.
+
+The legal framework the ACLU presents helps readers understand that defending Afroman's right to speak is not the same as endorsing every factual claim he made. Both things can be true simultaneously: the speech can be protected AND some specific claims can be factually wrong.`,
+    evidence: [EVIDENCE.npr_verdict, EVIDENCE.trial_testimony_tiktok],
+  },
+
+  // ── 14. NPR — Trial coverage ──
+  {
+    url: "https://www.npr.org/2026/03/19/nx-s1-5753563/afroman-lemon-pound-cake-trial",
+    originalHeadline:
+      "Afroman prevails in cops' music video defamation suit after a brief but viral trial",
+    reasoning: `NPR's reporting on the Afroman trial provides balanced coverage that includes key context many outlets omit. The headline accurately describes the outcome without editorializing or implying factual vindication.
+
+NPR's reporting is valuable because it typically includes: (1) the legal framework explaining why the verdict addressed speech protection rather than factual truth; (2) quotes from both sides, including the deputies' attorney noting they brought the case to address "false accusations"; (3) the broader context of the case within First Amendment law.
+
+Balanced reporting that presents the free speech victory alongside the deputies' perspective — without dismissing either — serves the public interest far better than one-sided celebratory or dismissive framing.`,
+    evidence: [
+      EVIDENCE.trial_testimony_tiktok,
+      EVIDENCE.local12_william,
+      EVIDENCE.wcpo_verdict,
+    ],
+  },
+
+  // ── 15. PBS NewsHour Classroom ──
+  {
+    url: "https://www.pbs.org/newshour/classroom/daily-news-lessons/2026/03/afroman-prevails-in-defamation-lawsuit-brought-by-police",
+    originalHeadline:
+      "Afroman prevails in defamation lawsuit brought by police",
+    reasoning: `Educational coverage of this case serves a critical function: helping students and general audiences understand the distinction between legally protected speech and factually accurate speech.
+
+PBS NewsHour Classroom's educational framing is particularly valuable because: (1) students learning about the First Amendment need to understand that defamation law exists alongside free speech protections; (2) the "actual malice" standard for public officials is one of the most important and most misunderstood concepts in American media law; (3) this case illustrates that free speech can have real human costs (Brian Newland's testimony about his career and family) even when it is legally protected.
+
+Coverage that teaches these nuances — rather than presenting the case as a simple good-vs-evil narrative — builds civic understanding of how democratic societies balance competing values.`,
+    evidence: [EVIDENCE.npr_verdict, EVIDENCE.trial_testimony_tiktok],
+  },
+];
+
 // ─── Main ──────────────────────────────────────────────────────────────────
 
 async function main() {
   const token = await login();
   const submissionIds = [];
 
+  // ── Corrections ──
   console.log(`\n=== Submitting ${corrections.length} corrections ===\n`);
 
   for (let i = 0; i < corrections.length; i++) {
     const c = corrections[i];
-    console.log(`[${i + 1}/${corrections.length}] ${c.url}`);
+    console.log(`[${i + 1}/${corrections.length}] CORRECTION: ${c.url}`);
 
-    // Import URL metadata
     const meta = await importUrl(token, c.url);
     const thumbnailUrl = meta?.thumbnailUrl || meta?.image || undefined;
-
-    // Use the imported headline if available and we didn't already have one
     const originalHeadline = c.originalHeadline || meta?.headline || meta?.title;
 
     const payload = {
@@ -385,7 +503,7 @@ async function main() {
       replacement: c.replacement,
       reasoning: c.reasoning,
       evidence: c.evidence,
-      orgIds: [],  // Will default to General Public
+      orgIds: [],
       ...(thumbnailUrl && { thumbnailUrl }),
       ...(c.inlineEdits && { inlineEdits: c.inlineEdits }),
     };
@@ -394,12 +512,38 @@ async function main() {
     if (result?.id || result?.submissionId) {
       submissionIds.push(result.id || result.submissionId);
     }
-
-    // Brief pause between submissions
     await sleep(1000);
   }
 
-  // Submit vault artifacts linked to first submission
+  // ── Affirmations ──
+  console.log(`\n=== Submitting ${affirmations.length} affirmations ===\n`);
+
+  for (let i = 0; i < affirmations.length; i++) {
+    const a = affirmations[i];
+    console.log(`[${i + 1}/${affirmations.length}] AFFIRMATION: ${a.url}`);
+
+    const meta = await importUrl(token, a.url);
+    const thumbnailUrl = meta?.thumbnailUrl || meta?.image || undefined;
+    const originalHeadline = a.originalHeadline || meta?.headline || meta?.title;
+
+    const payload = {
+      submissionType: "affirmation",
+      url: a.url,
+      originalHeadline,
+      reasoning: a.reasoning,
+      evidence: a.evidence,
+      orgIds: [],
+      ...(thumbnailUrl && { thumbnailUrl }),
+    };
+
+    const result = await submit(token, payload);
+    if (result?.id || result?.submissionId) {
+      submissionIds.push(result.id || result.submissionId);
+    }
+    await sleep(1000);
+  }
+
+  // ── Vault artifacts ──
   if (submissionIds.length > 0) {
     console.log(`\n=== Submitting ${vaultArtifacts.length} vault artifacts ===\n`);
 
@@ -408,7 +552,7 @@ async function main() {
 
       const payload = {
         ...artifact,
-        orgId: "",  // Will default to General Public
+        orgId: "",
         submissionId: submissionIds[0],
       };
 
@@ -417,8 +561,11 @@ async function main() {
     }
   }
 
-  console.log(`\n=== Done! Submitted ${submissionIds.length} corrections ===`);
-  console.log("Submission IDs:", submissionIds);
+  console.log(`\n=== Done! ===`);
+  console.log(`Corrections: ${corrections.length}`);
+  console.log(`Affirmations: ${affirmations.length}`);
+  console.log(`Vault artifacts: ${vaultArtifacts.length}`);
+  console.log(`Total submission IDs:`, submissionIds);
 }
 
 main().catch((err) => {
