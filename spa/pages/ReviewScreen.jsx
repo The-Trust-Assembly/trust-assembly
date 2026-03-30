@@ -367,7 +367,7 @@ function ReviewScreenInner({ user }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{orgsData[sub.orgId]?.avatar && <img src={orgsData[sub.orgId].avatar} width={14} height={14} alt="" style={{ objectFit: "cover", marginRight: 3, verticalAlign: "middle" }} />}{safe(sub.orgName)} · {sDate(sub.createdAt)}{sub.isDI && <><span> · </span><Icon name="robot" size={14} /> DI</>}</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px", borderRadius: 0 }}>Seated {accepted}/{seats} · Voted {votesIn}/{seats} · need {needed}</span>
+          <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px", borderRadius: 0 }}>{votesIn} of {seats} {seats === 1 ? "vote" : "votes"} cast · {needed} needed to decide</span>
           <StatusPill status={sub.status} />
         </div>
       </div>
@@ -376,7 +376,7 @@ function ReviewScreenInner({ user }) {
       <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />
       </div>
-      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10 }}>{safe(sub.reasoning)}</div>
+      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{safe(sub.reasoning)}</div>
 
       {sub.evidence && sub.evidence.length > 0 && (
         <div style={{ marginTop: 12, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>

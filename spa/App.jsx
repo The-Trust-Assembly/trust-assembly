@@ -153,6 +153,7 @@ export default function TrustAssembly() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackPrompt, setFeedbackPrompt] = useState("");
@@ -995,11 +996,18 @@ export default function TrustAssembly() {
             ))}
           </div>
 
-          {/* Floating feedback button — visible to all non-admin users */}
-          {!isAdmin && (
-            <button className="ta-feedback-fab" onClick={() => { setShowFeedbackModal(true); setFeedbackSent(false); setFeedbackError(""); }}>
-              Submit Feedback / Feature Request
-            </button>
+          {/* Floating feedback button — collapsible, visible to non-admin */}
+          {!isAdmin && !feedbackDismissed && (
+            <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 90, display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={() => { setShowFeedbackModal(true); setFeedbackSent(false); setFeedbackError(""); }}
+                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", padding: "8px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)" }}>
+                Feedback
+              </button>
+              <button onClick={() => setFeedbackDismissed(true)}
+                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", width: 28, height: 28, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>
+                &times;
+              </button>
+            </div>
           )}
 
           {/* Feedback modal */}
