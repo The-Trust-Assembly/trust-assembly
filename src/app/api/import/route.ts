@@ -211,6 +211,47 @@ function extractHtmlFallbacks(html: string): Record<string, FieldResult> {
   return fields;
 }
 
+// Body text extraction via regex (replaces Readability)
+function extractBodyText(html: string): string | null {
+  // Remove script and style tags
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "");
+
+  let container: string | null = null;
+  // Try <article> tag first
+  const articleMatch = cleaned.match(/<article[\s\S]*?>([\s\S]*?)<\/article>/i);
+  if (articleMatch?.[1]) container = articleMatch[1];
+
+  // Fallback to common article body selectors
+  if (!container) {
+    const selectors = [
+      /role=["']article["']/i,
+      /class=["'][^"']*\barticle-body\b[^"']*["']/i,
+      /class=["'][^"']*\bpost-content\b[^"']*["']/i,
+      /class=["'][^"']*\bentry-content\b[^"']*["']/i,
+      /class=["'][^"']*\bstory-body\b[^"']*["']/i,
+    ];
+    for (const selector of selectors) {
+      const tagPattern = new RegExp(`<(\\w+)[^>]*${selector.source}[^>]*>([\\s\\S]*?)<\\/\\1>`, "i");
+      const match = cleaned.match(tagPattern);
+      if (match?.[2]) { container = match[2]; break; }
+    }
+  }
+
+  // Extract <p> tags
+  const source = container || cleaned;
+  const pMatches = source.match(/<p[\s\S]*?>([\s\S]*?)<\/p>/gi);
+  if (!pMatches || pMatches.length === 0) return null;
+
+  const paragraphs = pMatches
+    .map(p => decodeEntities(p.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()))
+    .filter(text => text.length > 30); // skip short fragments
+
+  if (paragraphs.length === 0) return null;
+  return paragraphs.join("\n\n").slice(0, 10000);
+}
+
 // Layer 4: Platform APIs
 async function extractWithRedditJson(url: string): Promise<Record<string, FieldResult> | null> {
   try {
@@ -330,6 +371,12 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     // Layer 3: HTML fallbacks
     const htmlFields = extractHtmlFallbacks(html);
     for (const [key, val] of Object.entries(htmlFields)) { if (!fields[key]) fields[key] = val; }
+
+    // Body text extraction (regex-based, replaces Readability)
+    if (!fields.body) {
+      const bodyText = extractBodyText(html);
+      if (bodyText) fields.body = { value: bodyText, source: "html-body", confidence: 0.5 };
+    }
   }
 
   // Apply site-specific hints (title stripping, etc.)

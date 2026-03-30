@@ -9,7 +9,7 @@ import { getEmbedInfo, extractDomain, getYouTubeThumbnail } from "../lib/embedRe
  * Used in: submit preview panel, feed expanded view, full record page,
  * and review page. Pass `compact` for space-constrained layouts.
  */
-export default function ContentEmbed({ url, title, description, thumbnailUrl, domain, compact }) {
+export default function ContentEmbed({ url, title, description, thumbnailUrl, domain, compact, replacement }) {
   const [imgError, setImgError] = useState(false);
 
   if (!url) return null;
@@ -121,15 +121,27 @@ export default function ContentEmbed({ url, title, description, thumbnailUrl, do
           <div style={{
             fontSize: compact ? 12 : 13,
             fontWeight: 600,
-            color: "var(--text)",
+            color: replacement ? "var(--text-muted)" : "var(--text)",
             lineHeight: 1.3,
-            marginBottom: description ? 4 : 0,
+            marginBottom: 2,
+            textDecoration: replacement ? "line-through" : "none",
             display: "-webkit-box",
             WebkitLineClamp: compact ? 1 : 2,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}>
             {title}
+          </div>
+        )}
+        {replacement && (
+          <div style={{
+            fontSize: compact ? 12 : 14,
+            fontWeight: 700,
+            color: "#C0392B",
+            lineHeight: 1.3,
+            marginBottom: 4,
+          }}>
+            {replacement}
           </div>
         )}
         {description && !compact && (

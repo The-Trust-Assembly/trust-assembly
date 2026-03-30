@@ -78,10 +78,18 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
 
   // Auto-import content via the import service (/api/import)
   // Uses the 5-layer extraction waterfall: site registry → platform APIs → meta tags → JSON-LD → Readability
-  const importContent = useCallback(async (url) => {
+  const importContent = useCallback(async (url, forceRefresh) => {
     const normalized = url?.trim().replace(/\/+$/, "").toLowerCase();
-    if (normalized && normalized === lastImportedUrlRef.current) return;
+    if (!forceRefresh && normalized && normalized === lastImportedUrlRef.current) return;
     if (!url || !/^https?:\/\/.+\..+/.test(url.trim())) return;
+    // Clear previous import data for fresh import
+    if (forceRefresh) {
+      setThumbnailUrl("");
+      setForm(f => ({ ...f, originalHeadline: "", replacement: "" }));
+      setAuthors([]);
+      setBodyText("");
+      lastImportedUrlRef.current = null;
+    }
     setImporting(true); setImportMsg("");
     try {
       const controller = new AbortController();
@@ -549,7 +557,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <input value={form.url} onChange={e => handleUrlChange(e.target.value)} onBlur={() => { if (form.url.trim() && /^https?:\/\/.+\..+/.test(form.url.trim())) importContent(form.url); }} placeholder="https://..." maxLength={2000} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, outline: "none" }} />
-          <button type="button" disabled={importing || !form.url.trim()} onClick={() => importContent(form.url)} style={{
+          <button type="button" disabled={importing || !form.url.trim()} onClick={() => importContent(form.url, true)} style={{
             padding: "10px 18px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, letterSpacing: "1.5px",
             background: importing ? "var(--card-bg)" : "var(--gold)", color: importing ? "var(--text-muted)" : "var(--bg)",
             border: importing ? "1px solid var(--border)" : "none",
@@ -1139,13 +1147,13 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
               Paste a URL to see preview
             </div>
           ) : displayMode === "embed" ? (
-            <ContentEmbed url={form.url} title={form.originalHeadline} thumbnailUrl={thumbnailUrl} />
+            <ContentEmbed url={form.url} title={form.originalHeadline} thumbnailUrl={thumbnailUrl} replacement={form.replacement} />
           ) : displayMode === "og-card" ? (
-            <ContentEmbed url={form.url} title={form.originalHeadline} description={form.reasoning} thumbnailUrl={thumbnailUrl} />
+            <ContentEmbed url={form.url} title={form.originalHeadline} description={form.reasoning} thumbnailUrl={thumbnailUrl} replacement={form.replacement} />
           ) : (
             <>
             {/* OG card at top + text diff below for articles */}
-            <ContentEmbed url={form.url} title={form.originalHeadline} thumbnailUrl={thumbnailUrl} compact />
+            <ContentEmbed url={form.url} title={form.originalHeadline} thumbnailUrl={thumbnailUrl} replacement={form.replacement} compact />
             <>
               {/* Section label */}
               {urlDomain && <div style={{ fontSize: 9, color: "#c44a3a", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, fontFamily: "sans-serif" }}>{urlDomain}</div>}
