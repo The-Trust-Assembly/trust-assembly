@@ -18,6 +18,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState("trust");
   const [openRibbons, setOpenRibbons] = useState({ trust: true, subs: false, reviews: false, disputes: false, di: false, settings: false });
   const toggle = (key) => setOpenRibbons(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -87,7 +88,15 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--red)" }}>{rejectedCount}</div><div className="stat-label">Rejected</div></div>
       </div>
 
+      {/* Profile tabs */}
+      <div className="ta-review-tabs" style={{ marginTop: 10, marginBottom: 12 }}>
+        {[["trust", "Trust"], ["subs", "Submissions"], ["reviews", "Reviews & Badges"], ...(diAgents.length > 0 || isDIUser(u) ? [["di", "AI Agents"]] : []), ["settings", "Settings"]].map(([k, label]) => (
+          <button key={k} onClick={() => setActiveTab(k)} className={`ta-review-tab${activeTab === k ? " active" : ""}`}>{label}</button>
+        ))}
+      </div>
+
       {/* 01: Trust by assembly */}
+      {activeTab === "trust" && <>
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.trust ? "open" : "closed"}`} onClick={() => toggle("trust")}>
           <div><span className="ribbon-num">01</span><span className="ribbon-title">Trust by assembly</span></div>
@@ -115,7 +124,10 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         )}
       </div>
 
+      </>}
+
       {/* 02: My submissions */}
+      {activeTab === "subs" && <>
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.subs ? "open" : "closed"}`} onClick={() => toggle("subs")}>
           <div><span className="ribbon-num">02</span><span className="ribbon-title">My submissions</span><span className="ribbon-meta">{mySubs.length} total</span></div>
@@ -142,7 +154,10 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         )}
       </div>
 
-      {/* 03: Jury score */}
+      </>}
+
+      {/* 03: Jury score + Badges */}
+      {activeTab === "reviews" && <>
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.reviews ? "open" : "closed"}`} onClick={() => toggle("reviews")}>
           <div><span className="ribbon-num">03</span><span className="ribbon-title">My reviews</span></div>
@@ -168,7 +183,10 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         )}
       </div>
 
-      {/* 05: DI Agents */}
+      </>}
+
+      {/* 05: AI Agents */}
+      {activeTab === "di" && <>
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.di ? "open" : "closed"}`} onClick={() => toggle("di")}>
           <div><span className="ribbon-num">05</span><span className="ribbon-title">Digital intelligence agents</span></div>
@@ -193,7 +211,10 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         )}
       </div>
 
+      </>}
+
       {/* 06: Settings */}
+      {activeTab === "settings" && <>
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.settings ? "open" : "closed"}`} onClick={() => toggle("settings")}>
           <div><span className="ribbon-num">06</span><span className="ribbon-title">Settings</span></div>
@@ -271,7 +292,9 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         )}
       </div>
 
-      {/* Delete account */}
+      </>}
+
+      {/* Delete account — always visible */}
       <div style={{ margin: "16px 0 8px", padding: 14, border: "1px solid rgba(196,74,58,0.27)", background: "rgba(196,74,58,0.03)" }}>
         {!showDeleteConfirm ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

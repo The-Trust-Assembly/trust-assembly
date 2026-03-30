@@ -762,7 +762,9 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
           {OB_STEP_LABELS.map((label, i) => (
-            <div key={i} style={{ flex: 1, textAlign: "center" }}>
+            <div key={i} style={{ flex: 1, textAlign: "center", cursor: i < step ? "pointer" : i > step ? "not-allowed" : "default" }}
+              onClick={() => { if (i < step) { setStep(i); topRef.current?.scrollIntoView({ behavior: "smooth" }); } }}
+              title={i < step ? `Go back to ${label}` : i > step ? "Complete current step first" : ""}>
               <div style={{ height: 3, background: i <= step ? "var(--gold)" : "var(--border)", marginBottom: 6, borderRadius: 0, transition: "background 0.3s" }} />
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.06em", color: i <= step ? "var(--text)" : "#94A3B8", fontWeight: i === step ? 700 : 400 }}>{label}</div>
             </div>

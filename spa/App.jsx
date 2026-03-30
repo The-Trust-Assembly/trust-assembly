@@ -40,8 +40,10 @@ const NAV_PRIMARY = [
 ];
 const NAV_DROPDOWNS = [
   { label: "More", items: [
+    { key: "_group", label: "EXPLORE" },
     { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
-    { key: "guide", label: "Learn" }, { key: "ai-agents", label: "AI Agents" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
+    { key: "_group2", label: "LEARN" },
+    { key: "guide", label: "Guide" }, { key: "ai-agents", label: "AI Agents" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
   ]},
   { label: "Account", items: [
     { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
@@ -98,7 +100,9 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
       </button>
       {open && (
         <div className="ta-nav-dropdown-menu" role="menu" style={dropDown ? { top: "100%", bottom: "auto", right: 0, left: "auto", transform: "none", marginTop: 2, marginBottom: 0 } : undefined}>
-          {allItems.map(n => (
+          {allItems.map(n => n.key.startsWith("_group") ? (
+            <div key={n.key} style={{ padding: "6px 16px 2px", fontSize: 8, fontFamily: "var(--mono)", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, borderTop: n.key === "_group" ? "none" : "1px solid var(--border)", marginTop: n.key === "_group" ? 0 : 4 }}>{n.label}</div>
+          ) : (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
               style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
               onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
@@ -188,9 +192,11 @@ export default function TrustAssembly() {
 
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
+  const [screenTransition, setScreenTransition] = useState(false);
   const setScreen = useCallback((s) => {
     trackAction("nav", `screen:${s}`, { screen: s });
-    setScreenRaw(s);
+    setScreenTransition(true);
+    setTimeout(() => { setScreenRaw(s); setScreenTransition(false); }, 80);
     setViewingCitizen(null);
     setViewingRecord(null);
     if (!skipPush.current) {
@@ -950,7 +956,19 @@ export default function TrustAssembly() {
             </div>
           </div>
 
-          <div className={`ta-content${contentWidth === "compact" ? " compact" : ""}`}>
+          <div className={`ta-content${contentWidth === "compact" ? " compact" : ""}`} style={{ opacity: screenTransition ? 0.3 : 1, transition: "opacity 0.08s ease" }}>
+            {/* Breadcrumb */}
+            {!viewingRecord && !viewingCitizen && screen !== "feed" && (() => {
+              const labels = { submit: "Submit", review: "Review", orgs: "Assemblies", vault: "Vaults", consensus: "Consensus", stories: "Stories", audit: "Ledger", profile: "Citizen Profile", extensions: "Extension", guide: "Learn", "ai-agents": "AI Agents", rules: "Rules", about: "About", feedback: "Feedback", badges: "Badges", vision: "Vision" };
+              const label = labels[screen];
+              return label ? (
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", letterSpacing: "0.5px", marginBottom: 6 }}>
+                  <span style={{ cursor: "pointer", color: "var(--gold)" }} onClick={() => setScreen("feed")}>Home</span>
+                  <span style={{ margin: "0 6px", color: "var(--border)" }}>/</span>
+                  <span>{label}</span>
+                </div>
+              ) : null;
+            })()}
             {extCta && (
               <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
