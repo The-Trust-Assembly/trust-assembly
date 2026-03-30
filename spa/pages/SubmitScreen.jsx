@@ -646,12 +646,6 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         </div>
         <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 4 }}>Your submissions will be flagged as AI-generated and require partner pre-approval before entering jury review.</div>
       </div>}
-      {user && activeOrg && (() => {
-        const tp = getTrustedProgress(user, user.orgId);
-        if (tp.isTrusted) return <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)", lineHeight: 1.6, display: "flex", alignItems: "center", gap: 4 }}><Icon name="trust-badge" size={14} /> <strong>Trusted Contributor</strong> in {activeOrg.name} — your submissions skip jury review and go straight to approved. Still disputable by any member.</div>;
-        if (tp.current > 0) return <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>Trusted Contributor progress in {activeOrg.name}: <strong>{tp.current}/{tp.needed}</strong> consecutive approvals. {tp.needed - tp.current} more to skip jury review.</div>;
-        return null;
-      })()}
 
       {/* Submission Type Toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
