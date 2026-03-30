@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getEmbedInfo, extractDomain } from "../lib/embedResolver";
+import { getEmbedInfo, extractDomain, getYouTubeThumbnail } from "../lib/embedResolver";
 
 /**
  * ContentEmbed — shared component for rendering embeddable content
@@ -15,6 +15,33 @@ export default function ContentEmbed({ url, title, description, thumbnailUrl, do
   if (!url) return null;
   const embedInfo = getEmbedInfo(url);
   const displayDomain = domain || extractDomain(url);
+
+  // For YouTube, always have a thumbnail available as fallback
+  const ytThumb = getYouTubeThumbnail(url);
+  const effectiveThumbnail = thumbnailUrl || ytThumb;
+
+  // ─── COMPACT MODE: show thumbnail card instead of iframe ────
+  // Avoids broken embeds (Error 153) in space-constrained layouts
+  if (embedInfo && compact && effectiveThumbnail) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer"
+        style={{ display: "block", border: "1px solid var(--border)", background: "#000", overflow: "hidden", marginBottom: 8, textDecoration: "none", position: "relative" }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = "var(--gold)"}
+        onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
+        <div style={{ position: "relative" }}>
+          <img src={effectiveThumbnail} alt="" referrerPolicy="no-referrer" onError={() => setImgError(true)}
+            style={{ width: "100%", height: 120, objectFit: "cover", display: "block", opacity: 0.85 }} />
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 0, height: 0, borderLeft: "12px solid #fff", borderTop: "7px solid transparent", borderBottom: "7px solid transparent", marginLeft: 3 }} />
+          </div>
+        </div>
+        <div style={{ padding: "6px 10px", background: "var(--card-bg)" }}>
+          <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", letterSpacing: "0.5px", textTransform: "uppercase" }}>{embedInfo.platform}</div>
+          {title && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>}
+        </div>
+      </a>
+    );
+  }
 
   // ─── IFRAME EMBED (YouTube, Spotify, Vimeo, TikTok) ──────────
   if (embedInfo) {

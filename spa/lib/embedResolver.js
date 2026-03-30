@@ -67,6 +67,27 @@ export function getContentDisplayMode(url, bodyText) {
 }
 
 /**
+ * Get YouTube thumbnail URL from a video URL.
+ * Always available even when embedding is disabled.
+ */
+export function getYouTubeThumbnail(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "").replace(/^m\./, "");
+    let videoId = null;
+    if (host === "youtu.be") videoId = u.pathname.slice(1).split(/[?#]/)[0];
+    else if (host === "youtube.com") {
+      if (u.pathname.startsWith("/watch")) videoId = u.searchParams.get("v");
+      else if (u.pathname.startsWith("/shorts/")) videoId = u.pathname.split("/shorts/")[1]?.split(/[?#]/)[0];
+      else if (u.pathname.startsWith("/embed/")) videoId = u.pathname.split("/embed/")[1]?.split(/[?#]/)[0];
+    }
+    if (videoId) return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  } catch {}
+  return null;
+}
+
+/**
  * Extract the domain name from a URL for display.
  */
 export function extractDomain(url) {
