@@ -8,6 +8,7 @@ import { isDIUser, hasActiveDeceptionPenalty, deceptionPenaltyRemaining } from "
 import { recuseJuror, getConcessionRecovery, fileDispute } from "../lib/jury";
 import { clearDraft } from "../lib/hooks";
 import { queryKeys } from "../lib/queryKeys";
+import ContentEmbed from "../components/ContentEmbed";
 import { SubHeadline, StatusPill, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, AuditTrail, EvidenceFields, Empty, Loader, Icon } from "../components/ui";
 import DIPanelContent from "../components/DIPanelContent";
 
@@ -370,7 +371,7 @@ function ReviewScreenInner({ user }) {
           <StatusPill status={sub.status} />
         </div>
       </div>
-      <a href={safeHref(sub.url)} target="_blank" rel="noopener" style={{ fontSize: 10, color: "var(--gold)", wordBreak: "break-all" }}>{safe(sub.url)}</a>
+      <ContentEmbed url={sub.url} title={sub.originalHeadline} thumbnailUrl={sub.thumbnailUrl || sub.thumbnail_url} compact />
       {isCross && <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", padding: "4px 8px", background: "var(--card-bg)", borderRadius: 0, marginTop: 6 }}>Cross-group jury: {seats} jurors · ≤{MAX_SHARED_ASSEMBLIES} shared non-GP memberships per pair · No members of {safe(sub.orgName)}</div>}
       <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />
@@ -538,7 +539,7 @@ function ReviewScreenInner({ user }) {
       {reviewingId === d.id ? (
         <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginTop: 8 }}>
           <div style={{ padding: 8, background: "rgba(212,168,67,0.09)", border: "1px solid #CA8A04", borderRadius: 0, marginBottom: 10, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
-            <strong style={{ color: "var(--gold)" }}>Dispute Stakes:</strong> If upheld, the disputer earns a <strong>+{W.disputeWin} point reward</strong> for catching the error. If dismissed, the disputer takes drag — same as being wrong. The original submitter faces the inverse. Your vote here has significant consequences.
+            <strong style={{ color: "var(--gold)" }}>Dispute Stakes (Round {d.disputeRound || d.dispute_round || 1}):</strong> <strong>{d.stakePoints || d.stake_points || 2} points</strong> at stake for both parties. If upheld, the disputer wins the stake. If dismissed, the disputer loses it. Stakes double with each successive dispute on the same submission.
           </div>
           <div className="ta-field"><label>Review Note (permanent, public)</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} /></div>
           <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />

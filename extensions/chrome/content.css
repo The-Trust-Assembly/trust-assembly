@@ -118,10 +118,47 @@
 .ta-ext-panel-footer a:hover { text-decoration: underline; }
 
 /* ── Cards ── */
+/* ── Assembly Tab (manila folder style) ── */
+.ta-ext-assembly-tab {
+  display: inline-flex;
+  align-items: center;
+  background: #B8963E;
+  color: #FDFBF5;
+  border: 1px solid #B8963E;
+  border-bottom: none;
+  padding: 3px 12px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 1;
+}
+.ta-ext-assembly-tab-affirm { background: #1B5E3F; border-color: #1B5E3F; }
+
+/* ── Status Stamp ── */
+.ta-ext-status-stamp {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border: 2px solid;
+  border-radius: 50px;
+  transform: rotate(-3deg);
+  display: inline-block;
+  margin-left: auto;
+}
+.ta-ext-stamp-approved { border-color: #1B5E3F; color: #1B5E3F; }
+.ta-ext-stamp-consensus { border-color: #5B2D8E; color: #5B2D8E; }
+.ta-ext-stamp-rejected { border-color: #C4573F; color: #C4573F; }
+.ta-ext-stamp-pending { border-color: #C2632A; color: #C2632A; }
+
 .ta-ext-card {
   padding: 12px;
   margin-bottom: 10px;
-  border-radius: 3px;
+  border-radius: 0 3px 3px 3px;
   border: 1px solid #DCD8D0;
   background: #fff;
 }
@@ -132,6 +169,7 @@
 .ta-ext-card-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -237,6 +275,24 @@
 .ta-ext-status-cross_review { background: #E5EFED; color: #2A6B6B; }
 .ta-ext-status-pending_review { background: #FDF0E4; color: #C2632A; }
 .ta-ext-status-rejected { background: #FAE8E5; color: #C4573F; }
+
+/* ── Inline Edit Live Preview (while typing in extension) ── */
+.ta-inline-preview-wrap {
+  position: relative;
+  display: inline;
+}
+.ta-inline-preview-original {
+  text-decoration: line-through;
+  text-decoration-color: #9CA3AF;
+  color: #9CA3AF;
+  background: #f5f3f0;
+}
+.ta-inline-preview-replacement {
+  color: #9CA3AF;
+  font-style: italic;
+  border-bottom: 1px dashed #9CA3AF;
+  margin-left: 3px;
+}
 
 /* ── Translations ── */
 .ta-ext-section-title {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Component } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SK, ADMIN_USERNAME } from "../lib/constants";
+import ContentEmbed from "../components/ContentEmbed";
 import { sG } from "../lib/storage";
 import { anonName, sDate, hotScore } from "../lib/utils";
 import { fileDispute } from "../lib/jury";
@@ -28,6 +29,7 @@ function HeroSlide({ slide, style, onClickSlide, onClickAssembly }) {
   return (
     <div style={style}>
       <div style={{ cursor: "pointer" }} onClick={() => onClickSlide && onClickSlide(slide.id)}>
+        <ContentEmbed url={slide.url} title={slide.originalHeadline} thumbnailUrl={slide.thumbnailUrl} domain={domain} compact />
         <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#777", letterSpacing: "0.5px", marginBottom: 8 }}>{domain || "article"}</div>
         {isAffirm ? (
           <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#1a1a1a" }}>
@@ -161,7 +163,7 @@ export default function FeedScreen(props) {
   return <FeedErrorBoundary><FeedScreenInner {...props} /></FeedErrorBoundary>;
 }
 
-function FeedScreenInner({ user, siteAnnouncement, hideCarousel, hideStatusCards, onNavigate, onViewCitizen, onViewRecord, onViewAssembly }) {
+function FeedScreenInner({ user, siteAnnouncement, hideCarousel, hideStatusCards, onNavigate, onViewCitizen, onViewRecord, onViewAssembly, onDismissAnnouncement }) {
   const qc = useQueryClient();
   const [subs, setSubs] = useState(null); const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState({});
@@ -314,7 +316,10 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, hideStatusCards
       {/* Admin update box — driven by /api/admin/announcement */}
       {!hideStatusCards && siteAnnouncement && typeof siteAnnouncement === "string" && (
         <div style={{ background: "rgba(212,168,67,0.07)", borderLeft: "3px solid var(--gold)", padding: "10px 14px", marginBottom: 8 }}>
-          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Admin update</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700 }}>Admin update</div>
+            {onDismissAnnouncement && <button onClick={onDismissAnnouncement} style={{ background: "none", border: "none", fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", cursor: "pointer", letterSpacing: "0.5px", padding: 0 }}>MARK AS READ</button>}
+          </div>
           <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{siteAnnouncement}</div>
         </div>
       )}

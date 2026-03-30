@@ -517,6 +517,172 @@
       };
     }
 
+    // --- YouTube ---
+    if (host.includes("youtube.com") || host === "youtu.be") {
+      return {
+        name: "youtube",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.ytd-watch-metadata yt-formatted-string', 'h1.ytd-video-primary-info-renderer',
+          '#title h1 yt-formatted-string', '#title h1', 'h1[class*="title"]',
+          '[itemprop="name"]', 'h1',
+        ],
+        articleRoot: '#description, #content, ytd-watch-metadata',
+        waitSelector: 'h1.ytd-watch-metadata, h1 yt-formatted-string, h1',
+        contentType: "video",
+      };
+    }
+
+    // --- Twitter / X ---
+    if (host === "x.com" || host === "twitter.com") {
+      return {
+        name: "twitter",
+        dynamic: true,
+        headlineSelectors: [
+          'article [data-testid="tweetText"]', 'article div[lang]',
+          '[data-testid="tweetText"]', 'article p',
+        ],
+        articleRoot: 'article, [data-testid="tweet"]',
+        waitSelector: '[data-testid="tweetText"], article div[lang]',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Reddit ---
+    if (host.includes("reddit.com")) {
+      return {
+        name: "reddit",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[slot="title"]', 'h1._eYtD2XCVieq6emjKBH3m', 'h1[class*="title"]',
+          '[data-testid="post-title"]', 'h1', '.Post h1',
+        ],
+        articleRoot: '[data-testid="post-content"], .Post, .thing .entry',
+        waitSelector: 'h1[slot="title"], [data-testid="post-title"], h1',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Amazon ---
+    if (host.includes("amazon.com") || host.includes("amazon.co.")) {
+      return {
+        name: "amazon",
+        dynamic: true,
+        headlineSelectors: [
+          '#productTitle', '#title span#productTitle', 'h1#title span',
+          '#btAsinTitle', 'h1[class*="product"]', 'h1',
+        ],
+        articleRoot: '#feature-bullets, #productDescription, #aplus',
+        waitSelector: '#productTitle, #title, h1',
+        contentType: "product",
+      };
+    }
+
+    // --- Spotify ---
+    if (host.includes("open.spotify.com")) {
+      return {
+        name: "spotify",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-testid="entityTitle"]', 'h1[class*="Type__TypeElement"]',
+          'span[data-testid="entityTitle"]', 'h1',
+        ],
+        articleRoot: '[data-testid="description"], [data-testid="episodeDescription"]',
+        waitSelector: 'h1[data-testid="entityTitle"], h1',
+        contentType: "audio",
+      };
+    }
+
+    // --- Facebook ---
+    if (host.includes("facebook.com") || host === "fb.com") {
+      return {
+        name: "facebook",
+        dynamic: true,
+        headlineSelectors: [
+          '[data-ad-preview="message"]', '[data-testid="post_message"]',
+          'div[dir="auto"]', 'h1',
+        ],
+        articleRoot: '[role="article"], [data-testid="Keycommand_wrapper"]',
+        waitSelector: '[data-ad-preview="message"], [role="article"]',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Instagram ---
+    if (host.includes("instagram.com")) {
+      return {
+        name: "instagram",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[class*="caption"]', 'span[class*="caption"]',
+          'article span', 'h1',
+        ],
+        articleRoot: 'article, main',
+        waitSelector: 'article',
+        contentType: "shortform",
+      };
+    }
+
+    // --- TikTok ---
+    if (host.includes("tiktok.com")) {
+      return {
+        name: "tiktok",
+        dynamic: true,
+        headlineSelectors: [
+          'h1[data-e2e="browse-video-desc"]', 'h1[class*="video-meta"]',
+          'span[data-e2e="browse-video-desc"]', 'h1',
+        ],
+        articleRoot: '[class*="video-meta"], [class*="DivVideoInfoContainer"]',
+        waitSelector: 'h1, [data-e2e="browse-video-desc"]',
+        contentType: "video",
+      };
+    }
+
+    // --- LinkedIn ---
+    if (host.includes("linkedin.com")) {
+      return {
+        name: "linkedin",
+        dynamic: true,
+        headlineSelectors: [
+          '.feed-shared-update-v2__description', '.update-components-text',
+          'h1.article-title', 'h1[class*="title"]', 'article h1', 'h1',
+        ],
+        articleRoot: 'article, .feed-shared-update-v2, .update-components-text',
+        waitSelector: '.feed-shared-update-v2, article, h1',
+        contentType: "shortform",
+      };
+    }
+
+    // --- Substack ---
+    if (host.includes("substack.com") || document.querySelector('meta[content*="Substack"]')) {
+      return {
+        name: "substack",
+        dynamic: true,
+        headlineSelectors: [
+          'h1.post-title', 'h1[class*="post-title"]', '.post-header h1',
+          'h1.pencraft', 'article h1', 'h1',
+        ],
+        articleRoot: '.body, .post-content, article, .available-content',
+        waitSelector: 'h1.post-title, article h1, h1',
+        contentType: "article",
+      };
+    }
+
+    // --- eBay ---
+    if (host.includes("ebay.com")) {
+      return {
+        name: "ebay",
+        dynamic: false,
+        headlineSelectors: [
+          'h1.x-item-title__mainTitle span', 'h1[class*="item-title"]',
+          '#itemTitle', 'h1',
+        ],
+        articleRoot: '#viTabs_0_is, .item-desc, #desc_wrapper_ctr',
+        waitSelector: 'h1',
+        contentType: "product",
+      };
+    }
+
     // --- Generic / unknown (broadest set of selectors) ---
     // Detect if the site appears to be an SPA by checking for common
     // framework markers (#app, #root, #__next, [data-reactroot], etc.)
@@ -975,13 +1141,15 @@
     const profile = sub.profile?.displayName || "Citizen";
     const score = sub.trustScore != null ? sub.trustScore : "—";
     const borderColor = statusBorderColor(sub.status);
+    const statusImg = sub.status === "consensus" ? "consensus" : sub.status === "approved" ? "approved" : sub.status === "rejected" ? "rejected" : "pending";
     return `
+      <div class="ta-ext-assembly-tab">${sub.orgName || "Assembly"}</div>
       <div class="ta-ext-card ta-ext-card-correction" style="border-left-color:${borderColor}">
         <div class="ta-ext-card-meta">
           <span class="ta-ext-profile-badge" style="border-color:${COLORS.red}; color:${COLORS.red}">
             ${profile} · ${score}
           </span>
-          <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}${relBadge(sub.orgId, assemblies)}</span>
+          <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${formatStatus(sub.status)}</span>
         </div>
         <div class="ta-ext-headline-replacement">${escapeHtml(sub.replacement)}<div class="ta-ext-headline-original-tooltip"><div class="ta-tooltip-label">Original Headline</div>${escapeHtml(sub.originalHeadline)}</div></div>
         ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
@@ -990,7 +1158,6 @@
           <div class="ta-ext-evidence">
             ${sub.evidence.map(e => `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.explanation || e.url)}</a>`).join("")}
           </div>` : ""}
-        <div class="ta-ext-card-status ta-ext-status-${sub.status || "approved"}">${formatStatus(sub.status)}</div>
       </div>
     `;
   }
@@ -1052,22 +1219,23 @@
       const profile = sub.profile?.displayName || "Citizen";
       const score = sub.trustScore != null ? sub.trustScore : "—";
       const borderColor = statusBorderColor(sub.status);
+      const statusImg = sub.status === "consensus" ? "consensus" : sub.status === "approved" ? "approved" : "pending";
       html += `
+        <div class="ta-ext-assembly-tab ta-ext-assembly-tab-affirm">${sub.orgName || "Assembly"}</div>
         <div class="ta-ext-card ta-ext-card-affirmation" style="border-left-color:${borderColor}">
           <div class="ta-ext-card-meta">
             <span class="ta-ext-profile-badge" style="border-color:${COLORS.green}; color:${COLORS.green}">
               ${profile} · ${score}
             </span>
-            <span class="ta-ext-card-assembly">${sub.orgName || "Assembly"}${relBadge(sub.orgId, assemblies)}</span>
+            <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${formatStatus(sub.status)}</span>
           </div>
-          <div class="ta-ext-headline-affirmed">✓ ${escapeHtml(sub.originalHeadline)}</div>
+          <div class="ta-ext-headline-affirmed">${escapeHtml(sub.originalHeadline)}</div>
           ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
           <div class="ta-ext-reasoning">${escapeHtml(sub.reasoning)}</div>
           ${sub.evidence && sub.evidence.length > 0 ? `
             <div class="ta-ext-evidence">
               ${sub.evidence.map(e => `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.explanation || e.url)}</a>`).join("")}
             </div>` : ""}
-          <div class="ta-ext-card-status ta-ext-status-${sub.status || "approved"}">${formatStatus(sub.status)}</div>
         </div>
       `;
     });
@@ -2100,6 +2268,11 @@
         sendResponse({ authors: authors });
         return true;
       }
+      if (message.type === "TA_GET_CONTENT_TYPE") {
+        const siteInfo = detectSiteType();
+        sendResponse({ contentType: siteInfo.contentType || "article", siteName: siteInfo.name || "generic" });
+        return true;
+      }
       // Live preview: update headline text in real-time as user types
       if (message.type === "TA_PREVIEW_HEADLINE") {
         handleLivePreview(message.text, message.originalHeadline, message.isAffirm);
@@ -2109,6 +2282,13 @@
       // Clear preview: restore original headline
       if (message.type === "TA_CLEAR_PREVIEW") {
         clearLivePreview();
+        clearInlineEditPreviews();
+        sendResponse({ ok: true });
+        return true;
+      }
+      // Live preview: inline body edits
+      if (message.type === "TA_PREVIEW_INLINE_EDITS") {
+        handleInlineEditPreviews(message.edits || []);
         sendResponse({ ok: true });
         return true;
       }
@@ -2185,6 +2365,83 @@
     }
     el.style.removeProperty("font-style");
     previewState = null;
+  }
+
+  // ── Inline Edit Live Preview ──
+  let inlineEditPreviewNodes = []; // track preview wrappers for cleanup
+
+  function handleInlineEditPreviews(edits) {
+    // Clear previous previews first
+    clearInlineEditPreviews();
+
+    if (!edits || edits.length === 0) return;
+
+    // Find article body to search within
+    const siteInfo = detectSiteType();
+    const rootSelector = siteInfo.articleRoot || "article, [role='main'], main, body";
+    const articleRoot = document.querySelector(rootSelector);
+    if (!articleRoot) return;
+
+    for (const edit of edits) {
+      if (!edit.original || !edit.original.trim()) continue;
+      const searchText = edit.original.trim();
+
+      // Walk text nodes to find the original text
+      const walker = document.createTreeWalker(articleRoot, NodeFilter.SHOW_TEXT, null, false);
+      let node;
+      while ((node = walker.nextNode())) {
+        // Skip our own elements
+        if (node.parentElement?.closest("[class^='ta-inline'], [class^='ta-ext']")) continue;
+
+        const idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+
+        // Found it — split and wrap
+        const range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+
+        const wrapper = document.createElement("span");
+        wrapper.className = "ta-inline-preview-wrap";
+
+        // Original text with strikethrough
+        const origSpan = document.createElement("span");
+        origSpan.className = "ta-inline-preview-original";
+        origSpan.textContent = searchText;
+
+        wrapper.appendChild(origSpan);
+
+        // Replacement text (if provided)
+        if (edit.replacement && edit.replacement.trim()) {
+          const replSpan = document.createElement("span");
+          replSpan.className = "ta-inline-preview-replacement";
+          replSpan.textContent = edit.replacement.trim();
+          wrapper.appendChild(replSpan);
+        }
+
+        range.deleteContents();
+        range.insertNode(wrapper);
+
+        inlineEditPreviewNodes.push(wrapper);
+        break; // Only match first occurrence per edit
+      }
+    }
+  }
+
+  function clearInlineEditPreviews() {
+    for (const wrapper of inlineEditPreviewNodes) {
+      try {
+        // Restore original text node
+        const parent = wrapper.parentNode;
+        if (!parent) continue;
+        const origSpan = wrapper.querySelector(".ta-inline-preview-original");
+        const textNode = document.createTextNode(origSpan ? origSpan.textContent : "");
+        parent.replaceChild(textNode, wrapper);
+        // Merge adjacent text nodes
+        parent.normalize();
+      } catch (e) { /* element may have been removed by SPA */ }
+    }
+    inlineEditPreviewNodes = [];
   }
 
   // ── MutationObserver for dynamic content (SPAs, feeds) ──

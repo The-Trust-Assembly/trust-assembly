@@ -159,6 +159,8 @@ export default function TrustAssembly() {
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [alertsEnabled, setAlertsEnabled] = useState(() => { try { return localStorage.getItem("ta_alerts_enabled") !== "false"; } catch { return true; } });
+  const [announcementDismissed, setAnnouncementDismissed] = useState(() => { try { return localStorage.getItem("ta_announcement_dismissed") || null; } catch { return null; } });
   const [navProfile, setNavProfile] = useState({ trustScore: 100, profile: "New Citizen" });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [siteAnnouncement, setSiteAnnouncement] = useState(null);
@@ -909,15 +911,18 @@ export default function TrustAssembly() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div ref={notifRef} style={{ position: "relative" }}>
-                <button className="ta-btn-ghost ta-notif-bell" onClick={() => { setShowNotifDropdown(v => !v); if (!showNotifDropdown) markNotifsRead(); }} title="Notifications" aria-label="Notifications">
+                {alertsEnabled && <button className="ta-btn-ghost ta-notif-bell" onClick={() => { setShowNotifDropdown(v => !v); if (!showNotifDropdown) markNotifsRead(); }} title="Notifications" aria-label="Notifications">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                   {notifications.filter(n => !n.read).length > 0 && <span className="ta-notif-badge">{notifications.filter(n => !n.read).length}</span>}
-                </button>
+                </button>}
                 {showNotifDropdown && (
                   <div className="ta-notif-dropdown">
                     <div className="ta-notif-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span>Notifications</span>
-                      <button onClick={() => setShowNotifDropdown(false)} style={{ background: "none", border: "none", fontSize: 16, color: "var(--text-muted)", cursor: "pointer", lineHeight: 1, padding: 0 }} aria-label="Close notifications">&times;</button>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {notifications.length > 0 && <button onClick={() => { setNotifications([]); markNotifsRead(); }} style={{ background: "none", border: "none", fontSize: 9, fontFamily: "var(--mono)", color: "var(--text-muted)", cursor: "pointer", letterSpacing: "0.5px", padding: 0 }}>CLEAR ALL</button>}
+                        <button onClick={() => setShowNotifDropdown(false)} style={{ background: "none", border: "none", fontSize: 16, color: "var(--text-muted)", cursor: "pointer", lineHeight: 1, padding: 0 }} aria-label="Close notifications">&times;</button>
+                      </div>
                     </div>
                     {notifications.length === 0 ? (
                       <div className="ta-notif-empty">No notifications yet</div>
@@ -926,9 +931,12 @@ export default function TrustAssembly() {
                         {notifications.slice(0, 20).map(n => {
                           const info = formatNotification(n);
                           return (
-                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} onClick={() => { if (info.recordId) { navigateToRecord(info.recordId); setShowNotifDropdown(false); } else if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }} style={info.screen || info.recordId ? { cursor: "pointer" } : {}}>
-                            <div className="ta-notif-text">{info.text}{info.screen && <span style={{ fontSize: 10, color: "var(--gold)", marginLeft: 4 }}>&rarr; Go</span>}</div>
-                            <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
+                          <div key={n.id} className={`ta-notif-item ${n.read ? "" : "ta-notif-unread"}`} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                            <div style={{ flex: 1, cursor: info.screen || info.recordId ? "pointer" : "default" }} onClick={() => { if (info.recordId) { navigateToRecord(info.recordId); setShowNotifDropdown(false); } else if (info.screen) { setScreen(info.screen); setShowNotifDropdown(false); } }}>
+                              <div className="ta-notif-text">{info.text}{info.screen && <span style={{ fontSize: 10, color: "var(--gold)", marginLeft: 4 }}>&rarr; Go</span>}</div>
+                              <div className="ta-notif-time">{new Date(n.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <button onClick={(e) => { e.stopPropagation(); setNotifications(prev => prev.filter(x => x.id !== n.id)); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, padding: "0 2px", lineHeight: 1, flexShrink: 0 }} title="Dismiss">&times;</button>
                           </div>
                           );
                         })}
@@ -961,14 +969,14 @@ export default function TrustAssembly() {
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : <>
-            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
+            {screen === "feed" && <FeedScreen user={user} siteAnnouncement={announcementDismissed === siteAnnouncement ? null : siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onDismissAnnouncement={() => { setAnnouncementDismissed(siteAnnouncement); try { localStorage.setItem("ta_announcement_dismissed", siteAnnouncement); } catch {} }} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
             {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} onShowRegistration={() => { setLoginAccordion(true); setScreen("register"); }} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
             {screen === "stories" && <StoriesScreen user={user} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} />}
-            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} hideCarousel={hideCarousel} setHideCarousel={setHideCarousel} hideStatusCards={hideStatusCards} setHideStatusCards={setHideStatusCards} />}
+            {screen === "profile" && <ProfileScreen user={user} onViewCitizen={navigateToCitizen} theme={theme} setTheme={setTheme} fontSize={fontSize} setFontSize={setFontSize} contentWidth={contentWidth} setContentWidth={setContentWidth} hideCarousel={hideCarousel} setHideCarousel={setHideCarousel} hideStatusCards={hideStatusCards} setHideStatusCards={setHideStatusCards} alertsEnabled={alertsEnabled} setAlertsEnabled={setAlertsEnabled} />}
             {screen === "audit" && <AuditScreen />}
             {screen === "guide" && <OnboardingFlow onComplete={() => setScreen("feed")} embedded />}
             {screen === "rules" && <RulesScreen />}

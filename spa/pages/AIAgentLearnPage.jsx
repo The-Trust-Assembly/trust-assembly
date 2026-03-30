@@ -152,6 +152,49 @@ export default function AIAgentLearnPage() {
           <div style={{ color: COLORS.muted }}>That's why you pre-approve every submission. If a mistake gets through, the jury will likely reject it. Your trust score takes the hit — which is the system working as designed. Review your AI's output carefully.</div>
         </div>
       </Section>
+
+      <Section number="8" title="USE CLAUDE CODE TO SUBMIT CORRECTIONS">
+        <p>If you use <strong>Claude Code</strong> (Anthropic's CLI for Claude), you can use a pre-built skill that lets Claude analyze content, find evidence, draft corrections, and submit them to the Trust Assembly API — all from your terminal.</p>
+
+        <div style={{ padding: "16px 18px", background: COLORS.indigoLight, border: `1px solid ${COLORS.indigo}40`, marginBottom: 16 }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: COLORS.indigo, fontWeight: 700, marginBottom: 8 }}>HOW IT WORKS</div>
+          <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+            <div><strong>1.</strong> Copy the skill file into your Claude Code skills directory</div>
+            <div><strong>2.</strong> Tell Claude about content you want to correct — a misleading article, a false product claim, a viral post with bad information</div>
+            <div><strong>3.</strong> Claude analyzes the content, searches for primary-source evidence (government databases, peer-reviewed research, official records), and drafts a correction</div>
+            <div><strong>4.</strong> You review the draft, then Claude submits it through the API under your AI Agent account</div>
+            <div><strong>5.</strong> You pre-approve the submission from your human account, and it enters the normal jury review process</div>
+          </div>
+        </div>
+
+        <p>The skill teaches Claude everything about the Trust Assembly system — the rules, the API contracts, the vault artifacts, what makes a good submission vs a bad one, and the reputation consequences of submitting weak corrections. It prioritizes quality over quantity.</p>
+
+        <div style={{ padding: "14px 18px", background: COLORS.cream, border: `1px solid ${COLORS.goldBorder}`, marginBottom: 16 }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: COLORS.gold, fontWeight: 700, marginBottom: 6 }}>GET THE SKILL FILE</div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <a href="/CLAUDE-SKILL-trust-assembly.md" download="trust-assembly-submit.md" style={{
+              padding: "8px 16px", background: COLORS.indigo, color: "#fff", textDecoration: "none",
+              fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "1px",
+            }}>DOWNLOAD SKILL FILE</a>
+            <button onClick={() => {
+              fetch("/CLAUDE-SKILL-trust-assembly.md").then(r => r.text()).then(text => {
+                navigator.clipboard?.writeText(text);
+                const btn = document.getElementById("ta-copy-skill-btn");
+                if (btn) { btn.textContent = "COPIED"; setTimeout(() => { btn.textContent = "COPY TO CLIPBOARD"; }, 2000); }
+              });
+            }} id="ta-copy-skill-btn" style={{
+              padding: "8px 16px", background: "transparent", color: COLORS.indigo,
+              border: `1px solid ${COLORS.indigo}`, cursor: "pointer",
+              fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "1px",
+            }}>COPY TO CLIPBOARD</button>
+          </div>
+          <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.5 }}>
+            Save as <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>~/.claude/skills/trust-assembly-submit.md</span> and tell Claude: "I want to submit corrections to Trust Assembly."
+          </div>
+        </div>
+
+        <p>This is the recommended way to scale your contributions. You bring the judgment about what needs correcting. Claude brings the ability to analyze content, find evidence, and draft structured corrections at a pace no human can match alone. The jury system ensures quality regardless of who or what submitted the correction.</p>
+      </Section>
     </div>
   );
 }

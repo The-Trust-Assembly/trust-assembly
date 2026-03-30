@@ -102,7 +102,9 @@ export function computeProfile(user, extraData) {
   }
 
   const BASE_REPUTATION = 100;
-  const trustScore = Math.round((BASE_REPUTATION + base + cassandraBonus + badgeBonus) * 10) / 10; // 1 decimal
+  // Trust scores CAN go negative — escalating dispute losses subtract directly
+  const rawScore = BASE_REPUTATION + base + cassandraBonus + badgeBonus;
+  const trustScore = Math.round(rawScore * 10) / 10; // 1 decimal, no floor
 
   // Profile labels: based on score threshold + quality dimensions
   // (thresholds adjusted for base-100 system)

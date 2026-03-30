@@ -1,7 +1,4 @@
 import { NextRequest } from "next/server";
-import * as cheerio from "cheerio";
-import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
 import { ok, err } from "@/lib/api-utils";
 import registryData from "../../../../site-registry.json";
 
@@ -9,15 +6,9 @@ import registryData from "../../../../site-registry.json";
 const cache = new Map<string, { data: ImportResult; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
-// Use a browser-like User-Agent — many sites (CNN, NYT, etc.) block bot-like UAs
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-interface FieldResult {
-  value: string;
-  source: string;
-  confidence: number;
-}
-
+interface FieldResult { value: string; source: string; confidence: number; }
 interface ImportResult {
   success: boolean;
   platform: string;
@@ -33,6 +24,26 @@ interface ImportResult {
   fromCache?: boolean;
 }
 
+// ─── Registry ──────────────────────────────────────────────────────
+
+const registry = registryData as Record<string, unknown>;
+const recipes = (registry.recipes || {}) as Record<string, Record<string, unknown>>;
+
+function findRecipe(rawUrl: string): { key: string; recipe: Record<string, unknown> } | null {
+  const hostname = new URL(rawUrl).hostname.replace(/^www\./, "");
+  for (const [key, recipe] of Object.entries(recipes)) {
+    if (key.startsWith("_")) continue;
+    const domains = recipe.domains as string[] | undefined;
+    if (domains?.includes(hostname) || domains?.includes(`www.${hostname}`)) return { key, recipe };
+    const domainPattern = recipe.domainPattern as string | undefined;
+    if (domainPattern) {
+      const pattern = domainPattern.replace("*.", "");
+      if (hostname.endsWith(pattern) && hostname !== pattern) return { key, recipe };
+    }
+  }
+  return null;
+}
+
 // ─── URL Normalization ─────────────────────────────────────────────
 
 const GLOBAL_STRIP_PARAMS = [
@@ -44,7 +55,6 @@ const GLOBAL_STRIP_PARAMS = [
 function normalizeUrl(rawUrl: string, recipe: Record<string, unknown> | null): string {
   const url = new URL(rawUrl);
   GLOBAL_STRIP_PARAMS.forEach(p => url.searchParams.delete(p));
-
   const normRules = recipe?.urlNormalization as Record<string, unknown> | undefined;
   if (normRules?.stripParams) {
     for (const pattern of normRules.stripParams as string[]) {
@@ -58,88 +68,197 @@ function normalizeUrl(rawUrl: string, recipe: Record<string, unknown> | null): s
       }
     }
   }
-
-  if (normRules?.normalizeDomain) {
-    url.hostname = normRules.normalizeDomain as string;
-  }
-
+  if (normRules?.normalizeDomain) url.hostname = normRules.normalizeDomain as string;
   return url.toString();
 }
 
-// ─── Recipe Lookup ─────────────────────────────────────────────────
+// ─── Regex-Based Extraction (ported from article-meta) ─────────────
 
-const registry = registryData as Record<string, unknown>;
-const recipes = (registry.recipes || {}) as Record<string, Record<string, unknown>>;
+function decodeEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&nbsp;/g, " ");
+}
 
-function findRecipe(rawUrl: string): { key: string; recipe: Record<string, unknown> } | null {
-  const hostname = new URL(rawUrl).hostname.replace(/^www\./, "");
-
-  for (const [key, recipe] of Object.entries(recipes)) {
-    if (key.startsWith("_")) continue;
-    const domains = recipe.domains as string[] | undefined;
-    if (domains?.includes(hostname) || domains?.includes(`www.${hostname}`)) {
-      return { key, recipe };
-    }
-    const domainPattern = recipe.domainPattern as string | undefined;
-    if (domainPattern) {
-      const pattern = domainPattern.replace("*.", "");
-      if (hostname.endsWith(pattern) && hostname !== pattern) {
-        return { key, recipe };
-      }
-    }
+function getMetaContent(html: string, nameOrProp: string): string | null {
+  const patterns = [
+    new RegExp(`<meta[^>]+(?:name|property)=["']${nameOrProp}["'][^>]+content=["']([^"']+)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["']${nameOrProp}["']`, "i"),
+  ];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) return decodeEntities(match[1].trim());
   }
   return null;
 }
 
-// ─── Extraction Layers ─────────────────────────────────────────────
-
-function extractMetaValue($: cheerio.CheerioAPI, key: string): string | null {
-  let el = $(`meta[property="${key}"]`);
-  if (el.length) return el.attr("content") || null;
-  el = $(`meta[name="${key}"]`);
-  if (el.length) return el.attr("content") || null;
-  if (key === "title") return $("title").text().trim() || null;
-  return null;
-}
-
-function extractWithSelectors($: cheerio.CheerioAPI, selectors: Record<string, Record<string, unknown>>): Record<string, FieldResult> {
+// Layer 1: Meta tags (og, twitter, standard)
+function extractMetaFields(html: string): Record<string, FieldResult> {
   const fields: Record<string, FieldResult> = {};
-  for (const [fieldName, config] of Object.entries(selectors)) {
-    if (fieldName.startsWith("_")) continue;
-    let value: string | null = null;
-    let source = "selector";
-    const css = config.css as string | null;
-    if (css) {
-      const el = $(css).first();
-      if (el.length) {
-        value = config.attr ? (el.attr(config.attr as string) || null) : el.text().trim();
-      }
-      if (config.multi && $(css).length > 1) {
-        const values: string[] = [];
-        $(css).each((_, el) => { const text = $(el).text().trim(); if (text) values.push(text); });
-        if (values.length > 0) value = values.join((config.separator as string || ", ") + " ");
-      }
-    }
-    if (!value && config.fallback) {
-      value = extractMetaValue($, config.fallback as string);
-      source = "meta";
-    }
-    if (value) {
-      fields[fieldName] = { value: value.trim(), source, confidence: source === "selector" ? 0.9 : 0.7 };
+  const metaMappings: Array<{ field: string; tags: string[]; confidence: number }> = [
+    { field: "title", tags: ["og:title", "twitter:title"], confidence: 0.8 },
+    { field: "description", tags: ["og:description", "twitter:description", "description"], confidence: 0.7 },
+    { field: "author", tags: ["article:author", "author", "twitter:creator", "sailthru.author", "dc.creator"], confidence: 0.7 },
+    { field: "publishDate", tags: ["article:published_time", "date", "pubdate"], confidence: 0.7 },
+    { field: "siteName", tags: ["og:site_name", "twitter:site", "application-name"], confidence: 0.7 },
+    { field: "thumbnail", tags: ["og:image", "twitter:image"], confidence: 0.8 },
+  ];
+  for (const { field, tags, confidence } of metaMappings) {
+    for (const tag of tags) {
+      const value = getMetaContent(html, tag);
+      if (value) { fields[field] = { value, source: "meta", confidence }; break; }
     }
   }
   return fields;
 }
 
+// Layer 2: JSON-LD structured data
+function extractJsonLd(html: string): Record<string, FieldResult> {
+  const fields: Record<string, FieldResult> = {};
+  // Find ALL JSON-LD blocks
+  const ldPattern = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = ldPattern.exec(html)) !== null) {
+    try {
+      let data = JSON.parse(match[1]);
+      if (data["@graph"]) data = data["@graph"];
+      if (!Array.isArray(data)) data = [data];
+      for (const item of data) {
+        const type = item["@type"];
+        // Articles
+        if (["NewsArticle", "Article", "BlogPosting", "WebPage", "ReportageNewsArticle"].includes(type)) {
+          if (item.headline && !fields.title) fields.title = { value: decodeEntities(String(item.headline)), source: "json-ld", confidence: 0.9 };
+          if (item.description && !fields.description) fields.description = { value: decodeEntities(String(item.description)), source: "json-ld", confidence: 0.85 };
+          if (item.author) {
+            const authors = Array.isArray(item.author) ? item.author : [item.author];
+            const names = authors.map((a: Record<string, string>) => a?.name || (typeof a === "string" ? a : null)).filter(Boolean);
+            if (names.length > 0 && !fields.author) fields.author = { value: names.join(", "), source: "json-ld", confidence: 0.9 };
+          }
+          if (item.datePublished && !fields.publishDate) fields.publishDate = { value: String(item.datePublished), source: "json-ld", confidence: 0.9 };
+          if (item.publisher?.name && !fields.publication) fields.publication = { value: String(item.publisher.name), source: "json-ld", confidence: 0.9 };
+        }
+        // Products
+        if (type === "Product") {
+          if (item.name && !fields.title) fields.title = { value: decodeEntities(String(item.name)), source: "json-ld", confidence: 0.95 };
+          if (item.brand?.name && !fields.brand) fields.brand = { value: String(item.brand.name), source: "json-ld", confidence: 0.95 };
+          if (item.description && !fields.description) fields.description = { value: decodeEntities(String(item.description)), source: "json-ld", confidence: 0.85 };
+          if (item.aggregateRating && !fields.rating) {
+            fields.rating = { value: `${item.aggregateRating.ratingValue}/${item.aggregateRating.bestRating || 5} (${item.aggregateRating.reviewCount || "?"} reviews)`, source: "json-ld", confidence: 0.95 };
+          }
+        }
+        // Videos
+        if (type === "VideoObject") {
+          if (item.name && !fields.title) fields.title = { value: decodeEntities(String(item.name)), source: "json-ld", confidence: 0.9 };
+          if (item.duration && !fields.duration) fields.duration = { value: String(item.duration), source: "json-ld", confidence: 0.9 };
+          if (item.author?.name && !fields.author) fields.author = { value: String(item.author.name), source: "json-ld", confidence: 0.9 };
+        }
+        // Podcasts
+        if (["PodcastEpisode", "AudioObject", "RadioEpisode"].includes(type)) {
+          if (item.name && !fields.title) fields.title = { value: decodeEntities(String(item.name)), source: "json-ld", confidence: 0.9 };
+          if (item.duration && !fields.duration) fields.duration = { value: String(item.duration), source: "json-ld", confidence: 0.9 };
+          if (item.partOfSeries?.name && !fields.showName) fields.showName = { value: String(item.partOfSeries.name), source: "json-ld", confidence: 0.9 };
+        }
+      }
+    } catch { /* invalid JSON-LD */ }
+  }
+  return fields;
+}
+
+// Layer 3: HTML fallbacks
+function extractHtmlFallbacks(html: string): Record<string, FieldResult> {
+  const fields: Record<string, FieldResult> = {};
+
+  // <title> tag (strip common suffixes)
+  if (!fields.title) {
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch?.[1]) {
+      let title = decodeEntities(titleMatch[1].trim());
+      title = title.replace(/\s*[\|\-–—]\s*[^|\-–—]{2,30}$/, "").trim();
+      if (title.length > 10) fields.title = { value: title, source: "html-title", confidence: 0.6 };
+    }
+  }
+
+  // First <h1>
+  if (!fields.title) {
+    const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1Match?.[1]) {
+      const h1 = decodeEntities(h1Match[1].replace(/<[^>]+>/g, "").trim());
+      if (h1.length > 5) fields.title = { value: h1, source: "html-h1", confidence: 0.5 };
+    }
+  }
+
+  // Author from <a rel="author">
+  const relAuthorMatch = html.match(/<a[^>]+rel=["']author["'][^>]*>([^<]+)<\/a>/gi);
+  if (relAuthorMatch && !fields.author) {
+    const names: string[] = [];
+    for (const m of relAuthorMatch) {
+      const nameMatch = m.match(/>([^<]+)</);
+      if (nameMatch?.[1]) names.push(decodeEntities(nameMatch[1].trim()));
+    }
+    if (names.length > 0) fields.author = { value: names.join(", "), source: "html-rel-author", confidence: 0.6 };
+  }
+
+  // Canonical URL
+  const canonicalMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+  if (canonicalMatch?.[1]) fields._canonical = { value: canonicalMatch[1], source: "html", confidence: 1.0 };
+  if (!fields._canonical) {
+    const ogUrl = getMetaContent(html, "og:url");
+    if (ogUrl) fields._canonical = { value: ogUrl, source: "meta", confidence: 0.9 };
+  }
+
+  return fields;
+}
+
+// Body text extraction via regex (replaces Readability)
+function extractBodyText(html: string): string | null {
+  // Remove script and style tags
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "");
+
+  let container: string | null = null;
+  // Try <article> tag first
+  const articleMatch = cleaned.match(/<article[\s\S]*?>([\s\S]*?)<\/article>/i);
+  if (articleMatch?.[1]) container = articleMatch[1];
+
+  // Fallback to common article body selectors
+  if (!container) {
+    const selectors = [
+      /role=["']article["']/i,
+      /class=["'][^"']*\barticle-body\b[^"']*["']/i,
+      /class=["'][^"']*\bpost-content\b[^"']*["']/i,
+      /class=["'][^"']*\bentry-content\b[^"']*["']/i,
+      /class=["'][^"']*\bstory-body\b[^"']*["']/i,
+    ];
+    for (const selector of selectors) {
+      const tagPattern = new RegExp(`<(\\w+)[^>]*${selector.source}[^>]*>([\\s\\S]*?)<\\/\\1>`, "i");
+      const match = cleaned.match(tagPattern);
+      if (match?.[2]) { container = match[2]; break; }
+    }
+  }
+
+  // Extract <p> tags
+  const source = container || cleaned;
+  const pMatches = source.match(/<p[\s\S]*?>([\s\S]*?)<\/p>/gi);
+  if (!pMatches || pMatches.length === 0) return null;
+
+  const paragraphs = pMatches
+    .map(p => decodeEntities(p.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()))
+    .filter(text => text.length > 30); // skip short fragments
+
+  if (paragraphs.length === 0) return null;
+  return paragraphs.join("\n\n").slice(0, 10000);
+}
+
+// Layer 4: Platform APIs
 async function extractWithRedditJson(url: string): Promise<Record<string, FieldResult> | null> {
   try {
     const jsonUrl = url.replace(/\/?(\?.*)?$/, ".json$1");
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(jsonUrl, {
-      headers: { "User-Agent": "TrustAssembly/1.0" },
-      signal: controller.signal,
-    });
+    const response = await fetch(jsonUrl, { headers: { "User-Agent": "TrustAssembly/1.0" }, signal: controller.signal });
     clearTimeout(timeout);
     if (!response.ok) return null;
     const data = await response.json();
@@ -155,110 +274,21 @@ async function extractWithRedditJson(url: string): Promise<Record<string, FieldR
   } catch { return null; }
 }
 
-async function extractWithOembed(url: string, recipe: Record<string, unknown>): Promise<Record<string, FieldResult> | null> {
-  const endpoint = recipe.oembedEndpoint as string | undefined;
-  if (!endpoint) return null;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(endpoint + encodeURIComponent(url), { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!response.ok) return null;
-    const data = await response.json();
-    const fields: Record<string, FieldResult> = {};
-    if (data.title) fields.title = { value: data.title, source: "oembed", confidence: 0.85 };
-    if (data.author_name) fields.author = { value: data.author_name, source: "oembed", confidence: 0.85 };
-    if (data.provider_name) fields.publication = { value: data.provider_name, source: "oembed", confidence: 0.85 };
-    return fields;
-  } catch { return null; }
-}
+// Apply site registry metaHints (title stripping, field preferences)
+function applyMetaHints(fields: Record<string, FieldResult>, recipe: Record<string, unknown> | null): void {
+  const hints = recipe?.metaHints as Record<string, string> | undefined;
+  if (!hints) return;
 
-function extractMetaTags($: cheerio.CheerioAPI): Record<string, FieldResult> {
-  const fields: Record<string, FieldResult> = {};
-  const mappings = [
-    { field: "title", tags: ["og:title", "twitter:title", "title"] },
-    { field: "description", tags: ["og:description", "twitter:description", "description"] },
-    { field: "author", tags: ["article:author", "twitter:creator", "author"] },
-    { field: "publishDate", tags: ["article:published_time", "date", "pubdate"] },
-    { field: "siteName", tags: ["og:site_name", "twitter:site", "application-name"] },
-    { field: "thumbnail", tags: ["og:image", "twitter:image", "thumbnail"] },
-  ];
-  for (const { field, tags } of mappings) {
-    for (const tag of tags) {
-      const value = extractMetaValue($, tag);
-      if (value) { fields[field] = { value, source: "meta", confidence: 0.7 }; break; }
+  // Strip title suffixes (e.g., " - CNN", " | Amazon.com")
+  if (hints.titleStrip && fields.title?.value) {
+    const suffix = hints.titleStrip;
+    if (fields.title.value.endsWith(suffix)) {
+      fields.title.value = fields.title.value.slice(0, -suffix.length).trim();
     }
+    // Also try common separator patterns
+    const escaped = suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    fields.title.value = fields.title.value.replace(new RegExp(`\\s*[\\|\\-–—]\\s*${escaped}\\s*$`), "").trim();
   }
-  return fields;
-}
-
-function extractJsonLd($: cheerio.CheerioAPI): Record<string, FieldResult> {
-  const fields: Record<string, FieldResult> = {};
-  $('script[type="application/ld+json"]').each((_, el) => {
-    try {
-      let data = JSON.parse($(el).html() || "");
-      if (data["@graph"]) data = data["@graph"];
-      if (!Array.isArray(data)) data = [data];
-      for (const item of data) {
-        const type = item["@type"];
-        if (["NewsArticle", "Article", "BlogPosting", "WebPage", "ReportageNewsArticle"].includes(type)) {
-          if (item.headline && !fields.title) fields.title = { value: item.headline, source: "json-ld", confidence: 0.85 };
-          if (item.author) {
-            const authors = Array.isArray(item.author) ? item.author : [item.author];
-            const names = authors.map((a: Record<string, string>) => a.name || a).filter(Boolean);
-            if (names.length > 0 && !fields.author) fields.author = { value: names.join(", "), source: "json-ld", confidence: 0.9 };
-          }
-          if (item.datePublished && !fields.publishDate) fields.publishDate = { value: item.datePublished, source: "json-ld", confidence: 0.9 };
-          if (item.publisher?.name && !fields.publication) fields.publication = { value: item.publisher.name, source: "json-ld", confidence: 0.9 };
-        }
-        if (type === "Product") {
-          if (item.name && !fields.title) fields.title = { value: item.name, source: "json-ld", confidence: 0.95 };
-          if (item.brand?.name && !fields.brand) fields.brand = { value: item.brand.name, source: "json-ld", confidence: 0.95 };
-          if (item.description && !fields.description) fields.description = { value: item.description, source: "json-ld", confidence: 0.85 };
-          if (item.aggregateRating && !fields.rating) {
-            fields.rating = { value: `${item.aggregateRating.ratingValue}/${item.aggregateRating.bestRating || 5} (${item.aggregateRating.reviewCount || "?"} reviews)`, source: "json-ld", confidence: 0.95 };
-          }
-        }
-        if (type === "VideoObject") {
-          if (item.name && !fields.title) fields.title = { value: item.name, source: "json-ld", confidence: 0.9 };
-          if (item.duration && !fields.duration) fields.duration = { value: item.duration, source: "json-ld", confidence: 0.9 };
-          if (item.author?.name && !fields.author) fields.author = { value: item.author.name, source: "json-ld", confidence: 0.9 };
-        }
-        if (["PodcastEpisode", "AudioObject", "RadioEpisode"].includes(type)) {
-          if (item.name && !fields.title) fields.title = { value: item.name, source: "json-ld", confidence: 0.9 };
-          if (item.duration && !fields.duration) fields.duration = { value: item.duration, source: "json-ld", confidence: 0.9 };
-          if (item.partOfSeries?.name && !fields.showName) fields.showName = { value: item.partOfSeries.name, source: "json-ld", confidence: 0.9 };
-        }
-      }
-    } catch { /* invalid JSON-LD */ }
-  });
-  return fields;
-}
-
-function extractWithReadability(html: string, url: string): Record<string, FieldResult> {
-  try {
-    const dom = new JSDOM(html, { url });
-    const reader = new Readability(dom.window.document);
-    const article = reader.parse();
-    if (article) {
-      const result: Record<string, FieldResult> = {};
-      if (article.textContent) result.body = { value: article.textContent.substring(0, 5000), source: "readability", confidence: 0.6 };
-      if (article.title && !article.title.includes("|")) result.title = { value: article.title, source: "readability", confidence: 0.5 };
-      if (article.byline) result.author = { value: article.byline, source: "readability", confidence: 0.5 };
-      return result;
-    }
-  } catch (e) {
-    console.warn("[import] Readability failed (expected in some serverless envs):", e instanceof Error ? e.message : String(e));
-  }
-  return {};
-}
-
-function findCanonicalUrl($: cheerio.CheerioAPI, originalUrl: string): string {
-  const canonical = $('link[rel="canonical"]').attr("href");
-  if (canonical) return canonical;
-  const ogUrl = $('meta[property="og:url"]').attr("content");
-  if (ogUrl) return ogUrl;
-  return originalUrl;
 }
 
 // ─── Main Import Function ──────────────────────────────────────────
@@ -270,19 +300,16 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
   const normalizedUrl = normalizeUrl(rawUrl, recipe);
 
   let platform = (recipe?.platform as string) || "article";
-  let template = (recipe?.template as string) || "article";
+  const template = (recipe?.template as string) || "article";
 
-  // Special extraction strategies
+  // Platform APIs (Reddit JSON)
   let specialFields: Record<string, FieldResult> | null = null;
-  if (recipe?.extractionStrategy === "reddit_json") {
+  if (recipe?.extractionStrategy === "reddit_json" || normalizedUrl.includes("reddit.com")) {
     specialFields = await extractWithRedditJson(normalizedUrl);
-  } else if (recipe?.extractionStrategy === "oembed") {
-    specialFields = await extractWithOembed(normalizedUrl, recipe);
   }
 
-  // Fetch HTML (8-second timeout, browser-like headers to avoid blocks)
+  // Fetch HTML (first 200KB only — meta tags are in <head>)
   let html: string | null = null;
-  let $: cheerio.CheerioAPI | null = null;
   let fetchError: string | null = null;
   try {
     const controller = new AbortController();
@@ -300,10 +327,23 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     });
     clearTimeout(timeout);
     if (response.ok) {
-      html = await response.text();
-      $ = cheerio.load(html);
+      // Read only first 200KB
+      const reader = response.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        let totalBytes = 0;
+        const MAX_BYTES = 200_000;
+        html = "";
+        while (totalBytes < MAX_BYTES) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          html += decoder.decode(value, { stream: true });
+          totalBytes += value.length;
+        }
+        reader.cancel().catch(() => {});
+      }
     } else {
-      fetchError = `HTTP ${response.status} ${response.statusText}`;
+      fetchError = `HTTP ${response.status}`;
       console.warn(`[import] Fetch failed for ${normalizedUrl}: ${fetchError}`);
     }
   } catch (e) {
@@ -311,40 +351,40 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     console.warn(`[import] Fetch error for ${normalizedUrl}: ${fetchError}`);
   }
 
-  // Run extraction layers — earlier layers win
+  // Run extraction layers — earlier layers fill first, later layers only fill gaps
   let fields: Record<string, FieldResult> = {};
 
-  // Layer 1: Site-specific selectors
-  if ($ && recipe?.selectors) {
-    fields = { ...fields, ...extractWithSelectors($, recipe.selectors as Record<string, Record<string, unknown>>) };
+  // Layer 4 first (API results are highest confidence)
+  if (specialFields) {
+    for (const [key, val] of Object.entries(specialFields)) { if (!fields[key]) fields[key] = val; }
   }
 
-  // Layer 2: Special strategies
-  if (specialFields) {
-    for (const [key, val] of Object.entries(specialFields)) {
-      if (!fields[key]) fields[key] = val;
+  if (html) {
+    // Layer 2: JSON-LD (high confidence, structured data)
+    const jsonLdFields = extractJsonLd(html);
+    for (const [key, val] of Object.entries(jsonLdFields)) { if (!fields[key]) fields[key] = val; }
+
+    // Layer 1: Meta tags
+    const metaFields = extractMetaFields(html);
+    for (const [key, val] of Object.entries(metaFields)) { if (!fields[key]) fields[key] = val; }
+
+    // Layer 3: HTML fallbacks
+    const htmlFields = extractHtmlFallbacks(html);
+    for (const [key, val] of Object.entries(htmlFields)) { if (!fields[key]) fields[key] = val; }
+
+    // Body text extraction (regex-based, replaces Readability)
+    if (!fields.body) {
+      const bodyText = extractBodyText(html);
+      if (bodyText) fields.body = { value: bodyText, source: "html-body", confidence: 0.5 };
     }
   }
 
-  // Layer 3: Meta tags
-  if ($) {
-    const metaFields = extractMetaTags($);
-    for (const [key, val] of Object.entries(metaFields)) { if (!fields[key]) fields[key] = val; }
-  }
+  // Apply site-specific hints (title stripping, etc.)
+  applyMetaHints(fields, recipe);
 
-  // Layer 4: JSON-LD
-  if ($) {
-    const jsonLdFields = extractJsonLd($);
-    for (const [key, val] of Object.entries(jsonLdFields)) { if (!fields[key]) fields[key] = val; }
-  }
-
-  // Layer 5: Readability
-  if (html) {
-    const readabilityFields = extractWithReadability(html, normalizedUrl);
-    for (const [key, val] of Object.entries(readabilityFields)) { if (!fields[key]) fields[key] = val; }
-  }
-
-  const canonical = $ ? findCanonicalUrl($, normalizedUrl) : normalizedUrl;
+  // Extract canonical URL
+  const canonical = fields._canonical?.value || normalizedUrl;
+  delete fields._canonical;
 
   // URL-based platform overrides
   if (recipe?.urlOverrides) {
@@ -378,69 +418,46 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
   };
 }
 
-// ─── API Route ─────────────────────────────────────────────────────
+// ─── API Routes ────────────────────────────────────────────────────
 
-// GET /api/import?url=... — debug endpoint for testing in browser
+// GET /api/import?url=... — debug/test endpoint
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
-  if (!url || !url.startsWith("http")) {
-    return ok({ error: "Pass ?url=https://... to test import" });
-  }
+  if (!url || !url.startsWith("http")) return ok({ error: "Pass ?url=https://... to test import" });
   try {
     const result = await importUrl(url);
     return ok(result);
   } catch (e) {
-    return ok({ error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack?.split("\n").slice(0, 5) : undefined });
+    return ok({ error: e instanceof Error ? e.message : String(e) });
   }
 }
 
+// POST /api/import — main endpoint called by submit form
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return err("Invalid JSON body");
-  }
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
 
   const { url } = body;
-  if (!url || typeof url !== "string" || !url.startsWith("http")) {
-    return err("Valid URL starting with http required");
-  }
+  if (!url || typeof url !== "string" || !url.startsWith("http")) return err("Valid URL starting with http required");
 
   // Check cache
   const cached = cache.get(url);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return ok({ ...cached.data, fromCache: true });
-  }
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return ok({ ...cached.data, fromCache: true });
 
   try {
     const result = await importUrl(url);
-
-    // Cache successful results
     if (result.success) {
       cache.set(url, { data: result, timestamp: Date.now() });
-      if (result.canonical && result.canonical !== url) {
-        cache.set(result.canonical, { data: result, timestamp: Date.now() });
-      }
+      if (result.canonical && result.canonical !== url) cache.set(result.canonical, { data: result, timestamp: Date.now() });
     }
-
     return ok(result);
   } catch (e) {
     console.error("[import] importUrl crashed:", e);
-    // Import failed — return empty result, never block the user
     return ok({
-      success: false,
-      platform: "article",
-      template: "article",
-      confidence: 0,
-      fields: {},
-      canonical: url,
-      submitted: url,
-      normalized: url,
-      recipeUsed: null,
-      fetchError: e instanceof Error ? e.message : String(e),
-      extractionTime: "0ms",
+      success: false, platform: "article", template: "article", confidence: 0,
+      fields: {}, canonical: url, submitted: url, normalized: url,
+      recipeUsed: null, fetchError: e instanceof Error ? e.message : String(e), extractionTime: "0ms",
     });
   }
 }

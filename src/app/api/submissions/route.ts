@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
   if (!session) return unauthorized();
 
   const body = await request.json();
-  const { submissionType, url, originalHeadline, replacement, reasoning, author, orgId, orgIds, evidence, inlineEdits, bodyText } = body;
+  const { submissionType, url, originalHeadline, replacement, reasoning, author, orgId, orgIds, evidence, inlineEdits, bodyText, thumbnailUrl } = body;
 
   // Support single orgId or multiple orgIds for multi-assembly submission
   const targetOrgIds: string[] = orgIds && Array.isArray(orgIds) && orgIds.length > 0
@@ -191,12 +191,13 @@ export async function POST(request: NextRequest) {
       const result = await client.query(
         `INSERT INTO submissions (
           submission_type, status, url, normalized_url, original_headline, replacement,
-          reasoning, author, body_text, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          reasoning, author, body_text, submitted_by, org_id, trusted_skip, is_di, di_partner_id, jury_seats, thumbnail_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING id, submission_type, status, created_at`,
         [submissionType, initialStatus, url, normalizedUrl, originalHeadline,
          replacement || null, reasoning, author || null, bodyText || null,
-         session.sub, targetOrg, trustedSkip, submitterIsDI, user.rows[0].di_partner_id || null, jurySeats]
+         session.sub, targetOrg, trustedSkip, submitterIsDI, user.rows[0].di_partner_id || null, jurySeats,
+         thumbnailUrl || null]
       );
       // Set slug now that we have the ID
       const subSlug = slugify(originalHeadline, result.rows[0].id);

@@ -729,7 +729,8 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
   try {
     // Read dispute and vote counts
     const dispute = await sql`
-      SELECT d.id, d.submission_id, d.org_id, d.status, d.disputed_by, d.original_submitter
+      SELECT d.id, d.submission_id, d.org_id, d.status, d.disputed_by, d.original_submitter,
+             d.dispute_round, d.stake_points
       FROM disputes d WHERE d.id = ${disputeId}
     `;
     if (dispute.rows.length === 0 || dispute.rows[0].status !== "pending_review") return { resolved: false };
@@ -773,11 +774,36 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
         [outcome, now, disputeId]
       );
 
+      // Apply escalating stakes — winner gains, loser loses
+      const stake = parseFloat(d.stake_points as string) || 2;
+      const round = parseInt(d.dispute_round as string) || 1;
+      if (outcome === "upheld") {
+        // Disputer wins: gains stake as dispute_wins, original submitter loses
+        await client.query(
+          "UPDATE users SET dispute_wins = dispute_wins + 1, total_wins = total_wins + 1 WHERE id = $1",
+          [d.disputed_by]
+        );
+        await client.query(
+          "UPDATE users SET dispute_losses = dispute_losses + 1, total_losses = total_losses + 1, current_streak = 0 WHERE id = $1",
+          [d.original_submitter]
+        );
+      } else {
+        // Disputer loses: takes drag penalty, original submitter vindicated
+        await client.query(
+          "UPDATE users SET dispute_losses = dispute_losses + 1 WHERE id = $1",
+          [d.disputed_by]
+        );
+        await client.query(
+          "UPDATE users SET dispute_wins = dispute_wins + 1 WHERE id = $1",
+          [d.original_submitter]
+        );
+      }
+
       // Audit log
       await client.query(
         "INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata) VALUES ($1, $2, $3, $4, $5, $6)",
-        [`Dispute resolved: ${outcome.toUpperCase()}`, d.disputed_by, d.org_id, "dispute", disputeId,
-         JSON.stringify({ outcome, approveCount, rejectCount, expectedJurors })]
+        [`Dispute resolved: ${outcome.toUpperCase()} (round ${round}, stake ${stake} pts)`, d.disputed_by, d.org_id, "dispute", disputeId,
+         JSON.stringify({ outcome, approveCount, rejectCount, expectedJurors, disputeRound: round, stakePoints: stake })]
       );
 
       await client.query("COMMIT");
