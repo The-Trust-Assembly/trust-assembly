@@ -626,19 +626,6 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         </div>
       )}
 
-      {/* What you're about to do */}
-      <div style={{ padding: "14px 16px", background: "var(--card-bg)", border: "1px solid var(--border)", borderLeft: "3px solid var(--gold)", borderRadius: 0, marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontFamily: "var(--serif)", fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
-          {form.submissionType === "affirmation"
-            ? "You're affirming an accurate headline for the public record."
-            : "You're correcting a misleading headline and submitting it for jury review."}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
-          {form.submissionType === "affirmation"
-            ? "Identify an accurate headline, provide your evidence, and submit. Fellow citizens will verify your affirmation."
-            : "Identify the article, propose a truthful replacement, explain your reasoning, and submit. A jury of fellow citizens will review your correction."}
-        </div>
-      </div>
 
       {user && hasActiveDeceptionPenalty(user) && <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", border: "1.5px solid #991B1B", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--red)", lineHeight: 1.6 }}><strong>Deception penalty active</strong> — {deceptionPenaltyRemaining(user)} days remaining. You may still submit corrections. Accurate work during this period rebuilds your reputation.</div>}
 
