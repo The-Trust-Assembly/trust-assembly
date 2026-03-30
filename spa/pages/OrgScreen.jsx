@@ -660,7 +660,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
     const mySubs = Object.values(subs || {}).filter(s => s.orgId === o.id && s.submittedBy === user.username);
     const wins = mySubs.filter(s => ["approved", "consensus", "cross_review"].includes(s.status)).length;
     const losses = mySubs.filter(s => s.status === "rejected" || s.status === "consensus_rejected").length;
-    return Math.round((100 + (wins * W.win) - (losses * W.loss)) * 10) / 10;
+    return Math.round((100 + (wins * (W.win || 1)) - (losses * (W.lossDrag || 2))) * 10) / 10;
   };
 
   return (
@@ -733,7 +733,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
 
             {/* Stat cards */}
             <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-              {[[o.members.length, "Citizens", "var(--gold)"], [st.total || 0, "Claims", "var(--text)"], [inReview, "In review", "var(--gold)"]].map(([v, l, c], i) => (
+              {[[o.members.length, o.members.length === 1 ? "Citizen" : "Citizens", "var(--gold)"], [st.total || 0, (st.total || 0) === 1 ? "Claim" : "Claims", "var(--text)"], [inReview, "In review", "var(--gold)"]].map(([v, l, c], i) => (
                 <div key={i} style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", padding: 8, textAlign: "center" }}>
                   <div style={{ fontSize: 16, fontWeight: 900, color: c }}>{v}</div>
                   <div style={{ fontSize: 8, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase" }}>{l}</div>
@@ -789,7 +789,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 16, fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
-                  <span>{o.members.length} citizens</span><span>{st.total || 0} claims</span><span>{inReview} in review</span>
+                  <span>{o.members.length} {o.members.length === 1 ? "citizen" : "citizens"}</span><span>{st.total || 0} claims</span><span>{inReview} in review</span>
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button style={{ fontSize: 8, padding: "4px 12px", background: "var(--gold)", color: "#0d0d0a", fontWeight: 700, cursor: "pointer", border: "none" }} onClick={() => joinOrg(o.id)}>JOIN THIS ASSEMBLY</button>
@@ -894,7 +894,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, cursor: "pointer" }} onClick={() => setViewingOrg(o.id)}><span style={{ color: "var(--gold)", marginRight: 4, fontSize: 10 }}>{"\u25B8"}</span>{o.name}</div>
                   {o.description && <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5, marginBottom: 6 }}>{o.description}</div>}
                   <div style={{ display: "flex", gap: 16, fontSize: 10, color: "var(--text-muted)", marginBottom: 8 }}>
-                    <span>{o.members.length} citizens</span>
+                    <span>{o.members.length} {o.members.length === 1 ? "citizen" : "citizens"}</span>
                     {st.total > 0 && <span>{st.total} claims</span>}
                     {(() => { const inR = Object.values(subs || {}).filter(s => s.orgId === o.id && ["pending_review", "pending_jury"].includes(s.status)).length; return <span>{inR} in review</span>; })()}
                   </div>

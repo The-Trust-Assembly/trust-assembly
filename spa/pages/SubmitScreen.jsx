@@ -771,7 +771,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 2 && <div style={{ marginTop: 12 }}>
-          <EducationHelper storageKey="section2">Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence.</EducationHelper>
+          <EducationHelper storageKey="section2">{form.submissionType === "affirmation" ? "Explain why this content is accurate and provide supporting evidence. Strong affirmations cite specific sources." : "Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence."}</EducationHelper>
           {form.submissionType === "correction" && <div className="ta-field"><label>{platform?.replacementLabel || "Proposed Replacement *"} <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label>
             {platform?.headlineMultiline
               ? <textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "shortform" ? `Your corrected version of the ${(platform?.contentUnit || "post").toLowerCase()}` : "Your corrected headline"} maxLength={500} rows={3} />

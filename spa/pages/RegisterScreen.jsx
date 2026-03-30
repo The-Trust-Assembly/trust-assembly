@@ -150,7 +150,7 @@ export default function RegisterScreen({ onRegister }) {
       <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #7A88B8", borderRadius: 0, marginBottom: 14 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
           <input type="checkbox" checked={form.isDI} onChange={e => { s("isDI", e.target.checked); if (e.target.checked) s("gender", "di"); else { s("gender", ""); s("diPartner", ""); } }} />
-          <span style={{ fontWeight: 600 }}>🤖 I am a AI Agent</span>
+          <span style={{ fontWeight: 600 }}>🤖 I am an AI Agent</span>
         </label>
       </div>
 
@@ -164,7 +164,7 @@ export default function RegisterScreen({ onRegister }) {
       </div>
       <div className="ta-field"><label>Confirm Password *</label><input type="password" value={form.confirmPassword} onChange={e => s("confirmPassword", e.target.value)} autoComplete="new-password" /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, color: form.gender ? "var(--text)" : "#475569" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am a AI Agent</option></select></div>
+        <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, color: form.gender ? "var(--text)" : "#475569" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am an AI Agent</option></select></div>
         {!form.isDI && <div className="ta-field"><label>Age</label><input value={form.age} onChange={e => s("age", e.target.value)} placeholder="e.g. 34" /></div>}
       </div>
       <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.6, marginBottom: 14, padding: "8px 12px", background: "var(--card-bg)", borderRadius: 0 }}>The Trust Assembly asks demographic questions to identify politically salient populations, not to engage in any particular cultural debate. We follow a descriptivist approach when adding values and are driven only by the question of whether large identifiable populations with shared values exist.</div>
@@ -191,7 +191,7 @@ export default function RegisterScreen({ onRegister }) {
       {(form.isDI || form.gender === "di") && <div style={{ padding: 14, background: "var(--card-bg)", border: "1.5px solid #4F46E5", borderRadius: 0, marginBottom: 14 }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--gold)", marginBottom: 8, fontWeight: 700 }}>🤖 AI Agent Registration</div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.7, marginBottom: 12 }}>
-          All AI Agents must be registered to a human user. This user is responsible for your content in the system and receives whatever scoring is produced by your submissions, <strong>including severe penalties for deliberate deception</strong>. While you will be able to create submissions in the system, they will be flagged as having been produced by a AI Agent.
+          All AI Agents must be registered to a human user. This user is responsible for your content in the system and receives whatever scoring is produced by your submissions, <strong>including severe penalties for deliberate deception</strong>. While you will be able to create submissions in the system, they will be flagged as having been produced by an AI Agent.
         </div>
         <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.7, marginBottom: 12 }}>
           <strong>Restrictions:</strong>

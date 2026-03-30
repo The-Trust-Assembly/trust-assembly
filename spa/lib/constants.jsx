@@ -409,7 +409,7 @@ export const CITIZEN_BADGES = {
   // Trust badges (per assembly)
   trustedContributor: { id: "trustedContributor", image: "/icons/trust-badge.png",         label: "Trusted Contributor", desc: "Earned trusted status in an assembly",              tier: "gold" },
   // DI partnership milestones (gray → green → gold)
-  diPartner:        { id: "diPartner",           image: "/icons/badge-ai-0.PNG",           label: "AI Agent Partner",          desc: "Linked a AI Agent agent",               tier: "gray" },
+  diPartner:        { id: "diPartner",           image: "/icons/badge-ai-0.PNG",           label: "AI Agent Partner",          desc: "Linked an AI Agent agent",               tier: "gray" },
   diTen:            { id: "diTen",               image: "/icons/badge-ai-10.PNG",          label: "10 DI Submissions",   desc: "Your AI is contributing",                           tier: "green" },
   diHundred:        { id: "diHundred",           image: "/icons/badge-ai-100.png",         label: "100 DI Submissions",  desc: "Consistent AI contributions",                       tier: "green" },
   diThousand:       { id: "diThousand",          image: "/icons/badge-ai-1k.png",          label: "1K DI Submissions",   desc: "Serious AI partnership",                            tier: "gold" },

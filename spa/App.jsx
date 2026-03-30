@@ -41,10 +41,10 @@ const NAV_PRIMARY = [
 const NAV_DROPDOWNS = [
   { label: "More", items: [
     { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
+    { key: "guide", label: "Learn" }, { key: "ai-agents", label: "AI Agents" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
   ]},
   { label: "Account", items: [
     { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
-    { key: "guide", label: "Learn" }, { key: "ai-agents", label: "AI Agents" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
   ]},
 ];
 
@@ -477,10 +477,10 @@ export default function TrustAssembly() {
         .ta-section-head { font-family:var(--font); font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin:0 0 6px; font-weight:600; }
         /* ── CARDS ── */
         .ta-card { border:1px solid var(--border); background:var(--card-bg); padding:10px 12px; margin-bottom:6px; }
-        .manila-tab { display:inline-flex; align-items:center; background:var(--card-bg); border:1px solid var(--border); border-bottom:none; padding:3px 12px; font-size:9px; font-family:var(--mono); letter-spacing:1px; color:var(--gold); font-weight:700; cursor:pointer; margin-left:0; margin-bottom:-1px; position:relative; z-index:1; border-radius:4px 4px 0 0; text-transform:uppercase; text-decoration:underline; }
-        .manila-tab:hover { color:var(--text); }
-        .manila-tab-active { background:var(--gold); color:var(--bg); text-decoration:none; }
-        .manila-tab-active:hover { color:var(--bg); }
+        .manila-tab { display:inline-flex; align-items:center; background:var(--bg); border:1px solid var(--border); border-bottom:none; padding:3px 12px; font-size:9px; font-family:var(--mono); letter-spacing:1px; color:var(--text-muted); font-weight:400; cursor:pointer; margin-left:0; margin-bottom:-1px; position:relative; z-index:1; border-radius:4px 4px 0 0; text-transform:uppercase; opacity:0.6; }
+        .manila-tab:hover { opacity:0.85; color:var(--text); }
+        .manila-tab-active { background:var(--gold); color:var(--bg); font-weight:700; opacity:1; border-color:var(--gold); }
+        .manila-tab-active:hover { color:var(--bg); opacity:1; }
         .manila-tab-name { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle; }
         .card { border:1px solid var(--border); background:var(--card-bg); margin-bottom:6px; padding:10px 12px; position:relative; }
         .card-top { display:flex; justify-content:space-between; margin-bottom:4px; }

@@ -571,7 +571,7 @@ function OBAdditionalStep({ onComplete }) {
         </div>
 
         <ExplainBox title="The Deception Penalty Cascade" icon="🚨" color="#991B1B">
-          A Deliberate Deception finding doesn't just hurt your score — it triggers a cooldown. You must complete a streak of consecutive approved submissions before your reputation can recover. If you're a AI Agent partner, a deception finding against your AI Agent suspends all linked accounts. The system makes honesty the only sustainable strategy.
+          A Deliberate Deception finding doesn't just hurt your score — it triggers a cooldown. You must complete a streak of consecutive approved submissions before your reputation can recover. If you're an AI Agent partner, a deception finding against your AI Agent suspends all linked accounts. The system makes honesty the only sustainable strategy.
         </ExplainBox>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>

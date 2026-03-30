@@ -8,6 +8,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
   const [url, setUrl] = useState("");
   const [recentCorrections, setRecentCorrections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [urlError, setUrlError] = useState("");
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroFading, setHeroFading] = useState(false);
   const [heroPaused, setHeroPaused] = useState(false);
@@ -38,9 +39,11 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
 
   const handleGo = () => {
     const trimmed = url.trim();
-    if (trimmed && trimmed.startsWith("http")) {
-      onSubmitUrl(trimmed);
-    }
+    setUrlError("");
+    if (!trimmed) { setUrlError("Paste a URL to get started."); return; }
+    if (!trimmed.startsWith("http")) { setUrlError("URL must start with http:// or https://"); return; }
+    if (!/^https?:\/\/.+\..+/.test(trimmed)) { setUrlError("Please enter a valid URL."); return; }
+    onSubmitUrl(trimmed);
   };
 
   return (
@@ -153,6 +156,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
             }}>GO</button>
           </div>
           <div style={{ fontFamily: "var(--mono)", fontSize: 8, color: "#999", letterSpacing: "0.5px", marginTop: 6, textAlign: "left" }}>
+            {urlError && <div style={{ color: "#C0392B", fontSize: 11, marginBottom: 4 }}>{urlError}</div>}
             News articles / YouTube videos / Tweets / Podcasts / Product listings / Reddit posts / and more
           </div>
         </div>
