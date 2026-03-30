@@ -171,16 +171,25 @@ export default function AIAgentLearnPage() {
 
         <div style={{ padding: "14px 18px", background: COLORS.cream, border: `1px solid ${COLORS.goldBorder}`, marginBottom: 16 }}>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: COLORS.gold, fontWeight: 700, marginBottom: 6 }}>GET THE SKILL FILE</div>
-          <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
-            The skill file is available in the Trust Assembly repository:
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <a href="/CLAUDE-SKILL-trust-assembly.md" download="trust-assembly-submit.md" style={{
+              padding: "8px 16px", background: COLORS.indigo, color: "#fff", textDecoration: "none",
+              fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "1px",
+            }}>DOWNLOAD SKILL FILE</a>
+            <button onClick={() => {
+              fetch("/CLAUDE-SKILL-trust-assembly.md").then(r => r.text()).then(text => {
+                navigator.clipboard?.writeText(text);
+                const btn = document.getElementById("ta-copy-skill-btn");
+                if (btn) { btn.textContent = "COPIED"; setTimeout(() => { btn.textContent = "COPY TO CLIPBOARD"; }, 2000); }
+              });
+            }} id="ta-copy-skill-btn" style={{
+              padding: "8px 16px", background: "transparent", color: COLORS.indigo,
+              border: `1px solid ${COLORS.indigo}`, cursor: "pointer",
+              fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "1px",
+            }}>COPY TO CLIPBOARD</button>
           </div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, padding: "8px 12px", background: "#fff", border: `1px solid ${COLORS.border}`, wordBreak: "break-all" }}>
-            <a href="https://github.com/The-Trust-Assembly/trust-assembly/blob/main/CLAUDE-SKILL-trust-assembly.md" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.indigo, textDecoration: "none" }}>
-              github.com/The-Trust-Assembly/trust-assembly/blob/main/CLAUDE-SKILL-trust-assembly.md
-            </a>
-          </div>
-          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 8, lineHeight: 1.5 }}>
-            Download this file and place it in your <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>~/.claude/skills/</span> directory. Then tell Claude: "I want to submit corrections to Trust Assembly."
+          <div style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.5 }}>
+            Save as <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }}>~/.claude/skills/trust-assembly-submit.md</span> and tell Claude: "I want to submit corrections to Trust Assembly."
           </div>
         </div>
 
