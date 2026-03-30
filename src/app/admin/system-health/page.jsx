@@ -506,6 +506,26 @@ export default function SystemHealthPage() {
         )}
       </div>
 
+      {/* ── Backfill Thumbnails ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #06b6d4" }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#06b6d4" }}>Backfill Thumbnails</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>
+          Fetches og:image thumbnails for existing submissions that don't have one. YouTube URLs get instant thumbnails without fetching. Articles fetch the first 50KB to extract the og:image meta tag. Safe to run multiple times.
+        </p>
+        <button onClick={async () => {
+          const btn = event.target; btn.disabled = true; btn.textContent = "Backfilling...";
+          try {
+            const res = await fetch("/api/admin/backfill-thumbnails", { method: "POST" });
+            const data = await res.json();
+            const result = data.data || data;
+            btn.textContent = `Done: ${result.updated} updated, ${result.skipped} skipped`;
+            setTimeout(() => { btn.disabled = false; btn.textContent = "Backfill Thumbnails"; }, 5000);
+          } catch (e) { btn.textContent = "Error: " + e.message; btn.disabled = false; }
+        }} style={{ ...btnStyle, background: "#06b6d4" }}>
+          Backfill Thumbnails
+        </button>
+      </div>
+
       {/* ── Jury Integrity Tests ── */}
       <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #8b5cf6" }}>
         <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#8b5cf6" }}>Jury Integrity Tests</h3>
