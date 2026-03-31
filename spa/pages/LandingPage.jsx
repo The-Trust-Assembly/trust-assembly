@@ -47,7 +47,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
   };
 
   return (
-    <div>
+    <div style={{ color: "#1a1a1a" }}>
 
       {/* ═══ SECTION 1: HERO — Show what this is ═══ */}
       <div style={{ background: "linear-gradient(180deg, #0D0D0D 0%, #1B2A4A 100%)", padding: "36px 24px 32px", textAlign: "center", overflow: "hidden" }}>

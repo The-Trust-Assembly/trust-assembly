@@ -798,9 +798,9 @@ export default function TrustAssembly() {
         /* ══════════════════════════════════════
            ANONYMOUS LANDING / SUBMIT
            ══════════════════════════════════════ */
-        <div>
+        <div style={{ color: "#1a1a1a" }}>
           {/* Header */}
-          <div className="hdr">
+          <div className="hdr" style={{ background: "#f5f2ec" }}>
             <div className="hdr-left">
               <div className="hdr-bar" />
               <span className="hdr-title">Trust Assembly</span>
