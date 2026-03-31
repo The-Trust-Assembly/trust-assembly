@@ -63,8 +63,15 @@ export async function POST(request: NextRequest) {
       const url = sub.url as string;
       let thumbnail: string | null = null;
 
-      // Try YouTube thumbnail first (instant, no fetch needed)
+      // Try instant thumbnails first (no fetch needed)
       thumbnail = getYouTubeThumbnail(url);
+      // Amazon product image from ASIN
+      if (!thumbnail && url.includes("amazon.")) {
+        const dpMatch = url.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+        const asinMatch = !dpMatch ? url.match(/\/([A-Z0-9]{10})(?:\/|$)/) : null;
+        const asin = dpMatch?.[1] || asinMatch?.[1];
+        if (asin) thumbnail = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_SX200_.jpg`;
+      }
 
       // Otherwise fetch the page and extract og:image
       if (!thumbnail) {

@@ -112,6 +112,18 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         setForm(f => ({ ...f, originalHeadline: fields.title.value }));
         imported.push("title");
       }
+      // Fallback: extract product name from Amazon URL slug if import returned nothing
+      if (!fields.title?.value && !form.originalHeadline.trim() && url.trim().includes("amazon.")) {
+        try {
+          const path = new URL(url.trim()).pathname;
+          const slug = path.split("/dp/")[0]?.split("/").filter(Boolean).pop();
+          if (slug && slug.length > 3) {
+            const name = slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            setForm(f => ({ ...f, originalHeadline: name }));
+            imported.push("title (from URL)");
+          }
+        } catch {}
+      }
       if (fields.author?.value && fields.author.confidence >= 0.5 && authors.length === 0) {
         const authorNames = fields.author.value.split(/,\s*/).filter(Boolean);
         setAuthors(authorNames);
