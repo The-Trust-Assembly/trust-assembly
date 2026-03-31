@@ -87,6 +87,7 @@ export default function ContentEmbed({ url, title, description, thumbnailUrl, do
         flexDirection: compact && hasThumbnail ? "row" : "column",
         border: "1px solid var(--border)",
         background: "var(--card-bg)",
+        maxWidth: "100%",
         textDecoration: "none",
         overflow: "hidden",
         marginBottom: compact ? 8 : 12,

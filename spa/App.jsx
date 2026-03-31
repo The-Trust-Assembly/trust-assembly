@@ -196,7 +196,7 @@ export default function TrustAssembly() {
   const setScreen = useCallback((s) => {
     trackAction("nav", `screen:${s}`, { screen: s });
     setScreenTransition(true);
-    setTimeout(() => { setScreenRaw(s); setScreenTransition(false); }, 80);
+    setTimeout(() => { setScreenRaw(s); setScreenTransition(false); window.scrollTo(0, 0); }, 80);
     setViewingCitizen(null);
     setViewingRecord(null);
     if (!skipPush.current) {
@@ -717,7 +717,7 @@ export default function TrustAssembly() {
         .ta-review-tab { padding:8px 16px; background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; white-space:nowrap; color:var(--text-muted); transition:color 0.15s; }
         .ta-review-tab:hover { color:var(--text); }
         .ta-review-tab.active { color:var(--gold); font-weight:700; border-bottom-color:var(--gold); }
-        @media(max-width:640px) { .ta-review-tab{padding:6px 10px;font-size:9px} }
+        @media(max-width:640px) { .ta-review-tab{padding:6px 10px;font-size:9px} .manila-tab-name{display:none} .manila-tab{padding:3px 8px;} }
         /* ── MOBILE NAV ── */
         .ta-nav-mobile { display:none; background:var(--bg); padding:8px 24px; border-bottom:1px solid var(--border); position:relative; }
         .ta-hamburger { background:none; border:none; cursor:pointer; padding:6px 2px; display:flex; flex-direction:column; gap:4px; }
