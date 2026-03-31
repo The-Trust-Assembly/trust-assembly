@@ -112,6 +112,18 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         setForm(f => ({ ...f, originalHeadline: fields.title.value }));
         imported.push("title");
       }
+      // Fallback: extract product name from Amazon URL slug if import returned nothing
+      if (!fields.title?.value && !form.originalHeadline.trim() && url.trim().includes("amazon.")) {
+        try {
+          const path = new URL(url.trim()).pathname;
+          const slug = path.split("/dp/")[0]?.split("/").filter(Boolean).pop();
+          if (slug && slug.length > 3) {
+            const name = slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            setForm(f => ({ ...f, originalHeadline: name }));
+            imported.push("title (from URL)");
+          }
+        } catch {}
+      }
       if (fields.author?.value && fields.author.confidence >= 0.5 && authors.length === 0) {
         const authorNames = fields.author.value.split(/,\s*/).filter(Boolean);
         setAuthors(authorNames);
@@ -771,14 +783,14 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
           <span style={{ fontSize: 12, color: "var(--text-muted)", transform: form._step === 2 ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
         </button>
         {form._step === 2 && <div style={{ marginTop: 12 }}>
-          <EducationHelper storageKey="section2">Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence.</EducationHelper>
+          <EducationHelper storageKey="section2">{form.submissionType === "affirmation" ? "Explain why this content is accurate and provide supporting evidence. Strong affirmations cite specific sources." : "Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence."}</EducationHelper>
           {form.submissionType === "correction" && <div className="ta-field"><label>{platform?.replacementLabel || "Proposed Replacement *"} <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label>
             {platform?.headlineMultiline
               ? <textarea value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "shortform" ? `Your corrected version of the ${(platform?.contentUnit || "post").toLowerCase()}` : "Your corrected headline"} maxLength={500} rows={3} />
               : <input value={form.replacement} onChange={e => setForm({ ...form, replacement: e.target.value })} style={{ borderColor: "var(--red)" }} placeholder={platform?.template === "product" ? "What the listing should actually say" : "Your corrected headline"} maxLength={500} />}
           </div>}
           {form.submissionType === "affirmation" && <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginBottom: 12, fontSize: 12, color: "var(--green)" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
-          <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={2000} /></div>
+          <div className="ta-field"><label>Reasoning *</label><textarea value={form.reasoning} onChange={e => setForm({ ...form, reasoning: e.target.value })} rows={3} placeholder={form.submissionType === "affirmation" ? "Why is this headline accurate? What evidence supports it?" : "Why is the original misleading?"} maxLength={5000} />{form.reasoning.length > 0 && <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: form.reasoning.length > 4500 ? "var(--red)" : "var(--text-muted)", textAlign: "right", marginTop: 2 }}>{form.reasoning.length} / 5,000</div>}</div>
           <EvidenceFields evidence={evidenceUrls} onChange={setEvidenceUrls} />
           <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>
             <strong style={{ color: "var(--green)" }}>Tip:</strong> Stick to what you can prove. Corrections backed by evidence and clear reasoning survive review. Jurors respect intellectual honesty more than false confidence.

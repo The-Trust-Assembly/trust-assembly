@@ -67,6 +67,25 @@ export function getContentDisplayMode(url, bodyText) {
 }
 
 /**
+ * Get Amazon product image URL from an Amazon URL.
+ * Amazon product images follow a predictable pattern based on ASIN.
+ */
+export function getAmazonThumbnail(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes("amazon.")) return null;
+    // Extract ASIN from URL patterns: /dp/ASIN, /gp/product/ASIN, /ASIN/
+    const dpMatch = u.pathname.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+    if (dpMatch) return `https://images-na.ssl-images-amazon.com/images/P/${dpMatch[1]}.01._SCLZZZZZZZ_SX200_.jpg`;
+    // Fallback: look for ASIN-like pattern in path
+    const asinMatch = u.pathname.match(/\/([A-Z0-9]{10})(?:\/|$)/);
+    if (asinMatch) return `https://images-na.ssl-images-amazon.com/images/P/${asinMatch[1]}.01._SCLZZZZZZZ_SX200_.jpg`;
+  } catch {}
+  return null;
+}
+
+/**
  * Get YouTube thumbnail URL from a video URL.
  * Always available even when embedding is disabled.
  */

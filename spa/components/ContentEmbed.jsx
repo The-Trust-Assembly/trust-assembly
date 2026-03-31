@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getEmbedInfo, extractDomain, getYouTubeThumbnail } from "../lib/embedResolver";
+import { getEmbedInfo, extractDomain, getYouTubeThumbnail, getAmazonThumbnail } from "../lib/embedResolver";
 
 /**
  * ContentEmbed — shared component for rendering embeddable content
@@ -18,7 +18,8 @@ export default function ContentEmbed({ url, title, description, thumbnailUrl, do
 
   // For YouTube, always have a thumbnail available as fallback
   const ytThumb = getYouTubeThumbnail(url);
-  const effectiveThumbnail = thumbnailUrl || ytThumb;
+  const amzThumb = getAmazonThumbnail(url);
+  const effectiveThumbnail = thumbnailUrl || ytThumb || amzThumb;
 
   // ─── COMPACT MODE: show thumbnail card instead of iframe ────
   // Avoids broken embeds (Error 153) in space-constrained layouts

@@ -335,7 +335,7 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, hideStatusCards
         <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Your next steps</div>
           <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
-            You have <span style={{ color: "var(--text)", fontWeight: 600 }}>{reviewQueueCount} items</span> in your review queue.
+            You have <span style={{ color: "var(--text)", fontWeight: 600 }}>{reviewQueueCount} {reviewQueueCount === 1 ? "item" : "items"}</span> in your review queue.
             {trustedRemaining > 0 && gpOrg && <> Next milestone: <span style={{ color: "var(--gold)", fontWeight: 600 }}>{trustedRemaining} more approvals</span> for Trusted Contributor in {gpOrg.name}.</>}
           </div>
         </div>
@@ -343,7 +343,7 @@ function FeedScreenInner({ user, siteAnnouncement, hideCarousel, hideStatusCards
           <div style={{ flex: 1, background: "var(--card-bg)", border: "1px solid var(--border)", padding: 10 }}>
             <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 4 }}>Assembly status</div>
             <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>
-              Member of <span style={{ color: "var(--text)", fontWeight: 600 }}>{myOrgIds.length} assemblies</span>. {totalCitizens} citizens registered — <span style={{ color: "var(--gold)", fontWeight: 600 }}>{Math.max(0, 100 - totalCitizens)} more</span> until advanced jury rules activate.
+              Member of <span style={{ color: "var(--text)", fontWeight: 600 }}>{myOrgIds.length} {myOrgIds.length === 1 ? "assembly" : "assemblies"}</span>. {totalCitizens} {totalCitizens === 1 ? "citizen" : "citizens"} registered — <span style={{ color: "var(--gold)", fontWeight: 600 }}>{Math.max(0, 100 - totalCitizens)} more</span> until advanced jury rules activate.
             </div>
           </div>
         )}

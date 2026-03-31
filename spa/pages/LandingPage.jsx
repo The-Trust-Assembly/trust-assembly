@@ -8,6 +8,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
   const [url, setUrl] = useState("");
   const [recentCorrections, setRecentCorrections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [urlError, setUrlError] = useState("");
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroFading, setHeroFading] = useState(false);
   const [heroPaused, setHeroPaused] = useState(false);
@@ -38,13 +39,15 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
 
   const handleGo = () => {
     const trimmed = url.trim();
-    if (trimmed && trimmed.startsWith("http")) {
-      onSubmitUrl(trimmed);
-    }
+    setUrlError("");
+    if (!trimmed) { setUrlError("Paste a URL to get started."); return; }
+    if (!trimmed.startsWith("http")) { setUrlError("URL must start with http:// or https://"); return; }
+    if (!/^https?:\/\/.+\..+/.test(trimmed)) { setUrlError("Please enter a valid URL."); return; }
+    onSubmitUrl(trimmed);
   };
 
   return (
-    <div>
+    <div style={{ color: "#1a1a1a" }}>
 
       {/* ═══ SECTION 1: HERO — Show what this is ═══ */}
       <div style={{ background: "linear-gradient(180deg, #0D0D0D 0%, #1B2A4A 100%)", padding: "36px 24px 32px", textAlign: "center", overflow: "hidden" }}>
@@ -102,6 +105,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
       </div>
 
       {/* ═══ SECTION 2: HOW IT WORKS — Educate before the ask ═══ */}
+      <div style={{ background: "#f5f2ec" }}>
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "40px 24px 32px" }}>
         <h2 style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 400, color: "#1a1a1a", textAlign: "center", marginBottom: 28 }}>How it works</h2>
         {[
@@ -118,6 +122,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
             </div>
           </div>
         ))}
+      </div>
       </div>
 
       {/* ═══ SECTION 3: YOUR TURN — The challenge ═══ */}
@@ -153,10 +158,14 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
             }}>GO</button>
           </div>
           <div style={{ fontFamily: "var(--mono)", fontSize: 8, color: "#999", letterSpacing: "0.5px", marginTop: 6, textAlign: "left" }}>
+            {urlError && <div style={{ color: "#C0392B", fontSize: 11, marginBottom: 4 }}>{urlError}</div>}
             News articles / YouTube videos / Tweets / Podcasts / Product listings / Reddit posts / and more
           </div>
         </div>
       </div>
+
+      {/* ═══ SECTIONS 4-6: Light background ═══ */}
+      <div style={{ background: "#f5f2ec" }}>
 
       {/* ═══ SECTION 4: PROOF — Recent verified corrections ═══ */}
       {recentCorrections.length > 0 && (
@@ -212,6 +221,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
             letterSpacing: "1px", cursor: "pointer",
           }}>SIGN IN</button>
         </div>
+      </div>
       </div>
     </div>
   );

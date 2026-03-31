@@ -18,7 +18,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [openRibbons, setOpenRibbons] = useState({ trust: true, subs: false, reviews: false, disputes: false, di: false, settings: false });
+  const [openRibbons, setOpenRibbons] = useState({ trust: false, subs: false, reviews: false, disputes: false, di: false, settings: false });
   const toggle = (key) => setOpenRibbons(prev => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => { (async () => {
@@ -142,7 +142,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         )}
       </div>
 
-      {/* 03: Jury score */}
+      {/* 03: Jury score + Badges */}
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.reviews ? "open" : "closed"}`} onClick={() => toggle("reviews")}>
           <div><span className="ribbon-num">03</span><span className="ribbon-title">My reviews</span></div>
@@ -168,7 +168,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         )}
       </div>
 
-      {/* 05: DI Agents */}
+      {/* 05: AI Agents */}
       <div className="ribbon">
         <div className={`ribbon-head ${openRibbons.di ? "open" : "closed"}`} onClick={() => toggle("di")}>
           <div><span className="ribbon-num">05</span><span className="ribbon-title">Digital intelligence agents</span></div>

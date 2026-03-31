@@ -40,11 +40,13 @@ const NAV_PRIMARY = [
 ];
 const NAV_DROPDOWNS = [
   { label: "More", items: [
+    { key: "_group", label: "EXPLORE" },
     { key: "consensus", label: "Consensus" }, { key: "stories", label: "Stories" }, { key: "audit", label: "Ledger" }, { key: "vault", label: "Vaults" },
+    { key: "_group2", label: "LEARN" },
+    { key: "guide", label: "Guide" }, { key: "ai-agents", label: "AI Agents" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
   ]},
   { label: "Account", items: [
     { key: "profile", label: "Citizen Profile" }, { key: "extensions", label: "Extension" },
-    { key: "guide", label: "Learn" }, { key: "ai-agents", label: "AI Agents" }, { key: "rules", label: "Rules" }, { key: "about", label: "About" },
   ]},
 ];
 
@@ -98,7 +100,9 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
       </button>
       {open && (
         <div className="ta-nav-dropdown-menu" role="menu" style={dropDown ? { top: "100%", bottom: "auto", right: 0, left: "auto", transform: "none", marginTop: 2, marginBottom: 0 } : undefined}>
-          {allItems.map(n => (
+          {allItems.map(n => n.key.startsWith("_group") ? (
+            <div key={n.key} style={{ padding: "6px 16px 2px", fontSize: 8, fontFamily: "var(--mono)", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, borderTop: n.key === "_group" ? "none" : "1px solid var(--border)", marginTop: n.key === "_group" ? 0 : 4 }}>{n.label}</div>
+          ) : (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
               style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
               onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
@@ -153,6 +157,7 @@ export default function TrustAssembly() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackPrompt, setFeedbackPrompt] = useState("");
@@ -187,9 +192,11 @@ export default function TrustAssembly() {
 
   // Browser history integration — hash-based URLs for back-button + deep links
   const skipPush = useRef(false);
+  const [screenTransition, setScreenTransition] = useState(false);
   const setScreen = useCallback((s) => {
     trackAction("nav", `screen:${s}`, { screen: s });
-    setScreenRaw(s);
+    setScreenTransition(true);
+    setTimeout(() => { setScreenRaw(s); setScreenTransition(false); }, 80);
     setViewingCitizen(null);
     setViewingRecord(null);
     if (!skipPush.current) {
@@ -477,10 +484,10 @@ export default function TrustAssembly() {
         .ta-section-head { font-family:var(--font); font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin:0 0 6px; font-weight:600; }
         /* ── CARDS ── */
         .ta-card { border:1px solid var(--border); background:var(--card-bg); padding:10px 12px; margin-bottom:6px; }
-        .manila-tab { display:inline-flex; align-items:center; background:var(--card-bg); border:1px solid var(--border); border-bottom:none; padding:3px 12px; font-size:9px; font-family:var(--mono); letter-spacing:1px; color:var(--gold); font-weight:700; cursor:pointer; margin-left:0; margin-bottom:-1px; position:relative; z-index:1; border-radius:4px 4px 0 0; text-transform:uppercase; text-decoration:underline; }
-        .manila-tab:hover { color:var(--text); }
-        .manila-tab-active { background:var(--gold); color:var(--bg); text-decoration:none; }
-        .manila-tab-active:hover { color:var(--bg); }
+        .manila-tab { display:inline-flex; align-items:center; background:var(--bg); border:1px solid var(--border); border-bottom:none; padding:3px 12px; font-size:9px; font-family:var(--mono); letter-spacing:1px; color:var(--text-muted); font-weight:400; cursor:pointer; margin-left:0; margin-bottom:-1px; position:relative; z-index:1; border-radius:4px 4px 0 0; text-transform:uppercase; opacity:0.6; }
+        .manila-tab:hover { opacity:0.85; color:var(--text); }
+        .manila-tab-active { background:var(--gold); color:var(--bg); font-weight:700; opacity:1; border-color:var(--gold); }
+        .manila-tab-active:hover { color:var(--bg); opacity:1; }
         .manila-tab-name { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle; }
         .card { border:1px solid var(--border); background:var(--card-bg); margin-bottom:6px; padding:10px 12px; position:relative; }
         .card-top { display:flex; justify-content:space-between; margin-bottom:4px; }
@@ -791,9 +798,9 @@ export default function TrustAssembly() {
         /* ══════════════════════════════════════
            ANONYMOUS LANDING / SUBMIT
            ══════════════════════════════════════ */
-        <div>
+        <div style={{ color: "#1a1a1a" }}>
           {/* Header */}
-          <div className="hdr">
+          <div className="hdr" style={{ background: "#f5f2ec" }}>
             <div className="hdr-left">
               <div className="hdr-bar" />
               <span className="hdr-title">Trust Assembly</span>
@@ -949,7 +956,19 @@ export default function TrustAssembly() {
             </div>
           </div>
 
-          <div className={`ta-content${contentWidth === "compact" ? " compact" : ""}`}>
+          <div className={`ta-content${contentWidth === "compact" ? " compact" : ""}`} style={{ opacity: screenTransition ? 0.3 : 1, transition: "opacity 0.08s ease" }}>
+            {/* Breadcrumb */}
+            {!viewingRecord && !viewingCitizen && screen !== "feed" && (() => {
+              const labels = { submit: "Submit", review: "Review", orgs: "Assemblies", vault: "Vaults", consensus: "Consensus", stories: "Stories", audit: "Ledger", profile: "Citizen Profile", extensions: "Extension", guide: "Learn", "ai-agents": "AI Agents", rules: "Rules", about: "About", feedback: "Feedback", badges: "Badges", vision: "Vision" };
+              const label = labels[screen];
+              return label ? (
+                <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", letterSpacing: "0.5px", marginBottom: 6 }}>
+                  <span style={{ cursor: "pointer", color: "var(--gold)" }} onClick={() => setScreen("feed")}>Home</span>
+                  <span style={{ margin: "0 6px", color: "var(--border)" }}>/</span>
+                  <span>{label}</span>
+                </div>
+              ) : null;
+            })()}
             {extCta && (
               <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -995,11 +1014,18 @@ export default function TrustAssembly() {
             ))}
           </div>
 
-          {/* Floating feedback button — visible to all non-admin users */}
-          {!isAdmin && (
-            <button className="ta-feedback-fab" onClick={() => { setShowFeedbackModal(true); setFeedbackSent(false); setFeedbackError(""); }}>
-              Submit Feedback / Feature Request
-            </button>
+          {/* Floating feedback button — collapsible, visible to non-admin */}
+          {!isAdmin && !feedbackDismissed && (
+            <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 90, display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={() => { setShowFeedbackModal(true); setFeedbackSent(false); setFeedbackError(""); }}
+                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", padding: "8px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)" }}>
+                Feedback
+              </button>
+              <button onClick={() => setFeedbackDismissed(true)}
+                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", width: 28, height: 28, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>
+                &times;
+              </button>
+            </div>
           )}
 
           {/* Feedback modal */}

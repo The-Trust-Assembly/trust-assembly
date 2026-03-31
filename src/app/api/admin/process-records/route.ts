@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       submissions: { scanned: 0, advanced: 0, details: [] as string[] },
       stories: { scanned: 0, advanced: 0, details: [] as string[] },
       disputeBackfills: { scanned: 0, backfilled: 0, details: [] as string[] },
+      disputeExpiries: { scanned: 0, expired: 0, details: [] as string[] },
       disputes: { scanned: 0, advanced: 0, details: [] as string[] },
       concessions: { scanned: 0, advanced: 0, details: [] as string[] },
     };
@@ -159,6 +160,62 @@ export async function POST(request: NextRequest) {
         results.disputeBackfills.details.push(
           `${(dispute.id as string).slice(0, 8)}… ERROR: ${e instanceof Error ? e.message : String(e)}`
         );
+      }
+    }
+
+    // ── Dispute Expiries: auto-close disputes with 0 votes after 48 hours ──
+    const expiredDisputes = await sql`
+      SELECT d.id, d.submission_id, d.disputed_by, d.dispute_round
+      FROM disputes d
+      WHERE d.status = 'pending_review'
+        AND d.created_at < now() - interval '48 hours'
+        AND NOT EXISTS (
+          SELECT 1 FROM jury_votes jv WHERE jv.dispute_id = d.id
+        )
+    `;
+
+    results.disputeExpiries.scanned = expiredDisputes.rows.length;
+    for (const dispute of expiredDisputes.rows) {
+      try {
+        const client = await sql.connect();
+        try {
+          await client.query("BEGIN");
+
+          // Set status to expired — no penalty, no cooldown
+          await client.query(
+            "UPDATE disputes SET status = 'expired', resolved_at = now() WHERE id = $1",
+            [dispute.id]
+          );
+
+          // Clear cooldown so this doesn't block future disputes
+          await client.query(
+            "UPDATE disputes SET cooldown_until = NULL WHERE id = $1",
+            [dispute.id]
+          );
+
+          await client.query(
+            `INSERT INTO audit_log (action, user_id, entity_type, entity_id, metadata)
+             VALUES ($1, $2, 'dispute', $3, $4)`,
+            [
+              "Dispute expired (no votes within 48 hours — no penalty)",
+              dispute.disputed_by, dispute.id,
+              JSON.stringify({ reason: "no_votes_48h", disputeRound: dispute.dispute_round }),
+            ]
+          );
+
+          await client.query("COMMIT");
+          results.disputeExpiries.expired++;
+          results.disputeExpiries.details.push(
+            `${(dispute.id as string).slice(0, 8)}… expired (round ${dispute.dispute_round}, 0 votes)`
+          );
+        } catch (e) {
+          await client.query("ROLLBACK");
+          console.error("Dispute expiry failed:", e);
+        } finally {
+          client.release();
+        }
+      } catch (e) {
+        console.error("Dispute expiry connection failed:", e);
       }
     }
 
@@ -327,7 +384,7 @@ export async function POST(request: NextRequest) {
 
     return ok({
       success: true,
-      message: `Scanned ${totalScanned} in-flight records, advanced ${totalAdvanced}.${totalBackfilled > 0 ? ` Backfilled jury assignments for ${totalBackfilled} disputes.` : ""}`,
+      message: `Scanned ${totalScanned} in-flight records, advanced ${totalAdvanced}.${totalBackfilled > 0 ? ` Backfilled jury assignments for ${totalBackfilled} disputes.` : ""}${results.disputeExpiries.expired > 0 ? ` Expired ${results.disputeExpiries.expired} disputes (no votes in 48h).` : ""}`,
       totalScanned,
       totalAdvanced,
       totalBackfilled,

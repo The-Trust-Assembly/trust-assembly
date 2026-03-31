@@ -255,10 +255,16 @@ function extractBodyText(html: string): string | null {
 // Layer 4: Platform APIs
 async function extractWithRedditJson(url: string): Promise<Record<string, FieldResult> | null> {
   try {
-    const jsonUrl = url.replace(/\/?(\?.*)?$/, ".json$1");
+    // Append .json to the path (before query string)
+    const u = new URL(url);
+    u.pathname = u.pathname.replace(/\/?$/, ".json");
+    const jsonUrl = u.toString();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(jsonUrl, { headers: { "User-Agent": "TrustAssembly/1.0" }, signal: controller.signal });
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(jsonUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; TrustAssembly/1.0; +https://trustassembly.org)" },
+      signal: controller.signal,
+    });
     clearTimeout(timeout);
     if (!response.ok) return null;
     const data = await response.json();
@@ -269,6 +275,7 @@ async function extractWithRedditJson(url: string): Promise<Record<string, FieldR
     if (post.author) fields.author = { value: `u/${post.author}`, source: "reddit-json", confidence: 1.0 };
     if (post.selftext) fields.body = { value: post.selftext, source: "reddit-json", confidence: 1.0 };
     if (post.subreddit) fields.subreddit = { value: post.subreddit, source: "reddit-json", confidence: 1.0 };
+    if (post.thumbnail && post.thumbnail.startsWith("http")) fields.thumbnail = { value: post.thumbnail, source: "reddit-json", confidence: 0.9 };
     fields.postType = { value: post.is_self ? "text" : (post.is_video ? "video" : "link"), source: "reddit-json", confidence: 1.0 };
     return fields;
   } catch { return null; }

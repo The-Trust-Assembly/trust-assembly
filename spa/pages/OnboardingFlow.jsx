@@ -186,7 +186,7 @@ function OBSubmitStep() {
 }
 
 // ── Step 2: Review ──
-function OBReviewStep() {
+function OBReviewStep({ onNext }) {
   const [lieChecked, setLieChecked] = useState(false);
   const [voteNote, setVoteNote] = useState("");
   const [voted, setVoted] = useState(false);
@@ -303,7 +303,8 @@ function OBReviewStep() {
         <div style={{ padding: 20, background: "rgba(74,158,85,0.09)", border: "1px solid #059669", borderRadius: 0, textAlign: "center" }}>
           <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
           <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>Votes Cast</div>
-          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides. Each edit is resolved separately — a strong headline correction can survive even if one weak edit gets rejected.</p>
+          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides.</p>
+          {onNext && <button onClick={onNext} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", letterSpacing: "0.04em" }}>Continue to Results →</button>}
         </div>
       )}
     </div>
@@ -571,7 +572,7 @@ function OBAdditionalStep({ onComplete }) {
         </div>
 
         <ExplainBox title="The Deception Penalty Cascade" icon="🚨" color="#991B1B">
-          A Deliberate Deception finding doesn't just hurt your score — it triggers a cooldown. You must complete a streak of consecutive approved submissions before your reputation can recover. If you're a AI Agent partner, a deception finding against your AI Agent suspends all linked accounts. The system makes honesty the only sustainable strategy.
+          A Deliberate Deception finding doesn't just hurt your score — it triggers a cooldown. You must complete a streak of consecutive approved submissions before your reputation can recover. If you're an AI Agent partner, a deception finding against your AI Agent suspends all linked accounts. The system makes honesty the only sustainable strategy.
         </ExplainBox>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>
@@ -761,7 +762,9 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
           {OB_STEP_LABELS.map((label, i) => (
-            <div key={i} style={{ flex: 1, textAlign: "center" }}>
+            <div key={i} style={{ flex: 1, textAlign: "center", cursor: i < step ? "pointer" : i > step ? "not-allowed" : "default" }}
+              onClick={() => { if (i < step) { setStep(i); topRef.current?.scrollIntoView({ behavior: "smooth" }); } }}
+              title={i < step ? `Go back to ${label}` : i > step ? "Complete current step first" : ""}>
               <div style={{ height: 3, background: i <= step ? "var(--gold)" : "var(--border)", marginBottom: 6, borderRadius: 0, transition: "background 0.3s" }} />
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.06em", color: i <= step ? "var(--text)" : "#94A3B8", fontWeight: i === step ? 700 : 400 }}>{label}</div>
             </div>
@@ -770,7 +773,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       </div>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 40px", fontFamily: "var(--body, Georgia, serif)", color: "var(--text)", fontSize: 15, lineHeight: 1.6 }}>
         {step === 0 && <OBSubmitStep />}
-        {step === 1 && <OBReviewStep />}
+        {step === 1 && <OBReviewStep onNext={next} />}
         {step === 2 && <OBCompareStep />}
         {step === 3 && <OBLaunchStep onComplete={onComplete} onAdditional={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} />}
         {step === 4 && <OBAdditionalStep onComplete={onComplete} />}

@@ -117,27 +117,30 @@ export async function POST(request: NextRequest) {
 
   // ── Escalating dispute cooldown and stakes ──
   // Count previous disputes on this submission to determine the round
+  // Expired disputes (no votes in 48h) don't count toward escalation
   const prevDisputes = await sql`
-    SELECT id, dispute_round, stake_points, resolved_at, cooldown_until
+    SELECT id, dispute_round, stake_points, resolved_at, cooldown_until, status
     FROM disputes
     WHERE submission_id = ${submissionId as string}
     ORDER BY created_at DESC
   `;
-  const disputeRound = prevDisputes.rows.length + 1;
+  const countedDisputes = prevDisputes.rows.filter((d: Record<string, unknown>) => d.status !== "expired");
+  const disputeRound = countedDisputes.length + 1;
   const stakePoints = Math.pow(2, disputeRound); // 2, 4, 8, 16, 32...
   const cooldownDays = Math.pow(2, disputeRound); // 2, 4, 8, 16, 32...
   const cooldownUntil = new Date(Date.now() + cooldownDays * 24 * 60 * 60 * 1000).toISOString();
 
-  // Enforce cooldown from the most recent dispute on this submission
-  if (prevDisputes.rows.length > 0) {
-    const lastDispute = prevDisputes.rows[0];
-    if (lastDispute.cooldown_until && new Date(lastDispute.cooldown_until as string) > new Date()) {
-      const remaining = Math.ceil((new Date(lastDispute.cooldown_until as string).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      return err(`This submission is in a ${remaining}-day dispute cooldown. Next dispute can be filed after ${new Date(lastDispute.cooldown_until as string).toLocaleDateString()}.`);
-    }
-    // Also require previous dispute to be resolved before filing another
-    if (lastDispute.resolved_at === null) {
-      return err("The current dispute on this submission must be resolved before filing another.");
+  // Block if any dispute is still pending (including ones that may expire)
+  const anyPending = prevDisputes.rows.find((d: Record<string, unknown>) => d.status === "pending_review" || d.status === "grace_period");
+  if (anyPending) {
+    return err("There is already an active dispute on this submission. Wait for it to be resolved or expire.");
+  }
+  // Enforce cooldown from the most recent non-expired dispute
+  const lastNonExpired = countedDisputes[0];
+  if (lastNonExpired) {
+    if (lastNonExpired.cooldown_until && new Date(lastNonExpired.cooldown_until as string) > new Date()) {
+      const remaining = Math.ceil((new Date(lastNonExpired.cooldown_until as string).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return err(`This submission is in a ${remaining}-day dispute cooldown. Next dispute can be filed after ${new Date(lastNonExpired.cooldown_until as string).toLocaleDateString()}.`);
     }
   }
 
