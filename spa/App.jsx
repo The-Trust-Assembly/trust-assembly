@@ -196,7 +196,7 @@ export default function TrustAssembly() {
   const setScreen = useCallback((s) => {
     trackAction("nav", `screen:${s}`, { screen: s });
     setScreenTransition(true);
-    setTimeout(() => { setScreenRaw(s); setScreenTransition(false); }, 80);
+    setTimeout(() => { setScreenRaw(s); setScreenTransition(false); window.scrollTo(0, 0); }, 80);
     setViewingCitizen(null);
     setViewingRecord(null);
     if (!skipPush.current) {
