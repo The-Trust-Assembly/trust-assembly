@@ -27,8 +27,8 @@ function HeroSlide({ slide, style, onClickSlide, onClickAssembly }) {
   let domain = "";
   try { domain = new URL(String(slide.url)).hostname.replace(/^www\./, ""); } catch {}
   return (
-    <div style={style}>
-      <div style={{ cursor: "pointer" }} onClick={() => onClickSlide && onClickSlide(slide.id)}>
+    <div style={{ ...style, overflow: "hidden" }}>
+      <div style={{ cursor: "pointer", overflow: "hidden" }} onClick={() => onClickSlide && onClickSlide(slide.id)}>
         <ContentEmbed url={slide.url} title={slide.originalHeadline} thumbnailUrl={slide.thumbnailUrl} domain={domain} compact />
         <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#777", letterSpacing: "0.5px", marginBottom: 8 }}>{domain || "article"}</div>
         {isAffirm ? (
@@ -37,8 +37,8 @@ function HeroSlide({ slide, style, onClickSlide, onClickAssembly }) {
           </div>
         ) : (
           <>
-            <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 14, lineHeight: 1.4, color: "#555", textDecoration: "line-through", marginBottom: 6 }}>{safe(slide.originalHeadline)}</div>
-            <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#c44a3a", fontWeight: 600 }}>{safe(slide.replacement)}</div>
+            <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 14, lineHeight: 1.4, color: "#555", textDecoration: "line-through", marginBottom: 6, wordBreak: "break-word" }}>{safe(slide.originalHeadline)}</div>
+            <div style={{ fontFamily: "Georgia, var(--serif)", fontSize: 16, lineHeight: 1.5, color: "#c44a3a", fontWeight: 600, wordBreak: "break-word" }}>{safe(slide.replacement)}</div>
           </>
         )}
       </div>
