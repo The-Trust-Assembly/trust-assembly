@@ -105,6 +105,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
       </div>
 
       {/* ═══ SECTION 2: HOW IT WORKS — Educate before the ask ═══ */}
+      <div style={{ background: "#f5f2ec" }}>
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "40px 24px 32px" }}>
         <h2 style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 400, color: "#1a1a1a", textAlign: "center", marginBottom: 28 }}>How it works</h2>
         {[
@@ -121,6 +122,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
             </div>
           </div>
         ))}
+      </div>
       </div>
 
       {/* ═══ SECTION 3: YOUR TURN — The challenge ═══ */}
@@ -161,6 +163,9 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
           </div>
         </div>
       </div>
+
+      {/* ═══ SECTIONS 4-6: Light background ═══ */}
+      <div style={{ background: "#f5f2ec" }}>
 
       {/* ═══ SECTION 4: PROOF — Recent verified corrections ═══ */}
       {recentCorrections.length > 0 && (
@@ -216,6 +221,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
             letterSpacing: "1px", cursor: "pointer",
           }}>SIGN IN</button>
         </div>
+      </div>
       </div>
     </div>
   );
