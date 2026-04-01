@@ -26,6 +26,7 @@ import RecordScreen from "./pages/RecordScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
+import VerifyEmailScreen from "./pages/VerifyEmailScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 import LandingPage from "./pages/LandingPage";
 // DiagnosticScreen moved to /admin/system-health page
@@ -153,6 +154,7 @@ export default function TrustAssembly() {
   const [viewingCitizen, setViewingCitizen] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
   const [resetToken, setResetToken] = useState(null);
+  const [verifyEmailToken, setVerifyEmailToken] = useState(null);
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
@@ -250,7 +252,11 @@ export default function TrustAssembly() {
 
     // On mount: restore from pathname if present (deep link / reload support)
     const path = window.location.pathname.slice(1);
-    if (path === "reset-password") {
+    if (path === "verify-email") {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      if (token) setVerifyEmailToken(token);
+    } else if (path === "reset-password") {
       const params = new URLSearchParams(window.location.search);
       const token = params.get("token");
       if (token) setResetToken(token);
@@ -293,7 +299,7 @@ export default function TrustAssembly() {
                 gender: serverUser.gender, age: serverUser.age,
                 country: serverUser.country, state: serverUser.state,
                 politicalAffiliation: serverUser.political_affiliation,
-                bio: serverUser.bio, isDI: serverUser.is_di, diApproved: serverUser.di_approved,
+                bio: serverUser.bio, isDI: serverUser.is_di, diApproved: serverUser.di_approved, emailVerified: serverUser.email_verified,
                 signupDate: serverUser.created_at,
                 signupTimestamp: serverUser.created_at ? new Date(serverUser.created_at).getTime() : 0,
                 orgId: serverUser.primary_org_id || (serverUser.organizations?.[0]?.id) || null,
@@ -769,7 +775,11 @@ export default function TrustAssembly() {
       `}</style>
 
 
-      {resetToken ? (
+      {verifyEmailToken ? (
+        <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
+          <VerifyEmailScreen token={verifyEmailToken} onDone={() => { setVerifyEmailToken(null); window.history.replaceState(null, "", "/feed"); setScreenRaw("feed"); }} />
+        </div>
+      ) : resetToken ? (
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
           <ResetPasswordScreen token={resetToken} onDone={() => { setResetToken(null); setScreenRaw("login"); window.history.replaceState(null, "", "/login"); }} />
         </div>
@@ -969,6 +979,21 @@ export default function TrustAssembly() {
                 </div>
               ) : null;
             })()}
+            {user && user.emailVerified === false && (
+              <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>Verify your email</div>
+                  <div style={{ fontSize: 11, color: "var(--text-sec)", lineHeight: 1.5 }}>Check your inbox for the verification link to start submitting corrections.</div>
+                </div>
+                <button onClick={async () => {
+                  try {
+                    const res = await fetch("/api/auth/resend-verification", { method: "POST" });
+                    const data = await res.json();
+                    alert((data.data || data).message || "Verification email sent.");
+                  } catch { alert("Network error."); }
+                }} style={{ fontSize: 9, fontFamily: "var(--mono)", color: "var(--gold)", background: "none", border: "1px solid var(--gold)", padding: "4px 10px", cursor: "pointer", letterSpacing: "0.5px", whiteSpace: "nowrap", marginLeft: 12 }}>RESEND</button>
+              </div>
+            )}
             {extCta && (
               <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>

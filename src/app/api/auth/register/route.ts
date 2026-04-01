@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { sql, withTransaction } from "@/lib/db";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
@@ -139,9 +140,21 @@ export async function POST(request: NextRequest) {
   const token = await createToken({ sub: user.id as string, username: user.username as string });
   await setSessionCookie(token);
 
-  // Welcome email (fire-and-forget)
+  // Email verification + welcome (fire-and-forget)
   if (email && !isDI) {
-    sendWelcomeEmail(email as string, user.username as string).catch(() => {});
+    try {
+      const verificationToken = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+      await sql`
+        INSERT INTO email_verification_tokens (user_id, token, expires_at)
+        VALUES (${user.id as string}, ${verificationToken}, ${expiresAt})
+      `;
+      sendWelcomeEmail(email as string, user.username as string, verificationToken).catch(() => {});
+    } catch (e) {
+      // Token generation failed — send plain welcome email without verification link
+      console.error("[register] Verification token generation failed:", e);
+      sendWelcomeEmail(email as string, user.username as string).catch(() => {});
+    }
   }
 
   return ok({
