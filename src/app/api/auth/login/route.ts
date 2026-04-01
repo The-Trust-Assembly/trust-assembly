@@ -67,6 +67,10 @@ export async function POST(request: NextRequest) {
     }
 
     const user = result.rows[0];
+    // OAuth-only users have no password — guide them to use Google sign-in
+    if (!user.password_hash) {
+      return err("This account uses Google sign-in. Please use the Google button to log in.", 401);
+    }
     const valid = await verifyPassword(password, user.password_hash);
     if (!valid) {
       await logError({

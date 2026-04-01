@@ -6,6 +6,7 @@ import { ok, err } from "@/lib/api-utils";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 import { logError } from "@/lib/error-logger";
 import { sendWelcomeEmail } from "@/lib/email";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 // Email is intentionally NOT unique in the schema — DIs may share their
 // partner's email. Uniqueness for non-DI accounts is enforced in
@@ -41,8 +42,17 @@ export async function POST(request: NextRequest) {
     return err("Invalid JSON body");
   }
 
-  const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation } = body as Record<string, string>;
+  const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation, turnstileToken } = body as Record<string, string>;
   const isDI = gender === "di";
+
+  // Turnstile bot verification (skip for AI Agent accounts)
+  if (!isDI && process.env.TURNSTILE_SECRET_KEY) {
+    const ip = getClientIP(request);
+    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
+    if (!turnstileOk) {
+      return err("Bot verification failed. Please try again.", 400);
+    }
+  }
 
   // Validate required fields
   if (!username || !displayName || !email || !password) {

@@ -27,6 +27,7 @@ import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import VerifyEmailScreen from "./pages/VerifyEmailScreen";
+import CompleteProfileScreen from "./pages/CompleteProfileScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 import LandingPage from "./pages/LandingPage";
 // DiagnosticScreen moved to /admin/system-health page
@@ -299,7 +300,7 @@ export default function TrustAssembly() {
                 gender: serverUser.gender, age: serverUser.age,
                 country: serverUser.country, state: serverUser.state,
                 politicalAffiliation: serverUser.political_affiliation,
-                bio: serverUser.bio, isDI: serverUser.is_di, diApproved: serverUser.di_approved, emailVerified: serverUser.email_verified,
+                bio: serverUser.bio, isDI: serverUser.is_di, diApproved: serverUser.di_approved, emailVerified: serverUser.email_verified, profileComplete: serverUser.profile_complete,
                 signupDate: serverUser.created_at,
                 signupTimestamp: serverUser.created_at ? new Date(serverUser.created_at).getTime() : 0,
                 orgId: serverUser.primary_org_id || (serverUser.organizations?.[0]?.id) || null,
@@ -1012,6 +1013,8 @@ export default function TrustAssembly() {
               <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : viewingCitizen ? (
               <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
+            ) : user.profileComplete === false ? (
+              <CompleteProfileScreen onComplete={() => { window.location.reload(); }} />
             ) : <>
             {screen === "feed" && <FeedScreen user={user} siteAnnouncement={announcementDismissed === siteAnnouncement ? null : siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onDismissAnnouncement={() => { setAnnouncementDismissed(siteAnnouncement); try { localStorage.setItem("ta_announcement_dismissed", siteAnnouncement); } catch {} }} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
