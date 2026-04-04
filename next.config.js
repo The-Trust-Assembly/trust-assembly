@@ -29,7 +29,6 @@ const nextConfig = {
       { source: '/forgot-password', destination: '/' },
       { source: '/reset-password', destination: '/' },
       { source: '/verify-email', destination: '/' },
-      { source: '/complete-profile', destination: '/' },
       { source: '/citizen/:slug', destination: '/' },
       { source: '/record/:slug', destination: '/' },
     ];
