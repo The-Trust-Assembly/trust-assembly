@@ -67,6 +67,80 @@ export default class BasicDbRepo {
     return newUser;
   }
 
+  async createHeadlineReplacement(
+    userId: string,
+    data: {
+      originalHeadline: string;
+      replacementHeadline: string;
+      url: string;
+      citations: Array<{ url: string; explanation: string }>;
+    }
+  ): Promise<{ id: string }> {
+    const replacementId = crypto.randomUUID();
+
+    await this.client.queryArray`BEGIN`;
+    try {
+      // Insert headline replacement
+      await this.client.queryArray`
+        INSERT INTO headline_replacements (id, user_id, url, original_headline, replacement_headline)
+        VALUES (${replacementId}, ${userId}, ${data.url}, ${data.originalHeadline}, ${data.replacementHeadline})
+      `;
+
+      // Batch insert citations
+      if (data.citations.length > 0) {
+        // Build VALUES clause for batch insert
+        const valuesClause = data.citations.map((_citation, index) =>
+          `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3})`
+        ).join(', ');
+
+        // Flatten citation data into array of parameters
+        const params = data.citations.flatMap(citation => [
+          replacementId,
+          citation.url,
+          citation.explanation
+        ]);
+
+        await this.client.queryArray(
+          `INSERT INTO headline_replacement_citations (headline_replacement_id, citation_url, explanation)
+           VALUES ${valuesClause}`,
+          params
+        );
+      }
+
+      await this.client.queryArray`COMMIT`;
+    } catch (error) {
+      await this.client.queryArray`ROLLBACK`;
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Failed to create headline replacement:", {
+        userId,
+        url: data.url,
+        error: errorMessage
+      });
+
+      // Transform database constraint violations into user-friendly messages
+      if (errorMessage.includes("char_length")) {
+        throw new Error("Headline must be between 1 and 120 characters");
+      }
+      if (errorMessage.includes("null value") && errorMessage.includes("violates not-null")) {
+        throw new Error("All required fields must be provided");
+      }
+      if (errorMessage.includes("duplicate key") || errorMessage.includes("unique constraint")) {
+        throw new Error("A replacement for this article already exists");
+      }
+      if (errorMessage.includes("violates foreign key constraint")) {
+        throw new Error("Referenced record does not exist");
+      }
+      if (errorMessage.includes("headline_replacements_user_id_fkey")) {
+        throw new Error("Invalid user ID");
+      }
+
+      throw error;
+    }
+
+    return { id: replacementId };
+  }
+
   [Symbol.dispose]() {
     this.client.end();
   }
