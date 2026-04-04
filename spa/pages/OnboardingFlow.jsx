@@ -186,7 +186,7 @@ function OBSubmitStep() {
 }
 
 // ── Step 2: Review ──
-function OBReviewStep({ onNext }) {
+function OBReviewStep() {
   const [lieChecked, setLieChecked] = useState(false);
   const [voteNote, setVoteNote] = useState("");
   const [voted, setVoted] = useState(false);
@@ -304,7 +304,7 @@ function OBReviewStep({ onNext }) {
           <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
           <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>Votes Cast</div>
           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides.</p>
-          {onNext && <button onClick={onNext} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", letterSpacing: "0.04em" }}>Continue to Results →</button>}
+
         </div>
       )}
     </div>
@@ -415,7 +415,7 @@ function OBCompareStep() {
 }
 
 // ── Step 4: Launch ──
-function OBLaunchStep({ onComplete, onAdditional }) {
+function OBLaunchStep() {
   return (
     <div style={{ textAlign: "center", padding: "20px 0" }}>
       <div style={{ fontSize: 48, marginBottom: 12 }}>⚜</div>
@@ -446,16 +446,12 @@ function OBLaunchStep({ onComplete, onAdditional }) {
         </div>
       </div>
 
-      <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 0, marginTop: 8 }}>Enter The Trust Assembly →</button>
-      <div style={{ marginTop: 14 }}>
-        <button onClick={onAdditional} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-sec)" }}>📚 Additional Flows — Scoring, Disputes & Concessions</button>
-      </div>
     </div>
   );
 }
 
 // ── Step 5: Additional Flows ──
-function OBAdditionalStep({ onComplete }) {
+function OBAdditionalStep() {
   const [section, setSection] = useState("scoring"); // scoring, dispute, concession
   const [disputeVoted, setDisputeVoted] = useState(false);
   const [conceded, setConceded] = useState(false);
@@ -730,9 +726,6 @@ function OBAdditionalStep({ onComplete }) {
           Disputes and concessions complete the accountability loop. Corrections can be corrected. Mistakes can be acknowledged. The system doesn't demand perfection — it demands honesty. A citizen who concedes gracefully builds more trust over time than one who's never been wrong, because they've proven they value truth over ego.
         </ExplainBox>
 
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>Enter The Trust Assembly →</button>
-        </div>
       </div>}
     </div>
   );
@@ -773,16 +766,21 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       </div>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 40px", fontFamily: "var(--body, Georgia, serif)", color: "var(--text)", fontSize: 15, lineHeight: 1.6 }}>
         {step === 0 && <OBSubmitStep />}
-        {step === 1 && <OBReviewStep onNext={next} />}
+        {step === 1 && <OBReviewStep />}
         {step === 2 && <OBCompareStep />}
-        {step === 3 && <OBLaunchStep onComplete={onComplete} onAdditional={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} />}
-        {step === 4 && <OBAdditionalStep onComplete={onComplete} />}
-        {step < 3 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 30, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-            {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase" }}>← Back</button> : <div />}
-            <button onClick={next} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Next →</button>
+        {step === 3 && <OBLaunchStep />}
+        {step === 4 && <OBAdditionalStep />}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 30, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+          {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase" }}>← Back</button> : <div />}
+          <div style={{ display: "flex", gap: 10 }}>
+            {step < 3 && <button onClick={next} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Next →</button>}
+            {step === 3 && <>
+              <button onClick={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-sec)" }}>Deep Dive →</button>
+              <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Enter The Trust Assembly →</button>
+            </>}
+            {step === 4 && <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Enter The Trust Assembly →</button>}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
