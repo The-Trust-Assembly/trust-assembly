@@ -85,6 +85,12 @@ export async function POST(request: NextRequest) {
   const session = await getCurrentUserFromRequest(request);
   if (!session) return unauthorized();
 
+  // Email verification gate
+  const verifiedCheck = await sql`SELECT email_verified FROM users WHERE id = ${session.sub}`;
+  if (verifiedCheck.rows.length > 0 && verifiedCheck.rows[0].email_verified === false) {
+    return err("Please verify your email before submitting. Check your inbox for the verification link.", 403);
+  }
+
   const body = await request.json();
   const { submissionType, url, originalHeadline, replacement, reasoning, author, orgId, orgIds, evidence, inlineEdits, bodyText, thumbnailUrl } = body;
 

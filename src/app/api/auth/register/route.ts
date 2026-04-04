@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { sql, withTransaction } from "@/lib/db";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/api-utils";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 import { logError } from "@/lib/error-logger";
 import { sendWelcomeEmail } from "@/lib/email";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 // Email is intentionally NOT unique in the schema — DIs may share their
 // partner's email. Uniqueness for non-DI accounts is enforced in
@@ -40,8 +42,17 @@ export async function POST(request: NextRequest) {
     return err("Invalid JSON body");
   }
 
-  const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation } = body as Record<string, string>;
+  const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation, turnstileToken } = body as Record<string, string>;
   const isDI = gender === "di";
+
+  // Turnstile bot verification (skip for AI Agent accounts)
+  if (!isDI && process.env.TURNSTILE_SECRET_KEY) {
+    const ip = getClientIP(request);
+    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
+    if (!turnstileOk) {
+      return err("Bot verification failed. Please try again.", 400);
+    }
+  }
 
   // Validate required fields
   if (!username || !displayName || !email || !password) {
@@ -139,9 +150,21 @@ export async function POST(request: NextRequest) {
   const token = await createToken({ sub: user.id as string, username: user.username as string });
   await setSessionCookie(token);
 
-  // Welcome email (fire-and-forget)
+  // Email verification + welcome (fire-and-forget)
   if (email && !isDI) {
-    sendWelcomeEmail(email as string, user.username as string).catch(() => {});
+    try {
+      const verificationToken = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+      await sql`
+        INSERT INTO email_verification_tokens (user_id, token, expires_at)
+        VALUES (${user.id as string}, ${verificationToken}, ${expiresAt})
+      `;
+      sendWelcomeEmail(email as string, user.username as string, verificationToken).catch(() => {});
+    } catch (e) {
+      // Token generation failed — send plain welcome email without verification link
+      console.error("[register] Verification token generation failed:", e);
+      sendWelcomeEmail(email as string, user.username as string).catch(() => {});
+    }
   }
 
   return ok({

@@ -31,7 +31,7 @@ export default function LoginScreen({ onLogin, onGoRegister }) {
             id: me.id, username: me.username, displayName: me.display_name || me.username,
             realName: me.real_name, email: me.email, gender: me.gender, age: me.age,
             country: me.country, state: me.state, politicalAffiliation: me.political_affiliation,
-            bio: me.bio, isDI: me.is_di, diApproved: me.di_approved,
+            bio: me.bio, isDI: me.is_di, diApproved: me.di_approved, emailVerified: me.email_verified,
             signupDate: me.created_at, signupTimestamp: me.created_at ? new Date(me.created_at).getTime() : 0,
             orgId: me.primary_org_id || (me.organizations?.[0]?.id) || null,
             orgIds: (me.organizations || []).map(o => o.id),

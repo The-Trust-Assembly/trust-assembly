@@ -130,7 +130,7 @@ export function middleware(request: NextRequest) {
   // for Next.js inline styles. Adjust as the frontend evolves.
   response.headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-src https://www.youtube.com https://player.vimeo.com https://open.spotify.com https://www.tiktok.com https://www.dailymotion.com; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-src https://www.youtube.com https://player.vimeo.com https://open.spotify.com https://www.tiktok.com https://www.dailymotion.com https://challenges.cloudflare.com; frame-ancestors 'none'",
   );
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
