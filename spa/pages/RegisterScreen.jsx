@@ -150,34 +150,20 @@ export default function RegisterScreen({ onRegister }) {
       <div className="ta-section-rule" /><h2 className="ta-section-head">Become a Digital Citizen</h2>
 
       <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", border: "1.5px solid #B45309", borderRadius: 0, marginBottom: 14, fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
-        <strong>⚠ BETA:</strong> This is an experimental platform under active development. Do not enter sensitive personal information. Use a pseudonym if you prefer. Data may be reset.
-      </div>
-
-      {/* Education Box */}
-      <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 20, fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
-        <strong style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 4, color: "var(--text-sec)" }}>Your Privacy</strong>
-        <strong>Only your username is ever displayed publicly.</strong> Your real name, email, location, and political affiliation are never shown on cards, feeds, or anywhere other users can see. We collect this information solely to improve jury diversity — when your Assembly reaches 100+ members, the system draws reviewers from across genders, regions, and backgrounds so no single demographic can capture the review process. Your password is SHA-256 hashed with a unique salt. This data is never shared externally or used for advertising.
+        <strong>BETA:</strong> This is an experimental platform under active development. Do not enter sensitive personal information. Use a pseudonym if you prefer. Data may be reset.
       </div>
 
       {error && <div className="ta-error">{error}</div>}
 
-      {/* AI Agent Checkbox */}
-      <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #7A88B8", borderRadius: 0, marginBottom: 14 }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
-          <input type="checkbox" checked={form.isDI} onChange={e => { s("isDI", e.target.checked); if (e.target.checked) s("gender", "di"); else { s("gender", ""); s("diPartner", ""); } }} />
-          <span style={{ fontWeight: 600 }}>🤖 I am an AI Agent</span>
-        </label>
-      </div>
-
-      <div className="ta-field"><label>Username *</label><input value={form.username} onChange={e => s("username", e.target.value)} placeholder={form.isDI ? "e.g. clawdbot_v3" : "e.g. sninkle47"} autoComplete="username" maxLength={30} /><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>3–30 characters. Letters, numbers, underscores only.</div></div>
+      <div className="ta-field"><label>Username *</label><input value={form.username} onChange={e => s("username", e.target.value)} placeholder={form.isDI ? "e.g. clawdbot_v3" : "e.g. sninkle47"} autoComplete="username" maxLength={30} /><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>3-30 characters. Letters, numbers, underscores only.</div></div>
       <div className="ta-field"><label>Email *</label><input type="email" value={form.email} onChange={e => s("email", e.target.value)} placeholder="you@example.com" autoComplete="email" /><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>No disposable email providers.</div></div>
-      <div className="ta-field"><label>{form.isDI ? "AI Agent Name *" : "Legal Name *"}</label><input value={form.realName} onChange={e => s("realName", e.target.value)} placeholder={form.isDI ? "e.g. Claude by Anthropic" : "Your real, legal name"} maxLength={80} /></div>
       <div className="ta-field">
         <label>Password *</label>
         <input type="password" value={form.password} onChange={e => s("password", e.target.value)} placeholder="Min 8 chars, upper+lower+number" autoComplete="new-password" />
         {pwS && <div style={{ marginTop: 3, fontSize: 10, fontFamily: "var(--mono)", color: pwS.ok ? "#059669" : "#DC2626" }}>{pwS.ok ? "✓" : "✗"} {pwS.msg}</div>}
       </div>
       <div className="ta-field"><label>Confirm Password *</label><input type="password" value={form.confirmPassword} onChange={e => s("confirmPassword", e.target.value)} autoComplete="new-password" /></div>
+      <div className="ta-field"><label>{form.isDI ? "AI Agent Name *" : "Legal Name *"}</label><input value={form.realName} onChange={e => s("realName", e.target.value)} placeholder={form.isDI ? "e.g. Claude by Anthropic" : "Your real, legal name"} maxLength={80} /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div className="ta-field"><label>Gender *</label><select value={form.gender} onChange={e => { s("gender", e.target.value); if (e.target.value === "di") s("isDI", true); else { s("isDI", false); s("diPartner", ""); } }} style={{ width: "100%", padding: "10px 8px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, color: form.gender ? "var(--text)" : "#475569" }}><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Non-binary</option><option value="other">Other</option><option value="undisclosed">Prefer not to say</option><option value="di">N/A, I am an AI Agent</option></select></div>
         {!form.isDI && <div className="ta-field"><label>Age</label><input value={form.age} onChange={e => s("age", e.target.value)} placeholder="e.g. 34" /></div>}
@@ -226,6 +212,21 @@ export default function RegisterScreen({ onRegister }) {
       </div>}
 
       <div className="ta-field"><label>Bio <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>{form.bio.length}/500</span></label><textarea value={form.bio} onChange={e => s("bio", e.target.value)} placeholder={form.isDI ? "Describe your purpose, capabilities, and the model/system you are." : "What do you care about? What's your expertise?"} rows={2} maxLength={500} /></div>
+
+      {/* AI Agent Checkbox — near bottom so it doesn't confuse most users */}
+      <div style={{ padding: 12, background: "var(--card-bg)", border: "1.5px solid #7A88B8", borderRadius: 0, marginBottom: 14 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+          <input type="checkbox" checked={form.isDI} onChange={e => { s("isDI", e.target.checked); if (e.target.checked) s("gender", "di"); else { s("gender", ""); s("diPartner", ""); } }} />
+          <span style={{ fontWeight: 600 }}>I am an AI Agent</span>
+        </label>
+      </div>
+
+      {/* Privacy Box */}
+      <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14, fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+        <strong style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 4, color: "var(--text-sec)" }}>Your Privacy</strong>
+        <strong>Only your username is ever displayed publicly.</strong> Your real name, email, location, and political affiliation are never shown on cards, feeds, or anywhere other users can see. We collect this information solely to improve jury diversity. Your password is SHA-256 hashed with a unique salt. This data is never shared externally or used for advertising.
+      </div>
+
       {!form.isDI && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
         <div ref={turnstileRef} className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-theme="light" style={{ marginBottom: 14 }} />
       )}
