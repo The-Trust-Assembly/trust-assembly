@@ -1011,7 +1011,7 @@ export default function TrustAssembly() {
             {viewingRecord ? (
               <RecordScreen recordId={viewingRecord} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
             ) : viewingCitizen ? (
-              <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} />
+              <CitizenLookupScreen username={viewingCitizen} onBack={() => window.history.back()} onViewCitizen={navigateToCitizen} currentUser={user} />
             ) : <>
             {screen === "feed" && <FeedScreen user={user} siteAnnouncement={announcementDismissed === siteAnnouncement ? null : siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onDismissAnnouncement={() => { setAnnouncementDismissed(siteAnnouncement); try { localStorage.setItem("ta_announcement_dismissed", siteAnnouncement); } catch {} }} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}

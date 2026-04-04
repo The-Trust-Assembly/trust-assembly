@@ -7,8 +7,9 @@ import { isDIUser } from "../lib/permissions";
 import { Badge, CitizenBadges, StatusPill, SubHeadline, UsernameLink, Empty, Loader, Icon } from "../components/ui";
 import JuryScoreCard from "../components/JuryScoreCard";
 
-export default function CitizenLookupScreen({ username, onBack, onViewCitizen }) {
+export default function CitizenLookupScreen({ username, onBack, onViewCitizen, currentUser }) {
   const [u, setU] = useState(null);
+  const [adminDeleting, setAdminDeleting] = useState(false);
   const [orgs, setOrgs] = useState({});
   const [subs, setSubs] = useState({});
   const [allUsers, setAllUsers] = useState({});
@@ -122,6 +123,36 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen })
           </div>
         ))}
       </div>}
+
+      {/* Admin: delete this account */}
+      {currentUser && currentUser.username === ADMIN_USERNAME && username !== ADMIN_USERNAME && (
+        <div style={{ margin: "16px 0 8px", padding: 14, border: "1px solid rgba(196,74,58,0.27)", background: "rgba(196,74,58,0.03)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--red)", marginBottom: 2 }}>Admin: Delete this account</div>
+              <div style={{ fontSize: 10, color: "var(--text-sec)", lineHeight: 1.5 }}>Permanently removes @{username}, their submissions, reviews, and trust score. This cannot be undone.</div>
+            </div>
+            <button onClick={async () => {
+              if (!window.confirm(`Are you sure you want to permanently delete @${username}? This cannot be undone.`)) return;
+              setAdminDeleting(true);
+              try {
+                const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+                if (res.ok) {
+                  alert(`Account @${username} has been deleted.`);
+                  onBack();
+                } else {
+                  const data = await res.json().catch(() => ({}));
+                  alert(data.error || "Failed to delete account.");
+                }
+              } catch { alert("Network error."); }
+              setAdminDeleting(false);
+            }} disabled={adminDeleting} style={{
+              fontSize: 9, padding: "6px 14px", border: "1px solid var(--red)", color: adminDeleting ? "var(--text-muted)" : "var(--red)",
+              fontWeight: 700, cursor: adminDeleting ? "not-allowed" : "pointer", flexShrink: 0, marginLeft: 12, background: "none",
+            }}>{adminDeleting ? "DELETING..." : "DELETE ACCOUNT"}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
