@@ -29,7 +29,7 @@ export async function DELETE(
       `UPDATE users SET
         username = $1,
         display_name = 'Deleted Account',
-        email = $1 || '@deleted',
+        email = $2,
         password_hash = 'DELETED',
         salt = 'DELETED',
         real_name = NULL,
@@ -40,8 +40,8 @@ export async function DELETE(
         state = NULL,
         political_affiliation = NULL,
         ip_hash = NULL
-      WHERE id = $2`,
-      [anonUsername, id]
+      WHERE id = $3`,
+      [anonUsername, anonUsername + "@deleted", id]
     );
 
     // Remove memberships, jury assignments, notifications
