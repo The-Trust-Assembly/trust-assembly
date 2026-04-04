@@ -30,8 +30,8 @@ export async function DELETE(
         username = $1,
         display_name = 'Deleted Account',
         email = $1 || '@deleted',
-        password_hash = '',
-        salt = '',
+        password_hash = 'DELETED',
+        salt = 'DELETED',
         real_name = NULL,
         bio = NULL,
         gender = NULL,
@@ -65,7 +65,7 @@ export async function DELETE(
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("Admin account deletion failed:", e);
-    return err("Failed to delete account", 500);
+    return err(`Failed to delete account: ${e instanceof Error ? e.message : String(e)}`, 500);
   } finally {
     client.release();
   }
