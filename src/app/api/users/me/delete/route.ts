@@ -24,8 +24,8 @@ export async function DELETE(request: NextRequest) {
         username = $1,
         display_name = 'Deleted Account',
         email = $1 || '@deleted',
-        password_hash = '',
-        salt = '',
+        password_hash = 'DELETED',
+        salt = 'DELETED',
         real_name = NULL,
         bio = NULL,
         gender = NULL,
@@ -33,24 +33,30 @@ export async function DELETE(request: NextRequest) {
         country = NULL,
         state = NULL,
         political_affiliation = NULL,
-        ip_hash = NULL
+        ip_hash = NULL,
+        primary_org_id = NULL
       WHERE id = $2`,
       [anonUsername, session.sub]
     );
 
-    // Remove memberships, jury assignments, notifications
+    // Remove memberships, jury assignments, notifications, and related records
     await client.query("DELETE FROM organization_members WHERE user_id = $1", [session.sub]);
     await client.query("DELETE FROM jury_assignments WHERE user_id = $1", [session.sub]);
     await client.query("DELETE FROM notifications WHERE user_id = $1", [session.sub]);
+    await client.query("DELETE FROM organization_follows WHERE user_id = $1", [session.sub]);
+    await client.query("DELETE FROM user_badges WHERE user_id = $1", [session.sub]);
+    await client.query("DELETE FROM di_requests WHERE di_user_id = $1 OR partner_user_id = $1", [session.sub]);
+    await client.query("DELETE FROM membership_applications WHERE user_id = $1", [session.sub]);
 
     // Audit log
     await client.query(
-      `INSERT INTO audit_log (action, details, performed_by)
-       VALUES ($1, $2, $3)`,
+      `INSERT INTO audit_log (action, user_id, entity_type, entity_id, metadata)
+       VALUES ($1, $2, 'user', $3, $4)`,
       [
         "Account permanently deleted",
-        JSON.stringify({ originalUsername: session.username, anonymizedTo: anonUsername }),
         session.sub,
+        session.sub,
+        JSON.stringify({ originalUsername: session.username, anonymizedTo: anonUsername }),
       ]
     );
 
