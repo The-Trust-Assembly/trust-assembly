@@ -86,7 +86,6 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
   }
   // Inject admin items
   if (label === "Account" && isAdmin) {
-    allItems.push({ key: "admin-tools", label: "Admin Tools" });
     allItems.push({ key: "admin", label: "Admin Dashboard" });
   }
   const isActive = allItems.some(i => i.key === screen);
@@ -107,7 +106,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
             <div key={n.key} style={{ padding: "6px 16px 2px", fontSize: 8, fontFamily: "var(--mono)", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, borderTop: n.key === "_group" ? "none" : "1px solid var(--border)", marginTop: n.key === "_group" ? 0 : 4 }}>{n.label}</div>
           ) : (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
-              style={n.key === "admin" || n.key === "admin-tools" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
+              style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
               onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
               {n.label}
             </a>
@@ -270,6 +269,17 @@ export default function TrustAssembly() {
       setViewingRecord(recordId);
     } else if (path && path !== "login" && path !== "register") {
       setScreenRaw(path);
+    }
+
+    // Handle admin query params (from Admin Dashboard links)
+    const qp = new URLSearchParams(window.location.search);
+    if (qp.get("tutorial") === "1") {
+      setShowOnboarding(true);
+      window.history.replaceState({}, "", "/");
+    }
+    if (qp.get("screen")) {
+      setScreenRaw(qp.get("screen"));
+      window.history.replaceState({}, "", "/" + qp.get("screen"));
     }
 
     // Seed initial history entry
