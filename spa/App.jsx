@@ -27,6 +27,7 @@ import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import VerifyEmailScreen from "./pages/VerifyEmailScreen";
+import AdminToolsScreen from "./pages/AdminToolsScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 import LandingPage from "./pages/LandingPage";
 // DiagnosticScreen moved to /admin/system-health page
@@ -123,14 +124,14 @@ async function loadSyntheticData() {
 
 export default function TrustAssembly() {
   // Apply theme + font from localStorage on mount (before first render)
-  const [theme, setThemeState] = useState(() => { try { return localStorage.getItem("ta-theme") || "dark"; } catch { return "dark"; } });
-  const [fontSize, setFontSizeState] = useState(() => { try { return localStorage.getItem("ta-font-size") || "small"; } catch { return "small"; } });
+  const [theme, setThemeState] = useState(() => { try { return localStorage.getItem("ta-theme") || "light"; } catch { return "light"; } });
+  const [fontSize, setFontSizeState] = useState(() => { try { return localStorage.getItem("ta-font-size") || "large"; } catch { return "large"; } });
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : ""); }, [theme]);
 
   const setTheme = (t) => { setThemeState(t); try { localStorage.setItem("ta-theme", t); } catch {} document.documentElement.setAttribute("data-theme", t === "light" ? "light" : ""); };
   const setFontSize = (s) => { setFontSizeState(s); try { localStorage.setItem("ta-font-size", s); } catch {} };
 
-  const [contentWidth, setContentWidthState] = useState(() => { try { return localStorage.getItem("ta-content-width") || "wide"; } catch { return "wide"; } });
+  const [contentWidth, setContentWidthState] = useState(() => { try { return localStorage.getItem("ta-content-width") || "compact"; } catch { return "compact"; } });
   const setContentWidth = (w) => { setContentWidthState(w); try { localStorage.setItem("ta-content-width", w); } catch {} };
 
   const [hideCarousel, setHideCarouselState] = useState(() => { try { return localStorage.getItem("ta-hide-carousel") === "true"; } catch { return false; } });
@@ -268,6 +269,17 @@ export default function TrustAssembly() {
       setViewingRecord(recordId);
     } else if (path && path !== "login" && path !== "register") {
       setScreenRaw(path);
+    }
+
+    // Handle admin query params (from Admin Dashboard links)
+    const qp = new URLSearchParams(window.location.search);
+    if (qp.get("tutorial") === "1") {
+      setShowOnboarding(true);
+      window.history.replaceState({}, "", "/");
+    }
+    if (qp.get("screen")) {
+      setScreenRaw(qp.get("screen"));
+      window.history.replaceState({}, "", "/" + qp.get("screen"));
     }
 
     // Seed initial history entry
@@ -836,7 +848,7 @@ export default function TrustAssembly() {
                   <LoginScreen onLogin={u => { setLoginAccordion(false); setUser(u); const isNew = !u.orgIds || u.orgIds.length <= 1; setScreen(isNew ? "orgs" : "feed"); }} onGoRegister={() => setScreen("register")} />
                 ) : (
                   <div>
-                    <RegisterScreen onRegister={u => { setLoginAccordion(false); setUser(u); setShowOnboarding(true); }} />
+                    <RegisterScreen onRegister={u => { setLoginAccordion(false); setUser(u); setTheme("light"); setFontSize("large"); setContentWidth("compact"); setShowOnboarding(true); }} />
                     <div style={{ marginTop: 16, textAlign: "center" }}>
                       <button className="ta-link-btn" onClick={() => setScreen("login")}>Already a citizen? Sign in</button>
                     </div>
@@ -1029,6 +1041,7 @@ export default function TrustAssembly() {
             {screen === "ai-agents" && <AIAgentLearnPage />}
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
+            {screen === "admin-tools" && isAdmin && <AdminToolsScreen setShowOnboarding={setShowOnboarding} user={user} />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
             </>}
           </div>
