@@ -67,7 +67,7 @@ function OBSubmitStep() {
     <div>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 1</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Submit a Correction or Affirmation</h2>
-      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 14 }}>When you find an article worth reviewing, you submit either a <strong style={{ color: "var(--text)" }}>correction</strong> (the headline is misleading) or an <strong style={{ color: "var(--text)" }}>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review. <strong style={{ color: "var(--text)" }}>Try editing the fields below</strong> — the preview updates live.</p>
+      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>When you find an article worth reviewing, you submit either a <strong style={{ color: "var(--text)" }}>correction</strong> (the headline is misleading) or an <strong style={{ color: "var(--text)" }}>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review. <strong style={{ color: "var(--text)" }}>Try editing the fields below</strong> — the preview updates live.</p>
 
       {/* Mode toggle */}
       <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
@@ -210,7 +210,7 @@ function OBReviewStep() {
     <div>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 2</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Jury Review</h2>
-      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 14 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
+      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
 
       <ExplainBox title="Important" icon="⚖️" color="#EA580C">In the real system, you can never review your own submissions. We're showing you the review experience so you understand what happens to your work. Jurors are randomly selected and can't see each other's votes until all have voted.</ExplainBox>
 
@@ -332,7 +332,7 @@ function OBCompareStep() {
     <div>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 3</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>The Result</h2>
-      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 14 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
+      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
       <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
         <div>
           <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>See corrections on every article</div>
@@ -475,7 +475,7 @@ function OBAdditionalStep() {
     <div>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 5</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Additional Flows</h2>
-      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
+      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
 
       <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid var(--border)" }}>
         {[["scoring", "📊 Scoring"], ["dispute", "⚖️ Disputes"], ["concession", "🤝 Concessions"]].map(([key, label]) => (
@@ -753,12 +753,15 @@ export default function OnboardingFlow({ onComplete, embedded }) {
   const next = () => { if (step < OB_STEPS.length - 1) { setStep(s => s + 1); topRef.current?.scrollIntoView({ behavior: "smooth" }); } };
   const prev = () => { if (step > 0) { setStep(s => s - 1); topRef.current?.scrollIntoView({ behavior: "smooth" }); } };
 
+  // Force light-mode colors — onboarding runs before user picks a theme
+  const lightVars = { "--bg": "#f5f2ec", "--card-bg": "#ffffff", "--border": "#d9d3c7", "--gold": "#b8922e", "--text": "#1a1714", "--text-sec": "#5c564d", "--text-muted": "#9a948b", "--green": "#2d7a38", "--red": "#b03a2e" };
+
   return (
-    <div style={embedded ? {} : { minHeight: "100vh", background: "var(--card-bg)" }}>
-      {!embedded && <div ref={topRef} style={{ background: "var(--card-bg)", color: "var(--text)", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>
-        <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600 }}>Learn The Trust Assembly</div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>A guided walkthrough using a sample correction — nothing here is real</div>
+    <div style={embedded ? {} : { minHeight: "100vh", background: "#f5f2ec", color: "#1a1714", ...lightVars }}>
+      {!embedded && <div ref={topRef} style={{ background: "#ffffff", color: "#1a1714", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #d9d3c7" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "#b8922e", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>
+        <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600, color: "#1a1714" }}>Learn The Trust Assembly</div>
+        <div style={{ fontSize: 12, color: "#9a948b", marginTop: 6, lineHeight: 1.5 }}>A guided walkthrough using a sample correction — nothing here is real</div>
       </div>}
       {embedded && <div ref={topRef}><div className="ta-section-rule" /><h2 className="ta-section-head">Guide</h2><p style={{ color: "var(--text-sec)", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>An interactive walkthrough using a sample correction — nothing here is real.</p></div>}
       <div style={{ background: "rgba(212,168,67,0.09)", padding: "6px 16px", textAlign: "center", fontSize: 10, color: "#EA580C", fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em" }}>
@@ -770,27 +773,32 @@ export default function OnboardingFlow({ onComplete, embedded }) {
             <div key={i} style={{ flex: 1, textAlign: "center", cursor: i < step ? "pointer" : i > step ? "not-allowed" : "default" }}
               onClick={() => { if (i < step) { setStep(i); topRef.current?.scrollIntoView({ behavior: "smooth" }); } }}
               title={i < step ? `Go back to ${label}` : i > step ? "Complete current step first" : ""}>
-              <div style={{ height: 3, background: i <= step ? "var(--gold)" : "var(--border)", marginBottom: 6, borderRadius: 0, transition: "background 0.3s" }} />
-              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.06em", color: i <= step ? "var(--text)" : "#94A3B8", fontWeight: i === step ? 700 : 400 }}>{label}</div>
+              <div style={{ height: 3, background: i <= step ? "#b8922e" : "#d9d3c7", marginBottom: 6, borderRadius: 0, transition: "background 0.3s" }} />
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.06em", color: i <= step ? "#1a1714" : "#94A3B8", fontWeight: i === step ? 700 : 400 }}>{label}</div>
             </div>
           ))}
         </div>
       </div>
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 40px", color: "var(--text)", fontSize: 13, lineHeight: 1.6 }}>
+      <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 100px", color: "#1a1714", fontSize: 14, lineHeight: 1.7 }}>
         {step === 0 && <OBSubmitStep />}
         {step === 1 && <OBReviewStep />}
         {step === 2 && <OBCompareStep />}
         {step === 3 && <OBLaunchStep />}
         {step === 4 && <OBAdditionalStep />}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 30, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-          {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase" }}>← Back</button> : <div />}
-          <div style={{ display: "flex", gap: 10 }}>
-            {step < 3 && <button onClick={next} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Next →</button>}
-            {step === 3 && <>
-              <button onClick={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-sec)" }}>Deep Dive →</button>
-              <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Enter The Trust Assembly →</button>
-            </>}
-            {step === 4 && <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Enter The Trust Assembly →</button>}
+      </div>
+      {/* Sticky navigation bar — always visible at bottom of viewport */}
+      <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #f5f2ec 12px)", paddingTop: 16, zIndex: 50 }}>
+        <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", background: "#ffffff", border: "1px solid #d9d3c7", boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
+            {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid #d9d3c7", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", color: "#5c564d" }}>← Back</button> : <div />}
+            <div style={{ display: "flex", gap: 10 }}>
+              {step < 3 && <button onClick={next} style={{ background: "#b8922e", color: "#fff", border: "none", padding: "12px 28px", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.06em" }}>Next Step →</button>}
+              {step === 3 && <>
+                <button onClick={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} style={{ background: "none", border: "1px solid #d9d3c7", padding: "12px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.04em", color: "#5c564d" }}>Deep Dive →</button>
+                <button onClick={onComplete} style={{ background: "#b8922e", color: "#fff", border: "none", padding: "12px 28px", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.06em" }}>Enter The Trust Assembly →</button>
+              </>}
+              {step === 4 && <button onClick={onComplete} style={{ background: "#b8922e", color: "#fff", border: "none", padding: "12px 28px", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.06em" }}>Enter The Trust Assembly →</button>}
+            </div>
           </div>
         </div>
       </div>
