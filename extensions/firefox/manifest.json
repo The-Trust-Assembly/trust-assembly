@@ -42,7 +42,13 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "extension@trustassembly.org",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+	  "data_collection_permissions": {
+		  "description": "This extension checks on our server if the website the user is viewing requires correction, and may edit the site based on that.",
+		  "consent_url": "https://trustassembly.org/",
+		  "data_types": ["personal_data"],
+		  "required": ["authenticationInfo", "websiteContent"]
+	  }
     }
   }
 }
