@@ -34,6 +34,13 @@ const OB_AFFIRMATION = {
   url: "https://the-daily-truth.com/editorial/being-good-is-good",
   originalHeadline: "Being Good Is Good, Study Finds — And Has Been for Millennia",
   author: "Dr. Sarah Veritas",
+  originalBody: [
+    "A sweeping new meta-analysis published in the Journal of Moral Psychology has confirmed what most of civilization has long suspected: being good is, in fact, good.",
+    "The study, which aggregated data from 42,000 participants across 38 countries, found robust positive correlations between prosocial behavior — acts of kindness, cooperation, and civic engagement — and both community trust and individual well-being.",
+    "\"The results were remarkably consistent across cultures,\" said lead researcher Dr. Elena Kovacs. \"Whether we looked at Scandinavian cooperatives, Japanese community associations, or Brazilian mutual aid networks, the pattern held. People who act in the interest of others report higher life satisfaction, and the communities they live in function measurably better.\"",
+    "Critics who expected the findings to be culturally specific were surprised by the universality. The study controlled for economic development, political systems, and religious affiliation — prosocial behavior predicted positive outcomes independent of all three.",
+    "The economic implications are significant but unglamorous: societies with higher trust scores spend less on enforcement, litigation, and fraud prevention. The researchers estimate that a 10-point increase in community trust correlates with a 1.2% reduction in GDP allocated to transaction costs — money that could instead fund infrastructure, education, or healthcare.",
+  ],
   reasoning: "This article accurately reports a longitudinal meta-analysis published in the Journal of Moral Psychology. The study (n=42,000 across 38 countries) found robust positive correlations between prosocial behavior, community trust, and individual well-being. The headline is factual, the methodology is sound, and the conclusions are supported by the data.",
   evidence: [
     { url: "https://journal-of-moral-psych.org/2025/prosocial-meta-analysis", explanation: "The original peer-reviewed study cited in the article." },
@@ -58,15 +65,21 @@ function OBSubmitStep() {
 
   return (
     <div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 1: Submit</h2>
-      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 14 }}>When you find an article worth reviewing, you submit either a <strong>correction</strong> (the headline is misleading) or an <strong>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review. <strong>Try editing the fields below</strong> — the preview updates live.</p>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 1</div>
+      <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Submit a Correction or Affirmation</h2>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 14 }}>When you find an article worth reviewing, you submit either a <strong style={{ color: "var(--text)" }}>correction</strong> (the headline is misleading) or an <strong style={{ color: "var(--text)" }}>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review. <strong style={{ color: "var(--text)" }}>Try editing the fields below</strong> — the preview updates live.</p>
 
       {/* Mode toggle */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
-        {[["correction", "Correction", "This headline is misleading"], ["affirmation", "Affirmation", "This headline is accurate"]].map(([key, label, desc]) => (
-          <button key={key} onClick={() => setMode(key)} style={{ flex: 1, padding: "10px 8px", background: mode === key ? (key === "correction" ? "rgba(196,74,58,0.13)" : "rgba(74,158,85,0.07)") : "transparent", color: mode === key ? (key === "correction" ? "#c44a3a" : "#4a9e55") : "var(--text-muted)", border: mode === key ? (key === "correction" ? "1.5px solid #c44a3a" : "1.5px solid rgba(74,158,85,0.27)") : "1.5px solid var(--border)", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: mode === key ? 700 : 400, transition: "all 0.2s" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name={key} size={42}/> {label}</div>
-            <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, marginTop: 2, textTransform: "none", letterSpacing: 0 }}>{desc}</div>
+      <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
+        {[["correction", "Correction", "Correct something false or misleading"], ["affirmation", "Affirmation", "Lend weight and evidence to confirm something true"]].map(([key, label, desc]) => (
+          <button key={key} onClick={() => setMode(key)} style={{
+            flex: 1, padding: "8px", fontSize: 10, letterSpacing: 1, textAlign: "center", cursor: "pointer", fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase",
+            background: mode === key ? (key === "correction" ? "rgba(196,74,58,0.13)" : "rgba(74,158,85,0.07)") : "transparent",
+            border: mode === key ? (key === "correction" ? "1.5px solid #c44a3a" : "1.5px solid rgba(74,158,85,0.27)") : "1.5px solid var(--border)",
+            color: mode === key ? (key === "correction" ? "#c44a3a" : "#4a9e55") : "var(--text-muted)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name={key} size={42} /> {label}</div>
+            <div style={{ fontSize: 8, fontWeight: 400, marginTop: 2, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0 }}>{desc}</div>
           </button>
         ))}
       </div>
@@ -171,13 +184,13 @@ function OBSubmitStep() {
       <div className="ta-preview-panel" style={{ flex: "0 0 300px", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "6px 12px", background: "var(--bg)", borderBottom: "1px solid var(--border)", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Live Preview</div>
         <div style={{ flex: 1, overflowY: "auto", background: "#f8f8f6", padding: "14px 12px", fontFamily: "Georgia, serif" }}>
-          <div style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6, fontFamily: "sans-serif", fontWeight: 600 }}>the-daily-falsehood.com</div>
+          <div style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6, fontFamily: "sans-serif", fontWeight: 600 }}>{isAffirm ? "the-daily-truth.com" : "the-daily-falsehood.com"}</div>
           {editHeadline && <div style={{ fontSize: 16, fontWeight: 700, color: !isAffirm && editReplacement ? "#999" : "#1a1a1a", textDecoration: !isAffirm && editReplacement ? "line-through" : "none", marginBottom: 4, lineHeight: 1.3 }}>{editHeadline}</div>}
           {!isAffirm && editReplacement && <div style={{ fontSize: 16, fontWeight: 700, color: "#c44a3a", marginBottom: 6, lineHeight: 1.3 }}>{editReplacement}</div>}
           {isAffirm && <div style={{ fontSize: 14, fontWeight: 700, color: "#059669", marginBottom: 6 }}>Affirmed as accurate</div>}
           {editAuthor && <div style={{ fontSize: 10, color: "#666", fontFamily: "sans-serif", marginBottom: 10 }}>By {editAuthor}</div>}
           {editReasoning && <div style={{ fontSize: 11, color: "#555", lineHeight: 1.6, marginBottom: 10, padding: "6px 8px", borderLeft: "3px solid #b8963e", background: "rgba(184,150,62,0.06)" }}>{editReasoning}</div>}
-          {OB_ARTICLE.body && OB_ARTICLE.body.map((p, i) => <p key={i} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 8 }}>{p}</p>)}
+          {article.originalBody && article.originalBody.map((p, i) => <p key={i} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 8 }}>{p}</p>)}
         </div>
       </div>
       </div>{/* end split-pane */}
@@ -186,7 +199,7 @@ function OBSubmitStep() {
 }
 
 // ── Step 2: Review ──
-function OBReviewStep({ onNext }) {
+function OBReviewStep() {
   const [lieChecked, setLieChecked] = useState(false);
   const [voteNote, setVoteNote] = useState("");
   const [voted, setVoted] = useState(false);
@@ -195,8 +208,9 @@ function OBReviewStep({ onNext }) {
 
   return (
     <div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 2: Jury Review</h2>
-      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 6 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 2</div>
+      <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Jury Review</h2>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 14 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
 
       <ExplainBox title="Important" icon="⚖️" color="#EA580C">In the real system, you can never review your own submissions. We're showing you the review experience so you understand what happens to your work. Jurors are randomly selected and can't see each other's votes until all have voted.</ExplainBox>
 
@@ -227,8 +241,8 @@ function OBReviewStep({ onNext }) {
               <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", marginBottom: 6 }}>↳ {e.reasoning}</div>
               {!voted && (
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "var(--border)", background: editVotes[i] === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: editVotes[i] === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Approve Edit</button>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "var(--border)", background: editVotes[i] === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: editVotes[i] === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Reject Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "var(--border)", background: editVotes[i] === true ? "#ECFDF5" : "var(--card-bg)", color: editVotes[i] === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Approve Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "var(--border)", background: editVotes[i] === false ? "#FEF2F2" : "var(--card-bg)", color: editVotes[i] === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Reject Edit</button>
                 </div>
               )}
               {voted && <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: editVotes[i] ? "#059669" : "#DC2626", fontWeight: 700 }}>{editVotes[i] ? "✓ YOU APPROVED" : "✗ YOU REJECTED"}</span>}
@@ -243,24 +257,24 @@ function OBReviewStep({ onNext }) {
           <div style={{ color: "var(--text)", fontWeight: 600 }}>{OB_ARTICLE.vaultEntry.assertion}</div>
           <div style={{ color: "var(--text-sec)", fontSize: 12, marginTop: 2 }}>Source: {OB_ARTICLE.vaultEntry.evidence}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#059669" : "var(--border)", background: vaultVotes.sc === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.sc === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#DC2626" : "var(--border)", background: vaultVotes.sc === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.sc === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#059669" : "var(--border)", background: vaultVotes.sc === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.sc === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#DC2626" : "var(--border)", background: vaultVotes.sc === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.sc === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}>⚔️ Argument — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
           <div style={{ color: "var(--text)", lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "var(--border)", background: vaultVotes.arg === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.arg === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "var(--border)", background: vaultVotes.arg === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.arg === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "var(--border)", background: vaultVotes.arg === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.arg === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "var(--border)", background: vaultVotes.arg === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.arg === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, fontSize: 12 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief — <span style={{ color: "var(--text-muted)", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
           <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "var(--border)", background: vaultVotes.belief === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.belief === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#DC2626" : "var(--border)", background: vaultVotes.belief === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.belief === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "var(--border)", background: vaultVotes.belief === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.belief === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#DC2626" : "var(--border)", background: vaultVotes.belief === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.belief === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
           </div>
         </div>
         <div style={{ marginTop: 8, padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0, fontSize: 12, marginBottom: 8 }}>
@@ -272,8 +286,8 @@ function OBReviewStep({ onNext }) {
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>Type: Anti-Propaganda</div>
           <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#059669" : "var(--border)", background: vaultVotes.trans === true ? "rgba(74,158,85,0.09)" : "var(--card-bg)", color: vaultVotes.trans === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Good Translation</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#DC2626" : "var(--border)", background: vaultVotes.trans === false ? "rgba(196,74,58,0.09)" : "var(--card-bg)", color: vaultVotes.trans === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Inaccurate</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#059669" : "var(--border)", background: vaultVotes.trans === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.trans === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Good Translation</button>
+            <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#DC2626" : "var(--border)", background: vaultVotes.trans === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.trans === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Inaccurate</button>
           </div>
         </div>
       </div>
@@ -283,7 +297,7 @@ function OBReviewStep({ onNext }) {
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 10 }}>Headline Correction Verdict</div>
 
           <ExplainBox title="Review Note" icon="💬">Your note is permanent and public. Use it to explain your reasoning. This contributes to the audit trail that makes every decision transparent.</ExplainBox>
-          <textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="The correction accurately identifies fabricated claims..." style={{ width: "100%", padding: "9px 11px", border: "1px solid var(--border)", background: "var(--card-bg)", fontSize: 13, borderRadius: 0, boxSizing: "border-box", marginBottom: 14, fontFamily: "inherit", resize: "vertical" }} />
+          <div className="ta-field"><label>Review Note (permanent, public){voteNote.trim().length < 50 && <span style={{ color: "var(--red)", fontSize: 10, marginLeft: 6 }}>Min 50 chars required for rejections ({voteNote.trim().length}/50)</span>}</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning... (minimum 50 characters required for rejections)" /></div>
 
           <ExplainBox title="Deliberate Deception Finding" icon="⚠️" color="#991B1B">This is the nuclear option. Only check this if you believe the submitter is <strong>intentionally lying</strong> — not just wrong, but deliberately deceptive. A majority of jurors checking this triggers a severe drag penalty — each deception finding adds +{W.lieDrag} directly to drag, bypassing the √ curve that softens regular losses. This is a secret ballot — the submitter never sees which jurors checked it.</ExplainBox>
           <div style={{ margin: "12px 0", padding: 12, background: "rgba(196,74,58,0.09)", border: "1.5px solid #DC2626", borderRadius: 0 }}>
@@ -293,10 +307,10 @@ function OBReviewStep({ onNext }) {
             </label>
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button onClick={() => setVoted(true)} style={{ background: "var(--green)", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>✓ Approve Headline</button>
-            <button onClick={() => setVoted(true)} style={{ background: "var(--red)", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>✗ Reject Headline</button>
-            <button style={{ background: "#EA580C", color: "#fff", border: "none", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>⚖ Recuse</button>
+          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+            <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--green)", flex: 1 }}>✓ Approve</button>
+            <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--red)", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars)` : ""}</button>
+            <button className="ta-btn-primary" style={{ background: "#EA580C" }}>Recuse</button>
           </div>
         </div>
       ) : (
@@ -304,7 +318,7 @@ function OBReviewStep({ onNext }) {
           <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
           <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>Votes Cast</div>
           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides.</p>
-          {onNext && <button onClick={onNext} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", letterSpacing: "0.04em" }}>Continue to Results →</button>}
+
         </div>
       )}
     </div>
@@ -316,8 +330,9 @@ function OBCompareStep() {
   const [highlight, setHighlight] = useState(true);
   return (
     <div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Step 3: The Result</h2>
-      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 12 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 3</div>
+      <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>The Result</h2>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 14 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
       <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
         <div>
           <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>See corrections on every article</div>
@@ -415,11 +430,11 @@ function OBCompareStep() {
 }
 
 // ── Step 4: Launch ──
-function OBLaunchStep({ onComplete, onAdditional }) {
+function OBLaunchStep() {
   return (
     <div style={{ textAlign: "center", padding: "20px 0" }}>
-      <div style={{ fontSize: 48, marginBottom: 12 }}>⚜</div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 28, fontWeight: 700, margin: "0 0 8px" }}>You're Ready</h2>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 8 }}>STEP 4</div>
+      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600, margin: "0 0 8px", color: "var(--text)" }}>You're Ready</h2>
       <p style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "var(--text-sec)", fontStyle: "italic", marginBottom: 24 }}>Truth Will Out.</p>
 
       <div style={{ maxWidth: 520, margin: "0 auto", textAlign: "left" }}>
@@ -446,24 +461,21 @@ function OBLaunchStep({ onComplete, onAdditional }) {
         </div>
       </div>
 
-      <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 0, marginTop: 8 }}>Enter The Trust Assembly →</button>
-      <div style={{ marginTop: 14 }}>
-        <button onClick={onAdditional} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-sec)" }}>📚 Additional Flows — Scoring, Disputes & Concessions</button>
-      </div>
     </div>
   );
 }
 
 // ── Step 5: Additional Flows ──
-function OBAdditionalStep({ onComplete }) {
+function OBAdditionalStep() {
   const [section, setSection] = useState("scoring"); // scoring, dispute, concession
   const [disputeVoted, setDisputeVoted] = useState(false);
   const [conceded, setConceded] = useState(false);
 
   return (
     <div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Additional Flows</h2>
-      <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 5</div>
+      <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Additional Flows</h2>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
 
       <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid var(--border)" }}>
         {[["scoring", "📊 Scoring"], ["dispute", "⚖️ Disputes"], ["concession", "🤝 Concessions"]].map(([key, label]) => (
@@ -730,9 +742,6 @@ function OBAdditionalStep({ onComplete }) {
           Disputes and concessions complete the accountability loop. Corrections can be corrected. Mistakes can be acknowledged. The system doesn't demand perfection — it demands honesty. A citizen who concedes gracefully builds more trust over time than one who's never been wrong, because they've proven they value truth over ego.
         </ExplainBox>
 
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "14px 36px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", borderRadius: 0 }}>Enter The Trust Assembly →</button>
-        </div>
       </div>}
     </div>
   );
@@ -746,14 +755,10 @@ export default function OnboardingFlow({ onComplete, embedded }) {
 
   return (
     <div style={embedded ? {} : { minHeight: "100vh", background: "var(--card-bg)" }}>
-      {!embedded && <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        :root { --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; --serif: var(--font); --mono: var(--font); --body: var(--font); --accent: var(--gold); }
-      `}</style>}
-      {!embedded && <div ref={topRef} style={{ background: "var(--card-bg)", color: "var(--text)", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #BFDBFE" }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>📖 Interactive Tutorial</div>
-        <div style={{ fontSize: 24, fontWeight: 700 }}>Learn The Trust Assembly</div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>A guided walkthrough using a sample correction — nothing here is real</div>
+      {!embedded && <div ref={topRef} style={{ background: "var(--card-bg)", color: "var(--text)", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>
+        <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600 }}>Learn The Trust Assembly</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>A guided walkthrough using a sample correction — nothing here is real</div>
       </div>}
       {embedded && <div ref={topRef}><div className="ta-section-rule" /><h2 className="ta-section-head">Guide</h2><p style={{ color: "var(--text-sec)", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>An interactive walkthrough using a sample correction — nothing here is real.</p></div>}
       <div style={{ background: "rgba(212,168,67,0.09)", padding: "6px 16px", textAlign: "center", fontSize: 10, color: "#EA580C", fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em" }}>
@@ -771,18 +776,23 @@ export default function OnboardingFlow({ onComplete, embedded }) {
           ))}
         </div>
       </div>
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 40px", fontFamily: "var(--body, Georgia, serif)", color: "var(--text)", fontSize: 15, lineHeight: 1.6 }}>
+      <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 40px", color: "var(--text)", fontSize: 13, lineHeight: 1.6 }}>
         {step === 0 && <OBSubmitStep />}
-        {step === 1 && <OBReviewStep onNext={next} />}
+        {step === 1 && <OBReviewStep />}
         {step === 2 && <OBCompareStep />}
-        {step === 3 && <OBLaunchStep onComplete={onComplete} onAdditional={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} />}
-        {step === 4 && <OBAdditionalStep onComplete={onComplete} />}
-        {step < 3 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 30, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-            {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase" }}>← Back</button> : <div />}
-            <button onClick={next} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Next →</button>
+        {step === 3 && <OBLaunchStep />}
+        {step === 4 && <OBAdditionalStep />}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 30, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+          {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase" }}>← Back</button> : <div />}
+          <div style={{ display: "flex", gap: 10 }}>
+            {step < 3 && <button onClick={next} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Next →</button>}
+            {step === 3 && <>
+              <button onClick={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} style={{ background: "none", border: "1px solid var(--border)", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-sec)" }}>Deep Dive →</button>
+              <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Enter The Trust Assembly →</button>
+            </>}
+            {step === 4 && <button onClick={onComplete} style={{ background: "var(--gold)", color: "#fff", border: "none", padding: "10px 24px", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.04em" }}>Enter The Trust Assembly →</button>}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

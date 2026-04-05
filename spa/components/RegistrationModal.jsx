@@ -142,7 +142,7 @@ export default function RegistrationModal({ onRegisterAndSubmit, onSwitchToLogin
               <label style={labelStyle}>COUNTRY</label>
               <select value={country} onChange={e => setCountry(e.target.value)} style={selectStyle}>
                 <option value="">Select...</option>
-                {(COUNTRIES || []).map(c => <option key={c.value || c} value={c.value || c}>{c.label || c}</option>)}
+                {(COUNTRIES || []).map((c, i) => c.disabled ? <option key={`sep-${i}`} disabled>──────────</option> : <option key={c.value || c} value={c.value || c}>{c.label || c}</option>)}
               </select>
             </div>
             <div>

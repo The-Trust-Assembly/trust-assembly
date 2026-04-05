@@ -36,6 +36,15 @@ export const SPONSOR_MIN_TENURE_DAYS = 30;   // Review-only members need 30 days
 
 // Location data — launch countries only
 export const COUNTRIES = [
+  // English-speaking countries first
+  { value: "United States", label: "United States" },
+  { value: "Canada", label: "Canada" },
+  { value: "United Kingdom", label: "United Kingdom" },
+  { value: "Australia", label: "Australia" },
+  { value: "Ireland", label: "Ireland" },
+  { value: "New Zealand", label: "New Zealand" },
+  { value: "", label: "──────────", disabled: true },
+  // All countries alphabetically
   { value: "Afghanistan", label: "Afghanistan" },
   { value: "Albania", label: "Albania" },
   { value: "Algeria", label: "Algeria" },
@@ -44,7 +53,6 @@ export const COUNTRIES = [
   { value: "Antigua and Barbuda", label: "Antigua and Barbuda" },
   { value: "Argentina", label: "Argentina" },
   { value: "Armenia", label: "Armenia" },
-  { value: "Australia", label: "Australia" },
   { value: "Austria", label: "Austria" },
   { value: "Azerbaijan", label: "Azerbaijan" },
   { value: "Bahamas", label: "Bahamas" },
@@ -67,7 +75,6 @@ export const COUNTRIES = [
   { value: "Cabo Verde", label: "Cabo Verde" },
   { value: "Cambodia", label: "Cambodia" },
   { value: "Cameroon", label: "Cameroon" },
-  { value: "Canada", label: "Canada" },
   { value: "Central African Republic", label: "Central African Republic" },
   { value: "Chad", label: "Chad" },
   { value: "Chile", label: "Chile" },
@@ -116,7 +123,6 @@ export const COUNTRIES = [
   { value: "Indonesia", label: "Indonesia" },
   { value: "Iran", label: "Iran" },
   { value: "Iraq", label: "Iraq" },
-  { value: "Ireland", label: "Ireland" },
   { value: "Israel", label: "Israel" },
   { value: "Italy", label: "Italy" },
   { value: "Ivory Coast", label: "Ivory Coast" },
@@ -160,7 +166,6 @@ export const COUNTRIES = [
   { value: "Nauru", label: "Nauru" },
   { value: "Nepal", label: "Nepal" },
   { value: "Netherlands", label: "Netherlands" },
-  { value: "New Zealand", label: "New Zealand" },
   { value: "Nicaragua", label: "Nicaragua" },
   { value: "Niger", label: "Niger" },
   { value: "Nigeria", label: "Nigeria" },
@@ -222,8 +227,6 @@ export const COUNTRIES = [
   { value: "Uganda", label: "Uganda" },
   { value: "Ukraine", label: "Ukraine" },
   { value: "United Arab Emirates", label: "United Arab Emirates" },
-  { value: "United Kingdom", label: "United Kingdom" },
-  { value: "United States", label: "United States" },
   { value: "Uruguay", label: "Uruguay" },
   { value: "Uzbekistan", label: "Uzbekistan" },
   { value: "Vanuatu", label: "Vanuatu" },

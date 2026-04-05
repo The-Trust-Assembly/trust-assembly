@@ -49,7 +49,7 @@ export default function LoginScreen({ onLogin, onGoRegister }) {
     setLoading(false); onLogin(u);
   };
   return (
-    <div style={{ maxWidth: 420, margin: "0 auto" }}>
+    <div style={{ maxWidth: 420, margin: "0 auto", "--bg": "#f5f2ec", "--card-bg": "#ffffff", "--border": "#d9d3c7", "--gold": "#b8922e", "--text": "#1a1714", "--text-sec": "#5c564d", "--text-muted": "#9a948b", "--green": "#2d7a38", "--red": "#b03a2e", color: "#1a1714" }}>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Return to the Assembly</h2>
       {error && <div className="ta-error">{error}</div>}
       <div className="ta-field"><label>Username</label><input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" /></div>
