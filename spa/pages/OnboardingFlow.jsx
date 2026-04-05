@@ -52,24 +52,54 @@ const OB_AFFIRMATION = {
 // Explanation cards
 
 function OBSubmitStep() {
-  const [revealed, setRevealed] = useState(0);
   const [mode, setMode] = useState("correction"); // correction | affirmation
   const [editHeadline, setEditHeadline] = useState(OB_ARTICLE.originalHeadline);
   const [editReplacement, setEditReplacement] = useState(OB_ARTICLE.correctedHeadline);
   const [editReasoning, setEditReasoning] = useState("The article presents the claim 'evil is good' as though it were a serious argument. No substantive case is made — the piece relies on fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. This is textbook ragebait designed to provoke, not inform.");
   const [editAuthor, setEditAuthor] = useState(OB_ARTICLE.author);
-  useEffect(() => { const t = setInterval(() => setRevealed(r => Math.min(r + 1, 20)), 400); return () => clearInterval(t); }, []);
+  const [openSection, setOpenSection] = useState(1);
 
   const isAffirm = mode === "affirmation";
   const article = isAffirm ? OB_AFFIRMATION : OB_ARTICLE;
 
+  // Reusable accordion section header matching SubmitScreen ta-card pattern
+  const Section = ({ num, title, subtitle, isFirst, isLast, children }) => (
+    <div className="ta-card" style={{ marginBottom: 2, borderBottom: isLast ? undefined : "none", borderRadius: isFirst ? "2px 2px 0 0" : isLast ? "0 0 2px 2px" : 0 }}>
+      <button onClick={() => setOpenSection(openSection === num ? 0 : num)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+        <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>{num}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{title} {subtitle && <span style={{ fontWeight: 400, color: "var(--text-muted)", letterSpacing: 1 }}>{subtitle}</span>}</div>
+        </div>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", transform: openSection === num ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+      </button>
+      {openSection === num && <div style={{ marginTop: 12 }}>{children}</div>}
+    </div>
+  );
+
+  // EducationHelper-style tip matching SubmitScreen
+  const Tip = ({ children }) => (
+    <div style={{ padding: "10px 14px", background: "rgba(212,168,67,0.06)", borderLeft: "3px solid var(--gold)", marginBottom: 12, fontSize: 13, color: "var(--text-sec)", lineHeight: 1.6 }}>
+      {children}
+    </div>
+  );
+
   return (
     <div>
-      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 1</div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Submit a Correction or Affirmation</h2>
-      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>When you find an article worth reviewing, you submit either a <strong style={{ color: "var(--text)" }}>correction</strong> (the headline is misleading) or an <strong style={{ color: "var(--text)" }}>affirmation</strong> (the headline is accurate and deserves supporting evidence). Both go through the same jury review. <strong style={{ color: "var(--text)" }}>Try editing the fields below</strong> — the preview updates live.</p>
+      <div className="ta-section-rule" />
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>
+        SUBMIT {isAffirm ? "AFFIRMATION" : "CORRECTION"}
+      </div>
+      <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, marginBottom: 4, color: "var(--text)" }}>
+        {isAffirm
+          ? "You're affirming accurate content and lending it the weight of evidence."
+          : "You're correcting misleading content and submitting it for jury review."}
+      </div>
+      <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.6 }}>
+        Identify the content, propose a truthful replacement, explain your reasoning, and submit.
+        A jury of fellow citizens will review your {isAffirm ? "affirmation" : "correction"}. <strong style={{ color: "var(--text)" }}>Try editing the fields below</strong> — the preview updates live.
+      </div>
 
-      {/* Mode toggle */}
+      {/* Mode toggle — matches SubmitScreen */}
       <div style={{ display: "flex", gap: 0, marginBottom: 14, borderRadius: 0, overflow: "hidden", border: "1px solid var(--border)" }}>
         {[["correction", "Correction", "Correct something false or misleading"], ["affirmation", "Affirmation", "Lend weight and evidence to confirm something true"]].map(([key, label, desc]) => (
           <button key={key} onClick={() => setMode(key)} style={{
@@ -84,115 +114,121 @@ function OBSubmitStep() {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 16 }}>
-      {/* LEFT: Editable form */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Split-pane layout matching SubmitScreen */}
+      <div style={{ display: "flex", gap: 0 }}>
 
-      <ExplainBox title={isAffirm ? "Why Affirmations Matter" : "Article URL"} icon={isAffirm ? "✓" : ""} color={isAffirm ? "#059669" : "#0D9488"}>
-        {isAffirm
-          ? "Not everything needs correcting. When a journalist gets it right — especially on a controversial topic — affirming their accuracy with evidence strengthens the public record. Affirmations go through the same jury review as corrections."
-          : "Every correction starts with the article you're correcting. Paste the URL so jurors can read the original. The article automatically imports when you enter a URL and click another field."}
-      </ExplainBox>
-      <div className="ta-field" style={{ marginBottom: 14 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Article URL</label><input value={article.url} readOnly style={{ opacity: 0.7 }} /></div>
+      {/* ── LEFT: FORM SIDE ── */}
+      <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
 
-      <ExplainBox title={isAffirm ? "The Headline You're Affirming" : "The Headlines"} icon="" color="var(--text-sec)">
-        {isAffirm
-          ? "You quote the headline exactly. For affirmations, there's no replacement — you're confirming the original is accurate."
-          : "You quote the original headline exactly, then propose your corrected replacement. Your replacement should be factual, not editorial — the goal is truth, not dunking."}
-      </ExplainBox>
-      <div className="ta-field" style={{ marginBottom: 10 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Original Headline</label><input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} /></div>
-      <div className="ta-field" style={{ marginBottom: 10 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Author</label><input value={editAuthor} onChange={e => setEditAuthor(e.target.value)} /></div>
-      {!isAffirm && <div className="ta-field" style={{ marginBottom: 10 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#DC2626" }}>Proposed Correction — the red pen</label><input value={editReplacement} onChange={e => setEditReplacement(e.target.value)} style={{ borderColor: "#DC2626" }} /></div>}
-      {isAffirm && <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginBottom: 14, fontSize: 13, color: "var(--green)" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
-
-      <div className="ta-field" style={{ marginBottom: 14 }}><label style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)" }}>Reasoning</label><textarea value={editReasoning} onChange={e => setEditReasoning(e.target.value)} rows={3} style={{ resize: "vertical" }} /></div>
-
-      {revealed >= 2 && !isAffirm && <>
-        <ExplainBox title="Supporting Evidence" icon="📎" color="#059669">You can attach URLs that support your correction — news articles, studies, primary sources. Each one gets an explanation of what it proves.</ExplainBox>
-        <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence #1</div>
-          <div style={{ fontSize: 13 }}><a href="#" style={{ color: "var(--gold)" }}>https://ethics-institute.org/evil-still-bad-2025</a></div>
-          <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>↳ Comprehensive analysis confirming evil remains bad. Sample size: all of human history.</div>
+      {/* ── SECTION 1: The Article ── */}
+      <Section num={1} title="The article" isFirst>
+        <Tip>Identify the content you want to correct. The more accurately you describe the original, the easier it is for jurors to verify.</Tip>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="ta-field"><label>Original Headline *</label><input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} /></div>
+          <div className="ta-field"><label>Author(s) <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label><input value={editAuthor} onChange={e => setEditAuthor(e.target.value)} /></div>
         </div>
-      </>}
+        <div className="ta-field"><label>Article URL</label><input value={article.url} readOnly style={{ opacity: 0.7 }} /></div>
+      </Section>
 
-      {revealed >= 2 && isAffirm && <>
-        <ExplainBox title="Supporting Evidence" icon="📎" color="#059669">Affirmations are strongest with evidence. Link the original study, primary sources, or independent verification.</ExplainBox>
-        {OB_AFFIRMATION.evidence.map((e, i) => (
+      {/* ── SECTION 2: Your Case ── */}
+      <Section num={2} title={isAffirm ? "Your evidence" : "Rewrite the headline"}>
+        <Tip>{isAffirm ? "Explain why this content is accurate and provide supporting evidence. Strong affirmations cite specific sources." : "Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence."}</Tip>
+        {!isAffirm && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label><input value={editReplacement} onChange={e => setEditReplacement(e.target.value)} style={{ borderColor: "var(--red)" }} /></div>}
+        {isAffirm && <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginBottom: 12, fontSize: 13, color: "var(--green)" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
+        <div className="ta-field"><label>Reasoning *</label><textarea value={editReasoning} onChange={e => setEditReasoning(e.target.value)} rows={3} style={{ resize: "vertical" }} /></div>
+
+        {/* Evidence */}
+        {!isAffirm && <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence #1</div>
+          <div style={{ fontSize: 13 }}><a href="#" onClick={e => e.preventDefault()} style={{ color: "var(--gold)" }}>https://ethics-institute.org/evil-still-bad-2025</a></div>
+          <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>↳ Comprehensive analysis confirming evil remains bad. Sample size: all of human history.</div>
+        </div>}
+        {isAffirm && OB_AFFIRMATION.evidence.map((e, i) => (
           <div key={i} style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence #{i + 1}</div>
-            <div style={{ fontSize: 13 }}><a href="#" style={{ color: "var(--gold)" }}>{e.url}</a></div>
+            <div style={{ fontSize: 13 }}><a href="#" onClick={ev => ev.preventDefault()} style={{ color: "var(--gold)" }}>{e.url}</a></div>
             <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>↳ {e.explanation}</div>
           </div>
         ))}
-      </>}
+        <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>
+          <strong style={{ color: "var(--green)" }}>Tip:</strong> Stick to what you can prove. Corrections backed by evidence and clear reasoning survive review. Jurors respect intellectual honesty more than false confidence.
+        </div>
+      </Section>
 
-      {revealed >= 3 && !isAffirm && <>
-        <ExplainBox title="In-Line Article Edits" icon="🔴" color="#DC2626">Beyond the headline, you can correct specific claims within the article body — up to 20 edits per article. Each edit is voted on independently by jurors, so a strong headline can survive even if one edit is weak. Each edit shows the original text, your correction, and your reasoning.</ExplainBox>
+      {/* ── SECTION 3: Edit the article (corrections only) ── */}
+      {!isAffirm && <Section num={3} title="Edit the article" subtitle="up to 20">
+        <Tip>You can edit specific passages in the article body. The system finds each passage by exact text match. Each edit is voted on independently by jurors.</Tip>
         <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 10 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 8 }}>3 In-Line Edits</div>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 10 }}>3 In-Line Edits</div>
           {OB_ARTICLE.inlineEdits.map((edit, i) => (
             <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-              <div style={{ fontSize: 12, textDecoration: "line-through", textDecorationColor: "#DC2626", color: "var(--text-sec)", marginBottom: 3 }}>{edit.original}</div>
-              <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 600, marginBottom: 3 }}>{edit.replacement}</div>
-              <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic" }}>↳ {edit.reasoning}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 4 }}>
+                <span style={{ textDecoration: "line-through", color: "var(--text-muted)" }}>{edit.original}</span> → <span style={{ color: "var(--red)", fontWeight: 600 }}>{edit.replacement}</span>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>↳ {edit.reasoning}</div>
             </div>
           ))}
         </div>
-      </>}
+      </Section>}
 
-      {revealed >= 5 && <>
-        <ExplainBox title="Vault Artifacts" icon="📦" color="#475569">
-          Submissions can include vault entries — reusable knowledge that your Assembly builds over time. Entries can be <strong>new</strong> (proposed with this submission, pending until the submission is approved) or <strong>preexisting</strong> (already in your Assembly's vault, linked to show relevance). Jurors vote on each independently.
-        </ExplainBox>
+      {/* ── SECTION 4: Build the case (vault) ── */}
+      <Section num={isAffirm ? 3 : 4} title="Build the case" subtitle="search or create" isLast>
+        <Tip>Vault entries are reusable across submissions. A standing correction can be linked to every article that gets it wrong.</Tip>
 
-        <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><Icon name="vault" size={42}/> Standing Correction <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
-          <div style={{ fontSize: 14, fontFamily: "var(--serif)", fontWeight: 600, marginBottom: 3 }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.assertion}</div>
-          <div style={{ fontSize: 12, color: "var(--gold)" }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.evidence}</div>
+        <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(74,158,85,0.09)", border: "1px solid #05966930", borderRadius: 0, marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#059669", fontWeight: 700, marginBottom: 4 }}><Icon name="vault" size={16} /> Standing Correction — <span style={{ color: "var(--gold)", textTransform: "none" }}>New</span></div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.assertion}</div>
+          <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>Source: {(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.evidence}</div>
         </div>
 
         {!isAffirm && <>
-          <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><Icon name="dispute" size={42}/> Argument <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
-            <div style={{ fontSize: 13, lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
+          <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(13,148,136,0.09)", border: "1px solid #0D948830", borderRadius: 0, marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", fontWeight: 700, marginBottom: 4 }}><Icon name="dispute" size={16} /> Argument — <span style={{ color: "var(--gold)", textTransform: "none" }}>New</span></div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>{OB_ARTICLE.argEntry.content}</div>
           </div>
 
-          <div style={{ padding: 12, background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><Icon name="jury" size={42}/> Foundational Belief <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
+          <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", fontWeight: 700, marginBottom: 4 }}><Icon name="jury" size={16} /> Foundational Belief — <span style={{ color: "var(--gold)", textTransform: "none" }}>New</span></div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, fontStyle: "italic", color: "var(--text)" }}>{OB_ARTICLE.beliefEntry.content}</div>
           </div>
 
-          <ExplainBox title="Translations — Take Back Your Language" icon="🔄" color="#B45309">
-            Translations strip propaganda, jargon, and euphemisms from language. Governments name bills to manipulate you. Corporations invent jargon to obscure what they're doing. Media uses euphemisms to soften hard truths. You no longer have to use other people's language that's designed to manipulate you. Approved translations are applied automatically by the browser extension — everywhere, across every article that uses the phrase.
-          </ExplainBox>
-          <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 4 }}>🔄 Translation <span style={{ color: "var(--gold)", fontWeight: 400, textTransform: "none" }}>— NEW (proposed with this submission)</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+          <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", fontWeight: 700, marginBottom: 4 }}>Translation — <span style={{ color: "var(--gold)", textTransform: "none" }}>New · Anti-Propaganda</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
               <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{OB_ARTICLE.translationEntry.original}</span>
               <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
               <span style={{ color: "#B45309", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
             </div>
-            <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginTop: 4 }}>Type: Anti-Propaganda</div>
           </div>
         </>}
-      </>}
+      </Section>
 
-      </div>{/* end left form side */}
+      </div>{/* end form-side */}
 
-      {/* RIGHT: Live Preview Panel */}
-      <div className="ta-preview-panel" style={{ flex: "0 0 300px", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "6px 12px", background: "var(--bg)", borderBottom: "1px solid var(--border)", fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Live Preview</div>
+      {/* ── RIGHT: CONTENT PREVIEW ── */}
+      <div className="ta-preview-panel" style={{ flex: "0 0 340px", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)" }}>
+        <div style={{ background: "var(--bg)", padding: "6px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          <span style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Article preview</span>
+        </div>
         <div style={{ flex: 1, overflowY: "auto", background: "#f8f8f6", padding: "14px 12px", fontFamily: "Georgia, serif" }}>
-          <div style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#999", marginBottom: 6, fontFamily: "sans-serif", fontWeight: 600 }}>{isAffirm ? "the-daily-truth.com" : "the-daily-falsehood.com"}</div>
-          {editHeadline && <div style={{ fontSize: 16, fontWeight: 700, color: !isAffirm && editReplacement ? "#999" : "#1a1a1a", textDecoration: !isAffirm && editReplacement ? "line-through" : "none", marginBottom: 4, lineHeight: 1.3 }}>{editHeadline}</div>}
-          {!isAffirm && editReplacement && <div style={{ fontSize: 16, fontWeight: 700, color: "#c44a3a", marginBottom: 6, lineHeight: 1.3 }}>{editReplacement}</div>}
-          {isAffirm && <div style={{ fontSize: 14, fontWeight: 700, color: "#059669", marginBottom: 6 }}>Affirmed as accurate</div>}
-          {editAuthor && <div style={{ fontSize: 10, color: "#666", fontFamily: "sans-serif", marginBottom: 10 }}>By {editAuthor}</div>}
+          <div style={{ fontSize: 9, color: "#c44a3a", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, fontFamily: "sans-serif" }}>{isAffirm ? "the-daily-truth.com" : "the-daily-falsehood.com"}</div>
+
+          {/* Headline diff */}
+          {editHeadline && <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25, color: !isAffirm && editReplacement ? "#999" : "#1a1a1a", textDecoration: !isAffirm && editReplacement ? "line-through" : "none", marginBottom: 3 }}>{editHeadline}</div>}
+          {!isAffirm && editReplacement && <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.25, color: "#c44a3a", marginBottom: 3 }}>{editReplacement}</div>}
+          {isAffirm && <div style={{ fontSize: 11, color: "#666", fontStyle: "italic", marginBottom: 4 }}>Affirmed as accurate</div>}
+
+          {/* Author */}
+          {editAuthor && <div style={{ fontSize: 10, color: "#999", marginBottom: 12, fontFamily: "sans-serif" }}>By {editAuthor}{isAffirm ? " · the-daily-truth.com" : " · the-daily-falsehood.com"}</div>}
+
+          {/* Reasoning */}
           {editReasoning && <div style={{ fontSize: 11, color: "#555", lineHeight: 1.6, marginBottom: 10, padding: "6px 8px", borderLeft: "3px solid #b8963e", background: "rgba(184,150,62,0.06)" }}>{editReasoning}</div>}
+
+          {/* Article body text */}
           {article.originalBody && article.originalBody.map((p, i) => <p key={i} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 8 }}>{p}</p>)}
         </div>
       </div>
+
       </div>{/* end split-pane */}
     </div>
   );
