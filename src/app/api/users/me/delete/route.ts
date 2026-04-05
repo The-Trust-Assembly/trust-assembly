@@ -33,7 +33,7 @@ export async function DELETE(request: NextRequest) {
         `UPDATE users SET
           username = $1,
           display_name = 'Deleted Account',
-          email = $1 || '@deleted',
+          email = $2,
           password_hash = 'DELETED',
           salt = 'DELETED',
           real_name = NULL,
@@ -44,8 +44,8 @@ export async function DELETE(request: NextRequest) {
           state = NULL,
           political_affiliation = NULL,
           ip_hash = NULL
-        WHERE id = $2`,
-        [anonUsername, session.sub]
+        WHERE id = $3`,
+        [anonUsername, anonUsername + "@deleted", session.sub]
       );
       console.log("[delete-account] User record anonymized");
     } catch (e) {
