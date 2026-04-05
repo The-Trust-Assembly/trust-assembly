@@ -823,9 +823,9 @@ export default function TrustAssembly() {
 
           {/* LOGIN/REGISTER MODAL */}
           {loginAccordion && (
-            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "40px 20px" }}
               onClick={e => { if (e.target === e.currentTarget) setLoginAccordion(false); }}>
-              <div style={{ background: "#fff", borderRadius: 12, padding: "28px", maxWidth: 480, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ background: "#fff", borderRadius: 12, padding: "28px", maxWidth: 480, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>
                     {screen === "login" ? "Return to the Assembly" : "Become a Citizen"}
