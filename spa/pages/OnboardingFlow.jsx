@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput, Icon } from "../components/ui";
+import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput, Icon, DeliberateLieCheckbox, LegalDisclaimer } from "../components/ui";
 import { NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
 import { W } from "../lib/scoring";
 
@@ -239,6 +239,8 @@ function OBReviewStep() {
   const [lieChecked, setLieChecked] = useState(false);
   const [voteNote, setVoteNote] = useState("");
   const [voted, setVoted] = useState(false);
+  const [newsRating, setNewsRating] = useState(5);
+  const [funRating, setFunRating] = useState(5);
   const [editVotes, setEditVotes] = useState({ 0: true, 1: true, 2: true }); // default approve all
   const [vaultVotes, setVaultVotes] = useState({ sc: true, arg: true, belief: true }); // default still applies
 
@@ -329,24 +331,20 @@ function OBReviewStep() {
       </div>
 
       {!voted ? (
-        <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 16, borderRadius: 0 }}>
+        <div style={{ marginTop: 12, padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 10 }}>Headline Correction Verdict</div>
-
-          <ExplainBox title="Review Note" icon="💬">Your note is permanent and public. Use it to explain your reasoning. This contributes to the audit trail that makes every decision transparent.</ExplainBox>
+          <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
+          <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
           <div className="ta-field"><label>Review Note (permanent, public){voteNote.trim().length < 50 && <span style={{ color: "var(--red)", fontSize: 10, marginLeft: 6 }}>Min 50 chars required for rejections ({voteNote.trim().length}/50)</span>}</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning... (minimum 50 characters required for rejections)" /></div>
-
-          <ExplainBox title="Deliberate Deception Finding" icon="⚠️" color="#991B1B">This is the nuclear option. Only check this if you believe the submitter is <strong>intentionally lying</strong> — not just wrong, but deliberately deceptive. A majority of jurors checking this triggers a severe drag penalty — each deception finding adds +{W.lieDrag} directly to drag, bypassing the √ curve that softens regular losses. This is a secret ballot — the submitter never sees which jurors checked it.</ExplainBox>
-          <div style={{ margin: "12px 0", padding: 12, background: "rgba(196,74,58,0.09)", border: "1.5px solid #DC2626", borderRadius: 0 }}>
-            <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}>
-              <input type="checkbox" checked={lieChecked} onChange={e => setLieChecked(e.target.checked)} style={{ accentColor: "#991B1B", marginTop: 3 }} />
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>I certify this submission is a <strong>deliberate lie, gross misrepresentation, or intentional omission.</strong></div>
-            </label>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--green)", flex: 1 }}>✓ Approve</button>
-            <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--red)", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars)` : ""}</button>
-            <button className="ta-btn-primary" style={{ background: "#EA580C" }}>Recuse</button>
+          <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
+          <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FFFFFF 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--green)", flex: 1 }}>✓ Approve</button>
+              <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--red)", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars needed)` : ""}</button>
+              <button className="ta-btn-ghost" onClick={() => setVoted(false)}>Cancel</button>
+              <button className="ta-btn-primary" style={{ background: "#EA580C" }}>Recuse</button>
+            </div>
+            <LegalDisclaimer short />
           </div>
         </div>
       ) : (
@@ -354,7 +352,6 @@ function OBReviewStep() {
           <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
           <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>Votes Cast</div>
           <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides.</p>
-
         </div>
       )}
     </div>

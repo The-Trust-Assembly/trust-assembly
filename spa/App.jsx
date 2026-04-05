@@ -27,6 +27,7 @@ import RegisterScreen from "./pages/RegisterScreen";
 import LoginScreen from "./pages/LoginScreen";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import VerifyEmailScreen from "./pages/VerifyEmailScreen";
+import AdminToolsScreen from "./pages/AdminToolsScreen";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 import LandingPage from "./pages/LandingPage";
 // DiagnosticScreen moved to /admin/system-health page
@@ -85,6 +86,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
   }
   // Inject admin items
   if (label === "Account" && isAdmin) {
+    allItems.push({ key: "admin-tools", label: "Admin Tools" });
     allItems.push({ key: "admin", label: "Admin Dashboard" });
   }
   const isActive = allItems.some(i => i.key === screen);
@@ -105,7 +107,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
             <div key={n.key} style={{ padding: "6px 16px 2px", fontSize: 8, fontFamily: "var(--mono)", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, borderTop: n.key === "_group" ? "none" : "1px solid var(--border)", marginTop: n.key === "_group" ? 0 : 4 }}>{n.label}</div>
           ) : (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
-              style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
+              style={n.key === "admin" || n.key === "admin-tools" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
               onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
               {n.label}
             </a>
@@ -1029,6 +1031,7 @@ export default function TrustAssembly() {
             {screen === "ai-agents" && <AIAgentLearnPage />}
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
+            {screen === "admin-tools" && isAdmin && <AdminToolsScreen setShowOnboarding={setShowOnboarding} user={user} />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
             </>}
           </div>
