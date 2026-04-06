@@ -810,7 +810,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
   const lightVars = { "--bg": "#f5f2ec", "--card-bg": "#ffffff", "--border": "#d9d3c7", "--gold": "#b8922e", "--text": "#1a1714", "--text-sec": "#5c564d", "--text-muted": "#9a948b", "--green": "#2d7a38", "--red": "#b03a2e" };
 
   return (
-    <div style={embedded ? {} : { minHeight: "100vh", background: "#f5f2ec", color: "#1a1714", ...lightVars }}>
+    <div className="font-large" style={embedded ? {} : { minHeight: "100vh", background: "#f5f2ec", color: "#1a1714", ...lightVars }}>
       {!embedded && <div ref={topRef} style={{ background: "#ffffff", color: "#1a1714", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #d9d3c7" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "#b8922e", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>
         <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600, color: "#1a1714" }}>Learn The Trust Assembly</div>
@@ -820,7 +820,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       <div style={{ background: "rgba(212,168,67,0.09)", padding: "6px 16px", textAlign: "center", fontSize: 10, color: "#EA580C", fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em" }}>
         ⚠ TUTORIAL MODE — This is a practice exercise. No data will be saved.
       </div>
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "16px 20px 0" }}>
+      <div style={{ maxWidth: 820, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
           {OB_STEP_LABELS.map((label, i) => (
             <div key={i} style={{ flex: 1, textAlign: "center", cursor: i < step ? "pointer" : i > step ? "not-allowed" : "default" }}
@@ -832,7 +832,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
           ))}
         </div>
       </div>
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 20px 100px", color: "#1a1714", fontSize: 14, lineHeight: 1.7 }}>
+      <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px 100px", color: "#1a1714", fontSize: 14, lineHeight: 1.7 }}>
         {step === 0 && <OBSubmitStep />}
         {step === 1 && <OBReviewStep />}
         {step === 2 && <OBCompareStep />}
@@ -841,7 +841,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       </div>
       {/* Sticky navigation bar — always visible at bottom of viewport */}
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #f5f2ec 12px)", paddingTop: 16, zIndex: 50 }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 20px 16px" }}>
+        <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px 16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", background: "#ffffff", border: "1px solid #d9d3c7", boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
             {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid #d9d3c7", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", color: "#5c564d" }}>← Back</button> : <div />}
             <div style={{ display: "flex", gap: 10 }}>
