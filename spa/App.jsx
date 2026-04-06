@@ -552,7 +552,6 @@ export default function TrustAssembly() {
         .ta-field input,.ta-field textarea,.ta-field select { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
         .ta-field input:focus,.ta-field textarea:focus { border-color:var(--gold); }
         .ta-field textarea { resize:vertical; }
-<<<<<<< HEAD
         .field-label { font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
         .field-input { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; margin-bottom:8px; }
         .field-textarea { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; resize:vertical; margin-bottom:8px; }
