@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput, Icon } from "../components/ui";
+import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput, Icon, DeliberateLieCheckbox, LegalDisclaimer } from "../components/ui";
 import { NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
 import { W } from "../lib/scoring";
 
@@ -63,12 +63,13 @@ function OBSubmitStep() {
   const article = isAffirm ? OB_AFFIRMATION : OB_ARTICLE;
 
   // Reusable accordion section header matching SubmitScreen ta-card pattern
-  const Section = ({ num, title, subtitle, isFirst, isLast, children }) => (
+  const Section = ({ num, title, subtitle, isFirst, isLast, children, hint }) => (
     <div className="ta-card" style={{ marginBottom: 2, borderBottom: isLast ? undefined : "none", borderRadius: isFirst ? "2px 2px 0 0" : isLast ? "0 0 2px 2px" : 0 }}>
       <button onClick={() => setOpenSection(openSection === num ? 0 : num)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
         <span style={{ fontSize: 14, fontWeight: 900, color: "var(--gold)", flexShrink: 0, minWidth: 20 }}>{num}</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600, color: "var(--text)" }}>{title} {subtitle && <span style={{ fontWeight: 400, color: "var(--text-muted)", letterSpacing: 1 }}>{subtitle}</span>}</div>
+          {openSection !== num && hint && <div style={{ fontSize: 11, color: "var(--gold)", marginTop: 2, fontStyle: "italic" }}>{hint}</div>}
         </div>
         <span style={{ fontSize: 12, color: "var(--text-muted)", transform: openSection === num ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
       </button>
@@ -77,9 +78,10 @@ function OBSubmitStep() {
   );
 
   // EducationHelper-style tip matching SubmitScreen
-  const Tip = ({ children }) => (
-    <div style={{ padding: "10px 14px", background: "rgba(212,168,67,0.06)", borderLeft: "3px solid var(--gold)", marginBottom: 12, fontSize: 13, color: "var(--text-sec)", lineHeight: 1.6 }}>
+  const Tip = ({ children, action }) => (
+    <div style={{ padding: "10px 14px", background: "rgba(212,168,67,0.06)", borderLeft: "3px solid var(--gold)", marginBottom: 12, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
       {children}
+      {action && <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: "var(--gold)" }}>{action}</div>}
     </div>
   );
 
@@ -94,9 +96,10 @@ function OBSubmitStep() {
           ? "You're affirming accurate content and lending it the weight of evidence."
           : "You're correcting misleading content and submitting it for jury review."}
       </div>
-      <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.6 }}>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
         Identify the content, propose a truthful replacement, explain your reasoning, and submit.
-        A jury of fellow citizens will review your {isAffirm ? "affirmation" : "correction"}. <strong style={{ color: "var(--text)" }}>Try editing the fields below</strong> — the preview updates live.
+        A jury of fellow citizens will review your {isAffirm ? "affirmation" : "correction"}.
+        {" "}<strong style={{ color: "var(--text)" }}>Try editing the fields below</strong> — the preview updates live.
       </div>
 
       {/* Mode toggle — matches SubmitScreen */}
@@ -118,11 +121,11 @@ function OBSubmitStep() {
       <div style={{ display: "flex", gap: 0 }}>
 
       {/* ── LEFT: FORM SIDE ── */}
-      <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+      <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
 
       {/* ── SECTION 1: The Article ── */}
-      <Section num={1} title="The article" isFirst>
-        <Tip>Identify the content you want to correct. The more accurately you describe the original, the easier it is for jurors to verify.</Tip>
+      <Section num={1} title="The article" isFirst hint="Click to expand — try editing the fields inside">
+        <Tip action="Try it — change the headline text and watch the preview update in real time.">Identify the content you want to correct. The more accurately you describe the original, the easier it is for jurors to verify.</Tip>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div className="ta-field"><label>Original Headline *</label><input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} /></div>
           <div className="ta-field"><label>Author(s) <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label><input value={editAuthor} onChange={e => setEditAuthor(e.target.value)} /></div>
@@ -131,8 +134,8 @@ function OBSubmitStep() {
       </Section>
 
       {/* ── SECTION 2: Your Case ── */}
-      <Section num={2} title={isAffirm ? "Your evidence" : "Rewrite the headline"}>
-        <Tip>{isAffirm ? "Explain why this content is accurate and provide supporting evidence. Strong affirmations cite specific sources." : "Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence."}</Tip>
+      <Section num={2} title={isAffirm ? "Your evidence" : "Rewrite the headline"} hint="Click to expand — write your correction here">
+        <Tip action={isAffirm ? undefined : "Try rewriting the replacement headline — you'll see it appear in the preview."}>{isAffirm ? "Explain why this content is accurate and provide supporting evidence. Strong affirmations cite specific sources." : "Propose your correction and explain why the original is wrong. Strong corrections cite specific evidence."}</Tip>
         {!isAffirm && <div className="ta-field"><label>Proposed Replacement * <span style={{ fontWeight: 400, color: "var(--red)" }}>— the red pen</span></label><input value={editReplacement} onChange={e => setEditReplacement(e.target.value)} style={{ borderColor: "var(--red)" }} /></div>}
         {isAffirm && <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginBottom: 12, fontSize: 13, color: "var(--green)" }}>✓ You are affirming this headline is <strong>accurate</strong>. Provide your reasoning and evidence below.</div>}
         <div className="ta-field"><label>Reasoning *</label><textarea value={editReasoning} onChange={e => setEditReasoning(e.target.value)} rows={3} style={{ resize: "vertical" }} /></div>
@@ -140,14 +143,14 @@ function OBSubmitStep() {
         {/* Evidence */}
         {!isAffirm && <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 10 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence #1</div>
-          <div style={{ fontSize: 13 }}><a href="#" onClick={e => e.preventDefault()} style={{ color: "var(--gold)" }}>https://ethics-institute.org/evil-still-bad-2025</a></div>
-          <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>↳ Comprehensive analysis confirming evil remains bad. Sample size: all of human history.</div>
+          <div style={{ fontSize: 12 }}><a href="#" onClick={e => e.preventDefault()} style={{ color: "var(--gold)" }}>https://ethics-institute.org/evil-still-bad-2025</a></div>
+          <div style={{ color: "var(--text-sec)", marginTop: 2, fontSize: 12 }}>↳ Comprehensive analysis confirming evil remains bad. Sample size: all of human history.</div>
         </div>}
         {isAffirm && OB_AFFIRMATION.evidence.map((e, i) => (
           <div key={i} style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence #{i + 1}</div>
-            <div style={{ fontSize: 13 }}><a href="#" onClick={ev => ev.preventDefault()} style={{ color: "var(--gold)" }}>{e.url}</a></div>
-            <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>↳ {e.explanation}</div>
+            <div style={{ fontSize: 12 }}><a href="#" onClick={ev => ev.preventDefault()} style={{ color: "var(--gold)" }}>{e.url}</a></div>
+            <div style={{ color: "var(--text-sec)", marginTop: 2, fontSize: 12 }}>↳ {e.explanation}</div>
           </div>
         ))}
         <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", border: "1px solid #05966940", borderRadius: 0, marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>
@@ -156,45 +159,45 @@ function OBSubmitStep() {
       </Section>
 
       {/* ── SECTION 3: Edit the article (corrections only) ── */}
-      {!isAffirm && <Section num={3} title="Edit the article" subtitle="up to 20">
-        <Tip>You can edit specific passages in the article body. The system finds each passage by exact text match. Each edit is voted on independently by jurors.</Tip>
-        <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 10 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 10 }}>3 In-Line Edits</div>
+      {!isAffirm && <Section num={3} title="Edit the article" subtitle="up to 20" hint="Click to see the in-line edits that change the article body">
+        <Tip action="Each edit below targets a specific passage. In the real form, you type the original text and your replacement — the system finds it by exact match.">You can edit specific passages in the article body. Each edit is voted on independently by jurors — good edits survive even if others are rejected.</Tip>
+        <div style={{ padding: 12, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase" }}>3 In-Line Edits</div>
           {OB_ARTICLE.inlineEdits.map((edit, i) => (
-            <div key={i} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-              <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 4 }}>
+            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+              <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
                 <span style={{ textDecoration: "line-through", color: "var(--text-muted)" }}>{edit.original}</span> → <span style={{ color: "var(--red)", fontWeight: 600 }}>{edit.replacement}</span>
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>↳ {edit.reasoning}</div>
+              <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 1 }}>↳ {edit.reasoning}</div>
             </div>
           ))}
         </div>
       </Section>}
 
       {/* ── SECTION 4: Build the case (vault) ── */}
-      <Section num={isAffirm ? 3 : 4} title="Build the case" subtitle="search or create" isLast>
-        <Tip>Vault entries are reusable across submissions. A standing correction can be linked to every article that gets it wrong.</Tip>
+      <Section num={isAffirm ? 3 : 4} title="Build the case" subtitle="search or create" isLast hint="Click to see the Assembly Vault — reusable facts, arguments, and beliefs">
+        <Tip action="In the real form, you can search existing vault entries or create new ones. Each entry can be linked to any future submission.">Vault entries are reusable across submissions. A standing correction can be linked to every article that gets it wrong. This is how the Assembly builds institutional knowledge.</Tip>
 
         <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(74,158,85,0.09)", border: "1px solid #05966930", borderRadius: 0, marginBottom: 8 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#059669", fontWeight: 700, marginBottom: 4 }}><Icon name="vault" size={16} /> Standing Correction — <span style={{ color: "var(--gold)", textTransform: "none" }}>New</span></div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.assertion}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", lineHeight: 1.6 }}>{(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.assertion}</div>
           <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 2 }}>Source: {(isAffirm ? OB_AFFIRMATION : OB_ARTICLE).vaultEntry.evidence}</div>
         </div>
 
         {!isAffirm && <>
           <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(13,148,136,0.09)", border: "1px solid #0D948830", borderRadius: 0, marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", fontWeight: 700, marginBottom: 4 }}><Icon name="dispute" size={16} /> Argument — <span style={{ color: "var(--gold)", textTransform: "none" }}>New</span></div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>{OB_ARTICLE.argEntry.content}</div>
+            <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>{OB_ARTICLE.argEntry.content}</div>
           </div>
 
           <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", fontWeight: 700, marginBottom: 4 }}><Icon name="jury" size={16} /> Foundational Belief — <span style={{ color: "var(--gold)", textTransform: "none" }}>New</span></div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, fontStyle: "italic", color: "var(--text)" }}>{OB_ARTICLE.beliefEntry.content}</div>
+            <div style={{ fontSize: 12, lineHeight: 1.6, fontStyle: "italic", color: "var(--text)" }}>{OB_ARTICLE.beliefEntry.content}</div>
           </div>
 
           <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0 }}>
             <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", fontWeight: 700, marginBottom: 4 }}>Translation — <span style={{ color: "var(--gold)", textTransform: "none" }}>New · Anti-Propaganda</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
               <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{OB_ARTICLE.translationEntry.original}</span>
               <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
               <span style={{ color: "#B45309", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
@@ -222,7 +225,7 @@ function OBSubmitStep() {
           {editAuthor && <div style={{ fontSize: 10, color: "#999", marginBottom: 12, fontFamily: "sans-serif" }}>By {editAuthor}{isAffirm ? " · the-daily-truth.com" : " · the-daily-falsehood.com"}</div>}
 
           {/* Reasoning */}
-          {editReasoning && <div style={{ fontSize: 11, color: "#555", lineHeight: 1.6, marginBottom: 10, padding: "6px 8px", borderLeft: "3px solid #b8963e", background: "rgba(184,150,62,0.06)" }}>{editReasoning}</div>}
+          {editReasoning && <div style={{ fontSize: 12, color: "#555", lineHeight: 1.6, marginBottom: 10, padding: "8px 10px", borderLeft: "3px solid #b8963e", background: "rgba(184,150,62,0.06)" }}>{editReasoning}</div>}
 
           {/* Article body text */}
           {article.originalBody && article.originalBody.map((p, i) => <p key={i} style={{ fontSize: 11, lineHeight: 1.7, color: "#333", marginBottom: 8 }}>{p}</p>)}
@@ -239,124 +242,135 @@ function OBReviewStep() {
   const [lieChecked, setLieChecked] = useState(false);
   const [voteNote, setVoteNote] = useState("");
   const [voted, setVoted] = useState(false);
+  const [newsRating, setNewsRating] = useState(5);
+  const [funRating, setFunRating] = useState(5);
   const [editVotes, setEditVotes] = useState({ 0: true, 1: true, 2: true }); // default approve all
   const [vaultVotes, setVaultVotes] = useState({ sc: true, arg: true, belief: true }); // default still applies
 
   return (
     <div>
+      <div className="ta-section-rule" />
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 2</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Jury Review</h2>
-      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>After submission, randomly selected jurors from your Assembly review your correction. Here's what a juror sees.</p>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 16 }}>After submission, randomly selected jurors from your Assembly review your correction. Below is exactly what a juror sees — try voting on each edit, rating the submission, and casting your verdict.</p>
 
       <ExplainBox title="Important" icon="⚖️" color="#EA580C">In the real system, you can never review your own submissions. We're showing you the review experience so you understand what happens to your work. Jurors are randomly selected and can't see each other's votes until all have voted.</ExplainBox>
 
-      {/* The submission card */}
-      <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 16, marginBottom: 16, borderLeft: "4px solid #D97706", borderRadius: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+      {/* The submission card — matches production ReviewScreen exactly */}
+      <div className="ta-card" style={{ borderLeft: "4px solid #D97706" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>@you · The General Public · just now</span>
-          <span style={{ fontSize: 10, padding: "2px 7px", background: "rgba(212,168,67,0.09)", color: "#EA580C", borderRadius: 0, fontFamily: "var(--mono)", textTransform: "uppercase", fontWeight: 700 }}>Under Review</span>
+          <StatusPill status="pending_review" />
         </div>
-        <a href="#" style={{ fontSize: 10, color: "var(--gold)" }}>{OB_ARTICLE.url}</a>
+        <a href="#" onClick={e => e.preventDefault()} style={{ fontSize: 10, color: "var(--gold)" }}>{OB_ARTICLE.url}</a>
         <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
           <div style={{ fontFamily: "var(--serif)", textDecoration: "line-through", textDecorationColor: "#DC2626", color: "var(--text-sec)", fontSize: 14 }}>{OB_ARTICLE.originalHeadline}</div>
           <div style={{ fontFamily: "var(--serif)", color: "var(--red)", fontWeight: 700, fontSize: 16, marginTop: 2 }}>{OB_ARTICLE.correctedHeadline}</div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)", marginTop: 3 }}>Author: {OB_ARTICLE.author}</div>
         </div>
-        <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, marginBottom: 8 }}>The article presents "evil is good" as a serious argument. No substantive case is made — fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. Textbook ragebait.</div>
+        <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10 }}>The article presents "evil is good" as a serious argument. No substantive case is made — fabricated quotes, unnamed sources, and admitted exclusion of contradictory views. Textbook ragebait.</div>
 
-        <ExplainBox title="Line-by-Line Voting" icon="📋" color="#059669">Each in-line edit gets its own verdict. You can approve the headline correction while rejecting a weak edit — good work doesn't get killed by one flawed claim. Up to 20 edits per article.</ExplainBox>
+        {/* Evidence */}
+        <div style={{ marginTop: 12, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence: 1 Source</div>
+          <div style={{ marginBottom: 8, fontSize: 12 }}><a href="#" onClick={e => e.preventDefault()} style={{ color: "var(--gold)" }}>https://ethics-institute.org/evil-still-bad-2025</a><div style={{ color: "var(--text-sec)", marginTop: 2 }}>↳ Comprehensive analysis confirming evil remains bad. Sample size: all of human history.</div></div>
+        </div>
 
-        <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>3 In-Line Edits — vote on each</div>
+        <ExplainBox title="Line-by-Line Voting" icon="📋" color="#059669">Each in-line edit gets its own verdict. You can approve the headline correction while rejecting a weak edit — good work doesn't get killed by one flawed claim.</ExplainBox>
+
+        {/* Inline edits — matches production */}
+        <div style={{ marginTop: 14, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>3 In-Line Edits — vote on each</div>
           {OB_ARTICLE.inlineEdits.map((e, i) => (
-            <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-              <div style={{ fontSize: 12, marginBottom: 4 }}>
-                <span style={{ textDecoration: "line-through", color: "var(--text-muted)" }}>{e.original}</span>
+            <div key={i} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+              <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 4 }}>
+                <span style={{ textDecoration: "line-through", color: "var(--text-muted)" }}>{e.original}</span> → <span style={{ color: "var(--red)", fontWeight: 600 }}>{e.replacement}</span>
+                <div style={{ fontSize: 12, color: "var(--text-sec)", marginTop: 1 }}>↳ {e.reasoning}</div>
               </div>
-              <div style={{ fontSize: 12, color: "var(--red)", fontWeight: 600, marginBottom: 2 }}>{e.replacement}</div>
-              <div style={{ fontSize: 12, color: "var(--text-sec)", fontStyle: "italic", marginBottom: 6 }}>↳ {e.reasoning}</div>
               {!voted && (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "var(--border)", background: editVotes[i] === true ? "#ECFDF5" : "var(--card-bg)", color: editVotes[i] === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Approve Edit</button>
-                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "var(--border)", background: editVotes[i] === false ? "#FEF2F2" : "var(--card-bg)", color: editVotes[i] === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Reject Edit</button>
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === true ? "#059669" : "var(--border)", background: editVotes[i] === true ? "#ECFDF5" : "#fff", color: editVotes[i] === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Approve Edit</button>
+                  <button onClick={() => setEditVotes(v => ({ ...v, [i]: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: editVotes[i] === false ? "#DC2626" : "var(--border)", background: editVotes[i] === false ? "#FEF2F2" : "#fff", color: editVotes[i] === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ Reject Edit</button>
                 </div>
               )}
-              {voted && <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: editVotes[i] ? "#059669" : "#DC2626", fontWeight: 700 }}>{editVotes[i] ? "✓ YOU APPROVED" : "✗ YOU REJECTED"}</span>}
+              {voted && <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: editVotes[i] ? "#059669" : "#DC2626", fontWeight: 700 }}>{editVotes[i] ? "✓ APPROVED" : "✗ REJECTED"}</span>}
             </div>
           ))}
         </div>
 
-        {/* Vault entries attached to submission */}
-        <ExplainBox title="Vault Artifacts" icon="🏛" color="#475569">Vault entries can be <strong>new</strong> (proposed with this submission — pending until the submission is approved) or <strong>preexisting</strong> (already in the Assembly's vault, linked to show relevance). Jurors vote on each independently. "Still Applies?" means you believe the entry remains valid. Each time an entry survives review, it gains reputation.</ExplainBox>
-        <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 3 }}>🏛 Standing Correction — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
-          <div style={{ color: "var(--text)", fontWeight: 600 }}>{OB_ARTICLE.vaultEntry.assertion}</div>
-          <div style={{ color: "var(--text-sec)", fontSize: 12, marginTop: 2 }}>Source: {OB_ARTICLE.vaultEntry.evidence}</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#059669" : "var(--border)", background: vaultVotes.sc === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.sc === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#DC2626" : "var(--border)", background: vaultVotes.sc === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.sc === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+        {/* Vault entries — matches production */}
+        <ExplainBox title="Vault Artifacts" icon="🏛" color="#475569">Vault entries can be <strong>new</strong> (proposed with this submission) or <strong>preexisting</strong> (already in the Assembly's vault). Jurors vote on each independently.</ExplainBox>
+        <div style={{ marginTop: 10, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
+          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 8 }}>4 Linked Vault Entries — vote on each</div>
+          {/* Standing Correction */}
+          <div style={{ marginBottom: 8, padding: "8px 10px", background: "rgba(74,158,85,0.09)", border: "1px solid #05966930", borderRadius: 0 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#059669", fontWeight: 700, marginBottom: 4 }}><Icon name="vault" size={16} /> Standing Correction · New</div>
+            <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", marginBottom: 6 }}>{OB_ARTICLE.vaultEntry.assertion}</div>
+            <div style={{ fontSize: 12, color: "var(--text-sec)", marginBottom: 6 }}>Source: {OB_ARTICLE.vaultEntry.evidence}</div>
+            {!voted && <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setVaultVotes(v => ({ ...v, sc: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === true ? "#059669" : "var(--border)", background: vaultVotes.sc === true ? "#ECFDF5" : "#fff", color: vaultVotes.sc === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+              <button onClick={() => setVaultVotes(v => ({ ...v, sc: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.sc === false ? "#DC2626" : "var(--border)", background: vaultVotes.sc === false ? "#FEF2F2" : "#fff", color: vaultVotes.sc === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            </div>}
+          </div>
+          {/* Argument */}
+          <div style={{ marginBottom: 8, padding: "8px 10px", background: "rgba(13,148,136,0.09)", border: "1px solid #0D948830", borderRadius: 0 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#0D9488", fontWeight: 700, marginBottom: 4 }}><Icon name="dispute" size={16} /> Argument · New</div>
+            <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", marginBottom: 6 }}>{OB_ARTICLE.argEntry.content}</div>
+            {!voted && <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "var(--border)", background: vaultVotes.arg === true ? "#ECFDF5" : "#fff", color: vaultVotes.arg === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+              <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "var(--border)", background: vaultVotes.arg === false ? "#FEF2F2" : "#fff", color: vaultVotes.arg === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            </div>}
+          </div>
+          {/* Belief */}
+          <div style={{ marginBottom: 8, padding: "8px 10px", background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", fontWeight: 700, marginBottom: 4 }}><Icon name="jury" size={16} /> Foundational Belief · Preexisting</div>
+            <div style={{ fontSize: 12, lineHeight: 1.6, fontStyle: "italic", color: "var(--text)", marginBottom: 6 }}>{OB_ARTICLE.beliefEntry.content}</div>
+            {!voted && <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "var(--border)", background: vaultVotes.belief === true ? "#ECFDF5" : "#fff", color: vaultVotes.belief === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
+              <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#DC2626" : "var(--border)", background: vaultVotes.belief === false ? "#FEF2F2" : "#fff", color: vaultVotes.belief === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
+            </div>}
+          </div>
+          {/* Translation */}
+          <div style={{ padding: "8px 10px", background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", fontWeight: 700, marginBottom: 4 }}>Translation · New · Anti-Propaganda</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginBottom: 6 }}>
+              <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{OB_ARTICLE.translationEntry.original}</span>
+              <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
+              <span style={{ color: "#B45309", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
+            </div>
+            {!voted && <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#059669" : "var(--border)", background: vaultVotes.trans === true ? "#ECFDF5" : "#fff", color: vaultVotes.trans === true ? "#059669" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✓ Good Translation</button>
+              <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#DC2626" : "var(--border)", background: vaultVotes.trans === false ? "#FEF2F2" : "#fff", color: vaultVotes.trans === false ? "#DC2626" : "#64748B", borderRadius: 0, cursor: "pointer" }}>✗ Inaccurate</button>
+            </div>}
           </div>
         </div>
-        <div style={{ marginTop: 8, padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--gold)", marginBottom: 3 }}>⚔️ Argument — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
-          <div style={{ color: "var(--text)", lineHeight: 1.6 }}>{OB_ARTICLE.argEntry.content}</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === true ? "#059669" : "var(--border)", background: vaultVotes.arg === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.arg === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, arg: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.arg === false ? "#DC2626" : "var(--border)", background: vaultVotes.arg === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.arg === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
-          </div>
-        </div>
-        <div style={{ marginTop: 8, padding: 10, background: "rgba(124,58,237,0.09)", border: "1px solid rgba(124,58,237,0.27)", borderRadius: 0, fontSize: 12 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#7C3AED", marginBottom: 3 }}>🧭 Foundational Belief — <span style={{ color: "var(--text-muted)", textTransform: "none" }}>Preexisting (already in vault, linked for relevance)</span></div>
-          <div style={{ color: "var(--text)", lineHeight: 1.6, fontStyle: "italic" }}>{OB_ARTICLE.beliefEntry.content}</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === true ? "#059669" : "var(--border)", background: vaultVotes.belief === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.belief === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Still Applies</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, belief: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.belief === false ? "#DC2626" : "var(--border)", background: vaultVotes.belief === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.belief === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ No Longer Valid</button>
-          </div>
-        </div>
-        <div style={{ marginTop: 8, padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #B4530940", borderRadius: 0, fontSize: 12, marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "#B45309", marginBottom: 3 }}>🔄 Translation — <span style={{ color: "var(--gold)", textTransform: "none" }}>New (proposed with this submission)</span></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{OB_ARTICLE.translationEntry.original}</span>
-            <span style={{ color: "#B45309", fontWeight: 700 }}>→</span>
-            <span style={{ color: "#B45309", fontWeight: 700 }}>{OB_ARTICLE.translationEntry.translated}</span>
-          </div>
-          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>Type: Anti-Propaganda</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: true }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === true ? "#059669" : "var(--border)", background: vaultVotes.trans === true ? "#ECFDF5" : "var(--card-bg)", color: vaultVotes.trans === true ? "#059669" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✓ Good Translation</button>
-            <button onClick={() => setVaultVotes(v => ({ ...v, trans: false }))} style={{ padding: "3px 10px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 600, border: "1.5px solid", borderColor: vaultVotes.trans === false ? "#DC2626" : "var(--border)", background: vaultVotes.trans === false ? "#FEF2F2" : "var(--card-bg)", color: vaultVotes.trans === false ? "#DC2626" : "var(--text-muted)", borderRadius: 0, cursor: "pointer" }}>✗ Inaccurate</button>
-          </div>
-        </div>
-      </div>
 
+      {/* Vote section — inside the card, matches production ReviewScreen exactly */}
       {!voted ? (
-        <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", padding: 16, borderRadius: 0 }}>
+        <div style={{ marginTop: 12, padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 10 }}>Headline Correction Verdict</div>
-
-          <ExplainBox title="Review Note" icon="💬">Your note is permanent and public. Use it to explain your reasoning. This contributes to the audit trail that makes every decision transparent.</ExplainBox>
+          <RatingInput label="How Newsworthy" value={newsRating} onChange={setNewsRating} rubric={NEWS_RUBRIC} />
+          <RatingInput label="How Interesting" value={funRating} onChange={setFunRating} rubric={FUN_RUBRIC} />
           <div className="ta-field"><label>Review Note (permanent, public){voteNote.trim().length < 50 && <span style={{ color: "var(--red)", fontSize: 10, marginLeft: 6 }}>Min 50 chars required for rejections ({voteNote.trim().length}/50)</span>}</label><textarea value={voteNote} onChange={e => setVoteNote(e.target.value)} rows={2} placeholder="Explain your reasoning... (minimum 50 characters required for rejections)" /></div>
-
-          <ExplainBox title="Deliberate Deception Finding" icon="⚠️" color="#991B1B">This is the nuclear option. Only check this if you believe the submitter is <strong>intentionally lying</strong> — not just wrong, but deliberately deceptive. A majority of jurors checking this triggers a severe drag penalty — each deception finding adds +{W.lieDrag} directly to drag, bypassing the √ curve that softens regular losses. This is a secret ballot — the submitter never sees which jurors checked it.</ExplainBox>
-          <div style={{ margin: "12px 0", padding: 12, background: "rgba(196,74,58,0.09)", border: "1.5px solid #DC2626", borderRadius: 0 }}>
-            <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}>
-              <input type="checkbox" checked={lieChecked} onChange={e => setLieChecked(e.target.checked)} style={{ accentColor: "#991B1B", marginTop: 3 }} />
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>I certify this submission is a <strong>deliberate lie, gross misrepresentation, or intentional omission.</strong></div>
-            </label>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--green)", flex: 1 }}>✓ Approve</button>
-            <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--red)", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars)` : ""}</button>
-            <button className="ta-btn-primary" style={{ background: "#EA580C" }}>Recuse</button>
+          <DeliberateLieCheckbox checked={lieChecked} onChange={setLieChecked} />
+          <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #FFFFFF 8px)", paddingTop: 10, paddingBottom: 4, zIndex: 10 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--green)", flex: 1 }}>✓ Approve</button>
+              <button className="ta-btn-primary" onClick={() => setVoted(true)} style={{ background: "var(--red)", flex: 1, opacity: voteNote.trim().length < 50 ? 0.6 : 1 }}>✗ Reject{voteNote.trim().length < 50 ? ` (${50 - voteNote.trim().length} more chars needed)` : ""}</button>
+              <button className="ta-btn-ghost" onClick={() => setVoted(false)}>Cancel</button>
+              <button className="ta-btn-primary" style={{ background: "#EA580C" }}>Recuse</button>
+            </div>
+            <LegalDisclaimer short />
           </div>
         </div>
       ) : (
-        <div style={{ padding: 20, background: "rgba(74,158,85,0.09)", border: "1px solid #059669", borderRadius: 0, textAlign: "center" }}>
+        <div style={{ padding: 20, background: "rgba(74,158,85,0.09)", border: "1px solid #059669", borderRadius: 0, textAlign: "center", marginTop: 12 }}>
           <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
           <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>Votes Cast</div>
-          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides.</p>
-
+          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto" }}>You voted on the headline correction and each in-line edit independently. In the real system, a pool of jurors is drawn and the first to accept are seated — jury size grows with your Assembly (3 for small groups, up to 13 for large ones). You have 6 hours to complete your review after accepting. Simple majority decides.</p>
         </div>
       )}
+      </div>{/* end ta-card */}
     </div>
   );
 }
@@ -366,9 +380,10 @@ function OBCompareStep() {
   const [highlight, setHighlight] = useState(true);
   return (
     <div>
+      <div className="ta-section-rule" />
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 3</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>The Result</h2>
-      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 16 }}>Here's what happens when corrections survive jury review. The original article alongside the corrected version — truth layered on top of misinformation.</p>
       <div style={{ background: "rgba(212,168,67,0.09)", border: "1.5px solid var(--gold)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
         <div>
           <div style={{ fontSize: 9, fontFamily: "var(--mono)", letterSpacing: 2, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, marginBottom: 3 }}>See corrections on every article</div>
@@ -469,11 +484,12 @@ function OBCompareStep() {
 function OBLaunchStep() {
   return (
     <div style={{ textAlign: "center", padding: "20px 0" }}>
+      <div className="ta-section-rule" />
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 8 }}>STEP 4</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600, margin: "0 0 8px", color: "var(--text)" }}>You're Ready</h2>
       <p style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.12em", color: "var(--text-sec)", fontStyle: "italic", marginBottom: 24 }}>Truth Will Out.</p>
 
-      <div style={{ maxWidth: 520, margin: "0 auto", textAlign: "left" }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "left" }}>
         <div style={{ padding: 16, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 16 }}>
           <h3 style={{ fontFamily: "var(--serif)", fontSize: 16, margin: "0 0 10px" }}>What You've Learned</h3>
           <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)" }}>
@@ -509,12 +525,13 @@ function OBAdditionalStep() {
 
   return (
     <div>
+      <div className="ta-section-rule" />
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, marginBottom: 4 }}>STEP 5</div>
       <h2 style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 600, lineHeight: 1.3, margin: "0 0 4px", color: "var(--text)" }}>Additional Flows</h2>
-      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 20 }}>The submission-to-review pipeline is the core of the system, but there's more beneath the surface. This section walks through how scoring works, what happens when a correction is disputed, and how concessions resolve disagreements with integrity.</p>
 
       <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid var(--border)" }}>
-        {[["scoring", "📊 Scoring"], ["dispute", "⚖️ Disputes"], ["concession", "🤝 Concessions"]].map(([key, label]) => (
+        {[["scoring", "Scoring"], ["dispute", "Disputes"], ["concession", "Concessions"]].map(([key, label]) => (
           <button key={key} onClick={() => setSection(key)} style={{ flex: 1, padding: "10px 8px", background: section === key ? "var(--gold)" : "transparent", color: section === key ? "#fff" : "var(--text-muted)", border: "none", fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", fontWeight: section === key ? 700 : 400, borderBottom: section === key ? "2px solid var(--gold)" : "2px solid transparent", transition: "all 0.2s" }}>{label}</button>
         ))}
       </div>
@@ -803,7 +820,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       <div style={{ background: "rgba(212,168,67,0.09)", padding: "6px 16px", textAlign: "center", fontSize: 10, color: "#EA580C", fontFamily: "var(--mono)", fontWeight: 600, letterSpacing: "0.04em" }}>
         ⚠ TUTORIAL MODE — This is a practice exercise. No data will be saved.
       </div>
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "16px 20px 0" }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
           {OB_STEP_LABELS.map((label, i) => (
             <div key={i} style={{ flex: 1, textAlign: "center", cursor: i < step ? "pointer" : i > step ? "not-allowed" : "default" }}
@@ -815,7 +832,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
           ))}
         </div>
       </div>
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 100px", color: "#1a1714", fontSize: 14, lineHeight: 1.7 }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 20px 100px", color: "#1a1714", fontSize: 14, lineHeight: 1.7 }}>
         {step === 0 && <OBSubmitStep />}
         {step === 1 && <OBReviewStep />}
         {step === 2 && <OBCompareStep />}
@@ -824,7 +841,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       </div>
       {/* Sticky navigation bar — always visible at bottom of viewport */}
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #f5f2ec 12px)", paddingTop: 16, zIndex: 50 }}>
-        <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 20px 16px" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 20px 16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", background: "#ffffff", border: "1px solid #d9d3c7", boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
             {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid #d9d3c7", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", color: "#5c564d" }}>← Back</button> : <div />}
             <div style={{ display: "flex", gap: 10 }}>

@@ -1105,6 +1105,25 @@ export default function SystemHealthPage() {
           )}
         </div>
       )}
+      {/* ── Admin Testing Tools ── */}
+      <div style={{ marginTop: 32, borderTop: "1px solid #334155", paddingTop: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 16 }}>Testing Tools</h2>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ background: "#1e293b", borderRadius: 8, padding: 20, border: "1px solid #334155" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>Test the Registration Flow</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 14 }}>Re-enter the 5-step onboarding tutorial that new users see after registration. Tests the exact same flow — Submit, Review, Results, Begin, Deep Dive — without creating a new account.</div>
+            <button onClick={() => { window.location.href = "/?tutorial=1"; }} style={btnStyle}>Launch Tutorial</button>
+          </div>
+
+          <div style={{ background: "#1e293b", borderRadius: 8, padding: 20, border: "1px solid #334155" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>View a Test Review Form</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 14 }}>Preview the production review form with sample data. Shows rating sliders, inline edit voting, vault entry voting, deception checkbox, and action buttons — all interactive, nothing submitted.</div>
+            <button onClick={() => { window.location.href = "/?screen=admin-tools"; }} style={btnStyle}>Open Review Preview</button>
+          </div>
+        </div>
+      </div>
+
       </div>
     </div>
   );
