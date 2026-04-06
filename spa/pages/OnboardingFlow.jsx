@@ -806,14 +806,25 @@ export default function OnboardingFlow({ onComplete, embedded }) {
   const next = () => { if (step < OB_STEPS.length - 1) { setStep(s => s + 1); topRef.current?.scrollIntoView({ behavior: "smooth" }); } };
   const prev = () => { if (step > 0) { setStep(s => s - 1); topRef.current?.scrollIntoView({ behavior: "smooth" }); } };
 
-  // Force light mode + large font + compact width
-  // The tutorial runs outside .ta-root so we must apply ta-root's base styles
-  // AND the zoom ourselves. Previous attempts failed because className="font-large"
-  // alone doesn't match the CSS selector ".ta-root.font-large { zoom:1.3 }".
+  // Force light mode + large font + compact width.
+  // We use ta-root font-large for the zoom:1.3, AND inject scoped CSS overrides
+  // so that form elements, labels, and buttons are sized generously regardless
+  // of how the browser handles CSS zoom.
   const lightVars = { "--bg": "#f5f2ec", "--card-bg": "#ffffff", "--border": "#d9d3c7", "--gold": "#b8922e", "--text": "#1a1714", "--text-sec": "#5c564d", "--text-muted": "#9a948b", "--green": "#2d7a38", "--red": "#b03a2e" };
 
   return (
     <div className="ta-root font-large" style={embedded ? {} : { minHeight: "100vh", background: "#f5f2ec", color: "#1a1714", ...lightVars }}>
+      {/* Scoped CSS overrides — scale up form elements to match production at large zoom */}
+      <style>{`
+        .ob-tutorial .ta-card { padding: 14px 16px; margin-bottom: 8px; }
+        .ob-tutorial .ta-field { margin-bottom: 12px; }
+        .ob-tutorial .ta-field label { font-size: 12px; letter-spacing: 1.5px; margin-bottom: 5px; }
+        .ob-tutorial .ta-field input,
+        .ob-tutorial .ta-field textarea,
+        .ob-tutorial .ta-field select { font-size: 15px; padding: 10px 14px; }
+        .ob-tutorial .ta-btn-primary { padding: 12px 24px; font-size: 14px; letter-spacing: 1.5px; }
+        .ob-tutorial .ta-btn-ghost { padding: 10px 14px; font-size: 13px; }
+      `}</style>
       {!embedded && <div ref={topRef} style={{ background: "#ffffff", color: "#1a1714", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #d9d3c7" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "#b8922e", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>
         <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600, color: "#1a1714" }}>Learn The Trust Assembly</div>
@@ -835,7 +846,7 @@ export default function OnboardingFlow({ onComplete, embedded }) {
           ))}
         </div>
       </div>
-      <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px 100px", color: "#1a1714", fontSize: 14, lineHeight: 1.7 }}>
+      <div className="ob-tutorial" style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px 100px", color: "#1a1714", fontSize: 14, lineHeight: 1.7 }}>
         {step === 0 && <OBSubmitStep />}
         {step === 1 && <OBReviewStep />}
         {step === 2 && <OBCompareStep />}
