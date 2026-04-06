@@ -814,16 +814,28 @@ export default function OnboardingFlow({ onComplete, embedded }) {
 
   return (
     <div className="ta-root font-large" style={embedded ? {} : { minHeight: "100vh", background: "#f5f2ec", color: "#1a1714", ...lightVars }}>
-      {/* Scoped CSS overrides — scale up form elements to match production at large zoom */}
+      {/* Full CSS — when showOnboarding triggers, App.jsx's <style> block unmounts.
+          We must include every rule the tutorial uses. */}
       <style>{`
-        .ob-tutorial .ta-card { padding: 14px 16px; margin-bottom: 8px; }
-        .ob-tutorial .ta-field { margin-bottom: 12px; }
-        .ob-tutorial .ta-field label { font-size: 12px; letter-spacing: 1.5px; margin-bottom: 5px; }
-        .ob-tutorial .ta-field input,
-        .ob-tutorial .ta-field textarea,
-        .ob-tutorial .ta-field select { font-size: 15px; padding: 10px 14px; }
-        .ob-tutorial .ta-btn-primary { padding: 12px 24px; font-size: 14px; letter-spacing: 1.5px; }
-        .ob-tutorial .ta-btn-ghost { padding: 10px 14px; font-size: 13px; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        .ta-root { min-height:100vh; background:var(--bg); font-family:'Helvetica Neue',Helvetica,sans-serif; color:var(--text); font-size:13px; line-height:1.6; }
+        .ta-root.font-large { zoom:1.3; }
+        .ta-section-rule { height:0; border-top:1px solid var(--border); margin:0 0 10px; }
+        .ta-section-head { font-family:'Helvetica Neue',Helvetica,sans-serif; font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin:0 0 6px; font-weight:600; }
+        .ta-card { border:1px solid var(--border); background:var(--card-bg); padding:10px 12px; margin-bottom:6px; }
+        .ta-field { margin-bottom:8px; }
+        .ta-field label { display:block; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; font-family:'Helvetica Neue',Helvetica,sans-serif; }
+        .ta-field input,.ta-field textarea,.ta-field select { width:100%; background:var(--card-bg); border:1px solid var(--border); padding:7px 10px; font-size:11px; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
+        .ta-field input:focus,.ta-field textarea:focus { border-color:var(--gold); }
+        .ta-field textarea { resize:vertical; }
+        .ta-btn-primary { background:var(--gold); color:var(--bg); border:none; padding:7px 18px; font-size:10px; font-weight:700; letter-spacing:1px; cursor:pointer; font-family:'Helvetica Neue',Helvetica,sans-serif; }
+        .ta-btn-ghost { background:none; border:none; padding:4px 8px; font-size:10px; color:var(--text-muted); cursor:pointer; }
+        .ta-btn-ghost:hover { color:var(--gold); }
+        .ta-btn-secondary { font-size:8px; padding:4px 12px; border:1px solid var(--border); color:var(--text-sec); cursor:pointer; background:none; }
+        .ta-preview-panel { border-left:1px solid var(--border); }
+        .status-badge { font-size:8px; padding:2px 6px; letter-spacing:1px; font-weight:700; }
+        .status-approved { background:rgba(74,158,85,0.09); border:1px solid rgba(74,158,85,0.27); color:var(--green); }
+        .status-pending { background:rgba(212,168,67,0.09); border:1px solid rgba(212,168,67,0.27); color:var(--gold); }
       `}</style>
       {!embedded && <div ref={topRef} style={{ background: "#ffffff", color: "#1a1714", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #d9d3c7" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "#b8922e", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>

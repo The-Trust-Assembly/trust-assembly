@@ -785,7 +785,6 @@ export default function TrustAssembly() {
         .ta-nav-badge { background:var(--gold); color:#0d0d0a; font-size:8px; padding:1px 5px; font-weight:700; margin-left:4px; border-radius:50%; }
       `}</style>
 
-
       {verifyEmailToken ? (
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px" }}>
           <VerifyEmailScreen token={verifyEmailToken} onDone={() => { setVerifyEmailToken(null); window.history.replaceState(null, "", "/feed"); setScreenRaw("feed"); }} />
