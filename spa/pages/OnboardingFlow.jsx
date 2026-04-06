@@ -806,11 +806,14 @@ export default function OnboardingFlow({ onComplete, embedded }) {
   const next = () => { if (step < OB_STEPS.length - 1) { setStep(s => s + 1); topRef.current?.scrollIntoView({ behavior: "smooth" }); } };
   const prev = () => { if (step > 0) { setStep(s => s - 1); topRef.current?.scrollIntoView({ behavior: "smooth" }); } };
 
-  // Force light-mode colors — onboarding runs before user picks a theme
+  // Force light mode + large font + compact width
+  // The tutorial runs outside .ta-root so we must apply ta-root's base styles
+  // AND the zoom ourselves. Previous attempts failed because className="font-large"
+  // alone doesn't match the CSS selector ".ta-root.font-large { zoom:1.3 }".
   const lightVars = { "--bg": "#f5f2ec", "--card-bg": "#ffffff", "--border": "#d9d3c7", "--gold": "#b8922e", "--text": "#1a1714", "--text-sec": "#5c564d", "--text-muted": "#9a948b", "--green": "#2d7a38", "--red": "#b03a2e" };
 
   return (
-    <div className="font-large" style={embedded ? {} : { minHeight: "100vh", background: "#f5f2ec", color: "#1a1714", ...lightVars }}>
+    <div className="ta-root font-large" style={embedded ? {} : { minHeight: "100vh", background: "#f5f2ec", color: "#1a1714", ...lightVars }}>
       {!embedded && <div ref={topRef} style={{ background: "#ffffff", color: "#1a1714", padding: "24px 20px 20px", textAlign: "center", borderBottom: "1px solid #d9d3c7" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "3px", textTransform: "uppercase", color: "#b8922e", marginBottom: 6, fontWeight: 600 }}>Interactive Tutorial</div>
         <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 600, color: "#1a1714" }}>Learn The Trust Assembly</div>
