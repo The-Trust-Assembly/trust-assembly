@@ -110,6 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!currentUser) {
     renderLoginGate();
   } else {
+    showDesignTabIfAdmin();
     // Load corrections
     loadCorrections();
     // Check for server-side draft for current URL
@@ -215,6 +216,7 @@ async function doLoginGate() {
   currentUser = { username: result.username, displayName: result.displayName, id: result.id };
   userAssemblies = await TA.getMyAssemblies();
   renderAuthHeader();
+  showDesignTabIfAdmin();
   loadCorrections();
 }
 
@@ -229,11 +231,30 @@ function setupTabs() {
       document.getElementById("tab-corrections").style.display = tab === "corrections" ? "" : "none";
       document.getElementById("tab-submit").style.display = tab === "submit" ? "" : "none";
       document.getElementById("tab-assemblies").style.display = tab === "assemblies" ? "" : "none";
+      document.getElementById("tab-design").style.display = tab === "design" ? "" : "none";
       if (tab === "submit") renderSubmitTab();
-      else clearPreviewMessage(); // Clear live preview when leaving submit tab
+      else clearPreviewMessage();
       if (tab === "assemblies") renderAssembliesTab();
+      if (tab === "design") renderDesignTab();
     });
   });
+}
+
+// ── Admin Design Mode ──
+const ADMIN_USERNAME = "thekingofamerica";
+
+function showDesignTabIfAdmin() {
+  if (!currentUser || currentUser.username !== ADMIN_USERNAME) return;
+  // Add Design tab button to tab bar
+  const tabBar = document.querySelector(".tab-bar");
+  if (!tabBar || tabBar.querySelector('[data-tab="design"]')) return;
+  const btn = document.createElement("button");
+  btn.dataset.tab = "design";
+  btn.textContent = "Design";
+  btn.style.color = "#B8963E";
+  tabBar.appendChild(btn);
+  // Re-setup tabs to include the new button
+  setupTabs();
 }
 
 // ── Corrections tab ──
@@ -339,6 +360,177 @@ async function loadCorrections() {
       </div>
     `;
   }
+}
+
+// ── Design Mode Tab (Admin only) ──
+const DESIGN_MOCK_DATA = {
+  corrections: [{
+    id: "design-c1", orgName: "The General Public", orgId: "org-1",
+    originalHeadline: "MOCK: Original Headline Text Goes Here For Testing",
+    replacement: "MOCK: Corrected Headline \u2014 This Is What The Extension Displays",
+    reasoning: "This is mock reasoning for design testing. The original headline was misleading because it omitted key context.",
+    author: "Test Author", status: "approved", trustScore: 72,
+    profile: { displayName: "DesignTester" },
+    evidence: [{ url: "https://example.com/evidence", explanation: "Mock evidence source" }],
+    inlineEdits: [
+      { original: "experts unanimously agree", replacement: "[CORRECTION: Two of five surveyed researchers expressed support]", reasoning: "Overstates consensus" },
+    ],
+  }],
+  affirmations: [{
+    id: "design-a1", orgName: "Fact Checkers United", orgId: "org-2",
+    originalHeadline: "MOCK: This Headline Has Been Verified As Accurate",
+    reasoning: "Methodology checks out. Sources confirmed.",
+    status: "approved", trustScore: 88,
+    profile: { displayName: "VerifyBot" },
+  }],
+  translations: [
+    { id: "dt1", original: "investment", translated: "budget reallocation", type: "propaganda", orgName: "The General Public" },
+    { id: "dt2", original: "right-sizing", translated: "layoffs", type: "euphemism", orgName: "The General Public" },
+  ],
+  meta: {},
+};
+
+let designHeadlineIndex = 0;
+let designHeadlines = [];
+let designReport = "";
+
+async function renderDesignTab() {
+  const content = document.getElementById("design-content");
+  if (!content) return;
+
+  content.innerHTML = `
+    <h3>Design Experience</h3>
+    <div class="design-info">
+      Inject mock corrections, affirmations, translations, and vault artifacts into the current page to test how the extension renders on this site.
+    </div>
+
+    <button class="design-btn" id="design-inject">Inject All Mock Data Into Page</button>
+    <button class="design-btn" id="design-clear" style="background:#C4573F">Clear All Injections</button>
+
+    <div style="margin-top:12px;border-top:1px solid #DCD8D0;padding-top:12px">
+      <h3>Headline Selector Navigator</h3>
+      <div class="design-info">Find which DOM elements the extension detects as headlines. Use arrows to cycle through candidates and see what it finds.</div>
+      <button class="design-btn-secondary" id="design-scan">Scan Page for Headlines</button>
+      <div id="design-headline-nav" style="display:none">
+        <div class="design-nav">
+          <button id="design-prev">\u25C0</button>
+          <span id="design-headline-info">0 / 0</span>
+          <button id="design-next">\u25B6</button>
+        </div>
+        <div id="design-headline-detail" class="design-info" style="font-family:monospace;font-size:9px"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;border-top:1px solid #DCD8D0;padding-top:12px">
+      <h3>Generate Debug Report</h3>
+      <div class="design-info">Generates a detailed report of the site\u2019s DOM structure, detected headlines, selectors tried, and injection results. Copy and share for debugging.</div>
+      <button class="design-btn-secondary" id="design-report">Generate Report</button>
+      <div id="design-report-output" style="display:none">
+        <div class="design-report" id="design-report-text"></div>
+        <button class="design-btn-secondary" id="design-copy-report" style="margin-top:4px">Copy Report to Clipboard</button>
+      </div>
+    </div>
+  `;
+
+  // Wire up buttons
+  document.getElementById("design-inject").addEventListener("click", designInjectMockData);
+  document.getElementById("design-clear").addEventListener("click", designClearInjections);
+  document.getElementById("design-scan").addEventListener("click", designScanHeadlines);
+  document.getElementById("design-report").addEventListener("click", designGenerateReport);
+}
+
+async function sendDesignMessage(msg) {
+  try {
+    const tabs = typeof chrome !== "undefined" && chrome.tabs
+      ? await chrome.tabs.query({ active: true, currentWindow: true })
+      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (tab && tab.id) {
+      return new Promise((resolve) => {
+        try {
+          chrome.tabs.sendMessage(tab.id, msg, resolve);
+        } catch (e) {
+          try { browser.tabs.sendMessage(tab.id, msg, resolve); } catch (_) { resolve(null); }
+        }
+      });
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function designInjectMockData() {
+  const btn = document.getElementById("design-inject");
+  btn.textContent = "Injecting...";
+  btn.classList.add("active");
+  await sendDesignMessage({ type: "TA_DESIGN_INJECT", data: DESIGN_MOCK_DATA });
+  btn.textContent = "Mock Data Injected";
+  setTimeout(() => { btn.textContent = "Inject All Mock Data Into Page"; btn.classList.remove("active"); }, 2000);
+}
+
+async function designClearInjections() {
+  await sendDesignMessage({ type: "TA_DESIGN_CLEAR" });
+  const btn = document.getElementById("design-clear");
+  btn.textContent = "Cleared!";
+  setTimeout(() => { btn.textContent = "Clear All Injections"; }, 1500);
+}
+
+async function designScanHeadlines() {
+  const result = await sendDesignMessage({ type: "TA_DESIGN_SCAN_HEADLINES" });
+  if (!result || !result.headlines) {
+    document.getElementById("design-headline-nav").style.display = "none";
+    return;
+  }
+  designHeadlines = result.headlines;
+  designHeadlineIndex = 0;
+  document.getElementById("design-headline-nav").style.display = "";
+  updateDesignHeadlineNav();
+}
+
+function updateDesignHeadlineNav() {
+  const info = document.getElementById("design-headline-info");
+  const detail = document.getElementById("design-headline-detail");
+  if (designHeadlines.length === 0) {
+    info.textContent = "No headlines found";
+    detail.textContent = "";
+    return;
+  }
+  const h = designHeadlines[designHeadlineIndex];
+  info.textContent = `${designHeadlineIndex + 1} / ${designHeadlines.length}`;
+  detail.innerHTML = `<strong>Tag:</strong> ${escapeHtml(h.tag)}<br><strong>Class:</strong> ${escapeHtml(h.className || "(none)")}<br><strong>Text:</strong> ${escapeHtml(h.text.slice(0, 120))}${h.text.length > 120 ? "..." : ""}<br><strong>Selector:</strong> ${escapeHtml(h.selector)}<br><strong>Phase:</strong> ${h.phase}`;
+
+  // Highlight on page
+  sendDesignMessage({ type: "TA_DESIGN_HIGHLIGHT", index: designHeadlineIndex });
+
+  // Wire arrows
+  document.getElementById("design-prev").onclick = () => {
+    designHeadlineIndex = (designHeadlineIndex - 1 + designHeadlines.length) % designHeadlines.length;
+    updateDesignHeadlineNav();
+  };
+  document.getElementById("design-next").onclick = () => {
+    designHeadlineIndex = (designHeadlineIndex + 1) % designHeadlines.length;
+    updateDesignHeadlineNav();
+  };
+}
+
+async function designGenerateReport() {
+  const btn = document.getElementById("design-report");
+  btn.textContent = "Generating...";
+  const result = await sendDesignMessage({ type: "TA_DESIGN_REPORT" });
+  btn.textContent = "Generate Report";
+  const output = document.getElementById("design-report-output");
+  const text = document.getElementById("design-report-text");
+  if (!result || !result.report) {
+    text.textContent = "Could not generate report. Is the content script loaded on this page?";
+  } else {
+    designReport = result.report;
+    text.textContent = result.report;
+  }
+  output.style.display = "";
+  document.getElementById("design-copy-report").onclick = () => {
+    navigator.clipboard.writeText(designReport);
+    document.getElementById("design-copy-report").textContent = "Copied!";
+    setTimeout(() => { document.getElementById("design-copy-report").textContent = "Copy Report to Clipboard"; }, 1500);
+  };
 }
 
 // ── Per-site mute toggle ──

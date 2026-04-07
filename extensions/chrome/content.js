@@ -1102,7 +1102,7 @@
       : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
     if (!runtime) return;
 
-    runtime.onMessage.addListener(async (message) => {
+    runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Handle site mute/unmute from popup
       if (message.type === "TA_SITE_MUTE_CHANGED") {
         const domain = getSiteDomain();
@@ -1110,11 +1110,8 @@
         if (message.muted) {
           removeAllInjections();
         } else {
-          // Re-apply corrections
           const data = window.__trustAssemblyData;
-          if (data) {
-            applyData(data, window.location.href);
-          }
+          if (data) applyData(data, window.location.href);
         }
       }
 
@@ -1126,7 +1123,6 @@
         const data = window.__trustAssemblyData;
         if (!data) return;
 
-        // Handle badge visibility
         if (settings.showBadge && !document.getElementById(BADGE_ID)) {
           renderBadge(data);
         } else if (!settings.showBadge) {
@@ -1136,16 +1132,125 @@
           if (panel) panel.remove();
         }
 
-        // Handle translations visibility
         if (settings.showTranslations && !oldSettings.showTranslations) {
-          // Re-apply translations (page reload is cleaner, but we can re-apply)
-          if (data.translations.length > 0) {
-            applyTranslations(data.translations);
-          }
+          if (data.translations.length > 0) applyTranslations(data.translations);
         } else if (!settings.showTranslations && oldSettings.showTranslations) {
-          // Remove inline translations
           removeTranslations();
         }
+      }
+
+      // ── Design Mode handlers ──
+      if (message.type === "TA_DESIGN_INJECT") {
+        removeAllInjections();
+        const mockData = message.data;
+        window.__trustAssemblyData = mockData;
+        applyData(mockData, window.location.href);
+        sendResponse({ ok: true });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_CLEAR") {
+        removeAllInjections();
+        sendResponse({ ok: true });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_SCAN_HEADLINES") {
+        const headlines = [];
+        const els = findAllHeadlineElements();
+        els.forEach((el, i) => {
+          // Build a CSS selector path for this element
+          let sel = el.tagName.toLowerCase();
+          if (el.id) sel += "#" + el.id;
+          else if (el.className && typeof el.className === "string") sel += "." + el.className.trim().split(/\s+/).slice(0, 2).join(".");
+
+          headlines.push({
+            tag: el.tagName,
+            className: el.className || "",
+            text: el.textContent.trim().slice(0, 200),
+            selector: sel,
+            phase: el.dataset.taDetectPhase || "unknown",
+          });
+        });
+        sendResponse({ headlines });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_HIGHLIGHT") {
+        // Remove previous highlight
+        document.querySelectorAll(".ta-design-highlight").forEach(el => {
+          el.style.removeProperty("outline");
+          el.style.removeProperty("outline-offset");
+          el.classList.remove("ta-design-highlight");
+        });
+        // Highlight the selected headline
+        const els = findAllHeadlineElements();
+        if (els[message.index]) {
+          const el = els[message.index];
+          el.style.setProperty("outline", "3px solid #B8963E", "important");
+          el.style.setProperty("outline-offset", "4px", "important");
+          el.classList.add("ta-design-highlight");
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        sendResponse({ ok: true });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_REPORT") {
+        const site = getSiteType();
+        const headlines = findAllHeadlineElements();
+        const articleBody = findArticleBody();
+        let report = "=== TRUST ASSEMBLY EXTENSION DEBUG REPORT ===\n";
+        report += "Generated: " + new Date().toISOString() + "\n";
+        report += "URL: " + window.location.href + "\n";
+        report += "Domain: " + getSiteDomain() + "\n\n";
+        report += "--- Site Detection ---\n";
+        report += "Detected type: " + site.name + "\n";
+        report += "Dynamic: " + site.dynamic + "\n";
+        report += "Headline selectors tried: " + site.headlineSelectors.join(", ") + "\n";
+        report += "Article root selector: " + (site.articleRoot || "none") + "\n";
+        report += "Wait selector: " + (site.waitSelector || "none") + "\n\n";
+        report += "--- Headlines Found: " + headlines.length + " ---\n";
+        headlines.forEach((el, i) => {
+          let sel = el.tagName.toLowerCase();
+          if (el.id) sel += "#" + el.id;
+          else if (el.className && typeof el.className === "string") sel += "." + el.className.trim().split(/\s+/).slice(0, 3).join(".");
+          report += "[" + i + "] <" + el.tagName + "> " + sel + "\n";
+          report += "     Text: " + JSON.stringify(el.textContent.trim().slice(0, 100)) + "\n";
+          report += "     Annotated: " + (el.dataset.taAnnotated || "no") + "\n";
+        });
+        report += "\n--- Article Body ---\n";
+        if (articleBody) {
+          report += "Found: <" + articleBody.tagName + "> ";
+          if (articleBody.id) report += "#" + articleBody.id;
+          else if (articleBody.className) report += "." + String(articleBody.className).trim().split(/\s+/).slice(0, 3).join(".");
+          report += "\n";
+          report += "Child count: " + articleBody.children.length + "\n";
+        } else {
+          report += "Not found (using document.body)\n";
+        }
+        report += "\n--- Injected Elements ---\n";
+        report += "Context card: " + (document.getElementById("ta-context-card") ? "YES" : "no") + "\n";
+        report += "Unapplied box: " + (document.getElementById("ta-unapplied-box") ? "YES" : "no") + "\n";
+        report += "Floating badge: " + (document.getElementById(BADGE_ID) ? "YES" : "no") + "\n";
+        report += "Side panel: " + (document.getElementById(PANEL_ID) ? "YES" : "no") + "\n";
+        report += "Corrected headlines: " + document.querySelectorAll(".ta-inline-headline-corrected").length + "\n";
+        report += "Affirmed headlines: " + document.querySelectorAll(".ta-inline-headline-affirmed").length + "\n";
+        report += "Body edits: " + document.querySelectorAll(".ta-inline-body-edit").length + "\n";
+        report += "Translations: " + document.querySelectorAll(".ta-ext-translated").length + "\n";
+        report += "\n--- Current Data ---\n";
+        const d = window.__trustAssemblyData;
+        if (d) {
+          report += "Corrections: " + d.corrections.length + "\n";
+          report += "Affirmations: " + d.affirmations.length + "\n";
+          report += "Translations: " + d.translations.length + "\n";
+        } else {
+          report += "(no data loaded)\n";
+        }
+        report += "\n=== END REPORT ===";
+
+        sendResponse({ report });
+        return true;
       }
     });
   }

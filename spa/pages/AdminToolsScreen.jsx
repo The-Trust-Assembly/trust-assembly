@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
 import { SubHeadline, RatingInput, DeliberateLieCheckbox, LegalDisclaimer, StatusPill, Icon } from "../components/ui";
+import ExtensionDesignStudio from "../components/ExtensionDesignStudio";
 
 // Mock submission for the test review form
 const MOCK_SUB = {
@@ -174,6 +175,9 @@ export default function AdminToolsScreen({ setShowOnboarding, user }) {
         )}
       </div>
       )}
+
+      {/* ── Box 3: Extension Design Studio ── */}
+      <ExtensionDesignStudio />
     </div>
   );
 }
