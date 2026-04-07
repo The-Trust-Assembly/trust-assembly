@@ -146,6 +146,44 @@
     }
     .status-zero { color: #B0A89C; }
 
+    /* Site mute toggle */
+    .site-mute-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      border-bottom: 1px solid #DCD8D0;
+      background: #F0EDE6;
+      font-size: 11px;
+      color: #5A5650;
+    }
+    .site-mute-bar strong { color: #1B2A4A; }
+    .mute-switch {
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: #1B5E3F;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .mute-switch.muted { background: #DCD8D0; }
+    .mute-knob {
+      display: block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      position: absolute;
+      top: 2px;
+      left: 18px;
+      transition: left 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .mute-switch.muted .mute-knob { left: 2px; }
+
     .corrections-list {
       max-height: 320px;
       overflow-y: auto;
@@ -524,6 +562,7 @@
   </div>
 
   <div id="tab-corrections">
+    <div id="site-mute-container"></div>
     <div id="content">
       <div class="loading">Checking this page...</div>
     </div>

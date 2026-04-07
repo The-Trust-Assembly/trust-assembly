@@ -257,6 +257,11 @@ async function loadCorrections() {
     const data = await TA.getForURL(currentUrl);
     const total = data.corrections.length + data.affirmations.length + data.translations.length;
 
+    // Render site mute toggle if there are corrections/affirmations
+    if (total > 0) {
+      renderSiteMuteToggle();
+    }
+
     if (total === 0) {
       content.innerHTML = `
         <div class="empty">
@@ -334,6 +339,81 @@ async function loadCorrections() {
       </div>
     `;
   }
+}
+
+// ── Per-site mute toggle ──
+const MUTED_KEY = "ta-muted-sites";
+
+function getSiteDomain(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return ""; }
+}
+
+async function isSiteMutedPopup() {
+  const domain = getSiteDomain(currentUrl);
+  if (!domain) return false;
+  const result = await storageGet([MUTED_KEY]);
+  try {
+    const muted = result[MUTED_KEY] ? JSON.parse(result[MUTED_KEY]) : {};
+    return !!muted[domain];
+  } catch (e) { return false; }
+}
+
+async function setSiteMutedPopup(mute) {
+  const domain = getSiteDomain(currentUrl);
+  if (!domain) return;
+  const result = await storageGet([MUTED_KEY]);
+  const sites = result[MUTED_KEY] ? JSON.parse(result[MUTED_KEY]) : {};
+  if (mute) {
+    sites[domain] = true;
+  } else {
+    delete sites[domain];
+  }
+  await storageSet({ [MUTED_KEY]: JSON.stringify(sites) });
+
+  // Notify content script
+  try {
+    const tabs = typeof chrome !== "undefined" && chrome.tabs
+      ? await chrome.tabs.query({ active: true, currentWindow: true })
+      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (tab && tab.id) {
+      const msg = { type: "TA_SITE_MUTE_CHANGED", domain, muted: mute };
+      try { chrome.tabs.sendMessage(tab.id, msg); } catch (e) {
+        try { browser.tabs.sendMessage(tab.id, msg); } catch (_) {}
+      }
+    }
+  } catch (e) {}
+}
+
+async function renderSiteMuteToggle() {
+  const container = document.getElementById("site-mute-container");
+  if (!container || !currentUrl) return;
+
+  const domain = getSiteDomain(currentUrl);
+  if (!domain) return;
+
+  const muted = await isSiteMutedPopup();
+
+  container.innerHTML = `
+    <div class="site-mute-bar">
+      <span>Corrections on <strong>${escapeHtml(domain)}</strong></span>
+      <div class="mute-switch${muted ? " muted" : ""}" id="popup-mute-switch">
+        <span class="mute-knob"></span>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("popup-mute-switch").addEventListener("click", async () => {
+    const sw = document.getElementById("popup-mute-switch");
+    const currentlyMuted = sw.classList.contains("muted");
+    const newMuted = !currentlyMuted;
+
+    // Update visual immediately
+    sw.classList.toggle("muted", newMuted);
+
+    // Persist and notify
+    await setSiteMutedPopup(newMuted);
+  });
 }
 
 function renderCorrectionItem(sub) {

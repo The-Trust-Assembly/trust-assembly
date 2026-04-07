@@ -21,15 +21,113 @@
 
   // Current settings (defaults: both on)
   let settings = { showBadge: true, showTranslations: true };
+  const MUTED_KEY = "ta-muted-sites";
+
+  // ── Per-site mute helpers ──
+  function getSiteDomain() {
+    try { return window.location.hostname.replace(/^www\./, ""); } catch (e) { return ""; }
+  }
+
+  function getStorageRef() {
+    return (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local)
+      ? chrome.storage.local
+      : (typeof browser !== "undefined" && browser.storage && browser.storage.local)
+        ? browser.storage.local
+        : null;
+  }
+
+  function isSiteMuted() {
+    return new Promise((resolve) => {
+      const storage = getStorageRef();
+      if (!storage) { resolve(false); return; }
+      storage.get([MUTED_KEY], (result) => {
+        try {
+          const muted = result[MUTED_KEY] ? JSON.parse(result[MUTED_KEY]) : {};
+          resolve(!!muted[getSiteDomain()]);
+        } catch (e) { resolve(false); }
+      });
+    });
+  }
+
+  function setSiteMuted(muted) {
+    return new Promise((resolve) => {
+      const storage = getStorageRef();
+      if (!storage) { resolve(); return; }
+      storage.get([MUTED_KEY], (result) => {
+        try {
+          const sites = result[MUTED_KEY] ? JSON.parse(result[MUTED_KEY]) : {};
+          if (muted) {
+            sites[getSiteDomain()] = true;
+          } else {
+            delete sites[getSiteDomain()];
+          }
+          storage.set({ [MUTED_KEY]: JSON.stringify(sites) }, resolve);
+        } catch (e) { resolve(); }
+      });
+    });
+  }
+
+  // Remove all Trust Assembly injections from the page
+  function removeAllInjections() {
+    // Floating badge and side panel
+    const badge = document.getElementById(BADGE_ID);
+    if (badge) badge.remove();
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) panel.remove();
+
+    // Context card wrapper
+    const wrap = document.getElementById("ta-context-card-wrap");
+    if (wrap) wrap.remove();
+    const card = document.getElementById("ta-context-card");
+    if (card) card.remove();
+
+    // Unapplied box
+    const unapplied = document.getElementById("ta-unapplied-box");
+    if (unapplied) unapplied.remove();
+
+    // Inline headline corrections — restore originals
+    document.querySelectorAll(".ta-inline-headline-corrected").forEach(el => {
+      if (el.dataset.taOriginalText) {
+        el.textContent = el.dataset.taOriginalText;
+      }
+      el.style.removeProperty("color");
+      el.style.removeProperty("cursor");
+      el.classList.remove("ta-inline-headline-corrected");
+      delete el.dataset.taAnnotated;
+      delete el.dataset.taOriginalText;
+    });
+
+    // Inline headline affirmations — restore originals
+    document.querySelectorAll(".ta-inline-headline-affirmed").forEach(el => {
+      el.style.removeProperty("color");
+      el.style.removeProperty("cursor");
+      el.classList.remove("ta-inline-headline-affirmed");
+      delete el.dataset.taAnnotated;
+    });
+
+    // Inline body edits
+    document.querySelectorAll(".ta-inline-body-edit").forEach(el => {
+      const orig = el.querySelector(".ta-inline-body-original");
+      if (orig) {
+        const text = document.createTextNode(orig.textContent);
+        el.parentNode.replaceChild(text, el);
+      }
+    });
+
+    // Remove translation annotations
+    removeTranslations();
+
+    // Legacy inline blocks
+    document.querySelectorAll(".ta-inline-correction, .ta-inline-affirmation").forEach(el => el.remove());
+
+    // Tooltips
+    document.querySelectorAll(".ta-headline-tooltip").forEach(el => el.remove());
+  }
 
   // ── Read settings from storage ──
   function loadSettings() {
     return new Promise((resolve) => {
-      const storage = (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local)
-        ? chrome.storage.local
-        : (typeof browser !== "undefined" && browser.storage && browser.storage.local)
-          ? browser.storage.local
-          : null;
+      const storage = getStorageRef();
       if (!storage) {
         resolve(settings);
         return;
@@ -821,6 +919,33 @@
     // Load user settings before doing anything
     await loadSettings();
 
+    // Check if site is muted — still fetch data (for badge count) but don't inject
+    const muted = await isSiteMuted();
+    if (muted) {
+      console.log("[TrustAssembly] Site is muted:", getSiteDomain());
+      // Still fetch to store data for when user unmutes, but don't apply
+      const site = getSiteType();
+      if (site.dynamic && site.waitSelector) {
+        try { await waitForElement(site.waitSelector, 5000); } catch (e) {}
+      }
+      let data = getCachedData(url);
+      if (!data) {
+        data = await fetchViaBackground(url);
+        setCachedData(url, data);
+      }
+      window.__trustAssemblyData = data;
+      // Notify background of count so toolbar badge still works
+      const total = data.corrections.length + data.affirmations.length + data.translations.length;
+      let signalType = "neutral";
+      if (data.corrections.length > 0 && data.affirmations.length === 0) signalType = "corrected";
+      else if (data.affirmations.length > 0 && data.corrections.length === 0) signalType = "affirmed";
+      else if (data.corrections.length > 0 && data.affirmations.length > 0) signalType = "mixed";
+      try { chrome.runtime.sendMessage({ type: "TA_COUNT", count: total, url, signalType }); } catch (e) {
+        try { browser.runtime.sendMessage({ type: "TA_COUNT", count: total, url, signalType }); } catch (_) {}
+      }
+      return;
+    }
+
     // Detect the site architecture
     const site = getSiteType();
     console.log("[TrustAssembly] Detected site type:", site.name, site.dynamic ? "(dynamic)" : "(static)");
@@ -977,7 +1102,22 @@
       : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
     if (!runtime) return;
 
-    runtime.onMessage.addListener((message) => {
+    runtime.onMessage.addListener(async (message) => {
+      // Handle site mute/unmute from popup
+      if (message.type === "TA_SITE_MUTE_CHANGED") {
+        const domain = getSiteDomain();
+        if (message.domain !== domain) return;
+        if (message.muted) {
+          removeAllInjections();
+        } else {
+          // Re-apply corrections
+          const data = window.__trustAssemblyData;
+          if (data) {
+            applyData(data, window.location.href);
+          }
+        }
+      }
+
       if (message.type === "TA_SETTINGS_CHANGED") {
         const oldSettings = { ...settings };
         if (message.showBadge !== undefined) settings.showBadge = message.showBadge;
@@ -1634,6 +1774,14 @@
       html += `<a class="ta-context-link" href="https://trustassembly.org/record/${firstSub.id}" target="_blank" rel="noopener">View full record on Trust Assembly →</a>`;
     }
 
+    // Mute toggle for this site
+    html += `<div id="ta-mute-toggle" style="margin-top:10px;padding-top:8px;border-top:1px solid #DCD8D0;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+      <span style="font-size:10px;color:#7A7570">Show corrections on <strong style="color:#1B2A4A">${escapeHtml(getSiteDomain())}</strong></span>
+      <span id="ta-mute-switch" style="display:inline-block;width:32px;height:18px;border-radius:9px;background:#1B5E3F;position:relative;transition:background 0.2s;cursor:pointer">
+        <span id="ta-mute-knob" style="display:block;width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:16px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></span>
+      </span>
+    </div>`;
+
     html += `</div>`;
 
     // Vault sections container (populated async, inside expandable body)
@@ -1674,6 +1822,24 @@
           body.classList.add("ta-expanded");
           hint.textContent = "▾ collapse";
         }
+      });
+    }
+
+    // Wire up mute toggle
+    const muteToggle = document.getElementById("ta-mute-toggle");
+    if (muteToggle) {
+      muteToggle.addEventListener("click", async function(e) {
+        e.stopPropagation();
+        const sw = document.getElementById("ta-mute-switch");
+        const knob = document.getElementById("ta-mute-knob");
+        // Currently ON (green, knob right) — turn OFF
+        await setSiteMuted(true);
+        if (sw) sw.style.background = "#DCD8D0";
+        if (knob) knob.style.left = "2px";
+        // Remove all injections after a brief pause for visual feedback
+        setTimeout(() => {
+          removeAllInjections();
+        }, 300);
       });
     }
 
