@@ -163,3 +163,43 @@ export async function DELETE(request: NextRequest) {
     return serverError("/api/admin/users", e);
   }
 }
+
+// PATCH /api/admin/users — Toggle admin status on a user
+// Body: { userId: string, isAdmin: boolean }
+export async function PATCH(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin) return forbidden("Admin access required");
+
+  try {
+    const body = await request.json();
+    const { userId, isAdmin } = body;
+    if (!userId || typeof isAdmin !== "boolean") return err("userId and isAdmin (boolean) are required");
+
+    if (userId === admin.sub && !isAdmin) return err("Cannot remove your own admin privileges");
+
+    const userResult = await sql`SELECT id, username, is_admin FROM users WHERE id = ${userId}`;
+    if (userResult.rows.length === 0) return err("User not found", 404);
+
+    const target = userResult.rows[0];
+
+    await sql`UPDATE users SET is_admin = ${isAdmin} WHERE id = ${userId}`;
+
+    try {
+      await sql`
+        INSERT INTO audit_log (action, user_id, entity_type, entity_id, metadata)
+        VALUES (
+          ${isAdmin ? "Admin: granted admin privileges" : "Admin: revoked admin privileges"},
+          ${admin.sub}, 'user', ${userId},
+          ${JSON.stringify({ targetUsername: target.username, isAdmin, adminUsername: admin.username })}
+        )
+      `;
+    } catch (e) { /* audit log failure shouldn't block */ }
+
+    return ok({
+      success: true,
+      message: `@${target.username} is ${isAdmin ? "now an admin" : "no longer an admin"}`,
+    });
+  } catch (e) {
+    return serverError("/api/admin/users PATCH", e);
+  }
+}

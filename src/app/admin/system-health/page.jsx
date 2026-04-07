@@ -306,6 +306,27 @@ export default function SystemHealthPage() {
     }
   }, [getAuthHeaders, deleteConfirm, fetchUsers, userSearch, userPage]);
 
+  const toggleAdmin = useCallback(async (userId, username, makeAdmin) => {
+    if (!confirm(`${makeAdmin ? "Grant" : "Remove"} admin privileges ${makeAdmin ? "to" : "from"} @${username}?`)) return;
+    setDeleteMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, isAdmin: makeAdmin }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteMsg({ ok: false, text: data.error || "Failed" });
+        return;
+      }
+      setDeleteMsg({ ok: true, text: data.message });
+      fetchUsers(userSearch, userPage);
+    } catch (e) {
+      setDeleteMsg({ ok: false, text: `Error: ${e}` });
+    }
+  }, [getAuthHeaders, fetchUsers, userSearch, userPage]);
+
   // Loading state
   if (authState === "loading") {
     return (
@@ -862,13 +883,21 @@ export default function SystemHealthPage() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => { setDeletingUserId(u.id); setDeleteConfirm(""); setDeleteMsg(null); }}
-                          disabled={u.is_admin}
-                          style={{ ...smallBtnStyle, background: u.is_admin ? "#334155" : "#dc2626", color: u.is_admin ? "#64748b" : "#fff", fontSize: 10, cursor: u.is_admin ? "not-allowed" : "pointer" }}
-                        >
-                          Delete
-                        </button>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button
+                            onClick={() => toggleAdmin(u.id, u.username, !u.is_admin)}
+                            style={{ ...smallBtnStyle, background: u.is_admin ? "#334155" : "#6b21a8", color: u.is_admin ? "#a78bfa" : "#fff", fontSize: 10, whiteSpace: "nowrap" }}
+                          >
+                            {u.is_admin ? "Remove Admin" : "Make Admin"}
+                          </button>
+                          <button
+                            onClick={() => { setDeletingUserId(u.id); setDeleteConfirm(""); setDeleteMsg(null); }}
+                            disabled={u.is_admin}
+                            style={{ ...smallBtnStyle, background: u.is_admin ? "#334155" : "#dc2626", color: u.is_admin ? "#64748b" : "#fff", fontSize: 10, cursor: u.is_admin ? "not-allowed" : "pointer" }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
