@@ -1121,6 +1121,12 @@ export default function SystemHealthPage() {
             <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 14 }}>Preview the production review form with sample data. Shows rating sliders, inline edit voting, vault entry voting, deception checkbox, and action buttons — all interactive, nothing submitted.</div>
             <button onClick={() => { window.location.href = "/?screen=admin-tools"; }} style={btnStyle}>Open Review Preview</button>
           </div>
+
+          <div style={{ background: "#1e293b", borderRadius: 8, padding: 20, border: "1px solid #B8963E" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#B8963E", marginBottom: 8 }}>Extension Design Studio</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 14 }}>Full visual preview of every browser extension element — corrections, affirmations, translations, vault artifacts, lighthouse emblems — rendered across all 12 supported site types (News, YouTube, Twitter/X, Reddit, Podcasts, Product Listings, and more).</div>
+            <button onClick={() => { window.location.href = "/admin/extension-studio"; }} style={{ ...btnStyle, background: "#B8963E" }}>Open Design Studio</button>
+          </div>
         </div>
       </div>
 

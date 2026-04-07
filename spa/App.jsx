@@ -87,7 +87,6 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
   // Inject admin items
   if (label === "Account" && isAdmin) {
     allItems.push({ key: "admin", label: "Admin Dashboard" });
-    allItems.push({ key: "admin-tools", label: "Admin Tools" });
   }
   const isActive = allItems.some(i => i.key === screen);
   useEffect(() => {
@@ -107,7 +106,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
             <div key={n.key} style={{ padding: "6px 16px 2px", fontSize: 8, fontFamily: "var(--mono)", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, borderTop: n.key === "_group" ? "none" : "1px solid var(--border)", marginTop: n.key === "_group" ? 0 : 4 }}>{n.label}</div>
           ) : (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
-              style={n.key === "admin" || n.key === "admin-tools" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
+              style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
               onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
               {n.label}
             </a>
@@ -911,10 +910,7 @@ export default function TrustAssembly() {
                   <a href="/feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
                 )}
                 {isAdmin && (
-                  <>
-                    <a href="/admin/system-health" className="ta-mobile-menu-item" style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); window.open("/admin/system-health", "_blank"); setMobileMenuOpen(false); }}>Admin Dashboard</a>
-                    <a href="/admin-tools" className={`ta-mobile-menu-item ${screen === "admin-tools" ? "active" : ""}`} style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); setScreen("admin-tools"); setMobileMenuOpen(false); }}>Admin Tools</a>
-                  </>
+                  <a href="/admin/system-health" className="ta-mobile-menu-item" style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); window.open("/admin/system-health", "_blank"); setMobileMenuOpen(false); }}>Admin Dashboard</a>
                 )}
               </div>
             )}
