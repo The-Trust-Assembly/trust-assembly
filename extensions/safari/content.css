@@ -1,5 +1,80 @@
 /* Trust Assembly Extension — Content Styles */
 
+/* ── Scroll-Site Correction Box (Twitter, Reddit, Facebook, etc.) ── */
+.ta-scroll-box {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 8px auto;
+  max-width: 520px;
+  border: 1px solid #DCD8D0;
+  border-radius: 6px;
+  background: #FDFBF5;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(27, 42, 74, 0.08);
+}
+.ta-scroll-box-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #DCD8D0;
+}
+.ta-scroll-box-header img {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+.ta-scroll-box-brand {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #B8963E;
+}
+.ta-scroll-box-badge {
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-left: 4px;
+}
+.ta-scroll-badge-correction {
+  background: #FAE8E5;
+  color: #C4573F;
+}
+.ta-scroll-badge-affirmation {
+  background: #E5F0EA;
+  color: #1B5E3F;
+}
+.ta-scroll-badge-pending {
+  background: #FDF0E4;
+  color: #C2632A;
+}
+.ta-scroll-box-body {
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #2B2B2B;
+}
+.ta-scroll-box-footer {
+  padding: 6px 14px;
+  border-top: 1px solid #EBE8E2;
+  font-size: 10px;
+  color: #7A7570;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ta-scroll-box-footer img {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.ta-scroll-box-footer strong {
+  color: #1B2A4A;
+}
+
 /* ── Floating Badge ── */
 #ta-ext-badge {
   position: fixed;
@@ -421,32 +496,17 @@
   border-radius: 0 4px 4px 0;
 }
 
-/* ── Inline Body Text Edits ── */
+/* ── Inline Body Text Edits (clean red replacement, no strikethrough) ── */
 .ta-inline-body-edit {
   position: relative;
   display: inline;
 }
-.ta-inline-body-original {
-  text-decoration: line-through;
-  text-decoration-color: #C4573F;
-  color: #8A8580;
-  background: #FDF0EE;
-}
 .ta-inline-body-replacement {
   color: #C4573F;
-  font-weight: 700;
-  background: #FDF8F7;
-  border-bottom: 2px solid #C4573F;
-  margin-left: 2px;
+  text-decoration: underline;
+  text-decoration-color: rgba(196, 87, 63, 0.35);
+  text-underline-offset: 2px;
   cursor: help;
-}
-.ta-inline-body-replacement::after {
-  content: "ᵀᴬ";
-  font-size: 9px;
-  color: #C4573F;
-  font-weight: 700;
-  vertical-align: super;
-  margin-left: 1px;
 }
 .ta-inline-body-tooltip {
   display: none;
@@ -454,24 +514,20 @@
   bottom: calc(100% + 6px);
   left: 0;
   z-index: 2147483645;
-  background: #1B2A4A;
-  color: #F0EDE6;
+  background: #FDFBF5;
+  color: #2B2B2B;
   padding: 8px 12px;
   border-radius: 4px;
+  border: 1px solid #DCD8D0;
   font-size: 11px;
   line-height: 1.5;
   max-width: 360px;
   white-space: normal;
-  box-shadow: 0 4px 16px rgba(27, 42, 74, 0.25);
+  box-shadow: 0 2px 12px rgba(27, 42, 74, 0.12);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-weight: 400;
   font-style: normal;
-}
-.ta-inline-body-tooltip strong {
-  color: #B8963E;
-}
-.ta-inline-body-tooltip em {
-  color: #D0CBC3;
+  pointer-events: none;
 }
 .ta-inline-body-edit:hover .ta-inline-body-tooltip {
   display: block;

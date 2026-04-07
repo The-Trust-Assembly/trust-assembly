@@ -85,6 +85,10 @@
     const unapplied = document.getElementById("ta-unapplied-box");
     if (unapplied) unapplied.remove();
 
+    // Scroll correction boxes
+    const scrollBox = document.getElementById("ta-scroll-correction-box");
+    if (scrollBox) scrollBox.remove();
+
     // Inline headline corrections — restore originals
     document.querySelectorAll(".ta-inline-headline-corrected").forEach(el => {
       if (el.dataset.taOriginalText) {
@@ -1065,9 +1069,11 @@
           const oldCard = document.getElementById("ta-context-card");
           if (oldCard) oldCard.remove();
 
-          // Remove old unapplied box
+          // Remove old unapplied box and scroll boxes
           const oldUnapplied = document.getElementById("ta-unapplied-box");
           if (oldUnapplied) oldUnapplied.remove();
+          const oldScroll = document.getElementById("ta-scroll-correction-box");
+          if (oldScroll) oldScroll.remove();
 
           // Re-apply everything
           applyData(freshData, url);
@@ -1768,11 +1774,104 @@
     }
   }
 
-  // ── Trust Context Card (file-folder style) ──
+  // ── Detect scroll/feed sites vs. article sites ──
+  function isScrollSite() {
+    const site = getSiteType();
+    return ["twitter", "reddit", "facebook", "instagram", "tiktok", "linkedin"].includes(site.name);
+  }
+
+  // ── Scroll-Site Correction Box ──
+  // For feed/scroll sites: a self-contained box, always open, no folder tab.
+  function renderScrollCorrectionBox(data) {
+    if (document.getElementById("ta-scroll-correction-box")) return;
+
+    const corrections = data.corrections || [];
+    const affirmations = data.affirmations || [];
+    if (corrections.length === 0 && affirmations.length === 0) return;
+
+    const headlineEl = findPrimaryHeadline();
+    const articleBody = findArticleBody();
+    if (!headlineEl && !articleBody) return;
+
+    // Render one box per correction/affirmation (winner only)
+    const resolved = resolveConflicts(corrections);
+
+    const container = document.createElement("div");
+    container.id = "ta-scroll-correction-box";
+
+    // Corrections
+    resolved.forEach(group => {
+      const sub = group.winner;
+      const isCorrection = true;
+      const icon = isCorrection ? "icon48-corrected.png" : "icon48-affirmed.png";
+      const badgeClass = "ta-scroll-badge-correction";
+      const badgeLabel = "Corrected";
+      const recordLink = sub.id ? `https://trustassembly.org/record/${sub.id}` : "https://trustassembly.org";
+
+      const box = document.createElement("div");
+      box.className = "ta-scroll-box";
+      box.innerHTML = `
+        <div class="ta-scroll-box-header">
+          <img src="${getIconUrl(icon)}" alt="" />
+          <span class="ta-scroll-box-brand">Trust Assembly</span>
+          <span class="ta-scroll-box-badge ${badgeClass}">${badgeLabel}</span>
+        </div>
+        <div class="ta-scroll-box-body">
+          <a href="${recordLink}" target="_blank" rel="noopener" style="color:#2B2B2B;text-decoration:none">${escapeHtml(sub.replacement || sub.reasoning)}</a>
+        </div>
+        <div class="ta-scroll-box-footer">
+          <img src="${getIconUrl(icon)}" alt="" />
+          <strong>${escapeHtml(sub.orgName || "Assembly")}</strong> · ${sub.trustScore != null ? sub.trustScore : "—"} · ${formatStatus(sub.status)}
+        </div>
+      `;
+      container.appendChild(box);
+    });
+
+    // Affirmations
+    affirmations.forEach(sub => {
+      const recordLink = sub.id ? `https://trustassembly.org/record/${sub.id}` : "https://trustassembly.org";
+      const box = document.createElement("div");
+      box.className = "ta-scroll-box";
+      box.innerHTML = `
+        <div class="ta-scroll-box-header">
+          <img src="${getIconUrl("icon48-affirmed.png")}" alt="" />
+          <span class="ta-scroll-box-brand">Trust Assembly</span>
+          <span class="ta-scroll-box-badge ta-scroll-badge-affirmation">Verified</span>
+        </div>
+        <div class="ta-scroll-box-body">
+          <a href="${recordLink}" target="_blank" rel="noopener" style="color:#1B5E3F;text-decoration:none;font-weight:700">${escapeHtml(sub.originalHeadline)}</a>
+        </div>
+        <div class="ta-scroll-box-footer">
+          <img src="${getIconUrl("icon48-affirmed.png")}" alt="" />
+          <strong>${escapeHtml(sub.orgName || "Assembly")}</strong> · ${sub.trustScore != null ? sub.trustScore : "—"} · ${formatStatus(sub.status)}
+        </div>
+      `;
+      container.appendChild(box);
+    });
+
+    // Insert after headline or at top of article body
+    if (headlineEl && headlineEl.parentNode) {
+      headlineEl.parentNode.insertBefore(container, headlineEl.nextSibling);
+    } else if (articleBody) {
+      if (articleBody.firstChild) {
+        articleBody.insertBefore(container, articleBody.firstChild);
+      } else {
+        articleBody.appendChild(container);
+      }
+    }
+  }
+
+  // ── Trust Context Card (file-folder style — article sites only) ──
   // A compact, expandable card below the headline showing Trust Assembly
   // activity. Collapsed: slim folder tab with signal + counts.
   // Expanded: stats, assemblies, vault entries, and link to full record.
   function renderTrustContextCard(data) {
+    // On scroll/feed sites, use the correction box instead
+    if (isScrollSite()) {
+      renderScrollCorrectionBox(data);
+      return;
+    }
+
     // Don't render duplicates
     if (document.getElementById("ta-context-card")) return;
 
@@ -2375,31 +2474,21 @@
         const before = textNode.nodeValue.slice(0, idx);
         const after = textNode.nodeValue.slice(idx + originalText.length);
 
-        // Create the annotated replacement
+        // Create the annotated replacement — clean red text, no strikethrough
         const wrapper = document.createElement("span");
         wrapper.className = "ta-inline-body-edit";
 
-        // Original text with strikethrough
-        const origSpan = document.createElement("span");
-        origSpan.className = "ta-inline-body-original";
-        origSpan.textContent = originalText;
-
-        // Replacement text
+        // Replacement text only (original is hidden)
         const replSpan = document.createElement("span");
         replSpan.className = "ta-inline-body-replacement";
         replSpan.textContent = edit.replacement;
+        replSpan.dataset.taOriginal = originalText;
 
-        // Tooltip with details
+        // Tooltip with original text on hover
         const tooltip = document.createElement("span");
         tooltip.className = "ta-inline-body-tooltip";
-        const score = edit.trustScore != null ? edit.trustScore : "—";
-        let tooltipHtml = `<strong>⚖ ${escapeHtml(edit.orgName)}</strong> · ${escapeHtml(edit.profile)} · Trust Score ${score}`;
-        if (edit.reasoning) {
-          tooltipHtml += `<br><em>${escapeHtml(edit.reasoning)}</em>`;
-        }
-        tooltip.innerHTML = tooltipHtml;
+        tooltip.innerHTML = `<div style="font-size:8px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:.06em !important;color:#B0A89C !important;margin-bottom:3px !important;">Original text</div><div style="color:#2B2B2B !important;font-size:11px !important;line-height:1.4 !important;">${escapeHtml(originalText)}</div>`;
 
-        wrapper.appendChild(origSpan);
         wrapper.appendChild(replSpan);
         wrapper.appendChild(tooltip);
 

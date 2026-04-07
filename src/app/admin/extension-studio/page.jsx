@@ -106,6 +106,32 @@ function Tooltip({ type }) {
   );
 }
 
+// ── Scroll-site correction box (no folder tab, always open) ──
+function ScrollBox({ type }) {
+  const isC = type === "correction";
+  const icon = isC ? "/icons/Brick red lighthouse emblem.png" : "/icons/Green lighthouse with laurel wreath.png";
+  const badgeBg = isC ? "#FAE8E5" : "#E5F0EA";
+  const badgeColor = isC ? C.red : C.green;
+  const badgeLabel = isC ? "Corrected" : "Verified";
+  const sub = isC ? MOCK.correction : MOCK.affirmation;
+  return (
+    <div style={{ margin: "8px auto", maxWidth: 520, border: `1px solid ${C.border}`, borderRadius: 6, background: C.vellum, overflow: "hidden", boxShadow: "0 1px 4px rgba(27,42,74,.08)", fontFamily: "-apple-system,sans-serif" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderBottom: `1px solid ${C.border}` }}>
+        <img src={icon} alt="" style={{ width: 16, height: 16, borderRadius: "50%" }} />
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.gold }}>Trust Assembly</span>
+        <span style={{ fontSize: 8, fontWeight: 800, textTransform: "uppercase", padding: "2px 6px", borderRadius: 2, background: badgeBg, color: badgeColor }}>{badgeLabel}</span>
+      </div>
+      <div style={{ padding: "10px 14px", fontSize: 14, lineHeight: 1.5, color: isC ? C.text : C.green, fontWeight: isC ? 400 : 700 }}>
+        {isC ? sub.replacement : sub.originalHeadline}
+      </div>
+      <div style={{ padding: "6px 14px", borderTop: "1px solid #EBE8E2", fontSize: 10, color: C.muted, display: "flex", alignItems: "center", gap: 4 }}>
+        <img src={icon} alt="" style={{ width: 12, height: 12, borderRadius: "50%" }} />
+        <strong style={{ color: C.navy }}>{sub.orgName}</strong> · {sub.trustScore} · {sub.status === "approved" ? "Approved" : sub.status}
+      </div>
+    </div>
+  );
+}
+
 // ── Browser frame ──
 function Frame({ url, headerBg, headerFg, headerText, bg, fg, children }) {
   return (
@@ -131,10 +157,7 @@ function ArticlePage() {
         <div style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>By Sarah Johnson | April 5, 2026 | 4 min read</div>
         <ContextCard type="correction" />
         <p style={{ fontSize: 15, lineHeight: 1.8, color: "#333", marginBottom: 8 }}>The $50 million represents the largest single investment in education in the city's history. Critics have praised the mayor's bold commitment to education reform.</p>
-        <div style={{ position: "relative", display: "inline" }}>
-          <span style={{ textDecoration: "line-through", textDecorationColor: C.red, color: "#8A8580", background: "#FDF0EE" }}>{MOCK.inlineEdits[0].original}</span>{" "}
-          <span style={{ color: C.red, fontWeight: 700, background: "#FDF8F7", borderBottom: `2px solid ${C.red}` }}>{MOCK.inlineEdits[0].replacement}<sup style={{ fontSize: 9, color: C.red }}>{"\u1D40\u1D2C"}</sup></span>
-        </div>
+        <span style={{ color: C.red, textDecoration: "underline", textDecorationColor: "rgba(196,87,63,0.35)", textUnderlineOffset: 2, cursor: "help" }}>{MOCK.inlineEdits[0].replacement}</span>
         <Badge type="correction" />
       </div>
     </Frame>
@@ -168,7 +191,7 @@ function TwitterPage() {
           <div style={{ display: "flex", gap: 40, marginTop: 10, fontSize: 13, color: "#71767b" }}>
             <span>{"\uD83D\uDCAC"} 142</span><span>{"\uD83D\uDD01"} 891</span><span>{"\u2764\uFE0F"} 3.2K</span><span>{"\uD83D\uDCCA"} 45K</span>
           </div>
-          <ContextCard type="correction" />
+          <ScrollBox type="correction" />
         </div>
       </div>
       <Badge type="correction" />
@@ -189,7 +212,7 @@ function RedditPage() {
             <h3 style={{ color: C.red, fontWeight: 700, fontSize: 18, margin: "0 0 4px", cursor: "help" }}>{MOCK.correction.replacement}<Tooltip type="correction" /></h3>
           </div>
           <div style={{ fontSize: 11, color: "#818384", marginTop: 8 }}>342 comments · share · save · hide</div>
-          <ContextCard type="correction" />
+          <ScrollBox type="correction" />
         </div>
       </div>
       <Badge type="correction" />
@@ -242,7 +265,7 @@ function FacebookPage() {
         <div style={{ position: "relative" }}>
           <span style={{ color: C.red, fontWeight: 700, fontSize: 14, lineHeight: 1.5, cursor: "help" }}>Proud to announce a RECORD $50M investment in our public schools! This is what real leadership looks like. #Education<Tooltip type="correction" /></span>
         </div>
-        <ContextCard type="correction" />
+        <ScrollBox type="correction" />
         <div style={{ borderTop: "1px solid #e4e6eb", marginTop: 10, paddingTop: 8, display: "flex", justifyContent: "space-around", fontSize: 13, color: "#65676b", fontWeight: 600 }}>
           <span>{"\uD83D\uDC4D"} Like</span><span>{"\uD83D\uDCAC"} Comment</span><span>{"\u21A9\uFE0F"} Share</span>
         </div>
@@ -268,7 +291,7 @@ function InstagramPage() {
             <span style={{ fontWeight: 600, fontSize: 13, marginRight: 4 }}>citymayor</span>
             <span style={{ color: C.red, fontWeight: 700, fontSize: 13, cursor: "help" }}>Proud to announce a RECORD $50M investment! #Education #Investing<Tooltip type="correction" /></span>
           </div>
-          <ContextCard type="correction" />
+          <ScrollBox type="correction" />
         </div>
       </div>
       <Badge type="correction" />
@@ -290,7 +313,7 @@ function TikTokPage() {
             <span style={{ color: C.red, fontWeight: 700, fontSize: 13, lineHeight: 1.5, cursor: "help" }}>RECORD $50M investment in public schools! But is it real? #Education #FactCheck<Tooltip type="correction" /></span>
           </div>
           <div style={{ marginTop: 8, fontSize: 12, color: "#aaa" }}>{"\u266A"} original sound - citynews</div>
-          <ContextCard type="correction" />
+          <ScrollBox type="correction" />
         </div>
       </div>
       <Badge type="correction" />
@@ -309,7 +332,7 @@ function LinkedInPage() {
         <div style={{ position: "relative" }}>
           <span style={{ color: C.red, fontWeight: 700, fontSize: 14, lineHeight: 1.6, cursor: "help" }}>Proud to announce a RECORD $50M investment in our public schools! This historic commitment demonstrates our city's dedication to education. #PublicEducation #Investment<Tooltip type="correction" /></span>
         </div>
-        <ContextCard type="correction" />
+        <ScrollBox type="correction" />
         <div style={{ borderTop: "1px solid #e0e0e0", marginTop: 10, paddingTop: 8, display: "flex", justifyContent: "space-around", fontSize: 12, color: "#666", fontWeight: 600 }}>
           <span>{"\uD83D\uDC4D"} Like</span><span>{"\uD83D\uDCAC"} Comment</span><span>{"\uD83D\uDD01"} Repost</span><span>{"\u2709\uFE0F"} Send</span>
         </div>
@@ -568,6 +591,15 @@ export default function ExtensionStudioPage() {
               <UnappliedBox />
             </div>
 
+            <div style={{ background: C.card, borderRadius: 8, padding: 24, border: `1px solid ${C.cardBorder}`, marginBottom: 16 }}>
+              <h2 style={{ fontSize: 16, color: C.dt, marginBottom: 12 }}>Scroll-Site Correction Box (Twitter, Reddit, etc.)</h2>
+              <p style={{ fontSize: 12, color: C.dm, marginBottom: 12 }}>Self-contained box for feed/scroll sites. No folder tab — always open, compact, below the post.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <ScrollBox type="correction" />
+                <ScrollBox type="affirmation" />
+              </div>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div style={{ background: C.card, borderRadius: 8, padding: 24, border: `1px solid ${C.cardBorder}` }}>
                 <h2 style={{ fontSize: 16, color: C.dt, marginBottom: 12 }}>Hover Tooltips</h2>
@@ -590,8 +622,7 @@ export default function ExtensionStudioPage() {
               <div style={{ background: C.card, borderRadius: 8, padding: 24, border: `1px solid ${C.cardBorder}` }}>
                 <h2 style={{ fontSize: 16, color: C.dt, marginBottom: 12 }}>Inline Body Edits</h2>
                 <div style={{ padding: 12, background: "#fff", borderRadius: 6, fontSize: 14, lineHeight: 1.8, color: "#333" }}>
-                  <span style={{ textDecoration: "line-through", textDecorationColor: C.red, color: "#8A8580", background: "#FDF0EE" }}>{MOCK.inlineEdits[0].original}</span>{" "}
-                  <span style={{ color: C.red, fontWeight: 700, background: "#FDF8F7", borderBottom: `2px solid ${C.red}` }}>{MOCK.inlineEdits[0].replacement}<sup style={{ fontSize: 9, color: C.red }}>{"\u1D40\u1D2C"}</sup></span>
+                  <span style={{ color: C.red, textDecoration: "underline", textDecorationColor: "rgba(196,87,63,0.35)", textUnderlineOffset: 2, cursor: "help" }}>{MOCK.inlineEdits[0].replacement}</span>
                 </div>
               </div>
             </div>
