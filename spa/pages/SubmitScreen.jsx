@@ -22,7 +22,7 @@ function EducationHelper({ storageKey, children }) {
   );
 }
 
-export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, onShowRegistration }) {
+export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, onShowRegistration, onShowEmailVerify }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ url: "", originalHeadline: "", replacement: "", reasoning: "", author: "", submissionType: "correction", _step: 1 });
   const [authors, setAuthors] = useState([]);
@@ -412,7 +412,13 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      setError(errData.error || "Submission failed"); setLoading(false); return;
+      const errMsg = errData.error || "Submission failed";
+      // If blocked by email verification, show the popup instead of inline error
+      if (res.status === 403 && errMsg.toLowerCase().includes("verify")) {
+        if (onShowEmailVerify) onShowEmailVerify();
+        setLoading(false); return;
+      }
+      setError(errMsg); setLoading(false); return;
     }
 
     const resData = await res.json();
