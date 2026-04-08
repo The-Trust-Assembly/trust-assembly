@@ -35,9 +35,14 @@
     "128": "icon128.png"
   },
   "web_accessible_resources": [
+    "icon48.png",
+    "icon48-corrected.png",
+    "icon48-affirmed.png",
+    "icon48-pending.png",
     "icon128.png",
     "icon128-corrected.png",
-    "icon128-affirmed.png"
+    "icon128-affirmed.png",
+    "icon128-pending.png"
   ],
   "browser_specific_settings": {
     "gecko": {

@@ -306,6 +306,27 @@ export default function SystemHealthPage() {
     }
   }, [getAuthHeaders, deleteConfirm, fetchUsers, userSearch, userPage]);
 
+  const toggleAdmin = useCallback(async (userId, username, makeAdmin) => {
+    if (!confirm(`${makeAdmin ? "Grant" : "Remove"} admin privileges ${makeAdmin ? "to" : "from"} @${username}?`)) return;
+    setDeleteMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, isAdmin: makeAdmin }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteMsg({ ok: false, text: data.error || "Failed" });
+        return;
+      }
+      setDeleteMsg({ ok: true, text: data.message });
+      fetchUsers(userSearch, userPage);
+    } catch (e) {
+      setDeleteMsg({ ok: false, text: `Error: ${e}` });
+    }
+  }, [getAuthHeaders, fetchUsers, userSearch, userPage]);
+
   // Loading state
   if (authState === "loading") {
     return (
@@ -862,13 +883,21 @@ export default function SystemHealthPage() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => { setDeletingUserId(u.id); setDeleteConfirm(""); setDeleteMsg(null); }}
-                          disabled={u.is_admin}
-                          style={{ ...smallBtnStyle, background: u.is_admin ? "#334155" : "#dc2626", color: u.is_admin ? "#64748b" : "#fff", fontSize: 10, cursor: u.is_admin ? "not-allowed" : "pointer" }}
-                        >
-                          Delete
-                        </button>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button
+                            onClick={() => toggleAdmin(u.id, u.username, !u.is_admin)}
+                            style={{ ...smallBtnStyle, background: u.is_admin ? "#334155" : "#6b21a8", color: u.is_admin ? "#a78bfa" : "#fff", fontSize: 10, whiteSpace: "nowrap" }}
+                          >
+                            {u.is_admin ? "Remove Admin" : "Make Admin"}
+                          </button>
+                          <button
+                            onClick={() => { setDeletingUserId(u.id); setDeleteConfirm(""); setDeleteMsg(null); }}
+                            disabled={u.is_admin}
+                            style={{ ...smallBtnStyle, background: u.is_admin ? "#334155" : "#dc2626", color: u.is_admin ? "#64748b" : "#fff", fontSize: 10, cursor: u.is_admin ? "not-allowed" : "pointer" }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -1120,6 +1149,12 @@ export default function SystemHealthPage() {
             <div style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>View a Test Review Form</div>
             <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 14 }}>Preview the production review form with sample data. Shows rating sliders, inline edit voting, vault entry voting, deception checkbox, and action buttons — all interactive, nothing submitted.</div>
             <button onClick={() => { window.location.href = "/?screen=admin-tools"; }} style={btnStyle}>Open Review Preview</button>
+          </div>
+
+          <div style={{ background: "#1e293b", borderRadius: 8, padding: 20, border: "1px solid #B8963E" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#B8963E", marginBottom: 8 }}>Extension Design Studio</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 14 }}>Full visual preview of every browser extension element — corrections, affirmations, translations, vault artifacts, lighthouse emblems — rendered across all 12 supported site types (News, YouTube, Twitter/X, Reddit, Podcasts, Product Listings, and more).</div>
+            <button onClick={() => { window.location.href = "/admin/extension-studio"; }} style={{ ...btnStyle, background: "#B8963E" }}>Open Design Studio</button>
           </div>
         </div>
       </div>

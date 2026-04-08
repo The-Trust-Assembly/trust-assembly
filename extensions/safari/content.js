@@ -21,15 +21,117 @@
 
   // Current settings (defaults: both on)
   let settings = { showBadge: true, showTranslations: true };
+  const MUTED_KEY = "ta-muted-sites";
+
+  // ── Per-site mute helpers ──
+  function getSiteDomain() {
+    try { return window.location.hostname.replace(/^www\./, ""); } catch (e) { return ""; }
+  }
+
+  function getStorageRef() {
+    return (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local)
+      ? chrome.storage.local
+      : (typeof browser !== "undefined" && browser.storage && browser.storage.local)
+        ? browser.storage.local
+        : null;
+  }
+
+  function isSiteMuted() {
+    return new Promise((resolve) => {
+      const storage = getStorageRef();
+      if (!storage) { resolve(false); return; }
+      storage.get([MUTED_KEY], (result) => {
+        try {
+          const muted = result[MUTED_KEY] ? JSON.parse(result[MUTED_KEY]) : {};
+          resolve(!!muted[getSiteDomain()]);
+        } catch (e) { resolve(false); }
+      });
+    });
+  }
+
+  function setSiteMuted(muted) {
+    return new Promise((resolve) => {
+      const storage = getStorageRef();
+      if (!storage) { resolve(); return; }
+      storage.get([MUTED_KEY], (result) => {
+        try {
+          const sites = result[MUTED_KEY] ? JSON.parse(result[MUTED_KEY]) : {};
+          if (muted) {
+            sites[getSiteDomain()] = true;
+          } else {
+            delete sites[getSiteDomain()];
+          }
+          storage.set({ [MUTED_KEY]: JSON.stringify(sites) }, resolve);
+        } catch (e) { resolve(); }
+      });
+    });
+  }
+
+  // Remove all Trust Assembly injections from the page
+  function removeAllInjections() {
+    // Floating badge and side panel
+    const badge = document.getElementById(BADGE_ID);
+    if (badge) badge.remove();
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) panel.remove();
+
+    // Context card wrapper
+    const wrap = document.getElementById("ta-context-card-wrap");
+    if (wrap) wrap.remove();
+    const card = document.getElementById("ta-context-card");
+    if (card) card.remove();
+
+    // Unapplied box
+    const unapplied = document.getElementById("ta-unapplied-box");
+    if (unapplied) unapplied.remove();
+
+    // Scroll correction boxes
+    const scrollBox = document.getElementById("ta-scroll-correction-box");
+    if (scrollBox) scrollBox.remove();
+
+    // Inline headline corrections — restore originals
+    document.querySelectorAll(".ta-inline-headline-corrected").forEach(el => {
+      if (el.dataset.taOriginalText) {
+        el.textContent = el.dataset.taOriginalText;
+      }
+      el.style.removeProperty("color");
+      el.style.removeProperty("cursor");
+      el.classList.remove("ta-inline-headline-corrected");
+      delete el.dataset.taAnnotated;
+      delete el.dataset.taOriginalText;
+    });
+
+    // Inline headline affirmations — restore originals
+    document.querySelectorAll(".ta-inline-headline-affirmed").forEach(el => {
+      el.style.removeProperty("color");
+      el.style.removeProperty("cursor");
+      el.classList.remove("ta-inline-headline-affirmed");
+      delete el.dataset.taAnnotated;
+    });
+
+    // Inline body edits
+    document.querySelectorAll(".ta-inline-body-edit").forEach(el => {
+      const orig = el.querySelector(".ta-inline-body-original");
+      if (orig) {
+        const text = document.createTextNode(orig.textContent);
+        el.parentNode.replaceChild(text, el);
+      }
+    });
+
+    // Remove translation annotations
+    removeTranslations();
+
+    // Legacy inline blocks
+    document.querySelectorAll(".ta-inline-correction, .ta-inline-affirmation").forEach(el => el.remove());
+
+    // Tooltips
+    document.querySelectorAll(".ta-headline-tooltip").forEach(el => el.remove());
+  }
 
   // ── Read settings from storage ──
   function loadSettings() {
     return new Promise((resolve) => {
-      const storage = (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local)
-        ? chrome.storage.local
-        : (typeof browser !== "undefined" && browser.storage && browser.storage.local)
-          ? browser.storage.local
-          : null;
+      const storage = getStorageRef();
       if (!storage) {
         resolve(settings);
         return;
@@ -821,6 +923,33 @@
     // Load user settings before doing anything
     await loadSettings();
 
+    // Check if site is muted — still fetch data (for badge count) but don't inject
+    const muted = await isSiteMuted();
+    if (muted) {
+      console.log("[TrustAssembly] Site is muted:", getSiteDomain());
+      // Still fetch to store data for when user unmutes, but don't apply
+      const site = getSiteType();
+      if (site.dynamic && site.waitSelector) {
+        try { await waitForElement(site.waitSelector, 5000); } catch (e) {}
+      }
+      let data = getCachedData(url);
+      if (!data) {
+        data = await fetchViaBackground(url);
+        setCachedData(url, data);
+      }
+      window.__trustAssemblyData = data;
+      // Notify background of count so toolbar badge still works
+      const total = data.corrections.length + data.affirmations.length + data.translations.length;
+      let signalType = "neutral";
+      if (data.corrections.length > 0 && data.affirmations.length === 0) signalType = "corrected";
+      else if (data.affirmations.length > 0 && data.corrections.length === 0) signalType = "affirmed";
+      else if (data.corrections.length > 0 && data.affirmations.length > 0) signalType = "mixed";
+      try { chrome.runtime.sendMessage({ type: "TA_COUNT", count: total, url, signalType }); } catch (e) {
+        try { browser.runtime.sendMessage({ type: "TA_COUNT", count: total, url, signalType }); } catch (_) {}
+      }
+      return;
+    }
+
     // Detect the site architecture
     const site = getSiteType();
     console.log("[TrustAssembly] Detected site type:", site.name, site.dynamic ? "(dynamic)" : "(static)");
@@ -935,12 +1064,16 @@
           setCachedData(url, freshData);
 
           // Remove old Trust Context Card so it re-renders with new data
+          const oldWrap = document.getElementById("ta-context-card-wrap");
+          if (oldWrap) oldWrap.remove();
           const oldCard = document.getElementById("ta-context-card");
           if (oldCard) oldCard.remove();
 
-          // Remove old unapplied box
+          // Remove old unapplied box and scroll boxes
           const oldUnapplied = document.getElementById("ta-unapplied-box");
           if (oldUnapplied) oldUnapplied.remove();
+          const oldScroll = document.getElementById("ta-scroll-correction-box");
+          if (oldScroll) oldScroll.remove();
 
           // Re-apply everything
           applyData(freshData, url);
@@ -975,7 +1108,19 @@
       : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
     if (!runtime) return;
 
-    runtime.onMessage.addListener((message) => {
+    runtime.onMessage.addListener((message, sender, sendResponse) => {
+      // Handle site mute/unmute from popup
+      if (message.type === "TA_SITE_MUTE_CHANGED") {
+        const domain = getSiteDomain();
+        if (message.domain !== domain) return;
+        if (message.muted) {
+          removeAllInjections();
+        } else {
+          const data = window.__trustAssemblyData;
+          if (data) applyData(data, window.location.href);
+        }
+      }
+
       if (message.type === "TA_SETTINGS_CHANGED") {
         const oldSettings = { ...settings };
         if (message.showBadge !== undefined) settings.showBadge = message.showBadge;
@@ -984,7 +1129,6 @@
         const data = window.__trustAssemblyData;
         if (!data) return;
 
-        // Handle badge visibility
         if (settings.showBadge && !document.getElementById(BADGE_ID)) {
           renderBadge(data);
         } else if (!settings.showBadge) {
@@ -994,16 +1138,125 @@
           if (panel) panel.remove();
         }
 
-        // Handle translations visibility
         if (settings.showTranslations && !oldSettings.showTranslations) {
-          // Re-apply translations (page reload is cleaner, but we can re-apply)
-          if (data.translations.length > 0) {
-            applyTranslations(data.translations);
-          }
+          if (data.translations.length > 0) applyTranslations(data.translations);
         } else if (!settings.showTranslations && oldSettings.showTranslations) {
-          // Remove inline translations
           removeTranslations();
         }
+      }
+
+      // ── Design Mode handlers ──
+      if (message.type === "TA_DESIGN_INJECT") {
+        removeAllInjections();
+        const mockData = message.data;
+        window.__trustAssemblyData = mockData;
+        applyData(mockData, window.location.href);
+        sendResponse({ ok: true });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_CLEAR") {
+        removeAllInjections();
+        sendResponse({ ok: true });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_SCAN_HEADLINES") {
+        const headlines = [];
+        const els = findAllHeadlineElements();
+        els.forEach((el, i) => {
+          // Build a CSS selector path for this element
+          let sel = el.tagName.toLowerCase();
+          if (el.id) sel += "#" + el.id;
+          else if (el.className && typeof el.className === "string") sel += "." + el.className.trim().split(/\s+/).slice(0, 2).join(".");
+
+          headlines.push({
+            tag: el.tagName,
+            className: el.className || "",
+            text: el.textContent.trim().slice(0, 200),
+            selector: sel,
+            phase: el.dataset.taDetectPhase || "unknown",
+          });
+        });
+        sendResponse({ headlines });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_HIGHLIGHT") {
+        // Remove previous highlight
+        document.querySelectorAll(".ta-design-highlight").forEach(el => {
+          el.style.removeProperty("outline");
+          el.style.removeProperty("outline-offset");
+          el.classList.remove("ta-design-highlight");
+        });
+        // Highlight the selected headline
+        const els = findAllHeadlineElements();
+        if (els[message.index]) {
+          const el = els[message.index];
+          el.style.setProperty("outline", "3px solid #B8963E", "important");
+          el.style.setProperty("outline-offset", "4px", "important");
+          el.classList.add("ta-design-highlight");
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        sendResponse({ ok: true });
+        return true;
+      }
+
+      if (message.type === "TA_DESIGN_REPORT") {
+        const site = getSiteType();
+        const headlines = findAllHeadlineElements();
+        const articleBody = findArticleBody();
+        let report = "=== TRUST ASSEMBLY EXTENSION DEBUG REPORT ===\n";
+        report += "Generated: " + new Date().toISOString() + "\n";
+        report += "URL: " + window.location.href + "\n";
+        report += "Domain: " + getSiteDomain() + "\n\n";
+        report += "--- Site Detection ---\n";
+        report += "Detected type: " + site.name + "\n";
+        report += "Dynamic: " + site.dynamic + "\n";
+        report += "Headline selectors tried: " + site.headlineSelectors.join(", ") + "\n";
+        report += "Article root selector: " + (site.articleRoot || "none") + "\n";
+        report += "Wait selector: " + (site.waitSelector || "none") + "\n\n";
+        report += "--- Headlines Found: " + headlines.length + " ---\n";
+        headlines.forEach((el, i) => {
+          let sel = el.tagName.toLowerCase();
+          if (el.id) sel += "#" + el.id;
+          else if (el.className && typeof el.className === "string") sel += "." + el.className.trim().split(/\s+/).slice(0, 3).join(".");
+          report += "[" + i + "] <" + el.tagName + "> " + sel + "\n";
+          report += "     Text: " + JSON.stringify(el.textContent.trim().slice(0, 100)) + "\n";
+          report += "     Annotated: " + (el.dataset.taAnnotated || "no") + "\n";
+        });
+        report += "\n--- Article Body ---\n";
+        if (articleBody) {
+          report += "Found: <" + articleBody.tagName + "> ";
+          if (articleBody.id) report += "#" + articleBody.id;
+          else if (articleBody.className) report += "." + String(articleBody.className).trim().split(/\s+/).slice(0, 3).join(".");
+          report += "\n";
+          report += "Child count: " + articleBody.children.length + "\n";
+        } else {
+          report += "Not found (using document.body)\n";
+        }
+        report += "\n--- Injected Elements ---\n";
+        report += "Context card: " + (document.getElementById("ta-context-card") ? "YES" : "no") + "\n";
+        report += "Unapplied box: " + (document.getElementById("ta-unapplied-box") ? "YES" : "no") + "\n";
+        report += "Floating badge: " + (document.getElementById(BADGE_ID) ? "YES" : "no") + "\n";
+        report += "Side panel: " + (document.getElementById(PANEL_ID) ? "YES" : "no") + "\n";
+        report += "Corrected headlines: " + document.querySelectorAll(".ta-inline-headline-corrected").length + "\n";
+        report += "Affirmed headlines: " + document.querySelectorAll(".ta-inline-headline-affirmed").length + "\n";
+        report += "Body edits: " + document.querySelectorAll(".ta-inline-body-edit").length + "\n";
+        report += "Translations: " + document.querySelectorAll(".ta-ext-translated").length + "\n";
+        report += "\n--- Current Data ---\n";
+        const d = window.__trustAssemblyData;
+        if (d) {
+          report += "Corrections: " + d.corrections.length + "\n";
+          report += "Affirmations: " + d.affirmations.length + "\n";
+          report += "Translations: " + d.translations.length + "\n";
+        } else {
+          report += "(no data loaded)\n";
+        }
+        report += "\n=== END REPORT ===";
+
+        sendResponse({ report });
+        return true;
       }
     });
   }
@@ -1071,22 +1324,27 @@
 
     // Determine which lighthouse icon to show
     let iconFile = "icon128.png"; // default gold
-    let borderColor = COLORS.gold;
+    let borderBottomColor = COLORS.gold;
     let countBg = COLORS.gold;
     if (data.corrections.length > 0 && data.affirmations.length === 0) {
       iconFile = "icon128-corrected.png";
-      borderColor = COLORS.red;
+      borderBottomColor = COLORS.red;
       countBg = COLORS.red;
     } else if (data.affirmations.length > 0 && data.corrections.length === 0) {
       iconFile = "icon128-affirmed.png";
-      borderColor = COLORS.green;
+      borderBottomColor = COLORS.green;
       countBg = COLORS.green;
+    } else if (data.corrections.length === 0 && data.affirmations.length === 0) {
+      // Only translations or pending — use gray/pending icon
+      iconFile = "icon128-pending.png";
+      borderBottomColor = "#7A7570";
+      countBg = "#7A7570";
     }
 
     const badge = document.createElement("div");
     badge.id = BADGE_ID;
     badge.innerHTML = `
-      <div class="ta-ext-badge-inner" style="border-color:${borderColor}">
+      <div class="ta-ext-badge-inner" style="border-bottom-color:${borderBottomColor}">
         <img class="ta-ext-badge-icon" src="${getIconUrl(iconFile)}" alt="Trust Assembly" />
         <div class="ta-ext-badge-count" style="background:${countBg}">${total}</div>
       </div>
@@ -1192,7 +1450,8 @@
 
     let html = `
       <div class="ta-ext-panel-header">
-        <div class="ta-ext-panel-title">⚖ Trust Assembly</div>
+        <img src="${getIconUrl("icon48.png")}" alt="" style="width:22px;height:22px;border-radius:50%" />
+        <div class="ta-ext-panel-title">Trust Assembly</div>
         <button class="ta-ext-panel-close" id="ta-ext-close">✕</button>
       </div>
       <div class="ta-ext-panel-subtitle">${data.corrections.length} correction${data.corrections.length !== 1 ? "s" : ""} · ${data.affirmations.length} affirmation${data.affirmations.length !== 1 ? "s" : ""} · ${data.translations.length} translation${data.translations.length !== 1 ? "s" : ""}</div>
@@ -1363,34 +1622,23 @@
         el.style.setProperty("cursor", "help", "important");
         el.classList.add("ta-inline-headline-corrected");
 
-        // Create hover tooltip showing original headline
+        // Create hover tooltip showing ONLY original headline text
         const tooltip = document.createElement("div");
         tooltip.className = "ta-headline-tooltip";
         tooltip.setAttribute("style",
           "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
-          "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
-          "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
-          "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
-          "min-width:200px !important;white-space:normal !important;" +
-          "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+          "left:0 !important;z-index:2147483647 !important;background:#FDFBF5 !important;" +
+          "color:#2B2B2B !important;padding:8px 12px !important;border-radius:4px !important;" +
+          "border:1px solid #DCD8D0 !important;" +
+          "font-size:12px !important;line-height:1.4 !important;max-width:500px !important;" +
+          "min-width:180px !important;white-space:normal !important;" +
+          "box-shadow:0 2px 12px rgba(27,42,74,0.12) !important;" +
           "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
           "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
         );
-        const org = sub.orgName || "Assembly";
-        const profile = sub.profile?.displayName || "Citizen";
-        const score = sub.trustScore != null ? sub.trustScore : "—";
-        let tooltipHtml = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B8963E !important;margin-bottom:4px !important;">Original Headline</div>`;
-        tooltipHtml += `<div style="font-size:14px !important;color:#F0EDE6 !important;margin-bottom:8px !important;line-height:1.4 !important;">${escapeHtml(originalText)}</div>`;
-        tooltipHtml += `<div style="font-size:10px !important;color:#B0A89C !important;border-top:1px solid rgba(240,237,230,0.15) !important;padding-top:6px !important;">⚖ <strong style="color:#B8963E !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>`;
-        if (sub.reasoning) {
-          const maxLen = 150;
-          const reason = sub.reasoning.length > maxLen ? sub.reasoning.slice(0, maxLen) + "…" : sub.reasoning;
-          tooltipHtml += `<div style="font-size:11px !important;color:#D0CBC3 !important;font-style:italic !important;margin-top:4px !important;line-height:1.4 !important;">${escapeHtml(reason)}</div>`;
-        }
-        tooltip.innerHTML = tooltipHtml;
+        tooltip.innerHTML = `<div class="ta-headline-tooltip-label" style="font-size:8px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B0A89C !important;margin-bottom:3px !important;">Original headline</div><div style="color:#2B2B2B !important;font-size:12px !important;line-height:1.4 !important;">${escapeHtml(originalText)}</div>`;
         el.appendChild(tooltip);
 
-        // Show/hide tooltip on hover
         el.addEventListener("mouseenter", function() {
           tooltip.style.setProperty("display", "block", "important");
         });
@@ -1429,23 +1677,21 @@
               parent.style.setProperty("cursor", "help", "important");
               parent.classList.add("ta-inline-headline-corrected");
 
-              // Create hover tooltip showing original
+              // Create hover tooltip showing ONLY original headline text
               const tooltip = document.createElement("div");
               tooltip.className = "ta-headline-tooltip";
               tooltip.setAttribute("style",
                 "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
-                "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
-                "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
-                "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
-                "min-width:200px !important;white-space:normal !important;" +
-                "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+                "left:0 !important;z-index:2147483647 !important;background:#FDFBF5 !important;" +
+                "color:#2B2B2B !important;padding:8px 12px !important;border-radius:4px !important;" +
+                "border:1px solid #DCD8D0 !important;" +
+                "font-size:12px !important;line-height:1.4 !important;max-width:500px !important;" +
+                "min-width:180px !important;white-space:normal !important;" +
+                "box-shadow:0 2px 12px rgba(27,42,74,0.12) !important;" +
                 "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
                 "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
               );
-              const org2 = sub.orgName || "Assembly";
-              const profile2 = sub.profile?.displayName || "Citizen";
-              const score2 = sub.trustScore != null ? sub.trustScore : "—";
-              tooltip.innerHTML = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B8963E !important;margin-bottom:4px !important;">Original Headline</div><div style="font-size:14px !important;color:#F0EDE6 !important;margin-bottom:8px !important;">${escapeHtml(originalText)}</div><div style="font-size:10px !important;color:#B0A89C !important;border-top:1px solid rgba(240,237,230,0.15) !important;padding-top:6px !important;">⚖ <strong style="color:#B8963E !important">${escapeHtml(org2)}</strong> · ${escapeHtml(profile2)} · Trust Score ${score2}</div>`;
+              tooltip.innerHTML = `<div style="font-size:8px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#B0A89C !important;margin-bottom:3px !important;">Original headline</div><div style="color:#2B2B2B !important;font-size:12px !important;line-height:1.4 !important;">${escapeHtml(originalText)}</div>`;
               parent.appendChild(tooltip);
 
               parent.addEventListener("mouseenter", function() {
@@ -1478,10 +1724,9 @@
     }
   }
 
-  // ── Unapplied Corrections Education Box ──
-  // When corrections exist for a page but the original headline text can
-  // no longer be found (headline was updated, site redesigned, etc.),
-  // render an informational box at the top of the article body.
+  // ── Unapplied Corrections (slim folder tab) ──
+  // When corrections exist but the original headline can no longer be
+  // matched, render a compact folder-tab with a brief notice and link.
   function renderUnappliedCorrectionsBox(unapplied) {
     // Don't render duplicates
     if (document.getElementById("ta-unapplied-box")) return;
@@ -1493,24 +1738,27 @@
     box.className = "ta-unapplied-box";
 
     let html = `
-      <div class="ta-unapplied-header">
-        <span class="ta-unapplied-icon">⚖</span>
-        <span class="ta-unapplied-title">Trust Assembly — Corrections No Longer Matched</span>
+      <div class="ta-unapplied-tab">
+        <img src="${getIconUrl("icon48-corrected.png")}" alt="" />
+        Trust Assembly
       </div>
-      <div class="ta-unapplied-body">
-        <p class="ta-unapplied-explanation">The following corrections were submitted for this article but the original headline text could no longer be found on the page. The headline may have been updated by the publisher.</p>
+      <div class="ta-unapplied-card">
+        <div class="ta-unapplied-notice">A correction was made to this page that can no longer be matched.</div>
     `;
 
     unapplied.forEach(sub => {
       const org = sub.orgName || "Assembly";
       const profile = sub.profile?.displayName || "Citizen";
       const score = sub.trustScore != null ? sub.trustScore : "—";
+      const recordLink = sub.id ? `https://trustassembly.org/record/${sub.id}` : "https://trustassembly.org";
 
       html += `
         <div class="ta-unapplied-item">
-          <div class="ta-unapplied-replacement">${escapeHtml(sub.replacement)}<div class="ta-ext-headline-original-tooltip"><div class="ta-tooltip-label">Original Headline</div>${escapeHtml(sub.originalHeadline)}</div></div>
-          <div class="ta-unapplied-meta">⚖ <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>
-          ${sub.reasoning ? `<div class="ta-unapplied-reasoning">${escapeHtml(sub.reasoning)}</div>` : ""}
+          <a class="ta-unapplied-replacement" href="${recordLink}" target="_blank" rel="noopener" style="text-decoration:none;color:#C4573F">${escapeHtml(sub.replacement)}</a>
+          <div class="ta-unapplied-meta">
+            <img src="${getIconUrl("icon48-corrected.png")}" alt="" />
+            <strong>${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}
+          </div>
         </div>
       `;
     });
@@ -1526,12 +1774,104 @@
     }
   }
 
-  // ── Trust Context Card ──
-  // A compact summary card rendered below the headline giving the reader
-  // an at-a-glance overview of all Trust Assembly activity on this article:
-  // correction/affirmation counts, assembly involvement, consensus status,
-  // and standing corrections, arguments, and beliefs from the vault.
+  // ── Detect scroll/feed sites vs. article sites ──
+  function isScrollSite() {
+    const site = getSiteType();
+    return ["twitter", "reddit", "facebook", "instagram", "tiktok", "linkedin"].includes(site.name);
+  }
+
+  // ── Scroll-Site Correction Box ──
+  // For feed/scroll sites: a self-contained box, always open, no folder tab.
+  function renderScrollCorrectionBox(data) {
+    if (document.getElementById("ta-scroll-correction-box")) return;
+
+    const corrections = data.corrections || [];
+    const affirmations = data.affirmations || [];
+    if (corrections.length === 0 && affirmations.length === 0) return;
+
+    const headlineEl = findPrimaryHeadline();
+    const articleBody = findArticleBody();
+    if (!headlineEl && !articleBody) return;
+
+    // Render one box per correction/affirmation (winner only)
+    const resolved = resolveConflicts(corrections);
+
+    const container = document.createElement("div");
+    container.id = "ta-scroll-correction-box";
+
+    // Corrections
+    resolved.forEach(group => {
+      const sub = group.winner;
+      const isCorrection = true;
+      const icon = isCorrection ? "icon48-corrected.png" : "icon48-affirmed.png";
+      const badgeClass = "ta-scroll-badge-correction";
+      const badgeLabel = "Corrected";
+      const recordLink = sub.id ? `https://trustassembly.org/record/${sub.id}` : "https://trustassembly.org";
+
+      const box = document.createElement("div");
+      box.className = "ta-scroll-box";
+      box.innerHTML = `
+        <div class="ta-scroll-box-header">
+          <img src="${getIconUrl(icon)}" alt="" />
+          <span class="ta-scroll-box-brand">Trust Assembly</span>
+          <span class="ta-scroll-box-badge ${badgeClass}">${badgeLabel}</span>
+        </div>
+        <div class="ta-scroll-box-body">
+          <a href="${recordLink}" target="_blank" rel="noopener" style="color:#2B2B2B;text-decoration:none">${escapeHtml(sub.replacement || sub.reasoning)}</a>
+        </div>
+        <div class="ta-scroll-box-footer">
+          <img src="${getIconUrl(icon)}" alt="" />
+          <strong>${escapeHtml(sub.orgName || "Assembly")}</strong> · ${sub.trustScore != null ? sub.trustScore : "—"} · ${formatStatus(sub.status)}
+        </div>
+      `;
+      container.appendChild(box);
+    });
+
+    // Affirmations
+    affirmations.forEach(sub => {
+      const recordLink = sub.id ? `https://trustassembly.org/record/${sub.id}` : "https://trustassembly.org";
+      const box = document.createElement("div");
+      box.className = "ta-scroll-box";
+      box.innerHTML = `
+        <div class="ta-scroll-box-header">
+          <img src="${getIconUrl("icon48-affirmed.png")}" alt="" />
+          <span class="ta-scroll-box-brand">Trust Assembly</span>
+          <span class="ta-scroll-box-badge ta-scroll-badge-affirmation">Verified</span>
+        </div>
+        <div class="ta-scroll-box-body">
+          <a href="${recordLink}" target="_blank" rel="noopener" style="color:#1B5E3F;text-decoration:none;font-weight:700">${escapeHtml(sub.originalHeadline)}</a>
+        </div>
+        <div class="ta-scroll-box-footer">
+          <img src="${getIconUrl("icon48-affirmed.png")}" alt="" />
+          <strong>${escapeHtml(sub.orgName || "Assembly")}</strong> · ${sub.trustScore != null ? sub.trustScore : "—"} · ${formatStatus(sub.status)}
+        </div>
+      `;
+      container.appendChild(box);
+    });
+
+    // Insert after headline or at top of article body
+    if (headlineEl && headlineEl.parentNode) {
+      headlineEl.parentNode.insertBefore(container, headlineEl.nextSibling);
+    } else if (articleBody) {
+      if (articleBody.firstChild) {
+        articleBody.insertBefore(container, articleBody.firstChild);
+      } else {
+        articleBody.appendChild(container);
+      }
+    }
+  }
+
+  // ── Trust Context Card (file-folder style — article sites only) ──
+  // A compact, expandable card below the headline showing Trust Assembly
+  // activity. Collapsed: slim folder tab with signal + counts.
+  // Expanded: stats, assemblies, vault entries, and link to full record.
   function renderTrustContextCard(data) {
+    // On scroll/feed sites, use the correction box instead
+    if (isScrollSite()) {
+      renderScrollCorrectionBox(data);
+      return;
+    }
+
     // Don't render duplicates
     if (document.getElementById("ta-context-card")) return;
 
@@ -1565,36 +1905,53 @@
     });
     const assemblyNames = Array.from(assemblies.values());
 
-    // Determine overall trust signal
-    let signalClass, signalIcon, signalText;
+    // Determine signal type and matching lighthouse icon
+    let signalClass, signalText, signalIcon48;
     if (corrections.length > 0 && affirmations.length === 0) {
       signalClass = "ta-signal-corrected";
-      signalIcon = "⚠";
       signalText = "Corrections Filed";
+      signalIcon48 = "icon48-corrected.png";
     } else if (affirmations.length > 0 && corrections.length === 0) {
       signalClass = "ta-signal-affirmed";
-      signalIcon = "✓";
       signalText = "Headline Verified";
+      signalIcon48 = "icon48-affirmed.png";
     } else if (corrections.length > 0 && affirmations.length > 0) {
       signalClass = "ta-signal-mixed";
-      signalIcon = "⚖";
       signalText = "Mixed Reviews";
+      signalIcon48 = "icon48.png";
     } else {
       signalClass = "ta-signal-neutral";
-      signalIcon = "⚖";
       signalText = "Community Reviewed";
+      signalIcon48 = "icon48.png";
     }
 
     if (meta.highestConsensus) {
-      signalText += " · Consensus Reached";
+      signalText += " · Consensus";
     }
 
+    // Tab color class
+    let tabClass = "ta-context-tab";
+    if (corrections.length > 0 && affirmations.length === 0) tabClass += " ta-context-tab-corrected";
+    else if (affirmations.length > 0 && corrections.length === 0) tabClass += " ta-context-tab-affirmed";
+    else if (corrections.length > 0 && affirmations.length > 0) tabClass += " ta-context-tab-mixed";
+
+    // Build the folder tab
+    let tabHtml = `<div class="${tabClass}" id="ta-context-tab">`;
+    tabHtml += `<img src="${getIconUrl(signalIcon48)}" alt="" />`;
+    tabHtml += `Trust Assembly`;
+    tabHtml += `</div>`;
+
+    // Build the card body
     let html = `
-      <div class="ta-context-header">
-        <span class="ta-context-signal ${signalClass}">${signalIcon} ${signalText}</span>
-        <span class="ta-context-brand">Trust Assembly</span>
+      <div class="ta-context-header" id="ta-context-toggle">
+        <span class="ta-context-signal ${signalClass}">
+          <img src="${getIconUrl(signalIcon48)}" alt="" />
+          ${signalText}
+          <span style="margin-left:4px;font-size:10px;font-weight:400;color:#B0A89C">${corrections.length > 0 ? corrections.length + " correction" + (corrections.length !== 1 ? "s" : "") : ""}${corrections.length > 0 && affirmations.length > 0 ? " · " : ""}${affirmations.length > 0 ? affirmations.length + " affirmation" + (affirmations.length !== 1 ? "s" : "") : ""}</span>
+        </span>
+        <span class="ta-context-expand-hint" id="ta-context-hint">▸ details</span>
       </div>
-      <div class="ta-context-body">
+      <div class="ta-context-body" id="ta-context-body">
         <div class="ta-context-stats">
     `;
 
@@ -1615,22 +1972,79 @@
       html += `<div class="ta-context-assemblies">Reviewed by: ${assemblyNames.map(n => `<strong>${escapeHtml(n)}</strong>`).join(", ")}</div>`;
     }
 
+    // Link to full record on Trust Assembly
+    const firstSub = corrections[0] || affirmations[0];
+    if (firstSub && firstSub.id) {
+      html += `<a class="ta-context-link" href="https://trustassembly.org/record/${firstSub.id}" target="_blank" rel="noopener">View full record on Trust Assembly →</a>`;
+    }
+
+    // Mute toggle for this site
+    html += `<div id="ta-mute-toggle" style="margin-top:10px;padding-top:8px;border-top:1px solid #DCD8D0;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+      <span style="font-size:10px;color:#7A7570">Show corrections on <strong style="color:#1B2A4A">${escapeHtml(getSiteDomain())}</strong></span>
+      <span id="ta-mute-switch" style="display:inline-block;width:32px;height:18px;border-radius:9px;background:#1B5E3F;position:relative;transition:background 0.2s;cursor:pointer">
+        <span id="ta-mute-knob" style="display:block;width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:16px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></span>
+      </span>
+    </div>`;
+
     html += `</div>`;
 
-    // Vault sections container (populated async)
+    // Vault sections container (populated async, inside expandable body)
     html += `<div id="ta-context-vault"></div>`;
+
+    // Wrap: folder tab + card
+    const wrapper = document.createElement("div");
+    wrapper.id = "ta-context-card-wrap";
+    wrapper.style.cssText = "margin:8px 0 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+    wrapper.innerHTML = tabHtml;
 
     card.innerHTML = html;
 
+    wrapper.appendChild(card);
+
     // Insert after the headline if found, otherwise at top of article body
     if (headlineEl && headlineEl.parentNode) {
-      headlineEl.parentNode.insertBefore(card, headlineEl.nextSibling);
+      headlineEl.parentNode.insertBefore(wrapper, headlineEl.nextSibling);
     } else if (articleBody) {
       if (articleBody.firstChild) {
-        articleBody.insertBefore(card, articleBody.firstChild);
+        articleBody.insertBefore(wrapper, articleBody.firstChild);
       } else {
-        articleBody.appendChild(card);
+        articleBody.appendChild(wrapper);
       }
+    }
+
+    // Toggle expand/collapse on header click
+    const toggle = document.getElementById("ta-context-toggle");
+    const body = document.getElementById("ta-context-body");
+    const hint = document.getElementById("ta-context-hint");
+    if (toggle && body && hint) {
+      toggle.addEventListener("click", function() {
+        const isExpanded = body.classList.contains("ta-expanded");
+        if (isExpanded) {
+          body.classList.remove("ta-expanded");
+          hint.textContent = "▸ details";
+        } else {
+          body.classList.add("ta-expanded");
+          hint.textContent = "▾ collapse";
+        }
+      });
+    }
+
+    // Wire up mute toggle
+    const muteToggle = document.getElementById("ta-mute-toggle");
+    if (muteToggle) {
+      muteToggle.addEventListener("click", async function(e) {
+        e.stopPropagation();
+        const sw = document.getElementById("ta-mute-switch");
+        const knob = document.getElementById("ta-mute-knob");
+        // Currently ON (green, knob right) — turn OFF
+        await setSiteMuted(true);
+        if (sw) sw.style.background = "#DCD8D0";
+        if (knob) knob.style.left = "2px";
+        // Remove all injections after a brief pause for visual feedback
+        setTimeout(() => {
+          removeAllInjections();
+        }, 300);
+      });
     }
 
     // Fetch vault entries asynchronously (standing corrections, arguments, beliefs)
@@ -1831,30 +2245,21 @@
         el.style.setProperty("cursor", "help", "important");
         el.classList.add("ta-inline-headline-affirmed");
 
-        // Create hover tooltip showing verification info
+        // Create hover tooltip — simple "Headline verified" label
         const tooltip = document.createElement("div");
         tooltip.className = "ta-headline-tooltip";
         tooltip.setAttribute("style",
           "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
-          "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
-          "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
-          "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
-          "min-width:200px !important;white-space:normal !important;" +
-          "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+          "left:0 !important;z-index:2147483647 !important;background:#FDFBF5 !important;" +
+          "color:#2B2B2B !important;padding:8px 12px !important;border-radius:4px !important;" +
+          "border:1px solid #DCD8D0 !important;" +
+          "font-size:12px !important;line-height:1.4 !important;max-width:300px !important;" +
+          "min-width:140px !important;white-space:normal !important;" +
+          "box-shadow:0 2px 12px rgba(27,42,74,0.12) !important;" +
           "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
           "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
         );
-        const org = sub.orgName || "Assembly";
-        const profile = sub.profile?.displayName || "Citizen";
-        const score = sub.trustScore != null ? sub.trustScore : "—";
-        let tooltipHtml = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#A0D8B8 !important;margin-bottom:4px !important;">✓ Headline Affirmed</div>`;
-        tooltipHtml += `<div style="font-size:10px !important;color:#B0A89C !important;margin-bottom:4px !important;">Verified by <strong style="color:#B8963E !important">${escapeHtml(org)}</strong> · ${escapeHtml(profile)} · Trust Score ${score}</div>`;
-        if (sub.reasoning) {
-          const maxLen = 150;
-          const reason = sub.reasoning.length > maxLen ? sub.reasoning.slice(0, maxLen) + "…" : sub.reasoning;
-          tooltipHtml += `<div style="font-size:11px !important;color:#D0CBC3 !important;font-style:italic !important;margin-top:4px !important;line-height:1.4 !important;">${escapeHtml(reason)}</div>`;
-        }
-        tooltip.innerHTML = tooltipHtml;
+        tooltip.innerHTML = `<div style="font-size:8px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#1B5E3F !important;margin-bottom:3px !important;">Headline verified</div><div style="color:#7A7570 !important;font-size:10px !important;">Affirmed by ${escapeHtml(sub.orgName || "Assembly")}</div>`;
         el.appendChild(tooltip);
 
         el.addEventListener("mouseenter", function() {
@@ -1884,23 +2289,21 @@
               parent.style.setProperty("cursor", "help", "important");
               parent.classList.add("ta-inline-headline-affirmed");
 
-              // Create hover tooltip showing verification info
+              // Create hover tooltip — simple "Headline verified" label
               const tooltip2 = document.createElement("div");
               tooltip2.className = "ta-headline-tooltip";
               tooltip2.setAttribute("style",
                 "display:none !important;position:absolute !important;bottom:calc(100% + 8px) !important;" +
-                "left:0 !important;z-index:2147483647 !important;background:#1B2A4A !important;" +
-                "color:#F0EDE6 !important;padding:10px 14px !important;border-radius:4px !important;" +
-                "font-size:13px !important;line-height:1.5 !important;max-width:500px !important;" +
-                "min-width:200px !important;white-space:normal !important;" +
-                "box-shadow:0 4px 16px rgba(27,42,74,0.3) !important;" +
+                "left:0 !important;z-index:2147483647 !important;background:#FDFBF5 !important;" +
+                "color:#2B2B2B !important;padding:8px 12px !important;border-radius:4px !important;" +
+                "border:1px solid #DCD8D0 !important;" +
+                "font-size:12px !important;line-height:1.4 !important;max-width:300px !important;" +
+                "min-width:140px !important;white-space:normal !important;" +
+                "box-shadow:0 2px 12px rgba(27,42,74,0.12) !important;" +
                 "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
                 "font-weight:400 !important;font-style:normal !important;pointer-events:none !important;"
               );
-              const org2 = sub.orgName || "Assembly";
-              const profile2 = sub.profile?.displayName || "Citizen";
-              const score2 = sub.trustScore != null ? sub.trustScore : "—";
-              tooltip2.innerHTML = `<div style="font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#A0D8B8 !important;margin-bottom:4px !important;">✓ Headline Affirmed</div><div style="font-size:10px !important;color:#B0A89C !important;">Verified by <strong style="color:#B8963E !important">${escapeHtml(org2)}</strong> · ${escapeHtml(profile2)} · Trust Score ${score2}</div>`;
+              tooltip2.innerHTML = `<div style="font-size:8px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:0.06em !important;color:#1B5E3F !important;margin-bottom:3px !important;">Headline verified</div><div style="color:#7A7570 !important;font-size:10px !important;">Affirmed by ${escapeHtml(sub.orgName || "Assembly")}</div>`;
               parent.appendChild(tooltip2);
               parent.addEventListener("mouseenter", function() {
                 tooltip2.style.setProperty("display", "block", "important");
@@ -2071,31 +2474,21 @@
         const before = textNode.nodeValue.slice(0, idx);
         const after = textNode.nodeValue.slice(idx + originalText.length);
 
-        // Create the annotated replacement
+        // Create the annotated replacement — clean red text, no strikethrough
         const wrapper = document.createElement("span");
         wrapper.className = "ta-inline-body-edit";
 
-        // Original text with strikethrough
-        const origSpan = document.createElement("span");
-        origSpan.className = "ta-inline-body-original";
-        origSpan.textContent = originalText;
-
-        // Replacement text
+        // Replacement text only (original is hidden)
         const replSpan = document.createElement("span");
         replSpan.className = "ta-inline-body-replacement";
         replSpan.textContent = edit.replacement;
+        replSpan.dataset.taOriginal = originalText;
 
-        // Tooltip with details
+        // Tooltip with original text on hover
         const tooltip = document.createElement("span");
         tooltip.className = "ta-inline-body-tooltip";
-        const score = edit.trustScore != null ? edit.trustScore : "—";
-        let tooltipHtml = `<strong>⚖ ${escapeHtml(edit.orgName)}</strong> · ${escapeHtml(edit.profile)} · Trust Score ${score}`;
-        if (edit.reasoning) {
-          tooltipHtml += `<br><em>${escapeHtml(edit.reasoning)}</em>`;
-        }
-        tooltip.innerHTML = tooltipHtml;
+        tooltip.innerHTML = `<div style="font-size:8px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:.06em !important;color:#B0A89C !important;margin-bottom:3px !important;">Original text</div><div style="color:#2B2B2B !important;font-size:11px !important;line-height:1.4 !important;">${escapeHtml(originalText)}</div>`;
 
-        wrapper.appendChild(origSpan);
         wrapper.appendChild(replSpan);
         wrapper.appendChild(tooltip);
 
@@ -2167,9 +2560,23 @@
   }
 
   // ── Utilities ──
+  // Decode HTML entities that may arrive from the API (e.g. &#x27; → ')
+  function decodeHtmlEntities(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"').replace(/&#x22;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+      .replace(/&amp;/g, "&");
+  }
+
   function escapeHtml(str) {
     if (!str) return "";
-    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // Decode first so entities aren't double-escaped, then escape for safe HTML
+    const decoded = decodeHtmlEntities(str);
+    return decoded.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   function escapeRegex(str) {

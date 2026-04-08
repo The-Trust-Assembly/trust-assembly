@@ -206,7 +206,7 @@ runtime.onMessage.addListener((message, sender, sendResponse) => {
       let iconSuffix = "";
       if (signalType === "corrected") iconSuffix = "-corrected";
       else if (signalType === "affirmed") iconSuffix = "-affirmed";
-      // mixed and neutral keep the default gold icon
+      else if (signalType === "pending") iconSuffix = "-pending";
 
       try {
         action.setIcon({

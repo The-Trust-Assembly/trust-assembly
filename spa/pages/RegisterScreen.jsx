@@ -140,6 +140,7 @@ export default function RegisterScreen({ onRegister }) {
         reviewHistory: [], ratingsReceived: [], retractions: [],
         disputeWins: 0, disputeLosses: 0,
         isDI: isDigitalIntelligence, diPartner: diPartnerUsername, diApproved: false,
+        emailVerified: false,
       };
     }
     setLoading(false); onRegister(user);

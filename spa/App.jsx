@@ -28,6 +28,7 @@ import LoginScreen from "./pages/LoginScreen";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import VerifyEmailScreen from "./pages/VerifyEmailScreen";
 import AdminToolsScreen from "./pages/AdminToolsScreen";
+import EmailVerifyPopup from "./components/EmailVerifyPopup";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 import LandingPage from "./pages/LandingPage";
 // DiagnosticScreen moved to /admin/system-health page
@@ -143,6 +144,7 @@ export default function TrustAssembly() {
   const [user, setUser] = useState(null); const [screen, setScreenRaw] = useState("login"); const [loading, setLoading] = useState(true);
   const [reviewCount, setReviewCount] = useState(0); const [crossCount, setCrossCount] = useState(0); const [disputeCount, setDisputeCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showEmailVerifyPopup, setShowEmailVerifyPopup] = useState(false);
   const [showExtDetails, setShowExtDetails] = useState(false);
   const [showExtPage, setShowExtPage] = useState(false);
   const [showManifesto, setShowManifesto] = useState(false);
@@ -455,11 +457,19 @@ export default function TrustAssembly() {
   if (loading) return <div className="ta-root"><Loader /></div>;
 
   if (showOnboarding && user) {
-    return <OnboardingFlow onComplete={() => { setShowOnboarding(false); setScreen("orgs"); }} />;
+    return <OnboardingFlow onComplete={() => {
+      setShowOnboarding(false);
+      setScreen("orgs");
+      // Show email verification popup if not yet verified
+      if (user && user.emailVerified === false) {
+        setShowEmailVerifyPopup(true);
+      }
+    }} />;
   }
 
   return (
     <div className={`ta-root${fontSize === "medium" ? " font-medium" : fontSize === "large" ? " font-large" : ""}`}>
+      {showEmailVerifyPopup && <EmailVerifyPopup onClose={() => setShowEmailVerifyPopup(false)} userEmail={user?.email} />}
       <style>{`
         :root {
           --bg:#0d0d0a; --card-bg:#14130e; --border:#2a2518;
@@ -1025,7 +1035,7 @@ export default function TrustAssembly() {
             ) : <>
             {screen === "feed" && <FeedScreen user={user} siteAnnouncement={announcementDismissed === siteAnnouncement ? null : siteAnnouncement} hideCarousel={hideCarousel} hideStatusCards={hideStatusCards} onDismissAnnouncement={() => { setAnnouncementDismissed(siteAnnouncement); try { localStorage.setItem("ta_announcement_dismissed", siteAnnouncement); } catch {} }} onNavigate={(s, draftId) => { if (draftId) setActiveDraftId(draftId); setScreen(s); }} onViewCitizen={navigateToCitizen} onViewRecord={navigateToRecord} onViewAssembly={(orgId) => { setViewingAssemblyId(orgId); setScreen("orgs"); }} />}
             {screen === "orgs" && <OrgScreen user={user} onUpdate={setUser} onViewCitizen={navigateToCitizen} initialViewingOrg={viewingAssemblyId} onViewingOrgChange={() => setViewingAssemblyId(null)} />}
-            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} onShowRegistration={() => { setLoginAccordion(true); setScreen("register"); }} />}
+            {screen === "submit" && <SubmitScreen user={user} onUpdate={setUser} draftId={activeDraftId} onDraftLoaded={() => setActiveDraftId(null)} onShowRegistration={() => { setLoginAccordion(true); setScreen("register"); }} onShowEmailVerify={() => setShowEmailVerifyPopup(true)} />}
             {screen === "review" && <ReviewScreen user={user} />}
             {screen === "vault" && <VaultScreen user={user} />}
             {screen === "consensus" && <ConsensusScreen onViewCitizen={navigateToCitizen} />}
