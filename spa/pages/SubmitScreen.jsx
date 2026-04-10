@@ -212,6 +212,41 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
     if (d.selectedOrgIds) setSelectedOrgIds(d.selectedOrgIds);
   });
 
+  // ── Server-side auto-save (protects against app/tab being killed) ──
+  const serverAutoSaveRef = useRef(null);
+  const lastAutoSaveHash = useRef("");
+
+  useEffect(() => {
+    if (!user) return; // Must be logged in for server drafts
+
+    const autoSaveToServer = () => {
+      const url = form.url?.trim();
+      if (!url) return;
+      // Simple hash to avoid saving identical state
+      const hash = JSON.stringify({ url, h: form.originalHeadline, r: form.replacement, re: form.reasoning });
+      if (hash === lastAutoSaveHash.current) return;
+      lastAutoSaveHash.current = hash;
+      // Fire-and-forget — don't block UI
+      fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, title: form.originalHeadline?.trim() || null, draftData: draftState }),
+      }).catch(() => {});
+    };
+
+    // Auto-save every 30 seconds while form has content
+    serverAutoSaveRef.current = setInterval(autoSaveToServer, 30000);
+
+    // Save when user switches away (phone call, app switch, lock screen)
+    const onVisChange = () => { if (document.visibilityState === "hidden") autoSaveToServer(); };
+    document.addEventListener("visibilitychange", onVisChange);
+
+    return () => {
+      clearInterval(serverAutoSaveRef.current);
+      document.removeEventListener("visibilitychange", onVisChange);
+    };
+  }, [user, form.url, form.originalHeadline, form.replacement, form.reasoning, draftState]);
+
   useEffect(() => { (async () => {
     if (!user) return; // Anonymous users default to General Public (handled at submission time)
     const allOrgs = (await sG(SK.ORGS)) || {};

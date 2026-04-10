@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       id, username, display_name, real_name, email, gender, age,
       country, state, political_affiliation, bio, is_di, di_approved,
       total_wins, total_losses, current_streak, dispute_wins, dispute_losses,
-      deliberate_lies, primary_org_id, email_verified, created_at
+      deliberate_lies, primary_org_id, email_verified, user_mode, created_at
     FROM users WHERE id = ${session.sub}
   `;
 
