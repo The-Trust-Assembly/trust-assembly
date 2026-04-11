@@ -27,13 +27,13 @@ export async function GET() {
     `;
 
     // Fetch evidence for these submissions
-    const ids = result.rows.map((r: any) => r.id);
+    const ids: string[] = result.rows.map((r: any) => r.id as string);
     let evidenceMap: Record<string, any[]> = {};
     if (ids.length > 0) {
       const evidence = await sql`
         SELECT submission_id, url, explanation
         FROM submission_evidence
-        WHERE submission_id = ANY(${ids})
+        WHERE submission_id = ANY(${ids}::uuid[])
       `;
       evidence.rows.forEach((e: any) => {
         if (!evidenceMap[e.submission_id]) evidenceMap[e.submission_id] = [];
