@@ -1,4 +1,4 @@
 {
   "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- src/ spa/ public/ package.json package-lock.json next.config.js vercel.json db/"
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then exit 0; fi; exit 1"
 }

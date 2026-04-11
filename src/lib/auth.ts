@@ -2,11 +2,18 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET environment variable is required");
+let _jwtSecret: Uint8Array | null = null;
+
+function getJwtSecret(): Uint8Array {
+  if (!_jwtSecret) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
+    _jwtSecret = new TextEncoder().encode(secret);
+  }
+  return _jwtSecret;
 }
-const JWT_SECRET = new TextEncoder().encode(jwtSecret);
 
 const COOKIE_NAME = "ta-session";
 const TOKEN_EXPIRY = "7d";
@@ -31,12 +38,12 @@ export async function createToken(payload: JWTPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return payload as unknown as JWTPayload;
   } catch {
     return null;

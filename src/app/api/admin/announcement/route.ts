@@ -3,6 +3,8 @@ import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, err, serverError } from "@/lib/api-utils";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/admin/announcement
 // Returns the current admin announcement (public endpoint).
 export async function GET() {
