@@ -30,11 +30,12 @@ export async function GET() {
     const ids: string[] = result.rows.map((r: any) => r.id as string);
     let evidenceMap: Record<string, any[]> = {};
     if (ids.length > 0) {
-      const evidence = await sql`
-        SELECT submission_id, url, explanation
-        FROM submission_evidence
-        WHERE submission_id = ANY(${ids}::uuid[])
-      `;
+      const evidence = await sql.query(
+        `SELECT submission_id, url, explanation
+         FROM submission_evidence
+         WHERE submission_id = ANY($1)`,
+        [ids]
+      );
       evidence.rows.forEach((e: any) => {
         if (!evidenceMap[e.submission_id]) evidenceMap[e.submission_id] = [];
         evidenceMap[e.submission_id].push({ url: e.url, explanation: e.explanation });
