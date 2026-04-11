@@ -66,8 +66,6 @@ export async function GET() {
     return ok({
       submissions,
       total: submissions.length,
-    }, {
-      "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
     });
   } catch (e) {
     return serverError("GET /api/public/consensus", e);
