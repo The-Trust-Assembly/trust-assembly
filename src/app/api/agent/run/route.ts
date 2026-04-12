@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, err, serverError } from "@/lib/api-utils";
 
@@ -6,14 +7,11 @@ export const dynamic = "force-dynamic";
 
 // POST /api/agent/run
 // ---------------------
-// Starts a Trust Assembly Agent fact-checking run. Currently a stub that
-// validates input and admin access. Subsequent iterations will:
-//   1. Create an agent_runs row in the DB (queued state)
-//   2. Kick off a server-side pipeline (search → fetch → analyze → synthesize)
-//   3. Return a runId the client can poll for progress
-//
-// For now this just echoes the input back so the form can be wired up and
-// end-to-end tested in the UI without incurring API costs.
+// Starts a Trust Assembly Agent fact-checking run. Inserts a row into
+// agent_runs with status='queued' and returns the runId. The pipeline
+// itself (search → fetch → analyze → synthesize) is not yet wired up;
+// when it is, a background worker will pick up queued rows and update
+// their status as it progresses.
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin) return forbidden("Admin access required");
@@ -22,6 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const thesis = typeof body.thesis === "string" ? body.thesis.trim() : "";
     const scope = typeof body.scope === "string" ? body.scope.trim() : "";
+    const context = body.context && typeof body.context === "object" ? body.context : null;
 
     if (!thesis) {
       return err("thesis is required", 400);
@@ -33,15 +32,22 @@ export async function POST(request: NextRequest) {
       return err("scope is required", 400);
     }
 
-    // TODO: insert into agent_runs table, kick off pipeline
+    const result = await sql`
+      INSERT INTO agent_runs (user_id, thesis, scope, context, status, stage_message)
+      VALUES (${admin.sub}, ${thesis}, ${scope}, ${context ? JSON.stringify(context) : null}, 'queued', 'Queued — waiting for pipeline worker')
+      RETURNING id, status, created_at
+    `;
+
+    const row = result.rows[0];
     return ok({
+      runId: row.id,
+      status: row.status,
+      createdAt: row.created_at,
       message:
-        "Run accepted (stub). The full pipeline is not yet wired up — this confirms the form posts, admin auth works, and input validation passes.",
-      thesis,
-      scope,
-      status: "stub",
+        "Run queued. The pipeline worker is not yet implemented — this row will sit in the queue until the next slice wires up the search/analyze/synthesize stages.",
     });
   } catch (e) {
     return serverError("/api/agent/run", e);
   }
 }
+

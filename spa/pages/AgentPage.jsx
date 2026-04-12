@@ -67,12 +67,54 @@ function AccessDenied({ user }) {
   );
 }
 
+const STATUS_COLORS = {
+  queued: "var(--text-muted)",
+  searching: "var(--gold)",
+  fetching: "var(--gold)",
+  analyzing: "var(--gold)",
+  synthesizing: "var(--gold)",
+  ready: "var(--green)",
+  submitting: "var(--gold)",
+  completed: "var(--green)",
+  failed: "var(--red)",
+  cancelled: "var(--text-muted)",
+};
+
+function fmtTimestamp(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
 function AgentDashboard({ user }) {
   const [thesis, setThesis] = useState("");
   const [activePreset, setActivePreset] = useState(0);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [recentRuns, setRecentRuns] = useState([]);
+  const [loadingRuns, setLoadingRuns] = useState(true);
+
+  async function loadRecentRuns() {
+    try {
+      const res = await fetch("/api/agent/runs?limit=20");
+      if (res.ok) {
+        const data = await res.json();
+        setRecentRuns(data.runs || []);
+      }
+    } catch (e) {
+      // Non-fatal — just show empty list
+    } finally {
+      setLoadingRuns(false);
+    }
+  }
+
+  useEffect(() => {
+    loadRecentRuns();
+  }, []);
 
   async function handleRun() {
     if (!thesis.trim()) {
@@ -93,7 +135,9 @@ function AgentDashboard({ user }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(data.message || "Run started.");
+        setMessage(`Run queued (${data.runId.substring(0, 8)}...). ${data.message || ""}`);
+        setThesis("");
+        loadRecentRuns();
       } else {
         setError(data.error || "Failed to start run.");
       }
@@ -235,22 +279,85 @@ function AgentDashboard({ user }) {
         </button>
       </div>
 
-      <div
-        style={{
-          marginTop: 24,
-          padding: "14px 18px",
-          background: "var(--card-bg)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          fontSize: 13,
-          color: "var(--text-muted)",
-          lineHeight: 1.7,
-        }}
-      >
-        <strong style={{ color: "var(--text)" }}>Status:</strong> This is the initial wiring. The form posts
-        to <code style={{ fontFamily: "var(--mono)" }}>/api/agent/run</code>, which is currently a stub. The
-        full pipeline (search → fetch → analyze → synthesize → review → submit) will come online in
-        subsequent iterations. The review and history screens are next.
+      <div style={{ marginTop: 32 }}>
+        <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 600, color: "var(--text)", marginBottom: 12 }}>
+          Recent Runs
+        </h3>
+        {loadingRuns ? (
+          <div style={{ color: "var(--text-muted)", fontSize: 13, fontStyle: "italic" }}>Loading...</div>
+        ) : recentRuns.length === 0 ? (
+          <div
+            style={{
+              padding: "20px 24px",
+              background: "var(--card-bg)",
+              border: "1px dashed var(--border)",
+              borderRadius: 6,
+              color: "var(--text-muted)",
+              fontSize: 13,
+              fontStyle: "italic",
+              textAlign: "center",
+            }}
+          >
+            No runs yet. Start one above.
+          </div>
+        ) : (
+          recentRuns.map((run) => (
+            <div
+              key={run.id}
+              style={{
+                padding: "12px 16px",
+                marginBottom: 8,
+                background: "var(--card-bg)",
+                border: "1px solid var(--border)",
+                borderLeft: `4px solid ${STATUS_COLORS[run.status] || "var(--text-muted)"}`,
+                borderRadius: 6,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  marginBottom: 4,
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>
+                  {run.thesis.length > 100 ? run.thesis.substring(0, 100) + "..." : run.thesis}
+                </div>
+                <span
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 11,
+                    padding: "2px 8px",
+                    borderRadius: 10,
+                    background: "var(--bg)",
+                    color: STATUS_COLORS[run.status] || "var(--text-muted)",
+                    border: `1px solid ${STATUS_COLORS[run.status] || "var(--border)"}`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {run.status}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--text-muted)" }}>
+                <span style={{ fontFamily: "var(--mono)" }}>{run.scope}</span>
+                <span>{fmtTimestamp(run.created_at)}</span>
+                {run.articles_found > 0 && (
+                  <span>
+                    {run.articles_found} found · {run.articles_analyzed} analyzed
+                  </span>
+                )}
+                {run.estimated_cost_usd > 0 && (
+                  <span style={{ fontFamily: "var(--mono)" }}>${Number(run.estimated_cost_usd).toFixed(2)}</span>
+                )}
+              </div>
+              {run.error_message && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>{run.error_message}</div>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
