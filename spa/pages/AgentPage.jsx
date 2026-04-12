@@ -116,6 +116,16 @@ function AgentDashboard({ user }) {
     loadRecentRuns();
   }, []);
 
+  // Poll while any run is in a non-terminal state. Stops automatically
+  // once all runs are ready/failed/cancelled.
+  useEffect(() => {
+    const ACTIVE_STATUSES = ["queued", "searching", "fetching", "analyzing", "synthesizing", "submitting"];
+    const hasActive = recentRuns.some((r) => ACTIVE_STATUSES.includes(r.status));
+    if (!hasActive) return;
+    const interval = setInterval(loadRecentRuns, 3000);
+    return () => clearInterval(interval);
+  }, [recentRuns]);
+
   async function handleRun() {
     if (!thesis.trim()) {
       setError("Please enter a thesis or topic to fact-check.");
@@ -135,7 +145,13 @@ function AgentDashboard({ user }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`Run queued (${data.runId.substring(0, 8)}...). ${data.message || ""}`);
+        // Fire-and-forget: kick off the pipeline worker. The browser
+        // holds the connection open while the server runs the pipeline
+        // (up to maxDuration=300s on the route). We do NOT await this
+        // so the form unblocks immediately. Polling above picks up
+        // status updates as the worker advances the run through phases.
+        fetch(`/api/agent/process/${data.runId}`, { method: "POST" }).catch(() => {});
+        setMessage(`Run started (${data.runId.substring(0, 8)}...). The pipeline is now running — watch the recent runs list below for progress.`);
         setThesis("");
         loadRecentRuns();
       } else {
@@ -340,18 +356,35 @@ function AgentDashboard({ user }) {
                   {run.status}
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--text-muted)" }}>
+              <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--text-muted)", flexWrap: "wrap" }}>
                 <span style={{ fontFamily: "var(--mono)" }}>{run.scope}</span>
                 <span>{fmtTimestamp(run.created_at)}</span>
                 {run.articles_found > 0 && (
                   <span>
-                    {run.articles_found} found · {run.articles_analyzed} analyzed
+                    {run.articles_found} found · {run.articles_fetched} fetched · {run.articles_analyzed} analyzed
                   </span>
                 )}
                 {run.estimated_cost_usd > 0 && (
                   <span style={{ fontFamily: "var(--mono)" }}>${Number(run.estimated_cost_usd).toFixed(2)}</span>
                 )}
               </div>
+              {run.stage_message && run.status !== "ready" && run.status !== "failed" && run.status !== "cancelled" && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                  {run.stage_message}
+                </div>
+              )}
+              {run.progress_pct > 0 && run.progress_pct < 100 && (
+                <div style={{ marginTop: 6, height: 4, background: "var(--bg)", borderRadius: 2, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${run.progress_pct}%`,
+                      background: STATUS_COLORS[run.status] || "var(--gold)",
+                      transition: "width 0.4s ease",
+                    }}
+                  />
+                </div>
+              )}
               {run.error_message && (
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>{run.error_message}</div>
               )}
