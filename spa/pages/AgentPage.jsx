@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ADMIN_USERNAME } from "../lib/constants";
+import AgentReviewPanel from "./AgentReviewPanel";
 
 // Trust Assembly Agent — Web App Version
 // ---------------------------------------
@@ -89,7 +90,7 @@ function fmtTimestamp(iso) {
   }
 }
 
-function AgentDashboard({ user }) {
+function AgentDashboard({ user, onReview }) {
   const [thesis, setThesis] = useState("");
   const [activePreset, setActivePreset] = useState(0);
   const [running, setRunning] = useState(false);
@@ -388,6 +389,17 @@ function AgentDashboard({ user }) {
               {run.error_message && (
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>{run.error_message}</div>
               )}
+              {run.status === "ready" && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    className="ta-btn-primary"
+                    onClick={() => onReview && onReview(run.id)}
+                    style={{ fontSize: 12, padding: "6px 16px" }}
+                  >
+                    Review &amp; Submit →
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}
@@ -397,8 +409,23 @@ function AgentDashboard({ user }) {
 }
 
 export default function AgentPage({ user }) {
+  const [reviewingRunId, setReviewingRunId] = useState(null);
+
   if (!isAgentAuthorized(user)) {
     return <AccessDenied user={user} />;
   }
-  return <AgentDashboard user={user} />;
+
+  if (reviewingRunId) {
+    return (
+      <AgentReviewPanel
+        runId={reviewingRunId}
+        onBack={() => setReviewingRunId(null)}
+        onCompleted={() => {
+          // Stay on the success view; user clicks "Back to Agent" when done
+        }}
+      />
+    );
+  }
+
+  return <AgentDashboard user={user} onReview={setReviewingRunId} />;
 }
