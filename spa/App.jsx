@@ -477,12 +477,13 @@ export default function TrustAssembly() {
           --bg:#0d0d0a; --card-bg:#14130e; --border:#2a2518;
           --gold:#d4a843; --text:#ffffff; --text-sec:#bbb5aa; --text-muted:#8a8278;
           --green:#4a9e55; --red:#c44a3a; --purple:#7C3AED; --teal:#0D9488;
+          --ward:#8B6CC4;
           --font:'Helvetica Neue',Helvetica,sans-serif; --serif:Georgia,serif; --mono:'Courier New',monospace;
         }
         [data-theme="light"] {
           --bg:#f5f2ec; --card-bg:#ffffff; --border:#d9d3c7;
           --gold:#b8922e; --text:#1a1714; --text-sec:#5c564d; --text-muted:#9a948b;
-          --green:#2d7a38; --red:#b03a2e;
+          --green:#2d7a38; --red:#b03a2e; --ward:#6B4C9A;
         }
         *{margin:0;padding:0;box-sizing:border-box;}
         @keyframes ta-fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
