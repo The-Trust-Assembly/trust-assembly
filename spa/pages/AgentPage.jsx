@@ -1,35 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ADMIN_USERNAME } from "../lib/constants";
 import AgentReviewPanel from "./AgentReviewPanel";
+import AgentTabBar from "../components/agent/AgentTabBar";
+import AgentIcon from "../components/agent/AgentIcon";
+import AgentNewForm from "../components/agent/AgentNewForm";
+import SentinelDashboard from "../components/agent/SentinelDashboard";
+import AgentSettings from "../components/agent/AgentSettings";
 
-// Trust Assembly Agent — Web App Version
-// ---------------------------------------
-// AI-powered fact-checking agent. Currently admin-gated — other users
-// will see an access-denied message. Eventually this will be opened
-// to all registered AI Agent accounts.
+// Trust Assembly Agent — main page
+// ----------------------------------
+// Top-level container for the agent workspace. Manages:
+//   - Agent instance list (loaded from /api/agent/instances)
+//   - Active tab state (onetime / new / UUID)
+//   - Page state within each tab (dashboard / settings / review)
 //
-// Architecture:
-//   - Web form collects a topic/thesis and scope preset
-//   - POST /api/agent/run kicks off a server-side pipeline
-//   - Server-side pipeline: search → fetch → analyze → synthesize
-//   - Results come back as a "batch" the user reviews and approves
-//   - Approved batch gets submitted via existing /api/submissions
+// Currently admin-gated. Stage G will lift this to "any user with a
+// registered AI Agent account."
 //
-// This file is the skeleton — all screens stubbed out. Piece by piece
-// we will flesh out Dashboard, Review, and History as the matching
-// API routes come online.
-
-const SCOPE_PRESETS = [
-  { label: "Top article", value: "single" },
-  { label: "Top 3", value: "top3" },
-  { label: "Top 10", value: "top10" },
-  { label: "First 5 pages", value: "pages5" },
-  { label: "As many as possible", value: "max" },
-  { label: "Last 30 days", value: "30d" },
-];
+// Routing within this page:
+//   activeTab === "onetime"  → one-time placeholder (Stage F will implement)
+//   activeTab === "new"      → AgentNewForm (create a new agent)
+//   activeTab === <uuid>     → either SentinelDashboard / Phantom / Ward
+//                              (dashboard), AgentSettings, or
+//                              AgentReviewPanel depending on activePage
+//
+// Phantom and Ward dashboards are placeholders in Stage B — they show
+// a "coming soon" card since the real type-specific flows arrive in
+// Stages D and E.
 
 function isAgentAuthorized(user) {
-  // For now: admin only. Later: any user with a linked AI Agent account.
   return user && user.username === ADMIN_USERNAME;
 }
 
@@ -49,18 +48,19 @@ function AccessDenied({ user }) {
         }}
       >
         <p style={{ fontSize: 15, lineHeight: 1.8, margin: 0 }}>
-          The Trust Assembly Agent is an AI-powered fact-checking tool that discovers articles on topics you
-          care about, analyzes them for factual accuracy, and files corrections or affirmations on your
-          behalf.
+          The Trust Assembly Agent is an AI-powered fact-checking tool that discovers articles on
+          topics you care about, analyzes them for factual accuracy, and files corrections or
+          affirmations on your behalf.
         </p>
         <p style={{ fontSize: 15, lineHeight: 1.8, margin: "12px 0 0" }}>
-          It is currently <strong>admin-only while we finish testing</strong>. Once released, it will be
-          available to any citizen who has registered an AI Agent account on Trust Assembly.
+          It is currently <strong>admin-only while we finish testing</strong>. Once released, it
+          will be available to any citizen who has registered an AI Agent account on Trust
+          Assembly.
         </p>
         {user && (
           <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "16px 0 0" }}>
-            Signed in as <strong>{user.username}</strong>. If you believe you should have access, contact the
-            admin.
+            Signed in as <strong>{user.username}</strong>. If you believe you should have access,
+            contact the admin.
           </p>
         )}
       </div>
@@ -68,364 +68,305 @@ function AccessDenied({ user }) {
   );
 }
 
-const STATUS_COLORS = {
-  queued: "var(--text-muted)",
-  searching: "var(--gold)",
-  fetching: "var(--gold)",
-  analyzing: "var(--gold)",
-  synthesizing: "var(--gold)",
-  ready: "var(--green)",
-  submitting: "var(--gold)",
-  completed: "var(--green)",
-  failed: "var(--red)",
-  cancelled: "var(--text-muted)",
-};
-
-function fmtTimestamp(iso) {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
-function AgentDashboard({ user, onReview }) {
-  const [thesis, setThesis] = useState("");
-  const [activePreset, setActivePreset] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [recentRuns, setRecentRuns] = useState([]);
-  const [loadingRuns, setLoadingRuns] = useState(true);
-
-  async function loadRecentRuns() {
-    try {
-      const res = await fetch("/api/agent/runs?limit=20");
-      if (res.ok) {
-        const data = await res.json();
-        setRecentRuns(data.runs || []);
-      }
-    } catch (e) {
-      // Non-fatal — just show empty list
-    } finally {
-      setLoadingRuns(false);
-    }
-  }
-
-  useEffect(() => {
-    loadRecentRuns();
-  }, []);
-
-  // Poll while any run is in a non-terminal state. Stops automatically
-  // once all runs are ready/failed/cancelled.
-  useEffect(() => {
-    const ACTIVE_STATUSES = ["queued", "searching", "fetching", "analyzing", "synthesizing", "submitting"];
-    const hasActive = recentRuns.some((r) => ACTIVE_STATUSES.includes(r.status));
-    if (!hasActive) return;
-    const interval = setInterval(loadRecentRuns, 3000);
-    return () => clearInterval(interval);
-  }, [recentRuns]);
-
-  async function handleRun() {
-    if (!thesis.trim()) {
-      setError("Please enter a thesis or topic to fact-check.");
-      return;
-    }
-    setError("");
-    setMessage("");
-    setRunning(true);
-    try {
-      const res = await fetch("/api/agent/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          thesis: thesis.trim(),
-          scope: SCOPE_PRESETS[activePreset].value,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        // Fire-and-forget: kick off the pipeline worker. The browser
-        // holds the connection open while the server runs the pipeline
-        // (up to maxDuration=300s on the route). We do NOT await this
-        // so the form unblocks immediately. Polling above picks up
-        // status updates as the worker advances the run through phases.
-        fetch(`/api/agent/process/${data.runId}`, { method: "POST" }).catch(() => {});
-        setMessage(`Run started (${data.runId.substring(0, 8)}...). The pipeline is now running — watch the recent runs list below for progress.`);
-        setThesis("");
-        loadRecentRuns();
-      } else {
-        setError(data.error || "Failed to start run.");
-      }
-    } catch (e) {
-      setError(e.message || "Network error.");
-    } finally {
-      setRunning(false);
-    }
-  }
-
+function OneTimePlaceholder() {
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 24px" }}>
-      <div className="ta-section-rule" />
-      <h2 className="ta-section-head">Trust Assembly Agent</h2>
-      <p style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 4, marginBottom: 24 }}>
-        AI-powered fact-checking. Enter a thesis, pick a scope, and the agent will search the web, analyze
-        articles, and produce a reviewable batch of corrections and affirmations.
-      </p>
-
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
+      <h2 className="ta-section-head">One-Time Fact-Check</h2>
       <div
         style={{
           background: "var(--card-bg)",
-          border: "2px solid var(--gold)",
+          border: "1px dashed var(--border)",
           borderRadius: 8,
           padding: "24px 28px",
+          marginTop: 16,
+          textAlign: "center",
+          color: "var(--text-muted)",
+          fontSize: 14,
+          lineHeight: 1.7,
         }}
       >
-        <label
-          style={{
-            display: "block",
-            fontFamily: "var(--serif)",
-            fontSize: 15,
-            fontWeight: 600,
-            color: "var(--text)",
-            marginBottom: 8,
-          }}
-        >
-          What do you think is important to correct or affirm in the public understanding?
-        </label>
-        <textarea
-          value={thesis}
-          onChange={(e) => setThesis(e.target.value)}
-          placeholder="e.g., Many articles conflate the court's First Amendment ruling with a factual finding about the underlying allegations. The court only ruled on protected speech, not on whether the allegations were true."
-          disabled={running}
-          style={{
-            width: "100%",
-            minHeight: 100,
-            padding: "12px 14px",
-            fontFamily: "var(--serif)",
-            fontSize: 14,
-            border: "1px solid var(--border)",
-            borderRadius: 4,
-            background: "var(--bg)",
-            color: "var(--text)",
-            resize: "vertical",
-          }}
-        />
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-          This guides the agent's analysis — it will test your thesis across all articles it finds.
-        </div>
-
-        <div style={{ marginTop: 16 }}>
-          <label
-            style={{
-              display: "block",
-              fontFamily: "var(--serif)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--text)",
-              marginBottom: 6,
-            }}
-          >
-            Search scope
-          </label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {SCOPE_PRESETS.map((preset, i) => {
-              const active = activePreset === i;
-              return (
-                <span
-                  key={i}
-                  onClick={() => !running && setActivePreset(i)}
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 11,
-                    padding: "4px 12px",
-                    background: active ? "var(--text)" : "var(--bg)",
-                    color: active ? "var(--card-bg)" : "var(--text)",
-                    border: `1px solid ${active ? "var(--text)" : "var(--border)"}`,
-                    borderRadius: 16,
-                    cursor: running ? "not-allowed" : "pointer",
-                    userSelect: "none",
-                  }}
-                >
-                  {preset.label}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-
-        {error && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: "10px 14px",
-              background: "rgba(196, 77, 77, 0.1)",
-              border: "1px solid var(--red)",
-              borderRadius: 4,
-              color: "var(--red)",
-              fontSize: 13,
-            }}
-          >
-            {error}
-          </div>
-        )}
-        {message && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: "10px 14px",
-              background: "rgba(74, 140, 92, 0.1)",
-              border: "1px solid var(--green)",
-              borderRadius: 4,
-              color: "var(--green)",
-              fontSize: 13,
-            }}
-          >
-            {message}
-          </div>
-        )}
-
-        <button
-          className="ta-btn-primary"
-          onClick={handleRun}
-          disabled={running}
-          style={{ width: "100%", marginTop: 20, fontSize: 16, padding: "12px 0" }}
-        >
-          {running ? "Starting..." : "Run Fact-Check"}
-        </button>
+        The one-time flow (Stage F) lets users without an account run a single fact-check by email.
+        <br />
+        <span style={{ fontSize: 12, opacity: 0.7 }}>Coming in a later stage.</span>
       </div>
+    </div>
+  );
+}
 
-      <div style={{ marginTop: 32 }}>
-        <h3 style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 600, color: "var(--text)", marginBottom: 12 }}>
-          Recent Runs
-        </h3>
-        {loadingRuns ? (
-          <div style={{ color: "var(--text-muted)", fontSize: 13, fontStyle: "italic" }}>Loading...</div>
-        ) : recentRuns.length === 0 ? (
-          <div
-            style={{
-              padding: "20px 24px",
-              background: "var(--card-bg)",
-              border: "1px dashed var(--border)",
-              borderRadius: 6,
-              color: "var(--text-muted)",
-              fontSize: 13,
-              fontStyle: "italic",
-              textAlign: "center",
-            }}
-          >
-            No runs yet. Start one above.
-          </div>
-        ) : (
-          recentRuns.map((run) => (
-            <div
-              key={run.id}
-              style={{
-                padding: "12px 16px",
-                marginBottom: 8,
-                background: "var(--card-bg)",
-                border: "1px solid var(--border)",
-                borderLeft: `4px solid ${STATUS_COLORS[run.status] || "var(--text-muted)"}`,
-                borderRadius: 6,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  marginBottom: 4,
-                }}
-              >
-                <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>
-                  {run.thesis.length > 100 ? run.thesis.substring(0, 100) + "..." : run.thesis}
-                </div>
-                <span
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 11,
-                    padding: "2px 8px",
-                    borderRadius: 10,
-                    background: "var(--bg)",
-                    color: STATUS_COLORS[run.status] || "var(--text-muted)",
-                    border: `1px solid ${STATUS_COLORS[run.status] || "var(--border)"}`,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {run.status}
-                </span>
-              </div>
-              <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--text-muted)", flexWrap: "wrap" }}>
-                <span style={{ fontFamily: "var(--mono)" }}>{run.scope}</span>
-                <span>{fmtTimestamp(run.created_at)}</span>
-                {run.articles_found > 0 && (
-                  <span>
-                    {run.articles_found} found · {run.articles_fetched} fetched · {run.articles_analyzed} analyzed
-                  </span>
-                )}
-                {run.estimated_cost_usd > 0 && (
-                  <span style={{ fontFamily: "var(--mono)" }}>${Number(run.estimated_cost_usd).toFixed(2)}</span>
-                )}
-              </div>
-              {run.stage_message && run.status !== "ready" && run.status !== "failed" && run.status !== "cancelled" && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-                  {run.stage_message}
-                </div>
-              )}
-              {run.progress_pct > 0 && run.progress_pct < 100 && (
-                <div style={{ marginTop: 6, height: 4, background: "var(--bg)", borderRadius: 2, overflow: "hidden" }}>
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${run.progress_pct}%`,
-                      background: STATUS_COLORS[run.status] || "var(--gold)",
-                      transition: "width 0.4s ease",
-                    }}
-                  />
-                </div>
-              )}
-              {run.error_message && (
-                <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>{run.error_message}</div>
-              )}
-              {run.status === "ready" && (
-                <div style={{ marginTop: 10 }}>
-                  <button
-                    className="ta-btn-primary"
-                    onClick={() => onReview && onReview(run.id)}
-                    style={{ fontSize: 12, padding: "6px 16px" }}
-                  >
-                    Review &amp; Submit →
-                  </button>
-                </div>
-              )}
-            </div>
-          ))
-        )}
+function TypeDashboardPlaceholder({ agent, stage }) {
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
+      <h2 className="ta-section-head">{agent.name}</h2>
+      <div
+        style={{
+          background: "var(--card-bg)",
+          border: "1px dashed var(--border)",
+          borderRadius: 8,
+          padding: "24px 28px",
+          marginTop: 16,
+          textAlign: "center",
+          color: "var(--text-muted)",
+          fontSize: 14,
+          lineHeight: 1.7,
+        }}
+      >
+        <AgentIcon type={agent.type} size={48} color={agent.color} />
+        <div style={{ marginTop: 12, textTransform: "capitalize", fontWeight: 600, color: "var(--text)" }}>
+          {agent.type} dashboard
+        </div>
+        <div style={{ marginTop: 6 }}>
+          This agent type is wired up in {stage}. For now you can edit its Settings.
+        </div>
       </div>
     </div>
   );
 }
 
 export default function AgentPage({ user }) {
+  const [instances, setInstances] = useState([]);
+  const [loadingInstances, setLoadingInstances] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [activeTab, setActiveTab] = useState("onetime"); // "onetime" | "new" | <uuid>
+  const [activePage, setActivePage] = useState("dashboard"); // "dashboard" | "settings" | "review"
   const [reviewingRunId, setReviewingRunId] = useState(null);
 
-  if (!isAgentAuthorized(user)) {
+  const authorized = isAgentAuthorized(user);
+
+  const loadInstances = useCallback(async () => {
+    if (!authorized) return;
+    try {
+      const res = await fetch("/api/agent/instances");
+      if (res.ok) {
+        const data = await res.json();
+        setInstances(data.instances || []);
+      } else {
+        setLoadError("Failed to load agent instances.");
+      }
+    } catch (e) {
+      setLoadError(e.message || "Network error.");
+    } finally {
+      setLoadingInstances(false);
+    }
+  }, [authorized]);
+
+  useEffect(() => {
+    loadInstances();
+  }, [loadInstances]);
+
+  if (!authorized) {
     return <AccessDenied user={user} />;
   }
 
-  if (reviewingRunId) {
+  const activeAgent =
+    activeTab !== "onetime" && activeTab !== "new"
+      ? instances.find((i) => i.id === activeTab)
+      : null;
+
+  function handleTabSelect(id) {
+    setActiveTab(id);
+    setReviewingRunId(null);
+    // When selecting an agent instance that's still in 'setup', jump
+    // straight to Settings so they can configure it.
+    const inst = instances.find((i) => i.id === id);
+    if (inst && inst.status === "setup") {
+      setActivePage("settings");
+    } else {
+      setActivePage("dashboard");
+    }
+  }
+
+  function handleCreateNew() {
+    setActiveTab("new");
+    setActivePage("dashboard");
+    setReviewingRunId(null);
+  }
+
+  async function handleInstanceCreated(newInstance) {
+    // Refresh list and switch to the new tab in setup mode
+    await loadInstances();
+    setActiveTab(newInstance.id);
+    setActivePage("settings");
+  }
+
+  function handleInstanceUpdated(updated) {
+    setInstances((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  }
+
+  async function handleInstanceDeleted(deletedId) {
+    await loadInstances();
+    setActiveTab("onetime");
+    setActivePage("dashboard");
+  }
+
+  function handleReview(runId) {
+    setReviewingRunId(runId);
+    setActivePage("review");
+  }
+
+  // Render the review panel as an overlay on top of the workspace when
+  // the user is reviewing a run
+  if (activePage === "review" && reviewingRunId) {
     return (
       <AgentReviewPanel
         runId={reviewingRunId}
-        onBack={() => setReviewingRunId(null)}
+        onBack={() => {
+          setReviewingRunId(null);
+          setActivePage("dashboard");
+        }}
         onCompleted={() => {
-          // Stay on the success view; user clicks "Back to Agent" when done
+          // Stay on the success screen; user clicks "Back to Agent"
         }}
       />
     );
   }
 
-  return <AgentDashboard user={user} onReview={setReviewingRunId} />;
+  return (
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "20px 24px 16px",
+          borderBottom: "2px solid var(--gold)",
+          marginBottom: 24,
+        }}
+      >
+        <img
+          src="/icons/Golden lighthouse emblem with laurel wreath.png"
+          alt="Trust Assembly"
+          style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }}
+        />
+        <div style={{ flex: 1 }}>
+          <h1
+            style={{
+              fontFamily: "var(--serif)",
+              color: "var(--text)",
+              fontSize: 26,
+              margin: 0,
+              letterSpacing: 0.5,
+            }}
+          >
+            Trust Assembly Agent
+          </h1>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+            Truth Will Out.
+          </div>
+        </div>
+        {activeAgent && activeAgent.status !== "setup" && (
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <span
+              onClick={() => setActivePage("dashboard")}
+              style={{
+                color: "var(--text)",
+                cursor: "pointer",
+                fontSize: 14,
+                fontFamily: "var(--serif)",
+                padding: "4px 10px",
+                borderRadius: 4,
+                background: activePage === "dashboard" ? "var(--card-bg)" : "transparent",
+                borderBottom:
+                  activePage === "dashboard" ? "2px solid var(--gold)" : "2px solid transparent",
+              }}
+            >
+              Dashboard
+            </span>
+            <span
+              onClick={() => setActivePage("settings")}
+              style={{
+                color: "var(--text)",
+                cursor: "pointer",
+                fontSize: 14,
+                fontFamily: "var(--serif)",
+                padding: "4px 10px",
+                borderRadius: 4,
+                background: activePage === "settings" ? "var(--card-bg)" : "transparent",
+                borderBottom:
+                  activePage === "settings" ? "2px solid var(--gold)" : "2px solid transparent",
+              }}
+            >
+              Settings
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ padding: "0 24px" }}>
+        {loadingInstances ? (
+          <div
+            style={{
+              padding: "10px 16px",
+              color: "var(--text-muted)",
+              fontSize: 13,
+              fontStyle: "italic",
+            }}
+          >
+            Loading agents…
+          </div>
+        ) : (
+          <AgentTabBar
+            instances={instances}
+            activeId={activeTab}
+            onSelect={handleTabSelect}
+            onCreateNew={handleCreateNew}
+          />
+        )}
+      </div>
+
+      {loadError && (
+        <div
+          style={{
+            margin: "10px 24px",
+            padding: "10px 14px",
+            background: "rgba(196, 77, 77, 0.1)",
+            border: "1px solid var(--red)",
+            borderRadius: 4,
+            color: "var(--red)",
+            fontSize: 13,
+          }}
+        >
+          {loadError}
+        </div>
+      )}
+
+      {/* Tab content */}
+      <div style={{ padding: "24px 0" }}>
+        {activeTab === "onetime" && <OneTimePlaceholder />}
+
+        {activeTab === "new" && (
+          <AgentNewForm
+            onCreated={handleInstanceCreated}
+            onCancel={() => {
+              setActiveTab("onetime");
+              setActivePage("dashboard");
+            }}
+          />
+        )}
+
+        {activeAgent && activePage === "dashboard" && (
+          <>
+            {activeAgent.type === "sentinel" && (
+              <SentinelDashboard agent={activeAgent} onReview={handleReview} />
+            )}
+            {activeAgent.type === "phantom" && (
+              <TypeDashboardPlaceholder agent={activeAgent} stage="Stage D" />
+            )}
+            {activeAgent.type === "ward" && (
+              <TypeDashboardPlaceholder agent={activeAgent} stage="Stage E" />
+            )}
+          </>
+        )}
+
+        {activeAgent && activePage === "settings" && (
+          <AgentSettings
+            agent={activeAgent}
+            onUpdated={handleInstanceUpdated}
+            onDeleted={handleInstanceDeleted}
+          />
+        )}
+      </div>
+    </div>
+  );
 }
