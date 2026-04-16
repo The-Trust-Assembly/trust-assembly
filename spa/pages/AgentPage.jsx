@@ -6,30 +6,30 @@ import AgentNewForm from "../components/agent/AgentNewForm";
 import SentinelDashboard from "../components/agent/SentinelDashboard";
 import PhantomDashboard from "../components/agent/PhantomDashboard";
 import WardDashboard from "../components/agent/WardDashboard";
+import OneTimeDashboard from "../components/agent/OneTimeDashboard";
 import AgentSettings from "../components/agent/AgentSettings";
 
 // Trust Assembly Agent — main page
 // ----------------------------------
-// Top-level container for the agent workspace. Manages:
-//   - Agent instance list (loaded from /api/agent/instances)
-//   - Active tab state (onetime / new / UUID)
-//   - Page state within each tab (dashboard / settings / review)
+// Two access levels:
+//   1. Any logged-in user → One-Time quick fact-check (no tab bar,
+//      no agent instances, just the OneTimeDashboard)
+//   2. Full access (admin OR agent-access flag enabled) → full tab
+//      bar with all agent types, instances, settings, etc.
 //
-// Currently admin-gated. Stage G will lift this to "any user with a
-// registered AI Agent account."
-//
-// Routing within this page:
-//   activeTab === "onetime"  → one-time placeholder (Stage F will implement)
-//   activeTab === "new"      → AgentNewForm (create a new agent)
-//   activeTab === <uuid>     → either SentinelDashboard / Phantom / Ward
-//                              (dashboard), AgentSettings, or
-//                              AgentReviewPanel depending on activePage
-//
-// All three agent types have real dashboards: SentinelDashboard (Stage B),
-// PhantomDashboard (Stage D), WardDashboard (Stage E).
+// Stage G adds an admin button that toggles the agent-access flag,
+// promoting all logged-in users to full access.
 
-function isAgentAuthorized(user) {
-  return user && user.username === ADMIN_USERNAME;
+// Any logged-in user can use the agent page (one-time mode at minimum)
+function isLoggedIn(user) {
+  return !!user;
+}
+
+// Full access: admin, or the agent-access flag is enabled for all users
+function hasFullAccess(user, agentAccessEnabled) {
+  if (!user) return false;
+  if (user.username === ADMIN_USERNAME) return true;
+  return !!agentAccessEnabled;
 }
 
 function AccessDenied({ user }) {
@@ -68,31 +68,6 @@ function AccessDenied({ user }) {
   );
 }
 
-function OneTimePlaceholder() {
-  return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
-      <h2 className="ta-section-head">One-Time Fact-Check</h2>
-      <div
-        style={{
-          background: "var(--card-bg)",
-          border: "1px dashed var(--border)",
-          borderRadius: 8,
-          padding: "24px 28px",
-          marginTop: 16,
-          textAlign: "center",
-          color: "var(--text-muted)",
-          fontSize: 14,
-          lineHeight: 1.7,
-        }}
-      >
-        The one-time flow (Stage F) lets users without an account run a single fact-check by email.
-        <br />
-        <span style={{ fontSize: 12, opacity: 0.7 }}>Coming in a later stage.</span>
-      </div>
-    </div>
-  );
-}
-
 export default function AgentPage({ user }) {
   const [instances, setInstances] = useState([]);
   const [loadingInstances, setLoadingInstances] = useState(true);
@@ -100,11 +75,23 @@ export default function AgentPage({ user }) {
   const [activeTab, setActiveTab] = useState("onetime"); // "onetime" | "new" | <uuid>
   const [activePage, setActivePage] = useState("dashboard"); // "dashboard" | "settings" | "review"
   const [reviewingRunId, setReviewingRunId] = useState(null);
+  const [agentAccessEnabled, setAgentAccessEnabled] = useState(false);
 
-  const authorized = isAgentAuthorized(user);
+  const loggedIn = isLoggedIn(user);
+  const fullAccess = hasFullAccess(user, agentAccessEnabled);
+
+  // Check if agent access has been enabled for all users (Stage G flag)
+  useEffect(() => {
+    fetch("/api/admin/agent-access")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data && data.enabled) setAgentAccessEnabled(true);
+      })
+      .catch(() => {}); // Silently fail — defaults to admin-only
+  }, []);
 
   const loadInstances = useCallback(async () => {
-    if (!authorized) return;
+    if (!fullAccess) return;
     try {
       const res = await fetch("/api/agent/instances");
       if (res.ok) {
@@ -118,14 +105,63 @@ export default function AgentPage({ user }) {
     } finally {
       setLoadingInstances(false);
     }
-  }, [authorized]);
+  }, [fullAccess]);
 
   useEffect(() => {
     loadInstances();
   }, [loadInstances]);
 
-  if (!authorized) {
+  // Not logged in at all → access denied
+  if (!loggedIn) {
     return <AccessDenied user={user} />;
+  }
+
+  // Logged in but no full access → show One-Time only (no tab bar)
+  if (!fullAccess) {
+    return (
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "20px 24px 16px",
+            borderBottom: "2px solid var(--gold)",
+            marginBottom: 24,
+          }}
+        >
+          <img
+            src="/icons/Golden lighthouse emblem with laurel wreath.png"
+            alt="Trust Assembly"
+            style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }}
+          />
+          <div style={{ flex: 1 }}>
+            <h1
+              style={{
+                fontFamily: "var(--serif)",
+                color: "var(--text)",
+                fontSize: 26,
+                margin: 0,
+                letterSpacing: 0.5,
+              }}
+            >
+              Trust Assembly Agent
+            </h1>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+              Truth Will Out.
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: "24px 0" }}>
+          <OneTimeDashboard
+            onReview={(runId) => {
+              setReviewingRunId(runId);
+              setActivePage("review");
+            }}
+          />
+        </div>
+      </div>
+    );
   }
 
   const activeAgent =
@@ -304,7 +340,7 @@ export default function AgentPage({ user }) {
 
       {/* Tab content */}
       <div style={{ padding: "24px 0" }}>
-        {activeTab === "onetime" && <OneTimePlaceholder />}
+        {activeTab === "onetime" && <OneTimeDashboard onReview={handleReview} />}
 
         {activeTab === "new" && (
           <AgentNewForm
