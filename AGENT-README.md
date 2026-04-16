@@ -220,8 +220,35 @@ Failed runs land in `failed` status with `error_message` set.
 ### Phantom Feed
 
 ```
-POST   /api/agent/feed/[id]         Fetch and parse Substack RSS feed
-POST   /api/agent/feed/[id]/scan    Analyze selected posts from the feed
+GET    /api/agent/feed/[id]         Fetch and parse Substack RSS feed
+POST   /api/agent/feed/[id]         Analyze selected posts from the feed
+```
+
+**POST body (analyze posts):**
+```json
+{
+  "postUrls": ["https://author.substack.com/p/post-slug-1", "..."]
+}
+```
+
+### Ward Scan
+
+```
+POST   /api/agent/ward/[id]         Trigger entity monitoring scan
+```
+
+Auto-generates thesis and keywords from the agent's monitored entities and domain. No request body required.
+
+### Access Control
+
+```
+GET    /api/admin/agent-access       Check if agent access is open to all users
+POST   /api/admin/agent-access       Toggle agent access (admin only)
+```
+
+**POST body:**
+```json
+{ "enabled": true }
 ```
 
 ---
@@ -338,12 +365,14 @@ All agent UI lives in `spa/components/agent/` and `spa/pages/AgentPage.jsx`:
 
 | Component | Purpose |
 |-----------|---------|
-| `AgentPage.jsx` | Top-level container: tab management, routing between dashboard/settings/review |
-| `AgentTabBar.jsx` | Navy tab bar: One-Time + instance tabs + "+" button |
+| `AgentPage.jsx` | Top-level container: access control, tab management, routing between dashboard/settings/review |
+| `AgentTabBar.jsx` | Navy tab bar: One-Time + instance tabs + "+" button (full-access users only) |
 | `AgentIcon.jsx` | Circular icon with type-based image, border color, status dot |
 | `AgentNewForm.jsx` | Type picker (Sentinel/Phantom/Ward) + creation form |
+| `OneTimeDashboard.jsx` | Quick fact-check flow for all logged-in users (thesis → keywords → search → review) |
 | `SentinelDashboard.jsx` | Thesis → keywords → search → live progress → recent runs |
 | `PhantomDashboard.jsx` | Feed posts list → select → analyze → recent runs |
+| `WardDashboard.jsx` | Monitored entities + two-lane queue (Corrections/Affirmations tabs) |
 | `AgentSettings.jsx` | Per-agent settings editor with danger-zone delete |
 | `AgentReviewPanel.jsx` | Review and approve/reject submissions + vault entries |
 
@@ -391,20 +420,49 @@ The agent UI follows the Trust Assembly design system:
 
 | Stage | Status | Description |
 |-------|--------|-------------|
-| A | Shipped | Foundation: icons, design tokens, migrations, stub routes |
+| A | Shipped | Foundation: icons, design tokens, migrations 020+021, stub routes |
 | B | Shipped | AgentPage redesign: tab bar, Sentinel dashboard, settings, CRUD |
 | C | Shipped | Pipeline refactor: Google CSE, Haiku filter, Sonnet keywords |
-| D | In progress | Phantom agent: Substack RSS feed monitoring |
-| E | Planned | Ward agent: entity mention monitoring |
-| F | Planned | One-time flow: unauthenticated single fact-check by email |
-| G | Planned | Lift admin gate: open to any registered AI Agent account |
+| D | Shipped | Phantom agent: Substack RSS feed monitoring |
+| E | Shipped | Ward agent: entity monitoring, two-lane queue |
+| F | Shipped | One-Time quick fact-check for all logged-in users |
+| G | Shipped | Admin launch button: toggle full access in system-health dashboard |
+
+---
+
+## Access Control
+
+Three access levels, determined by login status and the `agent_access` site flag:
+
+| Level | Who | What they see |
+|-------|-----|--------------|
+| **Unauthenticated** | Not logged in | Access Denied page |
+| **One-Time only** | Logged in, agent_access disabled | OneTimeDashboard only (no tab bar, no instances) |
+| **Full access** | Admin, OR agent_access enabled | Full workspace: tab bar, all agent types, create/manage instances |
+
+The admin toggles full access via the **"Launch for All Users"** button in the system-health dashboard (`/admin/system-health`). This writes to the `site_flags` table (migration 022).
+
+### site_flags
+
+Generic key-value store for site-wide runtime flags (migration 022).
+
+```sql
+CREATE TABLE site_flags (
+  key        VARCHAR(64) PRIMARY KEY,
+  value      JSONB DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+Currently stores one flag: `agent_access` → `{ "enabled": true/false }`.
 
 ---
 
 ## Security
 
-- All agent endpoints require admin authentication via `requireAdmin()`
+- Agent instance CRUD and run endpoints require `requireAdmin()` authentication
 - Agent instances are owner-scoped (user can only see/edit their own)
+- `GET /api/admin/agent-access` is intentionally NOT admin-gated (AgentPage reads it for all users)
 - Deletion requires explicit `{ confirm: true }` in the request body
 - API keys are read at runtime, not import time (build never crashes on missing env vars)
 - No user PII is sent to external APIs (Google receives only search keywords, not user identity)
