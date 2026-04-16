@@ -1,66 +1,43 @@
 {
-  "name": "trust-assembly-desktop",
-  "version": "1.0.0",
-  "description": "Trust Assembly fact-checking agent — discover, analyze, and submit corrections at scale",
-  "main": "dist/main/index.js",
+  "name": "trust-assembly",
+  "version": "5.0.0",
+  "private": true,
+  "description": "A civic deliberation platform where truth is the only thing that survives adversarial review",
   "scripts": {
-    "dev": "concurrently \"vite\" \"tsc -p tsconfig.main.json --watch\" \"electron .\"",
-    "dev:renderer": "vite",
-    "build:main": "tsc -p tsconfig.main.json",
-    "build:preload": "tsc -p tsconfig.preload.json",
-    "build:renderer": "vite build",
-    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
-    "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "keywords": [
-    "trust-assembly",
     "fact-checking",
-    "civic-tech"
+    "media-literacy",
+    "civic-tech",
+    "trust",
+    "reputation",
+    "jury-system",
+    "deliberation"
   ],
   "author": "Trust Assembly",
-  "license": "MIT",
+  "license": "SEE LICENSE",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.86.0",
-    "@mozilla/readability": "^0.6.0",
-    "electron-log": "^5.4.3",
-    "electron-store": "^11.0.2",
-    "jsdom": "^29.0.2",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "@anthropic-ai/sdk": "^0.88.0",
+    "@tanstack/react-query": "^5.94.5",
+    "@vercel/blob": "^2.3.2",
+    "@vercel/postgres": "^0.10.0",
+    "bcryptjs": "^2.4.3",
+    "cheerio": "^1.2.0",
+    "fast-xml-parser": "^5.6.0",
+    "jose": "^5.9.6",
+    "next": "^14.2.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "resend": "^6.9.4"
   },
   "devDependencies": {
-    "@types/jsdom": "^21.1.7",
-    "@types/react": "^19.1.7",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
-    "concurrently": "^9.1.2",
-    "electron": "^41.2.0",
-    "electron-builder": "^26.0.12",
-    "png-to-ico": "^3.0.1",
-    "typescript": "^5.8.3",
-    "vite": "^7.3.2"
-  },
-  "build": {
-    "appId": "org.trustassembly.desktop-agent",
-    "productName": "Trust Assembly Agent",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": "nsis"
-    },
-    "mac": {
-      "target": "dmg"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+    "@types/bcryptjs": "^2.4.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.7.2"
   }
 }
