@@ -26,7 +26,7 @@ export default function ResetPasswordScreen({ token, onDone }) {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "0 auto" }}>
+    <div style={{ maxWidth: 420, margin: "0 auto", padding: "0 16px" }}>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Reset Password</h2>
       {success ? (
         <div>
