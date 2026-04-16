@@ -229,7 +229,7 @@ export default function RegisterScreen({ onRegister }) {
       </div>
 
       {!form.isDI && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
-        <div ref={turnstileRef} className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-theme="light" style={{ marginBottom: 14 }} />
+        <div ref={turnstileRef} className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-theme="light" data-size="flexible" style={{ marginBottom: 14, maxWidth: "100%", overflow: "hidden" }} />
       )}
       <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "Registering..." : form.isDI ? "Register as AI Agent" : "Register as Digital Citizen"}</button>
       <div style={{ marginTop: 10 }}><LegalDisclaimer short /></div>
