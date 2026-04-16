@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { ADMIN_USERNAME } from "../lib/constants";
 import AgentReviewPanel from "./AgentReviewPanel";
 import AgentTabBar from "../components/agent/AgentTabBar";
-import AgentIcon from "../components/agent/AgentIcon";
 import AgentNewForm from "../components/agent/AgentNewForm";
 import SentinelDashboard from "../components/agent/SentinelDashboard";
 import PhantomDashboard from "../components/agent/PhantomDashboard";
+import WardDashboard from "../components/agent/WardDashboard";
 import AgentSettings from "../components/agent/AgentSettings";
 
 // Trust Assembly Agent — main page
@@ -25,8 +25,8 @@ import AgentSettings from "../components/agent/AgentSettings";
 //                              (dashboard), AgentSettings, or
 //                              AgentReviewPanel depending on activePage
 //
-// Phantom has a real dashboard (Stage D). Ward is still a placeholder
-// (Stage E will implement entity monitoring).
+// All three agent types have real dashboards: SentinelDashboard (Stage B),
+// PhantomDashboard (Stage D), WardDashboard (Stage E).
 
 function isAgentAuthorized(user) {
   return user && user.username === ADMIN_USERNAME;
@@ -88,35 +88,6 @@ function OneTimePlaceholder() {
         The one-time flow (Stage F) lets users without an account run a single fact-check by email.
         <br />
         <span style={{ fontSize: 12, opacity: 0.7 }}>Coming in a later stage.</span>
-      </div>
-    </div>
-  );
-}
-
-function TypeDashboardPlaceholder({ agent, stage }) {
-  return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
-      <h2 className="ta-section-head">{agent.name}</h2>
-      <div
-        style={{
-          background: "var(--card-bg)",
-          border: "1px dashed var(--border)",
-          borderRadius: 8,
-          padding: "24px 28px",
-          marginTop: 16,
-          textAlign: "center",
-          color: "var(--text-muted)",
-          fontSize: 14,
-          lineHeight: 1.7,
-        }}
-      >
-        <AgentIcon type={agent.type} size={48} color={agent.color} />
-        <div style={{ marginTop: 12, textTransform: "capitalize", fontWeight: 600, color: "var(--text)" }}>
-          {agent.type} dashboard
-        </div>
-        <div style={{ marginTop: 6 }}>
-          This agent type is wired up in {stage}. For now you can edit its Settings.
-        </div>
       </div>
     </div>
   );
@@ -354,7 +325,7 @@ export default function AgentPage({ user }) {
               <PhantomDashboard agent={activeAgent} onReview={handleReview} />
             )}
             {activeAgent.type === "ward" && (
-              <TypeDashboardPlaceholder agent={activeAgent} stage="Stage E" />
+              <WardDashboard agent={activeAgent} onReview={handleReview} />
             )}
           </>
         )}
