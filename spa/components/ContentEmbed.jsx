@@ -31,6 +31,7 @@ export default function ContentEmbed({ url, title, description, thumbnailUrl, do
         onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
         <div style={{ position: "relative" }}>
           <img src={effectiveThumbnail} alt="" referrerPolicy="no-referrer" onError={() => setImgError(true)}
+            loading="lazy" decoding="async"
             style={{ width: "100%", height: 120, objectFit: "cover", display: "block", opacity: 0.85 }} />
           <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 0, height: 0, borderLeft: "12px solid #fff", borderTop: "7px solid transparent", borderBottom: "7px solid transparent", marginLeft: 3 }} />
