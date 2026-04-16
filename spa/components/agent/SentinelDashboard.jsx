@@ -27,6 +27,7 @@ const SCOPE_PRESETS = [
 const STATUS_COLORS = {
   queued: "var(--text-muted)",
   searching: "var(--gold)",
+  filtering: "var(--gold)",
   fetching: "var(--gold)",
   analyzing: "var(--gold)",
   synthesizing: "var(--gold)",
@@ -88,7 +89,7 @@ export default function SentinelDashboard({ agent, onReview }) {
 
   // Poll while any run is in a non-terminal state
   useEffect(() => {
-    const ACTIVE = ["queued", "searching", "fetching", "analyzing", "synthesizing", "submitting"];
+    const ACTIVE = ["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"];
     const hasActive = recentRuns.some((r) => ACTIVE.includes(r.status));
     if (!hasActive) return;
     const interval = setInterval(loadRecentRuns, 3000);
@@ -143,20 +144,14 @@ export default function SentinelDashboard({ agent, onReview }) {
     setMessage("");
     setRunning(true);
 
-    // Pack keywords into the thesis for Stage B (Stage C will pass them
-    // through to a dedicated Google search endpoint).
-    const enrichedThesis =
-      thesis.trim() +
-      "\n\nSearch keywords (user-edited):\n" +
-      keywords.map((k) => `- ${k}`).join("\n");
-
     try {
       const res = await fetch("/api/agent/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          thesis: enrichedThesis,
+          thesis: thesis.trim(),
           scope: SCOPE_PRESETS[activePreset].value,
+          keywords: keywords,
         }),
       });
       const data = await res.json();

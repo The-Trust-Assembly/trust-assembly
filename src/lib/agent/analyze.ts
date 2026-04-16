@@ -1,13 +1,13 @@
 // Trust Assembly Agent — analyze service
 // -----------------------------------------
-// Server-side port of analyzeArticle from
-// apps/content-cannon/src/main/services/claude.service.ts.
-//
 // Sends one article (headline + body text) to Claude with a fact-check
-// prompt. Uses web_search tool (max_uses: 5) so the model can verify
-// claims against external sources. Returns an ArticleAnalysis with a
-// verdict (correction|affirmation|skip), reasoning, evidence, and
-// optional vault entries.
+// prompt. Pure LLM reasoning — no web_search tool. The search phase
+// (Google CSE or Claude web_search) already discovered the articles;
+// the analyze step focuses on evaluating factual accuracy using the
+// article text, the thesis, and the model's training knowledge.
+//
+// Returns an ArticleAnalysis with a verdict (correction|affirmation|skip),
+// reasoning, evidence, and optional vault entries.
 
 import { getClaudeClient, DEFAULT_MODEL } from "./claude-client";
 import { extractJSON } from "./json-extract";
@@ -44,9 +44,9 @@ ${truncated}
 
 Your analysis should:
 1. Identify specific factual claims in the article
-2. Use web search to verify key claims against reliable sources
+2. Cross-reference claims against your training knowledge and the context of the thesis
 3. Determine if the headline is misleading, accurate, or needs correction
-4. Provide evidence with source URLs for your findings
+4. Provide evidence for your findings (cite sources from the article itself, known public records, or well-established facts)
 
 IMPORTANT: Respond with ONLY a valid JSON object. Do not include any text before or after the JSON.
 
@@ -86,7 +86,6 @@ Rules:
   const response = await claude.messages.create({
     model: DEFAULT_MODEL,
     max_tokens: 2048,
-    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 } as never],
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -126,9 +125,10 @@ Rules:
   }
 }
 
-// Sequential analysis with a small delay between requests so we don't
-// hammer the API rate limits or web_search tool quota.
-const ANALYSIS_DELAY_MS = 2000;
+// Sequential analysis with a small delay between requests to avoid
+// API rate limits. Without web_search, each call is faster (~2x),
+// so a shorter delay is sufficient.
+const ANALYSIS_DELAY_MS = 500;
 
 export interface AnalyzedArticle {
   url: string;

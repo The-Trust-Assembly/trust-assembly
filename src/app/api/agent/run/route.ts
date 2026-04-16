@@ -20,7 +20,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const thesis = typeof body.thesis === "string" ? body.thesis.trim() : "";
     const scope = typeof body.scope === "string" ? body.scope.trim() : "";
-    const context = body.context && typeof body.context === "object" ? body.context : null;
+    const rawContext = body.context && typeof body.context === "object" ? body.context : {};
+
+    // Accept keywords as a top-level field and merge into context JSONB
+    // (no migration needed — context is already JSONB)
+    const keywords = Array.isArray(body.keywords)
+      ? (body.keywords as unknown[]).filter((k): k is string => typeof k === "string" && k.trim().length > 0)
+      : null;
+
+    const context = {
+      ...(rawContext || {}),
+      ...(keywords && keywords.length > 0 ? { keywords } : {}),
+    };
+    const hasContext = Object.keys(context).length > 0;
 
     if (!thesis) {
       return err("thesis is required", 400);
@@ -34,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const result = await sql`
       INSERT INTO agent_runs (user_id, thesis, scope, context, status, stage_message)
-      VALUES (${admin.sub}, ${thesis}, ${scope}, ${context ? JSON.stringify(context) : null}, 'queued', 'Queued — waiting for pipeline worker')
+      VALUES (${admin.sub}, ${thesis}, ${scope}, ${hasContext ? JSON.stringify(context) : null}, 'queued', 'Queued — waiting for pipeline worker')
       RETURNING id, status, created_at
     `;
 

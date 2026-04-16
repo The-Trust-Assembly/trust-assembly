@@ -2,11 +2,13 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, notFound, err, serverError } from "@/lib/api-utils";
-import { searchForArticles } from "@/lib/agent/search";
+import { searchForArticles, generateKeywordsFromThesis } from "@/lib/agent/search";
+import { isGoogleSearchAvailable } from "@/lib/agent/google-search";
+import { filterByRelevance } from "@/lib/agent/relevance-filter";
 import { fetchArticles } from "@/lib/agent/fetch";
 import { analyzeArticles } from "@/lib/agent/analyze";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
-import { estimateCost, DEFAULT_MODEL } from "@/lib/agent/claude-client";
+import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import type {
   AgentBatch,
   SubmissionForReview,
@@ -16,24 +18,25 @@ import type {
 
 export const dynamic = "force-dynamic";
 // Allow this route to run for up to 5 minutes — the full pipeline
-// (search → fetch → analyze → synthesize) can take 2-4 min on a small
-// batch of 5-10 articles.
+// (keywords → search → filter → fetch → analyze → synthesize) can take
+// 2-4 min on a small batch of 5-10 articles.
 export const maxDuration = 300;
 
 // POST /api/agent/process/[id]
 // -----------------------------
-// Runs the full agent pipeline for a queued run, end-to-end:
-//   queued → searching → fetching → analyzing → synthesizing → ready
+// Runs the full agent pipeline for a queued run, end-to-end.
 //
-// On success the run is in 'ready' status with a complete batch in
-// the JSONB column (submissions + vault entries + narrative). The user
-// can then review and approve via the review UI.
+// Stage C pipeline:
+//   queued → searching (keywords + discovery) → filtering (Haiku, Google only)
+//   → fetching → analyzing → synthesizing → ready
 //
-// On any failure the run is marked 'failed' with the error_message set
-// so the dashboard can display it.
+// Two search paths:
+//   1. Google path (GOOGLE_SEARCH_API_KEY + GOOGLE_CX set):
+//      keywords → Google Custom Search → Haiku relevance filter → fetch → analyze → synthesize
+//   2. Claude fallback (no Google credentials):
+//      keywords folded into prompt → Claude web_search → fetch → analyze → synthesize
 //
-// Admin-gated. Currently invoked manually for testing; the next slice
-// will fire it automatically (fire-and-forget) after POST /api/agent/run.
+// Both paths produce identical output shapes (AgentBatch).
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -42,7 +45,7 @@ export async function POST(
   if (!admin) return forbidden("Admin access required");
 
   const loadResult = await sql`
-    SELECT id, user_id, thesis, scope, status
+    SELECT id, user_id, thesis, scope, context, status
     FROM agent_runs
     WHERE id = ${params.id} AND user_id = ${admin.sub}
     LIMIT 1
@@ -54,22 +57,54 @@ export async function POST(
     return err(`Run is in status '${run.status}', expected 'queued'`, 409);
   }
 
-  const totalUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
-  const accumulateCost = () =>
-    estimateCost(DEFAULT_MODEL, totalUsage.inputTokens, totalUsage.outputTokens);
+  // Track costs per-model for accurate estimation
+  const sonnetUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+  const haikuUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+
+  const totalInputTokens = () => sonnetUsage.inputTokens + haikuUsage.inputTokens;
+  const totalOutputTokens = () => sonnetUsage.outputTokens + haikuUsage.outputTokens;
+  const totalCost = () =>
+    estimateCost(DEFAULT_MODEL, sonnetUsage.inputTokens, sonnetUsage.outputTokens) +
+    estimateCost(HAIKU_MODEL, haikuUsage.inputTokens, haikuUsage.outputTokens);
+
+  // Extract keywords from context JSONB (stored by POST /api/agent/run)
+  const runContext =
+    run.context && typeof run.context === "object" ? run.context : {};
+  let keywords: string[] | undefined = Array.isArray(runContext.keywords)
+    ? runContext.keywords
+    : undefined;
 
   try {
-    // ---- Phase 1: Search ----
+    // ---- Phase 0: Keyword generation (if not provided by user) ----
+    if (!keywords || keywords.length === 0) {
+      await sql`
+        UPDATE agent_runs
+        SET status = 'searching',
+            stage_message = 'Generating search keywords...',
+            progress_pct = 2, updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      const kwResult = await generateKeywordsFromThesis(run.thesis, runContext);
+      keywords = kwResult.keywords;
+      sonnetUsage.inputTokens += kwResult.usage.inputTokens;
+      sonnetUsage.outputTokens += kwResult.usage.outputTokens;
+    }
+
+    // ---- Phase 1: Search (Google or Claude web_search) ----
     await sql`
       UPDATE agent_runs
-      SET status = 'searching', stage_message = 'Searching for articles...',
+      SET status = 'searching',
+          stage_message = ${`Searching with ${keywords.length} keywords...`},
           progress_pct = 5, updated_at = now()
       WHERE id = ${run.id}
     `;
 
-    const { candidates, usage: searchUsage } = await searchForArticles(run.thesis, run.scope);
-    totalUsage.inputTokens += searchUsage.inputTokens;
-    totalUsage.outputTokens += searchUsage.outputTokens;
+    const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords);
+    sonnetUsage.inputTokens += searchResult.usage.inputTokens;
+    sonnetUsage.outputTokens += searchResult.usage.outputTokens;
+
+    let candidates = searchResult.candidates;
 
     // Empty short-circuit
     if (candidates.length === 0) {
@@ -86,23 +121,70 @@ export async function POST(
         SET status = 'ready', stage_message = 'No articles found.',
             progress_pct = 100, articles_found = 0,
             batch = ${JSON.stringify(emptyBatch)},
-            input_tokens = ${totalUsage.inputTokens},
-            output_tokens = ${totalUsage.outputTokens},
-            estimated_cost_usd = ${accumulateCost()},
+            input_tokens = ${totalInputTokens()},
+            output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()},
             updated_at = now(), completed_at = now()
         WHERE id = ${run.id}
       `;
       return ok({ runId: run.id, status: "ready", articlesFound: 0 });
     }
 
+    // ---- Phase 1.5: Haiku relevance filter (Google path only) ----
+    // When Claude web_search is used, it already applies relevance
+    // judgment during discovery, so filtering is redundant.
+    if (searchResult.method === "google" && candidates.length > 0) {
+      await sql`
+        UPDATE agent_runs
+        SET status = 'filtering',
+            stage_message = ${`Filtering ${candidates.length} results for relevance...`},
+            progress_pct = 20, articles_found = ${candidates.length},
+            input_tokens = ${totalInputTokens()},
+            output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()},
+            updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      const filterResult = await filterByRelevance(candidates, run.thesis);
+      haikuUsage.inputTokens += filterResult.usage.inputTokens;
+      haikuUsage.outputTokens += filterResult.usage.outputTokens;
+      candidates = filterResult.filtered;
+
+      // All filtered out?
+      if (candidates.length === 0) {
+        const emptyBatch: AgentBatch = {
+          topic: run.thesis,
+          submissions: [],
+          vaultEntries: [],
+          narrative: "Search results found but none were relevant enough to the thesis.",
+          candidates: searchResult.candidates,
+          errors: [],
+        };
+        await sql`
+          UPDATE agent_runs
+          SET status = 'ready',
+              stage_message = 'No relevant articles found after filtering.',
+              progress_pct = 100, articles_found = ${searchResult.candidates.length},
+              batch = ${JSON.stringify(emptyBatch)},
+              input_tokens = ${totalInputTokens()},
+              output_tokens = ${totalOutputTokens()},
+              estimated_cost_usd = ${totalCost()},
+              updated_at = now(), completed_at = now()
+          WHERE id = ${run.id}
+        `;
+        return ok({ runId: run.id, status: "ready", articlesFound: searchResult.candidates.length, articlesFiltered: 0 });
+      }
+    }
+
     await sql`
       UPDATE agent_runs
       SET status = 'fetching',
-          stage_message = ${`Found ${candidates.length} articles. Fetching contents...`},
-          progress_pct = 25, articles_found = ${candidates.length},
-          input_tokens = ${totalUsage.inputTokens},
-          output_tokens = ${totalUsage.outputTokens},
-          estimated_cost_usd = ${accumulateCost()},
+          stage_message = ${`Found ${candidates.length} relevant articles. Fetching contents...`},
+          progress_pct = 30, articles_found = ${candidates.length},
+          input_tokens = ${totalInputTokens()},
+          output_tokens = ${totalOutputTokens()},
+          estimated_cost_usd = ${totalCost()},
           updated_at = now()
       WHERE id = ${run.id}
     `;
@@ -129,9 +211,9 @@ export async function POST(
             articles_found = ${candidates.length},
             articles_fetched = 0,
             batch = ${JSON.stringify(failedBatch)},
-            input_tokens = ${totalUsage.inputTokens},
-            output_tokens = ${totalUsage.outputTokens},
-            estimated_cost_usd = ${accumulateCost()},
+            input_tokens = ${totalInputTokens()},
+            output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()},
             updated_at = now(), completed_at = now()
         WHERE id = ${run.id}
       `;
@@ -163,18 +245,18 @@ export async function POST(
       errors: analyzeErrors,
       usage: analyzeUsage,
     } = await analyzeArticles(articlesForAnalysis, run.thesis);
-    totalUsage.inputTokens += analyzeUsage.inputTokens;
-    totalUsage.outputTokens += analyzeUsage.outputTokens;
+    sonnetUsage.inputTokens += analyzeUsage.inputTokens;
+    sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
     await sql`
       UPDATE agent_runs
       SET status = 'synthesizing',
           stage_message = ${`Analyzed ${analyzed.length} articles. Synthesizing findings...`},
-          progress_pct = 80,
+          progress_pct = 85,
           articles_analyzed = ${analyzed.length},
-          input_tokens = ${totalUsage.inputTokens},
-          output_tokens = ${totalUsage.outputTokens},
-          estimated_cost_usd = ${accumulateCost()},
+          input_tokens = ${totalInputTokens()},
+          output_tokens = ${totalOutputTokens()},
+          estimated_cost_usd = ${totalCost()},
           updated_at = now()
       WHERE id = ${run.id}
     `;
@@ -194,8 +276,8 @@ export async function POST(
         approved: true,
         entry,
       }));
-      totalUsage.inputTokens += synth.usage.inputTokens;
-      totalUsage.outputTokens += synth.usage.outputTokens;
+      sonnetUsage.inputTokens += synth.usage.inputTokens;
+      sonnetUsage.outputTokens += synth.usage.outputTokens;
     }
 
     // Build final reviewable batch. Default approve everything except
@@ -229,9 +311,9 @@ export async function POST(
           stage_message = ${`Complete. ${submissions.length} submissions, ${consolidatedVault.length} vault entries.`},
           progress_pct = 100,
           batch = ${JSON.stringify(finalBatch)},
-          input_tokens = ${totalUsage.inputTokens},
-          output_tokens = ${totalUsage.outputTokens},
-          estimated_cost_usd = ${accumulateCost()},
+          input_tokens = ${totalInputTokens()},
+          output_tokens = ${totalOutputTokens()},
+          estimated_cost_usd = ${totalCost()},
           updated_at = now(),
           completed_at = now()
       WHERE id = ${run.id}
@@ -240,14 +322,15 @@ export async function POST(
     return ok({
       runId: run.id,
       status: "ready",
+      searchMethod: searchResult.method,
       articlesFound: candidates.length,
       articlesFetched: fetched.length,
       articlesAnalyzed: analyzed.length,
       submissions: submissions.length,
       vaultEntries: consolidatedVault.length,
-      inputTokens: totalUsage.inputTokens,
-      outputTokens: totalUsage.outputTokens,
-      estimatedCostUsd: accumulateCost(),
+      inputTokens: totalInputTokens(),
+      outputTokens: totalOutputTokens(),
+      estimatedCostUsd: totalCost(),
       narrative,
     });
   } catch (e) {
@@ -258,9 +341,9 @@ export async function POST(
         SET status = 'failed',
             error_message = ${errorMessage},
             stage_message = 'Pipeline failed',
-            input_tokens = ${totalUsage.inputTokens},
-            output_tokens = ${totalUsage.outputTokens},
-            estimated_cost_usd = ${accumulateCost()},
+            input_tokens = ${totalInputTokens()},
+            output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()},
             updated_at = now(),
             completed_at = now()
         WHERE id = ${run.id}
