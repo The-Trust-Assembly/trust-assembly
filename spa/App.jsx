@@ -28,6 +28,7 @@ import LoginScreen from "./pages/LoginScreen";
 import ResetPasswordScreen from "./pages/ResetPasswordScreen";
 import VerifyEmailScreen from "./pages/VerifyEmailScreen";
 import AdminToolsScreen from "./pages/AdminToolsScreen";
+import AgentPage from "./pages/AgentPage";
 import EmailVerifyPopup from "./components/EmailVerifyPopup";
 import DiscoveryFeed from "./pages/DiscoveryFeed";
 import LandingPage from "./pages/LandingPage";
@@ -87,6 +88,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
   }
   // Inject admin items
   if (label === "Account" && isAdmin) {
+    allItems.push({ key: "agent", label: "Agent" });
     allItems.push({ key: "admin", label: "Admin Dashboard" });
   }
   const isActive = allItems.some(i => i.key === screen);
@@ -107,7 +109,7 @@ function NavDropdown({ label, items, screen, setScreen, isAdmin, hasSubmittedFee
             <div key={n.key} style={{ padding: "6px 16px 2px", fontSize: 8, fontFamily: "var(--mono)", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, borderTop: n.key === "_group" ? "none" : "1px solid var(--border)", marginTop: n.key === "_group" ? 0 : 4 }}>{n.label}</div>
           ) : (
             <a key={n.key} href={`/${n.key}`} role="menuitem" className={`ta-nav-dropdown-item ${screen === n.key ? "active" : ""}`}
-              style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
+              style={n.key === "admin" ? { color: "var(--purple)", fontWeight: 600 } : n.key === "agent" && isAdmin ? { color: "var(--gold)", fontWeight: 600 } : n.key === "feedback" && isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined}
               onClick={(e) => { e.preventDefault(); if (n.key === "admin") { window.open("/admin/system-health", "_blank"); } else { setScreen(n.key); } setOpen(false); }}>
               {n.label}
             </a>
@@ -475,12 +477,13 @@ export default function TrustAssembly() {
           --bg:#0d0d0a; --card-bg:#14130e; --border:#2a2518;
           --gold:#d4a843; --text:#ffffff; --text-sec:#bbb5aa; --text-muted:#8a8278;
           --green:#4a9e55; --red:#c44a3a; --purple:#7C3AED; --teal:#0D9488;
+          --ward:#8B6CC4;
           --font:'Helvetica Neue',Helvetica,sans-serif; --serif:Georgia,serif; --mono:'Courier New',monospace;
         }
         [data-theme="light"] {
           --bg:#f5f2ec; --card-bg:#ffffff; --border:#d9d3c7;
           --gold:#b8922e; --text:#1a1714; --text-sec:#5c564d; --text-muted:#9a948b;
-          --green:#2d7a38; --red:#b03a2e;
+          --green:#2d7a38; --red:#b03a2e; --ward:#6B4C9A;
         }
         *{margin:0;padding:0;box-sizing:border-box;}
         @keyframes ta-fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -920,6 +923,9 @@ export default function TrustAssembly() {
                   <a href="/feedback" className={`ta-mobile-menu-item ${screen === "feedback" ? "active" : ""}`} style={isAdmin ? { color: "var(--sienna)", fontWeight: 600 } : undefined} onClick={(e) => { e.preventDefault(); setScreen("feedback"); setMobileMenuOpen(false); }}>Feedback</a>
                 )}
                 {isAdmin && (
+                  <a href="/agent" className={`ta-mobile-menu-item ${screen === "agent" ? "active" : ""}`} style={{ color: "var(--gold)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); setScreen("agent"); setMobileMenuOpen(false); }}>Agent</a>
+                )}
+                {isAdmin && (
                   <a href="/admin/system-health" className="ta-mobile-menu-item" style={{ color: "var(--purple)", fontWeight: 600 }} onClick={(e) => { e.preventDefault(); window.open("/admin/system-health", "_blank"); setMobileMenuOpen(false); }}>Admin Dashboard</a>
                 )}
               </div>
@@ -1050,6 +1056,7 @@ export default function TrustAssembly() {
             {screen === "vision" && <VisionScreen />}
             {screen === "extensions" && <ExtensionsScreen />}
             {screen === "admin-tools" && isAdmin && <AdminToolsScreen setShowOnboarding={setShowOnboarding} user={user} />}
+            {screen === "agent" && <AgentPage user={user} />}
             {screen === "feedback" && (isAdmin || hasSubmittedFeedback) && <FeedbackScreen isAdmin={isAdmin} currentUsername={user.username} />}
             </>}
           </div>

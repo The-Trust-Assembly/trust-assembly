@@ -99,6 +99,8 @@ export default function SystemHealthPage() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteMsg, setDeleteMsg] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [agentAccess, setAgentAccess] = useState(null); // null = loading, true/false = state
+  const [agentAccessSaving, setAgentAccessSaving] = useState(false);
   const [rulesData, setRulesData] = useState(null);
   const [rulesLoading, setRulesLoading] = useState(false);
 
@@ -123,6 +125,16 @@ export default function SystemHealthPage() {
       } catch {
         setAuthState("unauthorized");
       }
+      // Load agent access flag
+      try {
+        const flagRes = await fetch("/api/admin/agent-access", { headers: getAuthHeaders() });
+        if (flagRes.ok) {
+          const flagData = await flagRes.json();
+          setAgentAccess(!!flagData.enabled);
+        } else {
+          setAgentAccess(false);
+        }
+      } catch { setAgentAccess(false); }
     })();
   }, [getAuthHeaders]);
 
@@ -727,6 +739,47 @@ export default function SystemHealthPage() {
             <div style={{ fontSize: 10, color: "#64748b", marginTop: 8 }}>Generated: {rulesData.generatedAt}</div>
           </div>
         )}
+      </div>
+
+      {/* ── Agent Access Control ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: agentAccess ? "1px solid #22c55e" : "1px solid #334155" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h3 style={{ margin: "0 0 4px", fontSize: 16 }}>AI Agent Access</h3>
+            <p style={{ margin: 0, fontSize: 13, color: "#94a3b8" }}>
+              {agentAccess === null ? "Loading..." : agentAccess
+                ? "Agent workspace is OPEN to all logged-in users."
+                : "Agent workspace is restricted to admin only. Other users see One-Time fact-check only."}
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              setAgentAccessSaving(true);
+              try {
+                const res = await fetch("/api/admin/agent-access", {
+                  method: "POST",
+                  headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                  body: JSON.stringify({ enabled: !agentAccess }),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  setAgentAccess(!!data.enabled);
+                }
+              } catch {}
+              finally { setAgentAccessSaving(false); }
+            }}
+            disabled={agentAccess === null || agentAccessSaving}
+            style={{
+              ...btnStyle,
+              background: agentAccess ? "#ef4444" : "#22c55e",
+              minWidth: 160,
+              fontSize: 15,
+              padding: "12px 20px",
+            }}
+          >
+            {agentAccessSaving ? "Saving..." : agentAccess ? "Restrict to Admin" : "Launch for All Users"}
+          </button>
+        </div>
       </div>
 
       {/* ── Admin Tools ── */}
