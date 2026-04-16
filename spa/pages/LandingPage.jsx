@@ -73,7 +73,7 @@ export default function LandingPage({ onSubmitUrl, onLogin, onRegister, onExtens
         </div>
 
         {/* Before / After slides — matches production main logic */}
-        <div style={{ maxWidth: 660, margin: "0 auto", height: 480, overflow: "hidden", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(4px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
+        <div className="ta-hero-slides" style={{ maxWidth: 660, margin: "0 auto", overflow: "hidden", opacity: heroFading ? 0 : 1, transform: heroFading ? "translateY(4px)" : "translateY(0)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
           onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}>
           {HERO_SLIDES[heroIdx]?.layout === "columns" ? (
             <>

@@ -376,12 +376,12 @@ function ReviewScreenInner({ user }) {
       <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />
       </div>
-      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{safe(sub.reasoning)}</div>
+      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10, whiteSpace: "pre-wrap" }}>{safe(sub.reasoning)}</div>
 
       {sub.evidence && sub.evidence.length > 0 && (
         <div style={{ marginTop: 12, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", color: "var(--text-sec)", marginBottom: 6 }}>Evidence: {sub.evidence.length} Source{sub.evidence.length > 1 ? "s" : ""}</div>
-          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
+          {sub.evidence.map((e, i) => <div key={i} style={{ marginBottom: 8, fontSize: 12, minWidth: 0 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)", wordBreak: "break-all", overflowWrap: "anywhere", display: "inline-block", maxWidth: "100%" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)", marginTop: 2 }}>↳ {safe(e.explanation)}</div>}</div>)}
         </div>
       )}
 
@@ -533,7 +533,7 @@ function ReviewScreenInner({ user }) {
       <div style={{ padding: 12, background: "rgba(212,168,67,0.09)", border: "1px solid #EA580C", borderRadius: 0, marginBottom: 10 }}>
         <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 4 }}>DISPUTE BY {anonName(d.disputedBy, d.anonMap, d.resolvedAt)}</div>
         <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8 }}>{safe(d.reasoning)}</div>
-        {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
+        {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12, minWidth: 0 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)", wordBreak: "break-all", overflowWrap: "anywhere", display: "inline-block", maxWidth: "100%" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
       </div>
       <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-sec)", background: "var(--card-bg)", padding: "1px 5px" }}>Voted {votesIn}/{seats} · need {needed}</span>
       {reviewingId === d.id ? (
@@ -634,7 +634,7 @@ function ReviewScreenInner({ user }) {
               <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", border: "1px solid #EA580C40", borderRadius: 0, marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#EA580C", marginBottom: 3 }}>DISPUTE REASONING</div>
                 <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>{safe(d.reasoning)}</div>
-                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
+                {d.evidence && d.evidence.length > 0 && <div style={{ marginTop: 6 }}>{d.evidence.map((e, i) => <div key={i} style={{ fontSize: 12, minWidth: 0 }}><a href={safeHref(e.url)} target="_blank" rel="noopener" style={{ color: "var(--gold)", wordBreak: "break-all", overflowWrap: "anywhere", display: "inline-block", maxWidth: "100%" }}>{safe(e.url)}</a>{e.explanation && <div style={{ color: "var(--text-sec)" }}>↳ {safe(e.explanation)}</div>}</div>)}</div>}
               </div>
               {d.status !== "pending_review" && <div style={{ padding: 10, background: d.status === "upheld" ? "#FEF2F2" : "#ECFDF5", borderRadius: 0, marginBottom: 6 }}>
                 <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: statusColor, marginBottom: 3 }}>OUTCOME</div>

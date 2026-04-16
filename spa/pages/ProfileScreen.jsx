@@ -205,7 +205,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 9, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 6, fontWeight: 600 }}>Theme</div>
               <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", overflow: "hidden" }}>
-                {[["dark", "Dark"], ["light", "Light"]].map(([k, label]) => (
+                {[["dark", "Dark"], ["light", "Light"], ["parchment", "Parchment"]].map(([k, label]) => (
                   <button key={k} onClick={() => setTheme && setTheme(k)} style={{ flex: 1, padding: "8px 12px", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", cursor: "pointer", border: "none", background: theme === k ? "var(--gold)" : "transparent", color: theme === k ? "#0d0d0a" : "var(--text-muted)" }}>{label}</button>
                 ))}
               </div>

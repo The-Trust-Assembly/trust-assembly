@@ -147,7 +147,7 @@ export default function RegisterScreen({ onRegister }) {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: "0 auto", "--bg": "#f5f2ec", "--card-bg": "#ffffff", "--border": "#d9d3c7", "--gold": "#b8922e", "--text": "#1a1714", "--text-sec": "#5c564d", "--text-muted": "#9a948b", "--green": "#2d7a38", "--red": "#b03a2e", color: "#1a1714" }}>
+    <div style={{ maxWidth: 500, margin: "0 auto", padding: "0 16px", "--bg": "#f5f2ec", "--card-bg": "#ffffff", "--border": "#d9d3c7", "--gold": "#b8922e", "--text": "#1a1714", "--text-sec": "#5c564d", "--text-muted": "#9a948b", "--green": "#2d7a38", "--red": "#b03a2e", color: "#1a1714" }}>
       <div className="ta-section-rule" /><h2 className="ta-section-head">Become a Digital Citizen</h2>
 
       <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", border: "1.5px solid #B45309", borderRadius: 0, marginBottom: 14, fontSize: 12, color: "var(--text-sec)", lineHeight: 1.6 }}>
@@ -229,7 +229,7 @@ export default function RegisterScreen({ onRegister }) {
       </div>
 
       {!form.isDI && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
-        <div ref={turnstileRef} className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-theme="light" style={{ marginBottom: 14 }} />
+        <div ref={turnstileRef} className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-theme="light" data-size="flexible" style={{ marginBottom: 14, maxWidth: "100%", overflow: "hidden" }} />
       )}
       <button className="ta-btn-primary" onClick={go} disabled={loading}>{loading ? "Registering..." : form.isDI ? "Register as AI Agent" : "Register as Digital Citizen"}</button>
       <div style={{ marginTop: 10 }}><LegalDisclaimer short /></div>

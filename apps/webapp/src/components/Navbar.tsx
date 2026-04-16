@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useSession } from "@/contexts/SessionProvider";
 import Logo from "./Logo";
 import Modal from "./Modal";
@@ -15,12 +16,17 @@ export default function Navbar(props: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(props.signInOpen ?? false);
   const session = useSession();
+  const location = useLocation();
 
   useEffect(() => {
     if (props.signInOpen) {
       setIsLoginModalOpen(true);
     }
   }, [props.signInOpen]);
+
+  // Close the mobile menu whenever the route changes so navigating from
+  // the drawer does not leave it open on the next page.
+  useEffect(() => { setIsOpen(false); }, [location.pathname]);
 
   return (
     <nav {...props}>
@@ -114,8 +120,8 @@ function NavButtons({ isBlock }: NavButtonsProps) {
 
   return (
     <>
-      <a href="#" className={className}>Home</a>
-      <a href="/replacements" className={className}>Explore</a>
+      <Link to="/" className={className}>Home</Link>
+      <Link to="/replacements" className={className}>Explore</Link>
       <a href="#" className={className}>About</a>
     </>
   );

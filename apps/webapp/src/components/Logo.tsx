@@ -6,7 +6,7 @@ export default function Logo(props: LogoProps) {
   return (
     <Link to="/" {...props}>
       <div className="flex shrink-0 items-center">
-        <img className="h-8 w-auto" src="/gavel.jpg" alt="Trust Assembly" />
+        <img className="h-8 w-auto" src="/gavel.jpg" alt="Trust Assembly" width="32" height="32" decoding="async" />
         <strong className="pl-2 text-lg">Trust Assembly</strong>
       </div>
     </Link>
