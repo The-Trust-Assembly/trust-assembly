@@ -125,11 +125,25 @@ async function loadSyntheticData() {
 
 export default function TrustAssembly() {
   // Apply theme + font from localStorage on mount (before first render)
-  const [theme, setThemeState] = useState(() => { try { return localStorage.getItem("ta-theme") || "light"; } catch { return "light"; } });
+  const [theme, setThemeState] = useState(() => {
+    try {
+      const t = localStorage.getItem("ta-theme");
+      if (t === "light" || t === "dark" || t === "parchment") return t;
+      return "light";
+    } catch { return "light"; }
+  });
   const [fontSize, setFontSizeState] = useState(() => { try { return localStorage.getItem("ta-font-size") || "large"; } catch { return "large"; } });
-  useEffect(() => { document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : ""); }, [theme]);
+  useEffect(() => {
+    const value = theme === "light" ? "light" : theme === "parchment" ? "parchment" : "";
+    document.documentElement.setAttribute("data-theme", value);
+  }, [theme]);
 
-  const setTheme = (t) => { setThemeState(t); try { localStorage.setItem("ta-theme", t); } catch {} document.documentElement.setAttribute("data-theme", t === "light" ? "light" : ""); };
+  const setTheme = (t) => {
+    setThemeState(t);
+    try { localStorage.setItem("ta-theme", t); } catch {}
+    const value = t === "light" ? "light" : t === "parchment" ? "parchment" : "";
+    document.documentElement.setAttribute("data-theme", value);
+  };
   const setFontSize = (s) => { setFontSizeState(s); try { localStorage.setItem("ta-font-size", s); } catch {} };
 
   const [contentWidth, setContentWidthState] = useState(() => { try { return localStorage.getItem("ta-content-width") || "compact"; } catch { return "compact"; } });
@@ -476,11 +490,18 @@ export default function TrustAssembly() {
           --gold:#d4a843; --text:#ffffff; --text-sec:#bbb5aa; --text-muted:#8a8278;
           --green:#4a9e55; --red:#c44a3a; --purple:#7C3AED; --teal:#0D9488;
           --font:'Helvetica Neue',Helvetica,sans-serif; --serif:Georgia,serif; --mono:'Courier New',monospace;
+          --reading-bg:#f8f8f6; --reading-fg:#333; --reading-head:#1a1a1a; --reading-sub:#666; --reading-mute:#999;
         }
         [data-theme="light"] {
           --bg:#f5f2ec; --card-bg:#ffffff; --border:#d9d3c7;
           --gold:#b8922e; --text:#1a1714; --text-sec:#5c564d; --text-muted:#9a948b;
           --green:#2d7a38; --red:#b03a2e;
+        }
+        [data-theme="parchment"] {
+          --bg:#f1e6cb; --card-bg:#fbf3dd; --border:#c9a66b;
+          --gold:#8b6b1f; --text:#2d1f0e; --text-sec:#5b4423; --text-muted:#8b7043;
+          --green:#4a6b2e; --red:#8b3a2e; --purple:#5b3a7a; --teal:#2e6b6b;
+          --reading-bg:#fbf3dd; --reading-fg:#2d1f0e; --reading-head:#1a0e05; --reading-sub:#5b4423; --reading-mute:#8b7043;
         }
         *{margin:0;padding:0;box-sizing:border-box;}
         @keyframes ta-fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -601,7 +622,7 @@ export default function TrustAssembly() {
         .preview-side { flex:0 0 340px; display:flex; flex-direction:column; }
         .preview-header { background:var(--bg); padding:6px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; }
         .preview-label { font-size:8px; letter-spacing:1px; text-transform:uppercase; color:var(--gold); font-weight:600; }
-        .preview-body { flex:1; overflow-y:auto; background:#f8f8f6; padding:14px 12px; font-family:var(--serif); color:#333; }
+        .preview-body { flex:1; overflow-y:auto; background:var(--reading-bg); padding:14px 12px; font-family:var(--serif); color:var(--reading-fg); }
         /* ── TABS ── */
         .tabs { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:8px; }
         .tab { padding:4px 8px; font-size:8px; letter-spacing:.5px; cursor:pointer; border:1px solid var(--border); color:var(--text-sec); background:none; }
@@ -629,10 +650,10 @@ export default function TrustAssembly() {
         .review-split { display:flex; min-height:360px; }
         .article-panel { flex:0 0 260px; border-right:1px solid var(--border); display:flex; flex-direction:column; }
         .article-header { padding:6px 10px; border-bottom:1px solid var(--border); font-size:8px; letter-spacing:1px; text-transform:uppercase; color:var(--gold); font-weight:600; flex-shrink:0; }
-        .article-body { flex:1; overflow-y:auto; background:#f8f8f6; padding:10px; font-family:var(--serif); }
-        .article-body h2 { font-size:12px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
-        .article-body .source { font-size:9px; color:#999; margin-bottom:8px; font-family:sans-serif; }
-        .article-body p { font-size:10px; line-height:1.6; color:#333; margin-bottom:8px; }
+        .article-body { flex:1; overflow-y:auto; background:var(--reading-bg); padding:10px; font-family:var(--serif); }
+        .article-body h2 { font-size:12px; font-weight:700; color:var(--reading-head); margin-bottom:4px; }
+        .article-body .source { font-size:9px; color:var(--reading-mute); margin-bottom:8px; font-family:sans-serif; }
+        .article-body p { font-size:10px; line-height:1.6; color:var(--reading-fg); margin-bottom:8px; }
         .article-body .highlight { background:rgba(212,168,67,0.2); padding:0 2px; }
         .submission-panel { flex:1; display:flex; flex-direction:column; }
         .submission-body { padding:10px 12px; background:var(--card-bg); flex:1; overflow-y:auto; }
@@ -717,19 +738,19 @@ export default function TrustAssembly() {
         .btn-submit { background:var(--gold); color:var(--bg); padding:7px 18px; font-size:10px; font-weight:700; letter-spacing:1px; cursor:pointer; border:none; font-family:inherit; }
         .btn-submit:disabled { opacity:0.5; cursor:default; }
         .pv-section { font-size:9px; color:var(--red); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-family:var(--font); }
-        .pv-headline { font-size:15px; font-weight:700; line-height:1.25; color:#1a1a1a; margin-bottom:3px; }
+        .pv-headline { font-size:15px; font-weight:700; line-height:1.25; color:var(--reading-head); margin-bottom:3px; }
         .pv-corrected { font-size:14px; font-weight:700; line-height:1.25; color:var(--red); margin-bottom:3px; }
-        .pv-subtitle { font-size:11px; color:#666; font-style:italic; margin-bottom:4px; }
-        .pv-author { font-size:10px; color:#999; margin-bottom:12px; font-family:var(--font); }
+        .pv-subtitle { font-size:11px; color:var(--reading-sub); font-style:italic; margin-bottom:4px; }
+        .pv-author { font-size:10px; color:var(--reading-mute); margin-bottom:12px; font-family:var(--font); }
         .pv-diff-del { background:rgba(196,74,58,0.12); text-decoration:line-through; text-decoration-color:#9e3527; color:#9e3527; }
         .pv-diff-ins { background:rgba(74,158,85,0.12); border-left:2px solid var(--green); padding-left:4px; color:#2d6e34; }
-        .pv-p { font-size:11px; line-height:1.7; color:#333; margin-bottom:10px; }
+        .pv-p { font-size:11px; line-height:1.7; color:var(--reading-fg); margin-bottom:10px; }
         .pv-annot-section { border-top:1px solid #ddd; padding-top:10px; font-family:var(--font); margin-top:14px; }
-        .pv-annot-label { font-size:8px; letter-spacing:1px; text-transform:uppercase; color:#999; margin-bottom:6px; }
+        .pv-annot-label { font-size:8px; letter-spacing:1px; text-transform:uppercase; color:var(--reading-mute); margin-bottom:6px; }
         .pv-annot-box { background:#f0f0ea; border:1px solid #ddd; padding:6px 8px; margin-bottom:4px; }
         .pv-annot-type { font-size:7px; color:#b8963e; letter-spacing:1px; font-weight:600; text-transform:uppercase; }
-        .pv-annot-text { font-size:10px; color:#333; margin-top:2px; }
-        .pv-headline.struck { text-decoration:line-through; text-decoration-color:var(--red); color:#999; }
+        .pv-annot-text { font-size:10px; color:var(--reading-fg); margin-top:2px; }
+        .pv-headline.struck { text-decoration:line-through; text-decoration-color:var(--red); color:var(--reading-mute); }
         .toggle { display:flex; border:1px solid var(--border); cursor:pointer; }
         .toggle span { padding:3px 7px; font-size:8px; letter-spacing:1px; text-transform:uppercase; }
         .toggle .off { color:var(--text-sec); }
