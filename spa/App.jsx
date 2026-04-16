@@ -852,6 +852,8 @@ export default function TrustAssembly() {
         .ta-modal-body { background:var(--card-bg); border:1px solid var(--border); max-width:min(800px, 100%); width:100%; max-height:calc(100vh - 32px); overflow-y:auto; -webkit-overflow-scrolling:touch; margin:auto; }
         .ta-tap { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
         .ta-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .ta-hero-slides { height:480px; }
+        @media(max-width:640px) { .ta-hero-slides { height:1000px; } }
         @media(max-width:400px) {
           .ta-content { padding:10px 14px 6px; }
           .hdr { padding:10px 14px; }
