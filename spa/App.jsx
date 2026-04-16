@@ -793,6 +793,46 @@ export default function TrustAssembly() {
         .ta-nav-dropdown-item:hover { background:var(--bg); color:var(--gold); }
         .ta-nav-dropdown-item.active { color:var(--gold); font-weight:600; }
         .ta-nav-badge { background:var(--gold); color:#0d0d0a; font-size:8px; padding:1px 5px; font-weight:700; margin-left:4px; border-radius:50%; }
+        /* ── MOBILE UTILITIES (cross-cutting) ── */
+        .ta-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding:16px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .ta-modal-body { background:var(--card-bg); border:1px solid var(--border); max-width:min(800px, 100%); width:100%; max-height:calc(100vh - 32px); overflow-y:auto; -webkit-overflow-scrolling:touch; margin:auto; }
+        .ta-tap { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+        .ta-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        @media(max-width:400px) {
+          .ta-content { padding:10px 14px 6px; }
+          .hdr { padding:10px 14px; }
+          .gold-rule { margin:0 14px; }
+          .user-bar { padding:6px 14px; font-size:10px; }
+          .footer { padding:10px 14px; gap:12px; }
+          .disclaimer { padding:4px 14px 8px; }
+        }
+        @media(max-width:768px) {
+          input[type="text"],input[type="email"],input[type="password"],input[type="number"],input[type="url"],input[type="search"],textarea,select,.ta-input,.field-input,.field-textarea,.ta-field input,.ta-field textarea,.ta-field select { font-size:16px !important; }
+          .ta-hamburger { padding:12px 10px; }
+          .preview-side { flex:none !important; height:auto !important; min-height:40vh; max-height:50vh; }
+          .stat-row { flex-wrap:wrap; }
+          .stat-row .stat-card { min-width:calc(50% - 3px); }
+          .steps-row { flex-direction:column; }
+          .mode-row { flex-direction:column; }
+          .card-actions,.confirm-actions,.vote-actions { flex-wrap:wrap; }
+          .confirm-yes,.confirm-no,.vote-btn { min-height:44px; }
+          .ta-review-tab { min-height:44px; display:inline-flex; align-items:center; }
+          .ta-mobile-menu-item { min-height:44px; display:flex; align-items:center; }
+        }
+        @media(max-width:640px) { .ta-feedback-fab { min-height:48px; min-width:48px; } }
+        /* Mobile-only font floor (no desktop layout change, avoids CLS) */
+        @media(max-width:768px) {
+          .stat-label,.status-badge,.type-badge,.di-badge,.filt,.tab,.card-btn,
+          .hdr-beta,.hdr-sub,.pv-annot-label,.pv-annot-type,.preview-label,
+          .article-header,.asm-tag,.ribbon-meta,.disclaimer,.footer,
+          .edit-hint,.vault-desc,.vault-note,.asm-label,.evidence-count,
+          .add-btn { font-size:10px; }
+          .card-meta,.card-url,.card-edits,.card-evidence,.field-label,
+          .ta-field label,.field-input,.field-textarea,.search-input,
+          .vault-type,.ribbon-title,.loaded-label,.admin-title,.wild-title,
+          .step-title,.edit-num,.create-label,.ta-label,.hdr-nav,
+          .ta-review-tab,.section-label,.ta-section-head { font-size:11px; }
+        }
       `}</style>
 
       {verifyEmailToken ? (

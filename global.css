@@ -270,3 +270,21 @@ textarea {
 .run-stats .stat {
   font-family: 'IBM Plex Mono', monospace;
 }
+
+/* Mobile: raise form inputs to 16px to prevent iOS zoom-on-focus.
+   Kept outside of desktop cascade so desktop layout does not shift. */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="url"],
+  input[type="number"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+  .app-container {
+    padding: 16px 16px;
+  }
+}

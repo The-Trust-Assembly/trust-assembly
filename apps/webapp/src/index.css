@@ -98,3 +98,11 @@
   height: 23px;
   width: 108.5px;
 }
+
+/* Mobile: suppress iOS zoom-on-focus by keeping input font-size >= 16px.
+   Scoped to <= 768px so desktop rendering is unchanged. */
+@media (max-width: 768px) {
+  input, textarea, select, button {
+    font-size: 16px;
+  }
+}
