@@ -376,7 +376,7 @@ function ReviewScreenInner({ user }) {
       <div style={{ margin: "8px 0", padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
         <SubHeadline sub={sub} />
       </div>
-      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{safe(sub.reasoning)}</div>
+      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 10, whiteSpace: "pre-wrap" }}>{safe(sub.reasoning)}</div>
 
       {sub.evidence && sub.evidence.length > 0 && (
         <div style={{ marginTop: 12, padding: 12, background: "var(--card-bg)", borderRadius: 0 }}>
