@@ -5,6 +5,7 @@ import AgentTabBar from "../components/agent/AgentTabBar";
 import AgentIcon from "../components/agent/AgentIcon";
 import AgentNewForm from "../components/agent/AgentNewForm";
 import SentinelDashboard from "../components/agent/SentinelDashboard";
+import PhantomDashboard from "../components/agent/PhantomDashboard";
 import AgentSettings from "../components/agent/AgentSettings";
 
 // Trust Assembly Agent — main page
@@ -24,9 +25,8 @@ import AgentSettings from "../components/agent/AgentSettings";
 //                              (dashboard), AgentSettings, or
 //                              AgentReviewPanel depending on activePage
 //
-// Phantom and Ward dashboards are placeholders in Stage B — they show
-// a "coming soon" card since the real type-specific flows arrive in
-// Stages D and E.
+// Phantom has a real dashboard (Stage D). Ward is still a placeholder
+// (Stage E will implement entity monitoring).
 
 function isAgentAuthorized(user) {
   return user && user.username === ADMIN_USERNAME;
@@ -351,7 +351,7 @@ export default function AgentPage({ user }) {
               <SentinelDashboard agent={activeAgent} onReview={handleReview} />
             )}
             {activeAgent.type === "phantom" && (
-              <TypeDashboardPlaceholder agent={activeAgent} stage="Stage D" />
+              <PhantomDashboard agent={activeAgent} onReview={handleReview} />
             )}
             {activeAgent.type === "ward" && (
               <TypeDashboardPlaceholder agent={activeAgent} stage="Stage E" />

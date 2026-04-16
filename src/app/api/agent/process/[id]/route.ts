@@ -67,9 +67,159 @@ export async function POST(
     estimateCost(DEFAULT_MODEL, sonnetUsage.inputTokens, sonnetUsage.outputTokens) +
     estimateCost(HAIKU_MODEL, haikuUsage.inputTokens, haikuUsage.outputTokens);
 
-  // Extract keywords from context JSONB (stored by POST /api/agent/run)
+  // Extract context JSONB
   const runContext =
     run.context && typeof run.context === "object" ? run.context : {};
+
+  // ---- PHANTOM FEED PATH ----
+  // When scope is 'phantom-feed', the run was created by POST /api/agent/feed/[id].
+  // Post URLs are pre-selected by the user — skip search/filter entirely and
+  // go directly to fetch → analyze → synthesize.
+  if (run.scope === "phantom-feed") {
+    const postUrls: string[] = Array.isArray(runContext.postUrls) ? runContext.postUrls : [];
+    if (postUrls.length === 0) {
+      await sql`
+        UPDATE agent_runs
+        SET status = 'failed', error_message = 'No post URLs in context',
+            stage_message = 'Phantom scan failed — no URLs', updated_at = now(), completed_at = now()
+        WHERE id = ${run.id}
+      `;
+      return err("No post URLs in run context", 400);
+    }
+
+    try {
+      // Phase 1: Fetch
+      await sql`
+        UPDATE agent_runs
+        SET status = 'fetching',
+            stage_message = ${`Fetching ${postUrls.length} posts...`},
+            progress_pct = 15, articles_found = ${postUrls.length}, updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      const { articles: fetched, errors: fetchErrors } = await fetchArticles(postUrls);
+
+      if (fetched.length === 0) {
+        const failedBatch: AgentBatch = {
+          topic: run.thesis,
+          submissions: [],
+          vaultEntries: [],
+          narrative: "All post fetches failed.",
+          errors: fetchErrors,
+        };
+        await sql`
+          UPDATE agent_runs
+          SET status = 'failed', stage_message = 'All post fetches failed',
+              error_message = ${`${fetchErrors.length} fetch errors`},
+              articles_found = ${postUrls.length}, articles_fetched = 0,
+              batch = ${JSON.stringify(failedBatch)},
+              updated_at = now(), completed_at = now()
+          WHERE id = ${run.id}
+        `;
+        return ok({ runId: run.id, status: "failed" });
+      }
+
+      await sql`
+        UPDATE agent_runs
+        SET status = 'analyzing',
+            stage_message = ${`Fetched ${fetched.length}/${postUrls.length}. Analyzing...`},
+            progress_pct = 40, articles_fetched = ${fetched.length}, updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      // Phase 2: Analyze
+      const articlesForAnalysis = fetched.map((f) => ({
+        url: f.url,
+        headline: f.headline || "",
+        text: f.text,
+      }));
+
+      const { analyzed, errors: analyzeErrors, usage: analyzeUsage } =
+        await analyzeArticles(articlesForAnalysis, run.thesis);
+      sonnetUsage.inputTokens += analyzeUsage.inputTokens;
+      sonnetUsage.outputTokens += analyzeUsage.outputTokens;
+
+      await sql`
+        UPDATE agent_runs
+        SET status = 'synthesizing',
+            stage_message = ${`Analyzed ${analyzed.length} posts. Synthesizing...`},
+            progress_pct = 80, articles_analyzed = ${analyzed.length},
+            input_tokens = ${totalInputTokens()}, output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()}, updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      // Phase 3: Synthesize
+      let refined = analyzed;
+      let consolidatedVault: AgentBatch["vaultEntries"] = [];
+      let narrative = "";
+
+      if (analyzed.length > 0) {
+        const synth = await synthesizeAnalyses(run.thesis, analyzed);
+        refined = synth.refined;
+        narrative = synth.narrative;
+        consolidatedVault = synth.vaultEntries.map((entry, i) => ({
+          id: `vault-${run.id.substring(0, 8)}-${i}`,
+          approved: true,
+          entry,
+        }));
+        sonnetUsage.inputTokens += synth.usage.inputTokens;
+        sonnetUsage.outputTokens += synth.usage.outputTokens;
+      }
+
+      const submissions: SubmissionForReview[] = refined.map((a, i) => ({
+        id: `sub-${run.id.substring(0, 8)}-${i}`,
+        url: a.url,
+        headline: a.headline,
+        approved: a.analysis.verdict !== "skip",
+        analysis: a.analysis,
+      }));
+
+      const finalBatch: AgentBatch = {
+        topic: run.thesis,
+        submissions,
+        vaultEntries: consolidatedVault,
+        narrative,
+        errors: [...fetchErrors, ...analyzeErrors],
+        skipped: submissions.filter((s) => s.analysis.verdict === "skip").length,
+      };
+
+      await sql`
+        UPDATE agent_runs
+        SET status = 'ready',
+            stage_message = ${`Complete. ${submissions.length} submissions, ${consolidatedVault.length} vault entries.`},
+            progress_pct = 100, batch = ${JSON.stringify(finalBatch)},
+            input_tokens = ${totalInputTokens()}, output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()}, updated_at = now(), completed_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      return ok({
+        runId: run.id,
+        status: "ready",
+        searchMethod: "phantom-feed",
+        articlesFetched: fetched.length,
+        articlesAnalyzed: analyzed.length,
+        submissions: submissions.length,
+        estimatedCostUsd: totalCost(),
+      });
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      try {
+        await sql`
+          UPDATE agent_runs
+          SET status = 'failed', error_message = ${errorMessage},
+              stage_message = 'Phantom pipeline failed',
+              input_tokens = ${totalInputTokens()}, output_tokens = ${totalOutputTokens()},
+              estimated_cost_usd = ${totalCost()}, updated_at = now(), completed_at = now()
+          WHERE id = ${run.id}
+        `;
+      } catch {}
+      return serverError(`/api/agent/process/${params.id} (phantom)`, e);
+    }
+  }
+
+  // ---- SENTINEL PATH (default) ----
   let keywords: string[] | undefined = Array.isArray(runContext.keywords)
     ? runContext.keywords
     : undefined;
