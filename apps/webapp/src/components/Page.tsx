@@ -27,7 +27,7 @@ export default function Page({ children, signInOpen, onSignInClose }: PageProps)
           <li><Link to="#">Contact</Link></li>
         </ul>
         <div className="flex-grow"></div>
-        <img src={socialMediaIcons} alt="social media icons" className="social-icons" />
+        <img src={socialMediaIcons} alt="social media icons" className="social-icons" width={109} height={23} loading="lazy" decoding="async" />
       </footer>
     </div>
   </>)
