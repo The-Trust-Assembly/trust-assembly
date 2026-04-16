@@ -544,6 +544,7 @@ export default function TrustAssembly() {
         /* ── HEADER ── */
         .hdr { padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
         .hdr-left { display:flex; align-items:center; gap:8px; }
+        .hdr-logo { width:32px; height:32px; display:block; flex-shrink:0; }
         .hdr-bar { width:3px; height:18px; background:var(--gold); }
         .hdr-title { font-size:13px; font-weight:800; letter-spacing:2px; text-transform:uppercase; font-family:var(--serif); }
         .hdr-sub { font-size:8px; color:var(--gold); letter-spacing:2px; font-weight:600; }
@@ -905,6 +906,7 @@ export default function TrustAssembly() {
         <div>
           <div className="hdr">
             <div className="hdr-left">
+              <img src="/icons/lighthouse-header.png" alt="" width={32} height={32} className="hdr-logo" />
               <div className="hdr-bar" />
               <span className="hdr-title">Trust Assembly</span>
               <span className="hdr-sub">TRUTH WILL OUT</span>
@@ -925,6 +927,7 @@ export default function TrustAssembly() {
           {/* Header */}
           <div className="hdr" style={{ background: "#f5f2ec" }}>
             <div className="hdr-left">
+              <img src="/icons/lighthouse-header.png" alt="" width={32} height={32} className="hdr-logo" />
               <div className="hdr-bar" />
               <span className="hdr-title">Trust Assembly</span>
               <span className="hdr-sub">TRUTH WILL OUT</span>
@@ -977,6 +980,7 @@ export default function TrustAssembly() {
           {/* ── HEADER ── */}
           <div className="hdr">
             <div className="hdr-left" style={{ cursor: "pointer" }} onClick={() => setScreen("feed")}>
+              <img src="/icons/lighthouse-header.png" alt="" width={32} height={32} className="hdr-logo" />
               <div className="hdr-bar" />
               <span className="hdr-title">Trust Assembly</span>
               <span className="hdr-sub">TRUTH WILL OUT</span>
