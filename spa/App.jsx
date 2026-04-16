@@ -214,6 +214,8 @@ export default function TrustAssembly() {
   const [screenTransition, setScreenTransition] = useState(false);
   const setScreen = useCallback((s) => {
     trackAction("nav", `screen:${s}`, { screen: s });
+    // Persist current scroll keyed by the outgoing path so Back restores it later.
+    try { sessionStorage.setItem(`ta-scroll:${window.location.pathname}`, String(window.scrollY)); } catch {}
     setScreenTransition(true);
     setTimeout(() => { setScreenRaw(s); setScreenTransition(false); window.scrollTo(0, 0); }, 80);
     setViewingCitizen(null);
@@ -244,6 +246,16 @@ export default function TrustAssembly() {
   useEffect(() => {
     const onPop = (e) => {
       skipPush.current = true;
+      // Look up any scroll position we saved for the target path so we can
+      // restore it after the route state updates and the DOM paints.
+      let saved = null;
+      try {
+        const raw = sessionStorage.getItem(`ta-scroll:${window.location.pathname}`);
+        if (raw !== null) {
+          const y = parseInt(raw, 10);
+          if (!Number.isNaN(y)) saved = y;
+        }
+      } catch {}
       if (e.state) {
         if (e.state.record) {
           setViewingRecord(e.state.record);
@@ -264,8 +276,24 @@ export default function TrustAssembly() {
         if (path && !path.startsWith("citizen/") && !path.startsWith("record/")) setScreenRaw(path);
       }
       skipPush.current = false;
+      if (typeof saved === "number") {
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, saved)));
+      }
     };
     window.addEventListener("popstate", onPop);
+
+    // Save scroll position for the current path while the user scrolls so
+    // Back/Forward can restore it. sessionStorage, not localStorage, so it
+    // naturally clears when the tab closes.
+    let scrollSaveTimer = null;
+    const onScroll = () => {
+      if (scrollSaveTimer !== null) return;
+      scrollSaveTimer = setTimeout(() => {
+        try { sessionStorage.setItem(`ta-scroll:${window.location.pathname}`, String(window.scrollY)); } catch {}
+        scrollSaveTimer = null;
+      }, 120);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     // On mount: restore from pathname if present (deep link / reload support)
     const path = window.location.pathname.slice(1);
@@ -300,7 +328,11 @@ export default function TrustAssembly() {
 
     // Seed initial history entry
     window.history.replaceState({ screen, citizen: null, record: null }, "", window.location.pathname !== "/" ? window.location.pathname : "/" + screen);
-    return () => window.removeEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("scroll", onScroll);
+      if (scrollSaveTimer !== null) clearTimeout(scrollSaveTimer);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

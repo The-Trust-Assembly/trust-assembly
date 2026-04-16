@@ -1,16 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "./components/Card";
 import Page from "./components/Page";
 
 const MAX_HEADLINE_LENGTH = 120;
+const DRAFT_KEY = "trust-assembly.new-headline-draft.v1";
+
+type Citation = { url: string; explanation: string };
+type Draft = { originalHeadline: string; replacementHeadline: string; citations: Citation[] };
+
+const DEFAULT_DRAFT: Draft = {
+    originalHeadline: "New Study Proves Coffee Cures Cancer",
+    replacementHeadline: "Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers",
+    citations: [{ url: "", explanation: "" }],
+};
+
+function loadDraft(): Draft {
+    try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return DEFAULT_DRAFT;
+        const parsed = JSON.parse(raw) as Partial<Draft>;
+        return {
+            originalHeadline: parsed.originalHeadline ?? DEFAULT_DRAFT.originalHeadline,
+            replacementHeadline: parsed.replacementHeadline ?? DEFAULT_DRAFT.replacementHeadline,
+            citations: Array.isArray(parsed.citations) && parsed.citations.length > 0 ? parsed.citations : DEFAULT_DRAFT.citations,
+        };
+    } catch { return DEFAULT_DRAFT; }
+}
 
 export default function NewHeadlinePage() {
-    const [originalHeadline, setOriginalHeadline] = useState("New Study Proves Coffee Cures Cancer");
-    const [replacementHeadline, setReplacementHeadline] = useState("Study Finds Correlation Between Coffee Consumption and Lower Risk of Certain Cancers");
-    // Each citation is an object: { url: string, explanation: string }
-    const [citations, setCitations] = useState<{ url: string; explanation: string }[]>([
-        { url: "", explanation: "" }
-    ]);
+    const initial = loadDraft();
+    const [originalHeadline, setOriginalHeadline] = useState(initial.originalHeadline);
+    const [replacementHeadline, setReplacementHeadline] = useState(initial.replacementHeadline);
+    const [citations, setCitations] = useState<Citation[]>(initial.citations);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify({ originalHeadline, replacementHeadline, citations }));
+        } catch { /* quota exceeded, ignore */ }
+    }, [originalHeadline, replacementHeadline, citations]);
 
     // Error state
     const [fieldErrors, setFieldErrors] = useState<{
@@ -68,6 +95,7 @@ export default function NewHeadlinePage() {
             // Submit logic here (e.g. API call)
             // For now, just log
             console.log({ originalHeadline, replacementHeadline, citations });
+            try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
         }
     };
 

@@ -4,6 +4,7 @@ import './App.css'
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import QueryBoundaryProvider from "./contexts/QueryBoundaryProvider";
 import SessionProvider from "./contexts/SessionProvider";
+import ScrollRestoration from "./components/ScrollRestoration";
 
 const Index = lazy(() => import("./Index"));
 const Hello = lazy(() => import("./Hello"));
@@ -34,6 +35,7 @@ function App() {
       <QueryBoundaryProvider>
         <SessionProvider>
           <BrowserRouter>
+            <ScrollRestoration />
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<Index />} />
