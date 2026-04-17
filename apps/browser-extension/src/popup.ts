@@ -17,6 +17,9 @@ const selectElement = document.getElementById(
   'transform-select',
 ) as HTMLSelectElement;
 
+// elements for new-headline navigation
+const replaceHeadlineButton = document.getElementById('replace-headline');
+
 // set current url
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const urlString = tabs[0].url;
@@ -59,6 +62,11 @@ retrieveButton?.addEventListener('click', async () => {
 
 toggleButton?.addEventListener('click', async () => {
   await toggleHeadline();
+});
+
+// new-headline: open separate page
+replaceHeadlineButton?.addEventListener('click', () => {
+  window.location.href = 'new_headline.html';
 });
 
 const STORED_DATA = 'storedHeadlineData';

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Replace Headline</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 10px;
+        width: 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Propose New Headline</h3>
+    <form id="new-headline-form">
+      <div style="margin-top: 6px; display: flex; justify-content: space-between;">
+        <label for="nh-original">Original headline</label>
+        <div id="nh-original-count"></div>
+      </div>
+      <textarea id="nh-original" style="width: 100%; box-sizing: border-box;"></textarea>
+      <div id="nh-original-error" style="color: #dc2626; font-size: 12px; margin: 4px 0; display: none;"></div>
+
+      <div style="margin-top: 6px; display: flex; justify-content: space-between;">
+        <label for="nh-replacement">Replacement headline</label>
+        <div id="nh-replacement-count"></div>
+      </div>
+      <textarea id="nh-replacement" style="width: 100%; box-sizing: border-box;"></textarea>
+      <div id="nh-replacement-error" style="color: #dc2626; font-size: 12px; margin: 4px 0; display: none;"></div>
+
+      <section style="margin-top: 6px;">
+        <h4>Citations</h4>
+        <div id="nh-citations"></div>
+        <div id="nh-citations-error" style="color: #dc2626; font-size: 12px; margin: 4px 0; display: none;"></div>
+      </section>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+        <button type="button" id="nh-cancel">Cancel</button>
+        <button type="submit" id="nh-submit">Save & Submit</button>
+      </div>
+    </form>
+
+    <script src="dist/src/newHeadline.js"></script>
+  </body>
+  </html>
+
