@@ -146,6 +146,8 @@ export default function AgentNewForm({ onCreated, onCancel }) {
                   textAlign: "left",
                   position: "relative",
                   transition: "border-color 0.15s",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
                 {selected && (
@@ -169,7 +171,7 @@ export default function AgentNewForm({ onCreated, onCancel }) {
                     ✓
                   </span>
                 )}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, minHeight: 40 }}>
                   <AgentIcon type={t.id} size={32} />
                   <div>
                     <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
@@ -180,7 +182,7 @@ export default function AgentNewForm({ onCreated, onCancel }) {
                     </div>
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, flex: 1 }}>
                   {t.description}
                 </div>
               </button>

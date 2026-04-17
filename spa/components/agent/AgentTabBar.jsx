@@ -63,36 +63,19 @@ export default function AgentTabBar({
     <div
       style={{
         display: "flex",
-        alignItems: "stretch",
-        background: "var(--text)",
-        borderRadius: "10px 10px 0 0",
-        padding: "0 6px",
-        overflow: "hidden",
+        alignItems: "flex-end",
+        padding: "0",
         flexWrap: "wrap",
+        gap: 2,
+        borderBottom: "2px solid var(--gold)",
       }}
     >
       {tabs.map((tab, idx) => {
         const active = tab.id === activeId;
         const hovered = hoveredId === tab.id;
-        const showDivider = idx > 0;
-        const divider = showDivider ? (
-          <span
-            key={"div-" + tab.id}
-            style={{
-              width: 1,
-              alignSelf: "center",
-              height: 22,
-              background: "var(--gold)",
-              opacity: 0.35,
-              flexShrink: 0,
-            }}
-          />
-        ) : null;
-
         if (active) {
           return (
             <React.Fragment key={tab.id}>
-              {divider}
               <button
                 onClick={() => onSelect && onSelect(tab.id)}
                 style={{
@@ -100,28 +83,17 @@ export default function AgentTabBar({
                   alignItems: "center",
                   gap: 8,
                   padding: "8px 18px",
-                  marginTop: 4,
-                  border: "none",
+                  border: "2px solid var(--gold)",
+                  borderBottom: "2px solid var(--card-bg)",
                   background: "var(--card-bg)",
                   cursor: "default",
                   borderRadius: "8px 8px 0 0",
                   whiteSpace: "nowrap",
                   position: "relative",
                   zIndex: 2,
-                  boxShadow: "0 -2px 6px rgba(0,0,0,0.1)",
+                  marginBottom: -2,
                 }}
               >
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 8,
-                    right: 8,
-                    height: 3,
-                    borderRadius: "0 0 2px 2px",
-                    background: "var(--gold)",
-                  }}
-                />
                 <AgentIcon
                   type={tab.type}
                   size={26}
@@ -171,9 +143,8 @@ export default function AgentTabBar({
 
         return (
           <React.Fragment key={tab.id}>
-            {divider}
             <div
-              style={{ position: "relative", display: "flex", alignItems: "stretch" }}
+              style={{ position: "relative", display: "flex", alignItems: "flex-end" }}
               onMouseEnter={() => setHoveredId(tab.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
@@ -184,16 +155,19 @@ export default function AgentTabBar({
                   alignItems: "center",
                   justifyContent: "center",
                   padding: "10px 12px",
-                  border: "none",
-                  background: hovered ? "rgba(255,255,255,0.08)" : "transparent",
+                  border: "1px solid transparent",
+                  borderBottom: "none",
+                  background: hovered ? "var(--card-bg)" : "transparent",
                   cursor: "pointer",
                   borderRadius: "6px 6px 0 0",
-                  transition: "background 0.15s ease",
+                  transition: "background 0.15s ease, border-color 0.15s ease",
+                  marginBottom: -2,
+                  ...(hovered ? { borderColor: "var(--border)" } : {}),
                 }}
               >
                 <span
                   style={{
-                    opacity: hovered ? 0.9 : 0.5,
+                    opacity: hovered ? 1 : 0.6,
                     transition: "opacity 0.15s ease",
                     display: "flex",
                   }}
@@ -252,16 +226,6 @@ export default function AgentTabBar({
       {/* "+" new agent tab */}
       {showNewTab && (
         <React.Fragment key="new-tab">
-          <span
-            style={{
-              width: 1,
-              alignSelf: "center",
-              height: 22,
-              background: "var(--gold)",
-              opacity: 0.35,
-              flexShrink: 0,
-            }}
-          />
           <button
             onClick={() => (onCreateNew ? onCreateNew() : onSelect && onSelect("new"))}
             title="Create a new agent"
@@ -270,14 +234,16 @@ export default function AgentTabBar({
               alignItems: "center",
               justifyContent: "center",
               padding: "10px 16px",
-              border: "none",
+              border: "1px solid transparent",
+              borderBottom: "none",
               background: "transparent",
               cursor: "pointer",
               borderRadius: "6px 6px 0 0",
-              transition: "background 0.15s ease",
+              transition: "background 0.15s ease, border-color 0.15s ease",
+              marginBottom: -2,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-bg)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
           >
             <span
               style={{
@@ -288,7 +254,7 @@ export default function AgentTabBar({
                 height: 26,
                 borderRadius: "50%",
                 border: "1.5px dashed rgba(184,148,62,0.6)",
-                color: "rgba(255,255,255,0.7)",
+                color: "var(--gold)",
                 fontSize: 18,
                 fontFamily: "var(--serif)",
                 lineHeight: 1,
