@@ -270,6 +270,14 @@ export async function POST(
 
     let candidates = searchResult.candidates;
 
+    // Checkpoint: save search results so they survive a timeout
+    await sql`
+      UPDATE agent_runs
+      SET batch = ${JSON.stringify({ _checkpoint: "search", candidates, searchMethod: searchResult.method })},
+          updated_at = now()
+      WHERE id = ${run.id}
+    `;
+
     // Empty short-circuit
     if (candidates.length === 0) {
       const emptyBatch: AgentBatch = {
