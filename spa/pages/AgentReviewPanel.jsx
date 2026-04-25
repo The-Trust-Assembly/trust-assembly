@@ -59,7 +59,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
         setVaultEntries(runData.run.batch?.vaultEntries || []);
         if (asmRes.ok) {
           const asmData = await asmRes.json();
-          const list = asmData.assemblies || asmData.organizations || [];
+          const list = asmData.joined || asmData.assemblies || asmData.organizations || [];
           setAssemblies(list);
           // Default-select the first assembly
           if (list.length > 0) setSelectedOrgIds([list[0].id]);

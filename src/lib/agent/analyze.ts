@@ -80,7 +80,7 @@ Rules:
 - Use "skip" for paywalled, opinion/editorial, or unfalsifiable content
 - Use "correction" ONLY when you can cite specific factual errors with evidence
 - Use "affirmation" when the article is factually sound on an important topic
-- vaultEntries is optional — only include entries that would genuinely be reusable
+- Generate MANY vault entries — err on the side of including more rather than fewer. The user will curate and remove ones they don't want. Aim for 3-8 standing corrections per article when the topic is rich with factual claims. Include every distinct factual assertion that could be reused across articles.
 - Standing corrections should be facts, not opinions`;
 
   const response = await claude.messages.create({
