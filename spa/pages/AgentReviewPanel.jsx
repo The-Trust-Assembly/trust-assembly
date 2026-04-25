@@ -471,8 +471,11 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                               </div>
                             )}
                             {ev.url && (
-                              <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
-                                {ev.url}
+                              <div style={{ fontFamily: "var(--mono)", fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                                <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)" }}>{ev.url}</a>
+                                {ev.urlVerified === "verified" && <span style={{ color: "var(--green)" }}>URL confirmed</span>}
+                                {ev.urlVerified === "not_found" && <span style={{ color: "var(--red)" }}>URL broken (404)</span>}
+                                {ev.urlVerified === "error" && <span style={{ color: "var(--gold)" }}>URL unreachable</span>}
                               </div>
                             )}
                           </div>

@@ -39,6 +39,8 @@ export interface ArticleAnalysis {
     quote?: string;
     quoteVerified?: "verified" | "approximate" | "not_found";
     quoteContext?: string;
+    urlVerified?: "verified" | "not_found" | "error";
+    urlDetail?: string;
   }>;
   confidence: "high" | "medium" | "low";
   bodyAnalysis?: string;
