@@ -5,6 +5,52 @@ import React, { useState, useRef, useEffect } from "react";
 // Links to AI Agent documentation + bulk upload for users who use
 // their own AI tools (ChatGPT, Gemini, local models, etc.)
 
+const LLM_PROMPT = `I need you to fact-check the following article(s) for Trust Assembly, a civic fact-checking platform. For each article, analyze it for factual accuracy and output a JSON object I can paste directly into their system.
+
+For each article URL I give you:
+1. Read the article carefully
+2. Identify the main factual claims
+3. Determine if the headline is accurate, misleading, or needs correction
+4. Find exact verbatim quotes from the article that support your conclusions
+5. Classify as "correction" (headline is misleading) or "affirmation" (headline is accurate and important)
+
+Output ONLY valid JSON in this exact format — no other text before or after:
+
+{
+  "submissions": [
+    {
+      "url": "the article URL",
+      "originalHeadline": "the article's actual headline",
+      "submissionType": "correction or affirmation",
+      "replacement": "corrected headline (only if submissionType is correction, omit for affirmation)",
+      "reasoning": "Your detailed explanation of why this is a correction or affirmation. Cite specific claims. Max 2000 characters.",
+      "evidence": [
+        {
+          "description": "What this evidence shows",
+          "quote": "Exact verbatim quote from the article — copy it character for character",
+          "url": "URL of external source if citing something outside the article"
+        }
+      ]
+    }
+  ],
+  "vaultEntries": [
+    {
+      "type": "vault",
+      "assertion": "A simple declarative fact. Then supporting context.",
+      "evidence": "Source or reference for this fact."
+    }
+  ]
+}
+
+Rules:
+- Every evidence item MUST include a "quote" field with an EXACT quote from the article
+- Standing corrections (vault entries) should start with a simple declarative fact
+- Generate many vault entries — every reusable factual claim worth preserving
+- submissionType must be exactly "correction" or "affirmation"
+- Do not include any text outside the JSON object
+
+Here are the article(s) to analyze:`;
+
 const UPLOAD_FORMAT = {
   description: "Trust Assembly Bulk Submission Format (v1)",
   example: {
@@ -34,6 +80,7 @@ export default function AgentFooter({ onUpload }) {
   const [showFormat, setShowFormat] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [pastedJson, setPastedJson] = useState("");
   const [parsedData, setParsedData] = useState(null);
   const [assemblies, setAssemblies] = useState([]);
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
@@ -134,47 +181,100 @@ export default function AgentFooter({ onUpload }) {
           <h3 style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
             Bulk Upload — Use Your Own AI
           </h3>
-          <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 12 }}>
-            Use ChatGPT, Gemini, Claude, or any AI tool to analyze articles. Export the results as a JSON file
-            matching the format below, then upload it here. Your submissions go through the same review and
-            jury process as agent-generated ones.
+          <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>
+            Use ChatGPT, Gemini, Claude, or any AI to analyze articles. Copy the prompt below into your AI,
+            paste the article URLs, then paste the JSON output here. Costs 1 credit per submission.
           </p>
 
+          {/* Step 1: Copy the prompt */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
-              JSON Format (copy this as a template):
+            <label style={{ fontFamily: "var(--serif)", fontSize: 13, fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 6 }}>
+              Step 1: Copy this prompt into your AI
             </label>
             <pre style={{
               padding: "12px 14px", background: "var(--bg)", borderRadius: 4,
-              border: "1px solid var(--border)", fontSize: 10, fontFamily: "var(--mono)",
-              color: "var(--text)", overflow: "auto", maxHeight: 300, lineHeight: 1.5,
+              border: "1px solid var(--border)", fontSize: 11, fontFamily: "var(--mono)",
+              color: "var(--text)", overflow: "auto", maxHeight: 250, lineHeight: 1.6,
               whiteSpace: "pre-wrap", wordBreak: "break-word",
             }}>
-              {JSON.stringify(UPLOAD_FORMAT.example, null, 2)}
+{LLM_PROMPT}
             </pre>
             <button
-              onClick={() => {
-                navigator.clipboard?.writeText(JSON.stringify(UPLOAD_FORMAT.example, null, 2));
-              }}
+              onClick={() => navigator.clipboard?.writeText(LLM_PROMPT)}
               className="ta-btn-secondary"
-              style={{ fontSize: 10, padding: "4px 12px", marginTop: 6 }}
+              style={{ fontSize: 11, padding: "5px 14px", marginTop: 6 }}
             >
-              Copy Template
+              Copy Prompt
             </button>
           </div>
 
-          <div style={{ marginBottom: 12 }}>
+          {/* Step 2: Paste the JSON output */}
+          <div style={{ marginBottom: 16 }}>
             <label style={{ fontFamily: "var(--serif)", fontSize: 13, fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 6 }}>
-              Upload JSON File
+              Step 2: Paste the JSON output from your AI
             </label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".json,application/json"
-              onChange={handleFileUpload}
-              disabled={uploading}
-              style={{ fontSize: 12, color: "var(--text)" }}
+            <textarea
+              value={pastedJson}
+              onChange={(e) => setPastedJson(e.target.value)}
+              placeholder='Paste the JSON here — it should start with { "submissions": [ ...'
+              disabled={submitting}
+              style={{
+                width: "100%", minHeight: 120, padding: "10px 12px",
+                fontFamily: "var(--mono)", fontSize: 11,
+                border: "1px solid var(--border)", borderRadius: 4,
+                background: "var(--bg)", color: "var(--text)", resize: "vertical",
+              }}
             />
+            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+              <button
+                className="ta-btn-primary"
+                disabled={!pastedJson.trim() || uploading}
+                onClick={() => {
+                  try {
+                    const data = JSON.parse(pastedJson.trim());
+                    if (!data.submissions || !Array.isArray(data.submissions)) {
+                      setUploadResult({ error: "Invalid format: must have a 'submissions' array." });
+                      return;
+                    }
+                    const errors = [];
+                    data.submissions.forEach((sub, i) => {
+                      if (!sub.url) errors.push(`Submission ${i + 1}: missing url`);
+                      if (!sub.originalHeadline) errors.push(`Submission ${i + 1}: missing originalHeadline`);
+                      if (!sub.submissionType) errors.push(`Submission ${i + 1}: missing submissionType`);
+                      if (!sub.reasoning) errors.push(`Submission ${i + 1}: missing reasoning`);
+                    });
+                    if (errors.length > 0) {
+                      setUploadResult({ error: `Validation errors:\n${errors.join("\n")}` });
+                      return;
+                    }
+                    setParsedData(data);
+                    setSubmitResult(null);
+                    setUploadResult({
+                      success: true,
+                      message: `Parsed ${data.submissions.length} submission${data.submissions.length === 1 ? "" : "s"} and ${(data.vaultEntries || []).length} vault entries. Select an assembly and submit.`,
+                    });
+                  } catch (e) {
+                    setUploadResult({ error: `Invalid JSON: ${e.message}` });
+                  }
+                }}
+                style={{ fontSize: 12, padding: "6px 16px" }}
+              >
+                Validate
+              </button>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>
+                or <label style={{ color: "var(--gold)", cursor: "pointer", textDecoration: "underline" }}>
+                  upload a .json file
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              </span>
+            </div>
           </div>
 
           {uploadResult && (
