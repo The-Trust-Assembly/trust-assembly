@@ -7,6 +7,7 @@ import { isGoogleSearchAvailable } from "@/lib/agent/google-search";
 import { filterByRelevance } from "@/lib/agent/relevance-filter";
 import { fetchArticles } from "@/lib/agent/fetch";
 import { analyzeArticles } from "@/lib/agent/analyze";
+import { verifyQuotes } from "@/lib/agent/verify-quotes";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import type {
@@ -151,6 +152,13 @@ export async function POST(
         });
       sonnetUsage.inputTokens += analyzeUsage.inputTokens;
       sonnetUsage.outputTokens += analyzeUsage.outputTokens;
+
+      // Quote verification for Phantom posts
+      const phantomTextByUrl = new Map(articlesForAnalysis.map((a) => [a.url, a.text]));
+      for (const a of analyzed) {
+        const text = phantomTextByUrl.get(a.url);
+        if (text && a.analysis.evidence) verifyQuotes(a.analysis, text);
+      }
 
       await sql`
         UPDATE agent_runs
@@ -504,10 +512,27 @@ export async function POST(
     sonnetUsage.inputTokens += analyzeUsage.inputTokens;
     sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
+    // ---- Phase 3.5: Quote verification ----
+    // Deterministically verify that quotes cited in evidence actually
+    // appear in the source article text. No LLM cost.
+    const articleTextByUrl = new Map(
+      articlesForAnalysis.map((a) => [a.url, a.text])
+    );
+    let totalVerified = 0;
+    let totalNotFound = 0;
+    for (const a of analyzed) {
+      const text = articleTextByUrl.get(a.url);
+      if (text && a.analysis.evidence) {
+        const result = verifyQuotes(a.analysis, text);
+        totalVerified += result.verified + result.approximate;
+        totalNotFound += result.notFound;
+      }
+    }
+
     await sql`
       UPDATE agent_runs
       SET status = 'synthesizing',
-          stage_message = ${`Analyzed ${analyzed.length} articles. Synthesizing findings...`},
+          stage_message = ${`Analyzed ${analyzed.length} articles (${totalVerified} quotes verified, ${totalNotFound} not found). Synthesizing...`},
           progress_pct = 85,
           articles_analyzed = ${analyzed.length},
           input_tokens = ${totalInputTokens()},

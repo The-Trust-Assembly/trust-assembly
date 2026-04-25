@@ -450,16 +450,34 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                         <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                           Evidence ({sub.analysis.evidence.length})
                         </label>
-                        {sub.analysis.evidence.map((ev, j) => (
-                          <div key={j} style={{ fontSize: 12, marginBottom: 4, padding: "4px 8px", background: "var(--bg)", borderRadius: 4 }}>
+                        {sub.analysis.evidence.map((ev, j) => {
+                          const verifyColor = ev.quoteVerified === "verified" ? "var(--green)"
+                            : ev.quoteVerified === "approximate" ? "var(--gold)"
+                            : ev.quoteVerified === "not_found" ? "var(--red)"
+                            : null;
+                          return (
+                          <div key={j} style={{ fontSize: 12, marginBottom: 6, padding: "6px 10px", background: "var(--bg)", borderRadius: 4, borderLeft: verifyColor ? `3px solid ${verifyColor}` : "3px solid var(--border)" }}>
                             <div>{ev.description}</div>
+                            {ev.quote && (
+                              <div style={{ marginTop: 4, padding: "6px 10px", background: "var(--card-bg)", borderRadius: 3, fontStyle: "italic", fontSize: 11, color: "var(--text)", lineHeight: 1.5, borderLeft: "2px solid var(--gold)" }}>
+                                "{ev.quote}"
+                              </div>
+                            )}
+                            {ev.quoteVerified && (
+                              <div style={{ marginTop: 3, fontSize: 10, fontFamily: "var(--mono)", color: verifyColor || "var(--text-muted)" }}>
+                                {ev.quoteVerified === "verified" && "Quote verified in source text"}
+                                {ev.quoteVerified === "approximate" && `Approximate match — ${ev.quoteContext || "similar text found"}`}
+                                {ev.quoteVerified === "not_found" && "Quote not found in source article"}
+                              </div>
+                            )}
                             {ev.url && (
                               <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
                                 {ev.url}
                               </div>
                             )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

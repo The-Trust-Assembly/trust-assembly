@@ -33,7 +33,13 @@ export interface ArticleAnalysis {
   originalHeadline: string;
   replacement?: string;
   reasoning: string;
-  evidence: Array<{ description: string; url?: string }>;
+  evidence: Array<{
+    description: string;
+    url?: string;
+    quote?: string;
+    quoteVerified?: "verified" | "approximate" | "not_found";
+    quoteContext?: string;
+  }>;
   confidence: "high" | "medium" | "low";
   bodyAnalysis?: string;
   inlineEdits?: InlineEdit[];

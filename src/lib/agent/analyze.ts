@@ -62,7 +62,7 @@ JSON format:
   "originalHeadline": "the article's original headline",
   "replacement": "corrected headline (only if verdict is correction, omit for affirmation/skip)",
   "reasoning": "detailed explanation with specific claims cited. Max 2000 characters.",
-  "evidence": [{"description": "what this evidence shows", "url": "source URL"}],
+  "evidence": [{"description": "what this evidence shows", "quote": "exact verbatim quote from the article that supports this claim — copy the text precisely as it appears", "url": "source URL if external, or omit for quotes from this article"}],
   "confidence": "high",
   "bodyAnalysis": "optional detailed analysis",
   "inlineEdits": [
@@ -76,6 +76,7 @@ JSON format:
 }
 
 Rules:
+- CRITICAL: Every evidence item MUST include a "quote" field with an EXACT verbatim quote from the article text above. Copy the text character-for-character — do not paraphrase, summarize, or rephrase. These quotes will be mechanically verified against the source text. If you cannot find a supporting quote in the article, use an external fact and set the url field instead.
 - verdict must be exactly "correction", "affirmation", or "skip"
 - Use "skip" for paywalled, opinion/editorial, or unfalsifiable content
 - Use "correction" ONLY when you can cite specific factual errors with evidence
