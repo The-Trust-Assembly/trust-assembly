@@ -129,7 +129,7 @@ export default function AgentNewForm({ onCreated, onCancel }) {
 
       <form onSubmit={handleSubmit}>
         {/* Type selection cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
           {TYPES.map((t) => {
             const selected = type === t.id;
             return (
@@ -141,13 +141,14 @@ export default function AgentNewForm({ onCreated, onCancel }) {
                   background: "var(--card-bg)",
                   border: `2px solid ${selected ? "var(--gold)" : "var(--border)"}`,
                   borderRadius: 8,
-                  padding: "16px 14px",
+                  padding: "14px 16px",
                   cursor: "pointer",
                   textAlign: "left",
                   position: "relative",
                   transition: "border-color 0.15s",
                   display: "flex",
-                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 14,
                 }}
               >
                 {selected && (
@@ -171,19 +172,19 @@ export default function AgentNewForm({ onCreated, onCancel }) {
                     ✓
                   </span>
                 )}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, minHeight: 40 }}>
-                  <AgentIcon type={t.id} size={32} />
-                  <div>
-                    <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
-                      {t.label}
-                    </div>
-                    <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)" }}>
-                      {t.tagline}
-                    </div>
-                  </div>
+                <div style={{ flexShrink: 0, paddingTop: 2 }}>
+                  <AgentIcon type={t.id} size={36} />
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, flex: 1 }}>
-                  {t.description}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "var(--serif)", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
+                    {t.label}
+                  </div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>
+                    {t.tagline}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    {t.description}
+                  </div>
                 </div>
               </button>
             );

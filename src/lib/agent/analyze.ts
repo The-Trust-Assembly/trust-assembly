@@ -52,7 +52,7 @@ IMPORTANT: Respond with ONLY a valid JSON object. Do not include any text before
 
 In addition to your verdict, identify any reusable knowledge that could apply across multiple articles on this topic. These become "vault entries" in Trust Assembly:
 
-- **Standing Corrections** (type: "vault"): Reusable factual statements with evidence that correct a common misconception. Example: "William Newland was not convicted of any crime" with court record evidence.
+- **Standing Corrections** (type: "vault"): Reusable factual statements with evidence that correct a common misconception. The assertion MUST begin with a simple, declarative statement of fact — lead with the clearest possible factual claim before adding context. Example: "Afroman was not found liable for defamation. The jury ruled his parody videos were protected First Amendment speech." NOT "The court case involving Afroman and the Adams County deputies resulted in..." — always lead with the fact, not the context.
 - **Arguments** (type: "argument"): Logical frameworks that help evaluate claims on this topic. Example: "Protected speech under the First Amendment does not imply the speech's claims are factually true."
 - **Translations** (type: "translation"): Cases where the article uses propaganda, euphemisms, or jargon that obscures meaning. Include the original phrase and a clearer replacement. translationType can be "clarity", "propaganda", "euphemism", or "satirical".
 
@@ -69,7 +69,7 @@ JSON format:
     {"originalText": "exact quote from article that is wrong", "correctedText": "what it should say", "explanation": "why this is wrong"}
   ],
   "vaultEntries": [
-    {"type": "vault", "assertion": "reusable factual claim", "evidence": "supporting evidence with sources"},
+    {"type": "vault", "assertion": "Simple declarative fact first. Then supporting context.", "evidence": "supporting evidence with sources"},
     {"type": "argument", "content": "logical framework or rhetorical tool"},
     {"type": "translation", "original": "jargon or propaganda phrase", "translated": "clear plain language", "translationType": "propaganda"}
   ]
@@ -80,7 +80,7 @@ Rules:
 - Use "skip" for paywalled, opinion/editorial, or unfalsifiable content
 - Use "correction" ONLY when you can cite specific factual errors with evidence
 - Use "affirmation" when the article is factually sound on an important topic
-- vaultEntries is optional — only include entries that would genuinely be reusable
+- Generate MANY vault entries — err on the side of including more rather than fewer. The user will curate and remove ones they don't want. Aim for 3-8 standing corrections per article when the topic is rich with factual claims. Include every distinct factual assertion that could be reused across articles.
 - Standing corrections should be facts, not opinions`;
 
   const response = await claude.messages.create({
