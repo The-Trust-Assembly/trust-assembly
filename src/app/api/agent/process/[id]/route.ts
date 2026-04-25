@@ -128,14 +128,28 @@ export async function POST(
       `;
 
       // Phase 2: Analyze
-      const articlesForAnalysis = fetched.map((f) => ({
+      let articlesForAnalysis = fetched.map((f) => ({
         url: f.url,
         headline: f.headline || "",
         text: f.text,
       }));
 
+      if (articlesForAnalysis.length > 5) {
+        articlesForAnalysis = articlesForAnalysis.slice(0, 5);
+      }
+
+      const phantomAnalyzeProgress = async (i: number, total: number) => {
+        const pct = 40 + Math.round((i / total) * 35);
+        await sql`
+          UPDATE agent_runs
+          SET stage_message = ${`Analyzing post ${i} of ${total}...`},
+              progress_pct = ${pct}, articles_analyzed = ${i}, updated_at = now()
+          WHERE id = ${run.id}
+        `;
+      };
+
       const { analyzed, errors: analyzeErrors, usage: analyzeUsage } =
-        await analyzeArticles(articlesForAnalysis, run.thesis);
+        await analyzeArticles(articlesForAnalysis, run.thesis, phantomAnalyzeProgress);
       sonnetUsage.inputTokens += analyzeUsage.inputTokens;
       sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
@@ -383,18 +397,46 @@ export async function POST(
     // Need headline + text for the analyze phase. Use the search-side
     // headline if the fetcher didn't extract one.
     const headlineByUrl = new Map(candidates.map((c) => [c.url, c.headline]));
-    const articlesForAnalysis = fetched.map((f) => ({
+    let articlesForAnalysis = fetched.map((f) => ({
       url: f.url,
       headline: f.headline || headlineByUrl.get(f.url) || "",
       text: f.text,
     }));
 
+    // Cap articles to avoid Vercel function timeout (maxDuration=300s).
+    // Each article analysis takes ~20-40s. With 5 articles we stay
+    // safely under 5 minutes including search + fetch + synthesize.
+    const MAX_ARTICLES = 5;
+    if (articlesForAnalysis.length > MAX_ARTICLES) {
+      articlesForAnalysis = articlesForAnalysis.slice(0, MAX_ARTICLES);
+      await sql`
+        UPDATE agent_runs
+        SET stage_message = ${`Analyzing top ${MAX_ARTICLES} of ${fetched.length} articles (capped to stay within time limit)...`},
+            updated_at = now()
+        WHERE id = ${run.id}
+      `;
+    }
+
     // ---- Phase 3: Analyze ----
+    // Wire the onProgress callback to update the DB after each article,
+    // so the user sees "Analyzing article 2 of 5..." in real time.
+    const analyzeProgress = async (i: number, total: number) => {
+      const pct = 50 + Math.round((i / total) * 30); // 50% → 80%
+      await sql`
+        UPDATE agent_runs
+        SET stage_message = ${`Analyzing article ${i} of ${total}...`},
+            progress_pct = ${pct},
+            articles_analyzed = ${i},
+            updated_at = now()
+        WHERE id = ${run.id}
+      `;
+    };
+
     const {
       analyzed,
       errors: analyzeErrors,
       usage: analyzeUsage,
-    } = await analyzeArticles(articlesForAnalysis, run.thesis);
+    } = await analyzeArticles(articlesForAnalysis, run.thesis, analyzeProgress);
     sonnetUsage.inputTokens += analyzeUsage.inputTokens;
     sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 

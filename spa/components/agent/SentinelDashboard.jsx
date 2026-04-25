@@ -45,7 +45,7 @@ const STAGE_DESCRIPTIONS = {
   searching: "Searching the web for relevant articles. This can take 1-2 minutes.",
   filtering: "Scoring search results for relevance...",
   fetching: "Downloading and extracting article content...",
-  analyzing: "Reading each article and checking facts. This is the longest step.",
+  analyzing: "Reading each article and checking facts (30-60 sec per article). You can leave this page — it runs in the background.",
   synthesizing: "Cross-referencing findings across all articles...",
   submitting: "Filing your approved submissions...",
 };
