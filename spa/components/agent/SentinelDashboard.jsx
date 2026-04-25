@@ -16,14 +16,14 @@ import React, { useState, useEffect } from "react";
 // call that generates 7–15 genuinely useful keywords.
 
 const PLATFORM_OPTIONS = [
-  { id: "news", label: "News / Web", sitePrefix: null },
-  { id: "twitter", label: "Twitter / X", sitePrefix: "site:x.com" },
-  { id: "youtube", label: "YouTube", sitePrefix: "site:youtube.com" },
-  { id: "reddit", label: "Reddit", sitePrefix: "site:reddit.com" },
-  { id: "wikipedia", label: "Wikipedia", sitePrefix: "site:wikipedia.org" },
-  { id: "substack", label: "Substack", sitePrefix: "site:substack.com" },
-  { id: "medium", label: "Medium", sitePrefix: "site:medium.com" },
-  { id: "facebook", label: "Facebook", sitePrefix: "site:facebook.com" },
+  { id: "news", label: "News / Web", sitePrefix: null, tip: "Searches the open web. Best for news articles, blogs, and public reports." },
+  { id: "twitter", label: "Twitter / X", sitePrefix: "site:x.com", tip: "Searches public tweets and threads. Replies and quote tweets may not appear. Private/protected accounts are excluded." },
+  { id: "youtube", label: "YouTube", sitePrefix: "site:youtube.com", tip: "Finds video pages by title and description. Cannot analyze the video itself — only the page text, title, and description are checked." },
+  { id: "reddit", label: "Reddit", sitePrefix: "site:reddit.com", tip: "Searches public posts and comments. Best for threads with factual claims. Some subreddits restrict indexing." },
+  { id: "wikipedia", label: "Wikipedia", sitePrefix: "site:wikipedia.org", tip: "Searches Wikipedia articles. Useful for cross-referencing factual claims against the encyclopedia." },
+  { id: "substack", label: "Substack", sitePrefix: "site:substack.com", tip: "Searches public Substack posts. Paywalled content behind the fold won't be extracted." },
+  { id: "medium", label: "Medium", sitePrefix: "site:medium.com", tip: "Searches public Medium articles. Metered/paywalled posts may only return partial content." },
+  { id: "facebook", label: "Facebook", sitePrefix: "site:facebook.com", tip: "Limited — most Facebook content requires login. Only public pages and posts are searchable." },
 ];
 
 const SCOPE_PRESETS = [
@@ -438,6 +438,7 @@ export default function SentinelDashboard({ agent, onReview }) {
                   return (
                     <span
                       key={p.id}
+                      title={p.tip}
                       onClick={() => {
                         if (running) return;
                         const next = new Set(platforms);
@@ -461,6 +462,15 @@ export default function SentinelDashboard({ agent, onReview }) {
                 })}
               </div>
             </div>
+
+            {/* Platform tips */}
+            {platforms.size > 0 && (
+              <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.6 }}>
+                {PLATFORM_OPTIONS.filter((p) => platforms.has(p.id)).map((p) => (
+                  <div key={p.id}><strong>{p.label}:</strong> {p.tip}</div>
+                ))}
+              </div>
+            )}
 
             {/* Submit row */}
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
