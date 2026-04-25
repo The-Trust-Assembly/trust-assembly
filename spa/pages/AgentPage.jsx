@@ -7,6 +7,7 @@ import SentinelDashboard from "../components/agent/SentinelDashboard";
 import PhantomDashboard from "../components/agent/PhantomDashboard";
 import WardDashboard from "../components/agent/WardDashboard";
 import OneTimeDashboard from "../components/agent/OneTimeDashboard";
+import CreditBalance from "../components/agent/CreditBalance";
 import AgentSettings from "../components/agent/AgentSettings";
 
 // Trust Assembly Agent — main page
@@ -151,6 +152,7 @@ export default function AgentPage({ user }) {
               Truth Will Out.
             </div>
           </div>
+          <CreditBalance />
         </div>
         <div style={{ padding: "24px 0" }}>
           <OneTimeDashboard
@@ -261,6 +263,7 @@ export default function AgentPage({ user }) {
             Truth Will Out.
           </div>
         </div>
+        <CreditBalance />
         {activeAgent && activeAgent.status !== "setup" && (
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <span

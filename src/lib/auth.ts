@@ -93,6 +93,15 @@ export async function getCurrentUserFromRequest(request: Request): Promise<JWTPa
  * Admin status is determined by an is_admin column on the users table.
  * Returns the user payload if admin, null otherwise.
  */
+/**
+ * Require any authenticated session. Returns the user payload or null.
+ */
+export async function requireSession(request?: Request): Promise<JWTPayload | null> {
+  return request
+    ? await getCurrentUserFromRequest(request)
+    : await getCurrentUser();
+}
+
 export async function requireAdmin(request?: Request): Promise<JWTPayload | null> {
   const { sql } = await import("@/lib/db");
   const user = request

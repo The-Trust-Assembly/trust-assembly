@@ -104,6 +104,10 @@ export default function SystemHealthPage() {
   const [debugRunId, setDebugRunId] = useState("");
   const [debugResult, setDebugResult] = useState(null);
   const [debugLoading, setDebugLoading] = useState(false);
+  const [grantUsername, setGrantUsername] = useState("");
+  const [grantAmount, setGrantAmount] = useState("10");
+  const [grantResult, setGrantResult] = useState(null);
+  const [grantLoading, setGrantLoading] = useState(false);
   const [rulesData, setRulesData] = useState(null);
   const [rulesLoading, setRulesLoading] = useState(false);
 
@@ -856,6 +860,51 @@ export default function SystemHealthPage() {
           <pre style={{ padding: 10, borderRadius: 4, background: "#0f172a", color: "#e2e8f0", fontSize: 11, maxHeight: 300, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
             {JSON.stringify(debugResult, null, 2)}
           </pre>
+        )}
+      </div>
+
+      {/* ── Grant Credits ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #334155" }}>
+        <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Grant Agent Credits</h3>
+        <div style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "center" }}>
+          <input
+            type="text"
+            value={grantUsername}
+            onChange={(e) => setGrantUsername(e.target.value)}
+            placeholder="Username..."
+            style={{ flex: 1, padding: "8px 12px", background: "#0f172a", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 13 }}
+          />
+          <input
+            type="number"
+            value={grantAmount}
+            onChange={(e) => setGrantAmount(e.target.value)}
+            min="1" max="1000"
+            style={{ width: 80, padding: "8px 12px", background: "#0f172a", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 13, textAlign: "center" }}
+          />
+          <button
+            onClick={async () => {
+              if (!grantUsername.trim() || !grantAmount) return;
+              setGrantLoading(true);
+              try {
+                const res = await fetch("/api/admin/grant-credits", {
+                  method: "POST",
+                  headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                  body: JSON.stringify({ username: grantUsername.trim(), credits: parseInt(grantAmount) }),
+                });
+                setGrantResult(await res.json());
+              } catch (e) { setGrantResult({ error: String(e) }); }
+              finally { setGrantLoading(false); }
+            }}
+            disabled={grantLoading || !grantUsername.trim()}
+            style={{ ...btnStyle, background: "#22c55e" }}
+          >
+            {grantLoading ? "Granting..." : "Grant Credits"}
+          </button>
+        </div>
+        {grantResult && (
+          <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: grantResult.error ? "#ef4444" : "#22c55e", background: "#0f172a" }}>
+            {grantResult.message || grantResult.error || JSON.stringify(grantResult)}
+          </div>
         )}
       </div>
 
