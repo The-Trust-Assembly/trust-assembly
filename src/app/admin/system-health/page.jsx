@@ -101,6 +101,9 @@ export default function SystemHealthPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [agentAccess, setAgentAccess] = useState(null); // null = loading, true/false = state
   const [agentAccessSaving, setAgentAccessSaving] = useState(false);
+  const [debugRunId, setDebugRunId] = useState("");
+  const [debugResult, setDebugResult] = useState(null);
+  const [debugLoading, setDebugLoading] = useState(false);
   const [rulesData, setRulesData] = useState(null);
   const [rulesLoading, setRulesLoading] = useState(false);
 
@@ -780,6 +783,80 @@ export default function SystemHealthPage() {
             {agentAccessSaving ? "Saving..." : agentAccess ? "Restrict to Admin" : "Launch for All Users"}
           </button>
         </div>
+      </div>
+
+      {/* ── Agent Runs Debug ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #334155" }}>
+        <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Agent Runs Debug</h3>
+        <div style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "center" }}>
+          <input
+            type="text"
+            value={debugRunId}
+            onChange={(e) => setDebugRunId(e.target.value)}
+            placeholder="Paste a run ID..."
+            style={{ flex: 1, padding: "8px 12px", background: "#0f172a", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 13, fontFamily: "monospace" }}
+          />
+          <button
+            onClick={async () => {
+              if (!debugRunId.trim()) return;
+              setDebugLoading(true);
+              try {
+                const res = await fetch(`/api/admin/agent-debug/${debugRunId.trim()}`, { headers: getAuthHeaders() });
+                const data = await res.json();
+                setDebugResult(data);
+              } catch (e) { setDebugResult({ error: String(e) }); }
+              finally { setDebugLoading(false); }
+            }}
+            disabled={debugLoading || !debugRunId.trim()}
+            style={{ ...btnStyle, background: "#3b82f6" }}
+          >
+            {debugLoading ? "Loading..." : "Inspect"}
+          </button>
+          <button
+            onClick={async () => {
+              if (!debugRunId.trim()) return;
+              setDebugLoading(true);
+              try {
+                const res = await fetch(`/api/admin/agent-debug/${debugRunId.trim()}`, {
+                  method: "POST",
+                  headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "mark-failed" }),
+                });
+                const data = await res.json();
+                setDebugResult(data);
+              } catch (e) { setDebugResult({ error: String(e) }); }
+              finally { setDebugLoading(false); }
+            }}
+            disabled={debugLoading || !debugRunId.trim()}
+            style={{ ...btnStyle, background: "#ef4444" }}
+          >
+            Mark Failed
+          </button>
+          <button
+            onClick={async () => {
+              if (!debugRunId.trim()) return;
+              setDebugLoading(true);
+              try {
+                const res = await fetch(`/api/agent/process/${debugRunId.trim()}/retry`, {
+                  method: "POST",
+                  headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                });
+                const data = await res.json();
+                setDebugResult(data);
+              } catch (e) { setDebugResult({ error: String(e) }); }
+              finally { setDebugLoading(false); }
+            }}
+            disabled={debugLoading || !debugRunId.trim()}
+            style={{ ...btnStyle, background: "#22c55e" }}
+          >
+            Retry
+          </button>
+        </div>
+        {debugResult && (
+          <pre style={{ padding: 10, borderRadius: 4, background: "#0f172a", color: "#e2e8f0", fontSize: 11, maxHeight: 300, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+            {JSON.stringify(debugResult, null, 2)}
+          </pre>
+        )}
       </div>
 
       {/* ── Admin Tools ── */}

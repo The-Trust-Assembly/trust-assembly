@@ -50,8 +50,12 @@ function fmtTimestamp(iso) {
 }
 
 export default function OneTimeDashboard({ onReview }) {
-  const [thesis, setThesis] = useState("");
-  const [keywords, setKeywords] = useState([]);
+  const [thesis, setThesis] = useState(() => {
+    try { return localStorage.getItem("ta-agent-onetime-thesis") || ""; } catch { return ""; }
+  });
+  const [keywords, setKeywords] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ta-agent-onetime-keywords") || "[]"); } catch { return []; }
+  });
   const [showKeywords, setShowKeywords] = useState(false);
   const [newKeyword, setNewKeyword] = useState("");
   const [generatingKeywords, setGeneratingKeywords] = useState(false);
@@ -61,6 +65,21 @@ export default function OneTimeDashboard({ onReview }) {
   const [message, setMessage] = useState("");
   const [recentRuns, setRecentRuns] = useState([]);
   const [loadingRuns, setLoadingRuns] = useState(true);
+
+  // Persist thesis + keywords to localStorage
+  useEffect(() => {
+    try { localStorage.setItem("ta-agent-onetime-thesis", thesis); } catch {}
+  }, [thesis]);
+  useEffect(() => {
+    try { localStorage.setItem("ta-agent-onetime-keywords", JSON.stringify(keywords)); } catch {}
+  }, [keywords]);
+
+  async function retryRun(runId) {
+    try {
+      const res = await fetch(`/api/agent/process/${runId}/retry`, { method: "POST" });
+      if (res.ok) loadRecentRuns();
+    } catch {}
+  }
 
   async function loadRecentRuns() {
     try {
@@ -426,7 +445,16 @@ export default function OneTimeDashboard({ onReview }) {
                 </div>
               )}
               {run.error_message && (
-                <div style={{ marginTop: 6, fontSize: 11, color: "var(--red)" }}>{run.error_message}</div>
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--red)" }}>
+                  {run.error_message}
+                  <button
+                    className="ta-btn-secondary"
+                    onClick={() => retryRun(run.id)}
+                    style={{ fontSize: 10, padding: "3px 10px", marginLeft: 8 }}
+                  >
+                    Retry
+                  </button>
+                </div>
               )}
               {run.status === "ready" && (
                 <div style={{ marginTop: 8 }}>

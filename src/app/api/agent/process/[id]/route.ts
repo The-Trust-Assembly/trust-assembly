@@ -11,6 +11,7 @@ import { synthesizeAnalyses } from "@/lib/agent/synthesize";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import type {
   AgentBatch,
+  ArticleCandidate,
   SubmissionForReview,
   VaultEntryForReview,
   TokenUsage,
@@ -45,7 +46,7 @@ export async function POST(
   if (!admin) return forbidden("Admin access required");
 
   const loadResult = await sql`
-    SELECT id, user_id, thesis, scope, context, status
+    SELECT id, user_id, thesis, scope, context, status, batch
     FROM agent_runs
     WHERE id = ${params.id} AND user_id = ${admin.sub}
     LIMIT 1
@@ -138,18 +139,16 @@ export async function POST(
         articlesForAnalysis = articlesForAnalysis.slice(0, 5);
       }
 
-      const phantomAnalyzeProgress = async (i: number, total: number) => {
-        const pct = 40 + Math.round((i / total) * 35);
-        await sql`
-          UPDATE agent_runs
-          SET stage_message = ${`Analyzing post ${i} of ${total}...`},
-              progress_pct = ${pct}, articles_analyzed = ${i}, updated_at = now()
-          WHERE id = ${run.id}
-        `;
-      };
-
       const { analyzed, errors: analyzeErrors, usage: analyzeUsage } =
-        await analyzeArticles(articlesForAnalysis, run.thesis, phantomAnalyzeProgress);
+        await analyzeArticles(articlesForAnalysis, run.thesis, async (i, total) => {
+          const pct = 40 + Math.round((i / total) * 35);
+          await sql`
+            UPDATE agent_runs
+            SET stage_message = ${`Analyzing post ${i} of ${total}...`},
+                progress_pct = ${pct}, articles_analyzed = ${i}, updated_at = now()
+            WHERE id = ${run.id}
+          `;
+        });
       sonnetUsage.inputTokens += analyzeUsage.inputTokens;
       sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
@@ -234,6 +233,36 @@ export async function POST(
   }
 
   // ---- SENTINEL PATH (default) ----
+  // Check for a checkpoint from a previous attempt (retry scenario).
+  // If resuming, we skip completed phases and use saved data.
+  const existingBatch = run.batch && typeof run.batch === "object" ? run.batch : {};
+  const checkpoint: string | null = existingBatch._checkpoint || null;
+  let resumedCandidates: ArticleCandidate[] | null = null;
+  let resumedFetched: Array<{ url: string; headline: string; text: string }> | null = null;
+
+  if (checkpoint === "fetch" || checkpoint === "analyze") {
+    // We have fetched articles — skip search and fetch entirely
+    resumedCandidates = existingBatch.candidates || [];
+    resumedFetched = existingBatch.fetched || [];
+    await sql`
+      UPDATE agent_runs
+      SET status = 'analyzing',
+          stage_message = ${`Resuming from ${checkpoint} checkpoint...`},
+          progress_pct = 50, updated_at = now()
+      WHERE id = ${run.id}
+    `;
+  } else if (checkpoint === "search" || checkpoint === "filter") {
+    // We have search results — skip search but still need to fetch
+    resumedCandidates = existingBatch.candidates || [];
+    await sql`
+      UPDATE agent_runs
+      SET status = 'fetching',
+          stage_message = ${`Resuming from ${checkpoint} checkpoint — fetching ${resumedCandidates!.length} articles...`},
+          progress_pct = 30, updated_at = now()
+      WHERE id = ${run.id}
+    `;
+  }
+
   let keywords: string[] | undefined = Array.isArray(runContext.keywords)
     ? runContext.keywords
     : undefined;
@@ -255,28 +284,36 @@ export async function POST(
       sonnetUsage.outputTokens += kwResult.usage.outputTokens;
     }
 
-    // ---- Phase 1: Search (Google or Claude web_search) ----
-    await sql`
-      UPDATE agent_runs
-      SET status = 'searching',
-          stage_message = ${`Searching with ${keywords.length} keywords...`},
-          progress_pct = 5, updated_at = now()
-      WHERE id = ${run.id}
-    `;
+    // ---- Phase 1: Search ----
+    // Skip if resuming from a checkpoint that already has candidates
+    let candidates: ArticleCandidate[];
+    let searchMethod: string = "claude-web-search";
 
-    const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords);
-    sonnetUsage.inputTokens += searchResult.usage.inputTokens;
-    sonnetUsage.outputTokens += searchResult.usage.outputTokens;
+    if (resumedCandidates) {
+      candidates = resumedCandidates;
+    } else {
+      await sql`
+        UPDATE agent_runs
+        SET status = 'searching',
+            stage_message = ${`Searching with ${keywords!.length} keywords...`},
+            progress_pct = 5, updated_at = now()
+        WHERE id = ${run.id}
+      `;
 
-    let candidates = searchResult.candidates;
+      const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords);
+      sonnetUsage.inputTokens += searchResult.usage.inputTokens;
+      sonnetUsage.outputTokens += searchResult.usage.outputTokens;
+      candidates = searchResult.candidates;
+      searchMethod = searchResult.method;
 
-    // Checkpoint: save search results so they survive a timeout
-    await sql`
-      UPDATE agent_runs
-      SET batch = ${JSON.stringify({ _checkpoint: "search", candidates, searchMethod: searchResult.method })},
-          updated_at = now()
-      WHERE id = ${run.id}
-    `;
+      // Checkpoint: save search results
+      await sql`
+        UPDATE agent_runs
+        SET batch = ${JSON.stringify({ _checkpoint: "search", candidates, searchMethod })},
+            updated_at = now()
+        WHERE id = ${run.id}
+      `;
+    }
 
     // Empty short-circuit
     if (candidates.length === 0) {
@@ -305,7 +342,7 @@ export async function POST(
     // ---- Phase 1.5: Haiku relevance filter (Google path only) ----
     // When Claude web_search is used, it already applies relevance
     // judgment during discovery, so filtering is redundant.
-    if (searchResult.method === "google" && candidates.length > 0) {
+    if (searchMethod === "google" && candidates.length > 0 && !resumedCandidates) {
       await sql`
         UPDATE agent_runs
         SET status = 'filtering',
@@ -330,14 +367,14 @@ export async function POST(
           submissions: [],
           vaultEntries: [],
           narrative: "Search results found but none were relevant enough to the thesis.",
-          candidates: searchResult.candidates,
+          candidates,
           errors: [],
         };
         await sql`
           UPDATE agent_runs
           SET status = 'ready',
               stage_message = 'No relevant articles found after filtering.',
-              progress_pct = 100, articles_found = ${searchResult.candidates.length},
+              progress_pct = 100, articles_found = ${candidates.length},
               batch = ${JSON.stringify(emptyBatch)},
               input_tokens = ${totalInputTokens()},
               output_tokens = ${totalOutputTokens()},
@@ -345,7 +382,7 @@ export async function POST(
               updated_at = now(), completed_at = now()
           WHERE id = ${run.id}
         `;
-        return ok({ runId: run.id, status: "ready", articlesFound: searchResult.candidates.length, articlesFiltered: 0 });
+        return ok({ runId: run.id, status: "ready", articlesFound: candidates.length, articlesFiltered: 0 });
       }
     }
 
@@ -362,54 +399,68 @@ export async function POST(
     `;
 
     // ---- Phase 2: Fetch ----
-    const urls = candidates.map((c) => c.url);
-    const { articles: fetched, errors: fetchErrors } = await fetchArticles(urls);
+    // Skip if resuming from fetch/analyze checkpoint
+    let articlesForAnalysis: Array<{ url: string; headline: string; text: string }>;
+    let fetchErrors: Array<{ url: string; error: string }> = [];
 
-    if (fetched.length === 0) {
-      // All fetches failed — mark as failed
-      const failedBatch: AgentBatch = {
-        topic: run.thesis,
-        submissions: [],
-        vaultEntries: [],
-        narrative: "All article fetches failed.",
-        candidates,
-        errors: fetchErrors,
-      };
+    if (resumedFetched && resumedFetched.length > 0) {
+      articlesForAnalysis = resumedFetched;
+    } else {
+      const urls = candidates.map((c) => c.url);
+      const fetchResult = await fetchArticles(urls);
+      const fetched = fetchResult.articles;
+      fetchErrors = fetchResult.errors;
+
+      if (fetched.length === 0) {
+        const failedBatch: AgentBatch = {
+          topic: run.thesis,
+          submissions: [],
+          vaultEntries: [],
+          narrative: "All article fetches failed.",
+          candidates,
+          errors: fetchErrors,
+        };
+        await sql`
+          UPDATE agent_runs
+          SET status = 'failed',
+              stage_message = 'All article fetches failed',
+              error_message = ${`${fetchErrors.length} fetch errors, no articles retrieved`},
+              articles_found = ${candidates.length},
+              articles_fetched = 0,
+              batch = ${JSON.stringify(failedBatch)},
+              input_tokens = ${totalInputTokens()},
+              output_tokens = ${totalOutputTokens()},
+              estimated_cost_usd = ${totalCost()},
+              updated_at = now(), completed_at = now()
+          WHERE id = ${run.id}
+        `;
+        return ok({ runId: run.id, status: "failed", articlesFound: candidates.length, articlesFetched: 0 });
+      }
+
+      const headlineByUrl = new Map(candidates.map((c) => [c.url, c.headline]));
+      articlesForAnalysis = fetched.map((f) => ({
+        url: f.url,
+        headline: f.headline || headlineByUrl.get(f.url) || "",
+        text: f.text,
+      }));
+
+      // Checkpoint: save fetched articles so analyze can resume from here
       await sql`
         UPDATE agent_runs
-        SET status = 'failed',
-            stage_message = 'All article fetches failed',
-            error_message = ${`${fetchErrors.length} fetch errors, no articles retrieved`},
-            articles_found = ${candidates.length},
-            articles_fetched = 0,
-            batch = ${JSON.stringify(failedBatch)},
-            input_tokens = ${totalInputTokens()},
-            output_tokens = ${totalOutputTokens()},
-            estimated_cost_usd = ${totalCost()},
-            updated_at = now(), completed_at = now()
+        SET status = 'analyzing',
+            stage_message = ${`Fetched ${fetched.length}/${candidates.length}. Analyzing each article...`},
+            progress_pct = 50,
+            articles_fetched = ${fetched.length},
+            batch = ${JSON.stringify({
+              _checkpoint: "fetch",
+              candidates,
+              fetched: articlesForAnalysis,
+              fetchErrors,
+            })},
+            updated_at = now()
         WHERE id = ${run.id}
       `;
-      return ok({ runId: run.id, status: "failed", articlesFound: candidates.length, articlesFetched: 0 });
     }
-
-    await sql`
-      UPDATE agent_runs
-      SET status = 'analyzing',
-          stage_message = ${`Fetched ${fetched.length}/${candidates.length}. Analyzing each article...`},
-          progress_pct = 50,
-          articles_fetched = ${fetched.length},
-          updated_at = now()
-      WHERE id = ${run.id}
-    `;
-
-    // Need headline + text for the analyze phase. Use the search-side
-    // headline if the fetcher didn't extract one.
-    const headlineByUrl = new Map(candidates.map((c) => [c.url, c.headline]));
-    let articlesForAnalysis = fetched.map((f) => ({
-      url: f.url,
-      headline: f.headline || headlineByUrl.get(f.url) || "",
-      text: f.text,
-    }));
 
     // Cap articles to avoid Vercel function timeout (maxDuration=300s).
     // Each article analysis takes ~20-40s. With 5 articles we stay
@@ -419,32 +470,37 @@ export async function POST(
       articlesForAnalysis = articlesForAnalysis.slice(0, MAX_ARTICLES);
       await sql`
         UPDATE agent_runs
-        SET stage_message = ${`Analyzing top ${MAX_ARTICLES} of ${fetched.length} articles (capped to stay within time limit)...`},
+        SET stage_message = ${`Analyzing top ${MAX_ARTICLES} of ${articlesForAnalysis.length} articles (capped to stay within time limit)...`},
             updated_at = now()
         WHERE id = ${run.id}
       `;
     }
 
     // ---- Phase 3: Analyze ----
-    // Wire the onProgress callback to update the DB after each article,
-    // so the user sees "Analyzing article 2 of 5..." in real time.
-    const analyzeProgress = async (i: number, total: number) => {
+    // onProgress fires AFTER each article with the accumulated results.
+    // Saves a checkpoint so retry can skip already-analyzed articles.
+    const {
+      analyzed,
+      errors: analyzeErrors,
+      usage: analyzeUsage,
+    } = await analyzeArticles(articlesForAnalysis, run.thesis, async (i, total, analyzedSoFar) => {
       const pct = 50 + Math.round((i / total) * 30); // 50% → 80%
       await sql`
         UPDATE agent_runs
         SET stage_message = ${`Analyzing article ${i} of ${total}...`},
             progress_pct = ${pct},
             articles_analyzed = ${i},
+            batch = ${JSON.stringify({
+              _checkpoint: "analyze",
+              candidates,
+              fetched: articlesForAnalysis,
+              analyzed: analyzedSoFar,
+              fetchErrors,
+            })},
             updated_at = now()
         WHERE id = ${run.id}
       `;
-    };
-
-    const {
-      analyzed,
-      errors: analyzeErrors,
-      usage: analyzeUsage,
-    } = await analyzeArticles(articlesForAnalysis, run.thesis, analyzeProgress);
+    });
     sonnetUsage.inputTokens += analyzeUsage.inputTokens;
     sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
@@ -522,9 +578,9 @@ export async function POST(
     return ok({
       runId: run.id,
       status: "ready",
-      searchMethod: searchResult.method,
+      searchMethod,
       articlesFound: candidates.length,
-      articlesFetched: fetched.length,
+      articlesFetched: articlesForAnalysis.length,
       articlesAnalyzed: analyzed.length,
       submissions: submissions.length,
       vaultEntries: consolidatedVault.length,
