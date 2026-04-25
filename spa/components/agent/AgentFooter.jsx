@@ -259,21 +259,24 @@ export default function AgentFooter({ onUpload }) {
                 }}
                 style={{ fontSize: 12, padding: "6px 16px" }}
               >
-                Validate
+                Validate Pasted JSON
               </button>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: "center" }}>
-                or <label style={{ color: "var(--gold)", cursor: "pointer", textDecoration: "underline" }}>
-                  upload a .json file
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                    style={{ display: "none" }}
-                  />
-                </label>
-              </span>
+              <button
+                className="ta-btn-secondary"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+                style={{ fontSize: 12, padding: "6px 16px" }}
+              >
+                Upload .json File
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                style={{ display: "none" }}
+              />
             </div>
           </div>
 
