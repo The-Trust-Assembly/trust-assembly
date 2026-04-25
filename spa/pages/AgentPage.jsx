@@ -8,6 +8,7 @@ import PhantomDashboard from "../components/agent/PhantomDashboard";
 import WardDashboard from "../components/agent/WardDashboard";
 import OneTimeDashboard from "../components/agent/OneTimeDashboard";
 import CreditBalance from "../components/agent/CreditBalance";
+import AgentFooter from "../components/agent/AgentFooter";
 import AgentSettings from "../components/agent/AgentSettings";
 
 // Trust Assembly Agent — main page
@@ -162,6 +163,7 @@ export default function AgentPage({ user }) {
             }}
           />
         </div>
+        <AgentFooter />
       </div>
     );
   }
@@ -377,6 +379,7 @@ export default function AgentPage({ user }) {
           />
         )}
       </div>
+      <AgentFooter />
     </div>
   );
 }
