@@ -101,6 +101,10 @@ export async function POST(
   let submittedCount = 0;
   let vaultCreatedCount = 0;
 
+  // Track submission IDs so we can link vault entries to them.
+  // Map: submission index → created submission UUID
+  const submissionIds: string[] = [];
+
   // ---- File submissions ----
   for (const sub of submissions) {
     if (!sub.approved) continue;
@@ -133,6 +137,8 @@ export async function POST(
     const result = await internalPost("/api/submissions", payload);
     if (result.ok) {
       submittedCount++;
+      const subId = (result.data as { id?: string })?.id;
+      if (subId) submissionIds.push(subId);
     } else {
       const errMsg =
         (result.data as { error?: string })?.error || `HTTP ${result.status}`;
@@ -140,12 +146,23 @@ export async function POST(
     }
   }
 
+  // Use the first submission ID for linking vault entries.
+  // Vault entries are cross-article (synthesized), so they belong to
+  // the run's topic rather than a single submission, but linking to
+  // at least one submission ensures they appear in the record view
+  // and graduate when the submission is approved.
+  const linkedSubmissionId = submissionIds.length > 0 ? submissionIds[0] : undefined;
+
   // ---- File vault entries ----
   for (const ve of vaultEntries) {
     if (!ve.approved) continue;
 
     const entry = ve.entry;
-    const payload: Record<string, unknown> = { orgIds, type: entry.type };
+    const payload: Record<string, unknown> = {
+      orgIds,
+      type: entry.type,
+      ...(linkedSubmissionId ? { submissionId: linkedSubmissionId } : {}),
+    };
     if (entry.type === "vault") {
       if (!entry.assertion || !entry.evidence) {
         errors.push({ kind: "vault", identifier: ve.id, error: "Missing assertion or evidence" });

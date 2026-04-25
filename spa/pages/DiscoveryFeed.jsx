@@ -22,7 +22,7 @@ export default function DiscoveryFeed({ onLogin, onRegister }) {
             <div style={{ minWidth: 28, textAlign: "center", paddingTop: 2, fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: sub.status === "consensus" ? "#7C3AED" : sub.status === "approved" ? "#059669" : "#64748B" }}>{i + 1}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{sub.submittedBy === ADMIN_USERNAME ? "\u{1F451} " : ""}@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}>@{sub.submittedBy} · {sub.orgName} · {sDate(sub.createdAt)}</span>
                 <StatusPill status={sub.status} />
               </div>
               <SubHeadline sub={sub} size={12} />

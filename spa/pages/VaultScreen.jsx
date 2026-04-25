@@ -68,7 +68,7 @@ export default function VaultScreen({ user }) {
         {tab === "trans" && <div>
           <p style={{ color: "var(--text-sec)", marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>Translation Vault — plain-language replacements for jargon, spin, propaganda, and euphemisms. Approved translations can be applied automatically by the browser extension across all articles. Categories: Clarity (strip jargon), Anti-Propaganda (rename spin), Euphemism (call it what it is), Satirical (approved humor).</p>
           {translations.map(t => <div key={t.id} className="ta-card" style={{ borderLeft: "4px solid #B45309" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><OrgLabel orgId={t.orgId} />{t.submittedBy === ADMIN_USERNAME ? "\u{1F451} " : ""}@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--mono)" }}><OrgLabel orgId={t.orgId} />@{t.submittedBy} · {sDate(t.createdAt)} · {TRANS_TYPES[t.type] || t.type}{t.survivalCount > 0 ? ` · survived ${t.survivalCount}` : ""}</span><StatusPill status={t.status || "pending"} /></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
               <span style={{ textDecoration: "line-through", color: "var(--text-sec)" }}>{t.original}</span>
               <span style={{ color: "#B45309", fontWeight: 700 }}>{"\u2192"}</span>
