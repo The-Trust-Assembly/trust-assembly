@@ -38,6 +38,18 @@ const STATUS_COLORS = {
   cancelled: "var(--text-muted)",
 };
 
+const ACTIVE_STATUSES = new Set(["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"]);
+
+const STAGE_DESCRIPTIONS = {
+  queued: "Waiting to start...",
+  searching: "Searching the web for relevant articles. This can take 1-2 minutes.",
+  filtering: "Scoring search results for relevance...",
+  fetching: "Downloading and extracting article content...",
+  analyzing: "Reading each article and checking facts. This is the longest step.",
+  synthesizing: "Cross-referencing findings across all articles...",
+  submitting: "Filing your approved submissions...",
+};
+
 function fmtTimestamp(iso) {
   if (!iso) return "";
   try {
@@ -465,7 +477,9 @@ export default function SentinelDashboard({ agent, onReview }) {
             No runs yet. Start one above.
           </div>
         ) : (
-          recentRuns.map((run) => (
+          recentRuns.map((run) => {
+            const isActive = ACTIVE_STATUSES.has(run.status);
+            return (
             <div
               key={run.id}
               style={{
@@ -477,71 +491,69 @@ export default function SentinelDashboard({ agent, onReview }) {
                 borderRadius: 6,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  marginBottom: 4,
-                }}
-              >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 4 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>
-                  {run.thesis.length > 100 ? run.thesis.substring(0, 100) + "…" : run.thesis}
+                  {run.thesis.length > 100 ? run.thesis.substring(0, 100) + "..." : run.thesis}
                 </div>
                 <span
                   style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 10,
-                    padding: "2px 8px",
-                    borderRadius: 10,
-                    background: "var(--bg)",
+                    fontFamily: "var(--mono)", fontSize: 10, padding: "2px 8px",
+                    borderRadius: 10, background: "var(--bg)",
                     color: STATUS_COLORS[run.status] || "var(--text-muted)",
                     border: `1px solid ${STATUS_COLORS[run.status] || "var(--border)"}`,
                     whiteSpace: "nowrap",
+                    display: "inline-flex", alignItems: "center", gap: 4,
                   }}
                 >
+                  {isActive && (
+                    <span style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: "var(--gold)",
+                      animation: "pulse-dot 1.5s ease-in-out infinite",
+                    }} />
+                  )}
                   {run.status}
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 14, fontSize: 11, color: "var(--text-muted)", flexWrap: "wrap" }}>
-                <span>{fmtTimestamp(run.created_at)}</span>
-                {run.articles_found > 0 && (
-                  <span>
-                    {run.articles_found} found · {run.articles_fetched} fetched · {run.articles_analyzed} analyzed
-                  </span>
-                )}
-                {run.estimated_cost_usd > 0 && (
-                  <span style={{ fontFamily: "var(--mono)" }}>${Number(run.estimated_cost_usd).toFixed(2)}</span>
-                )}
-              </div>
-              {run.stage_message &&
-                run.status !== "ready" &&
-                run.status !== "failed" &&
-                run.status !== "cancelled" &&
-                run.status !== "completed" && (
-                  <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-                    {run.stage_message}
+              {isActive && (
+                <div style={{
+                  padding: "8px 12px", marginTop: 4, marginBottom: 4,
+                  background: "var(--bg)", borderRadius: 4,
+                  border: "1px solid var(--border)",
+                }}>
+                  <div style={{ fontSize: 12, color: "var(--text)", fontWeight: 500, marginBottom: 2 }}>
+                    {STAGE_DESCRIPTIONS[run.status] || run.stage_message || "Processing..."}
                   </div>
-                )}
-              {run.progress_pct > 0 && run.progress_pct < 100 && (
-                <div
-                  style={{
-                    marginTop: 6,
-                    height: 4,
-                    background: "var(--bg)",
-                    borderRadius: 2,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${run.progress_pct}%`,
-                      background: STATUS_COLORS[run.status] || "var(--gold)",
-                      transition: "width 0.4s ease",
-                    }}
-                  />
+                  {run.stage_message && STAGE_DESCRIPTIONS[run.status] !== run.stage_message && (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{run.stage_message}</div>
+                  )}
+                  {run.progress_pct > 0 && (
+                    <div style={{ marginTop: 6, height: 4, background: "var(--card-bg)", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", width: `${run.progress_pct}%`,
+                        background: "var(--gold)",
+                        transition: "width 0.4s ease",
+                      }} />
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, fontFamily: "var(--mono)" }}>
+                    {run.progress_pct || 0}% complete
+                    {run.articles_found > 0 && ` · ${run.articles_found} found`}
+                    {run.articles_fetched > 0 && ` · ${run.articles_fetched} fetched`}
+                    {run.articles_analyzed > 0 && ` · ${run.articles_analyzed} analyzed`}
+                    {run.estimated_cost_usd > 0 && ` · $${Number(run.estimated_cost_usd).toFixed(2)}`}
+                  </div>
+                </div>
+              )}
+              {!isActive && (
+                <div style={{ display: "flex", gap: 14, fontSize: 11, color: "var(--text-muted)", flexWrap: "wrap" }}>
+                  <span>{fmtTimestamp(run.created_at)}</span>
+                  {run.articles_found > 0 && (
+                    <span>{run.articles_found} found · {run.articles_fetched} fetched · {run.articles_analyzed} analyzed</span>
+                  )}
+                  {run.estimated_cost_usd > 0 && (
+                    <span style={{ fontFamily: "var(--mono)" }}>${Number(run.estimated_cost_usd).toFixed(2)}</span>
+                  )}
                 </div>
               )}
               {run.error_message && (
@@ -559,7 +571,8 @@ export default function SentinelDashboard({ agent, onReview }) {
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
