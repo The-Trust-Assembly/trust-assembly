@@ -18,6 +18,12 @@ import React, { useState, useEffect } from "react";
 const PLATFORM_OPTIONS = [
   { id: "news", label: "News / Web", sitePrefix: null },
   { id: "twitter", label: "Twitter / X", sitePrefix: "site:x.com" },
+  { id: "youtube", label: "YouTube", sitePrefix: "site:youtube.com" },
+  { id: "reddit", label: "Reddit", sitePrefix: "site:reddit.com" },
+  { id: "wikipedia", label: "Wikipedia", sitePrefix: "site:wikipedia.org" },
+  { id: "substack", label: "Substack", sitePrefix: "site:substack.com" },
+  { id: "medium", label: "Medium", sitePrefix: "site:medium.com" },
+  { id: "facebook", label: "Facebook", sitePrefix: "site:facebook.com" },
 ];
 
 const SCOPE_PRESETS = [
