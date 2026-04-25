@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 // Trust Assembly Agent — page footer
 // --------------------------------------
@@ -34,7 +34,24 @@ export default function AgentFooter({ onUpload }) {
   const [showFormat, setShowFormat] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [parsedData, setParsedData] = useState(null);
+  const [assemblies, setAssemblies] = useState([]);
+  const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState(null);
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    if (!showFormat) return;
+    fetch("/api/users/me/assemblies")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const list = data?.joined || [];
+        setAssemblies(list);
+        if (list.length > 0) setSelectedOrgIds([list[0].id]);
+      })
+      .catch(() => {});
+  }, [showFormat]);
 
   async function handleFileUpload(e) {
     const file = e.target.files?.[0];
@@ -66,10 +83,11 @@ export default function AgentFooter({ onUpload }) {
         return;
       }
 
+      setParsedData(data);
+      setSubmitResult(null);
       setUploadResult({
         success: true,
-        message: `Parsed ${data.submissions.length} submission${data.submissions.length === 1 ? "" : "s"} and ${(data.vaultEntries || []).length} vault entries. Ready for review.`,
-        data,
+        message: `Parsed ${data.submissions.length} submission${data.submissions.length === 1 ? "" : "s"} and ${(data.vaultEntries || []).length} vault entries. Select an assembly and submit.`,
       });
 
       if (onUpload) onUpload(data);
@@ -168,6 +186,100 @@ export default function AgentFooter({ onUpload }) {
               whiteSpace: "pre-wrap",
             }}>
               {uploadResult.error || uploadResult.message}
+            </div>
+          )}
+
+          {/* Assembly selector + submit button after successful parse */}
+          {parsedData && !submitResult && (
+            <div style={{
+              marginTop: 12, padding: "14px 16px",
+              background: "var(--bg)", borderRadius: 6, border: "1px solid var(--gold)",
+            }}>
+              <label style={{ fontFamily: "var(--serif)", fontSize: 13, fontWeight: 600, color: "var(--text)", display: "block", marginBottom: 6 }}>
+                Submit to Assembly
+              </label>
+              {assemblies.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                  No assemblies found. Join an assembly first to submit.
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                    {assemblies.map((a) => {
+                      const sel = selectedOrgIds.includes(a.id);
+                      return (
+                        <span
+                          key={a.id}
+                          onClick={() => {
+                            if (sel) setSelectedOrgIds(selectedOrgIds.filter((id) => id !== a.id));
+                            else setSelectedOrgIds([...selectedOrgIds, a.id]);
+                          }}
+                          style={{
+                            fontFamily: "var(--mono)", fontSize: 11, padding: "4px 12px",
+                            background: sel ? "var(--text)" : "var(--card-bg)",
+                            color: sel ? "var(--card-bg)" : "var(--text)",
+                            border: `1px solid ${sel ? "var(--text)" : "var(--border)"}`,
+                            borderRadius: 14, cursor: "pointer", userSelect: "none",
+                          }}
+                        >
+                          {a.name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>
+                    Cost: {parsedData.submissions.length} credit{parsedData.submissions.length === 1 ? "" : "s"} (1 per submission)
+                  </div>
+                  <button
+                    className="ta-btn-primary"
+                    disabled={submitting || selectedOrgIds.length === 0}
+                    onClick={async () => {
+                      setSubmitting(true);
+                      try {
+                        const res = await fetch("/api/agent/bulk-submit", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            submissions: parsedData.submissions,
+                            vaultEntries: parsedData.vaultEntries || [],
+                            orgIds: selectedOrgIds,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          setSubmitResult({
+                            success: true,
+                            message: `Submitted ${data.submitted} correction${data.submitted === 1 ? "" : "s"}/affirmation${data.submitted === 1 ? "" : "s"} and ${data.vaultCreated} vault entries. ${data.errors?.length || 0} errors. Credits remaining: ${data.creditsRemaining}.`,
+                          });
+                          setParsedData(null);
+                        } else {
+                          setSubmitResult({ error: data.error || "Submission failed." });
+                        }
+                      } catch (e) {
+                        setSubmitResult({ error: e.message || "Network error." });
+                      } finally {
+                        setSubmitting(false);
+                      }
+                    }}
+                    style={{ width: "100%", fontSize: 14, padding: "10px 0" }}
+                  >
+                    {submitting
+                      ? `Submitting ${parsedData.submissions.length} items...`
+                      : `Submit All (${parsedData.submissions.length} submissions${(parsedData.vaultEntries || []).length > 0 ? ` + ${parsedData.vaultEntries.length} vault` : ""})`}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {submitResult && (
+            <div style={{
+              marginTop: 12, padding: "10px 14px", borderRadius: 4, fontSize: 12, lineHeight: 1.5,
+              background: submitResult.error ? "rgba(196,77,77,0.1)" : "rgba(74,140,92,0.1)",
+              border: `1px solid ${submitResult.error ? "var(--red)" : "var(--green)"}`,
+              color: submitResult.error ? "var(--red)" : "var(--green)",
+            }}>
+              {submitResult.error || submitResult.message}
             </div>
           )}
 
