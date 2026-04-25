@@ -18,7 +18,25 @@ import { extractJSON } from "./json-extract";
 import { isGoogleSearchAvailable, googleSearchMulti } from "./google-search";
 import type { ArticleCandidate, TokenUsage } from "./types";
 
-const MAX_ROUNDS = 10;
+// Map scope presets to hard limits for Claude web_search path
+function scopeLimits(scope: string): { maxRounds: number; maxArticles: number } {
+  switch (scope) {
+    case "single":
+      return { maxRounds: 1, maxArticles: 1 };
+    case "top3":
+      return { maxRounds: 2, maxArticles: 3 };
+    case "top10":
+      return { maxRounds: 3, maxArticles: 10 };
+    case "pages5":
+      return { maxRounds: 5, maxArticles: 25 };
+    case "max":
+      return { maxRounds: 10, maxArticles: 50 };
+    case "30d":
+      return { maxRounds: 4, maxArticles: 15 };
+    default:
+      return { maxRounds: 3, maxArticles: 10 };
+  }
+}
 
 export interface SearchResult {
   candidates: ArticleCandidate[];
@@ -126,6 +144,7 @@ async function searchWithClaude(
   keywords?: string[]
 ): Promise<{ candidates: ArticleCandidate[]; usage: TokenUsage }> {
   const claude = getClaudeClient();
+  const { maxRounds, maxArticles } = scopeLimits(scope);
   const allCandidates: ArticleCandidate[] = [];
   const seenUrls = new Set<string>();
   const usage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
@@ -136,7 +155,7 @@ async function searchWithClaude(
       ? `\n\nThe user has identified these search keywords to guide your research:\n${keywords.map((k) => `- ${k}`).join("\n")}`
       : "";
 
-  while (round <= MAX_ROUNDS) {
+  while (round <= maxRounds && allCandidates.length < maxArticles) {
     onProgress?.(`Search round ${round}...`);
 
     const previousUrls = allCandidates.map((c) => c.url).join("\n");
@@ -173,7 +192,7 @@ If you cannot find any more relevant articles, return an empty array: []`;
         {
           type: "web_search_20250305",
           name: "web_search",
-          max_uses: 10,
+          max_uses: Math.min(maxArticles, 10),
         } as never,
       ],
       messages: [{ role: "user", content: prompt }],
@@ -205,13 +224,16 @@ If you cannot find any more relevant articles, return an empty array: []`;
       }
     }
 
-    onProgress?.(`Found ${allCandidates.length} articles so far...`);
+    onProgress?.(`Found ${allCandidates.length} articles so far (target: ${maxArticles})...`);
 
     if (newCount === 0) break;
+    if (allCandidates.length >= maxArticles) break;
     round++;
   }
 
-  return { candidates: allCandidates, usage };
+  // Trim to the requested max
+  const trimmed = allCandidates.slice(0, maxArticles);
+  return { candidates: trimmed, usage };
 }
 
 // ---- Mechanical fallback for when Sonnet keyword gen fails ----

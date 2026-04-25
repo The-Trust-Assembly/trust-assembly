@@ -32,14 +32,30 @@ const STATUS_COLORS = {
   cancelled: "var(--text-muted)",
 };
 
+const ACTIVE_STATUSES = new Set(["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"]);
+
+const STAGE_DESCRIPTIONS = {
+  queued: "Waiting to start...",
+  searching: "Searching the web for relevant articles. This can take 1-2 minutes.",
+  filtering: "Scoring search results for relevance...",
+  fetching: "Downloading and extracting article content...",
+  analyzing: "Reading each article and checking facts (30-60 sec per article). You can leave this page — it runs in the background.",
+  synthesizing: "Cross-referencing findings across all articles...",
+  submitting: "Filing your approved submissions...",
+};
+
 function fmtTimestamp(iso) {
   if (!iso) return "";
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
 export default function OneTimeDashboard({ onReview }) {
-  const [thesis, setThesis] = useState("");
-  const [keywords, setKeywords] = useState([]);
+  const [thesis, setThesis] = useState(() => {
+    try { return localStorage.getItem("ta-agent-onetime-thesis") || ""; } catch { return ""; }
+  });
+  const [keywords, setKeywords] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ta-agent-onetime-keywords") || "[]"); } catch { return []; }
+  });
   const [showKeywords, setShowKeywords] = useState(false);
   const [newKeyword, setNewKeyword] = useState("");
   const [generatingKeywords, setGeneratingKeywords] = useState(false);
@@ -49,6 +65,21 @@ export default function OneTimeDashboard({ onReview }) {
   const [message, setMessage] = useState("");
   const [recentRuns, setRecentRuns] = useState([]);
   const [loadingRuns, setLoadingRuns] = useState(true);
+
+  // Persist thesis + keywords to localStorage
+  useEffect(() => {
+    try { localStorage.setItem("ta-agent-onetime-thesis", thesis); } catch {}
+  }, [thesis]);
+  useEffect(() => {
+    try { localStorage.setItem("ta-agent-onetime-keywords", JSON.stringify(keywords)); } catch {}
+  }, [keywords]);
+
+  async function retryRun(runId) {
+    try {
+      const res = await fetch(`/api/agent/process/${runId}/retry`, { method: "POST" });
+      if (res.ok) loadRecentRuns();
+    } catch {}
+  }
 
   async function loadRecentRuns() {
     try {
@@ -129,11 +160,6 @@ export default function OneTimeDashboard({ onReview }) {
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <img
-          src="/icons/Golden lighthouse emblem with laurel wreath.png"
-          alt="Trust Assembly"
-          style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", marginBottom: 8 }}
-        />
         <h2
           style={{
             fontFamily: "var(--serif)", fontSize: 22, fontWeight: 600,
@@ -347,7 +373,9 @@ export default function OneTimeDashboard({ onReview }) {
             No runs yet. Start one above.
           </div>
         ) : (
-          recentRuns.map((run) => (
+          recentRuns.map((run) => {
+            const isActive = ACTIVE_STATUSES.has(run.status);
+            return (
             <div
               key={run.id}
               style={{
@@ -367,30 +395,66 @@ export default function OneTimeDashboard({ onReview }) {
                   color: STATUS_COLORS[run.status] || "var(--text-muted)",
                   border: `1px solid ${STATUS_COLORS[run.status] || "var(--border)"}`,
                   whiteSpace: "nowrap",
+                  display: "inline-flex", alignItems: "center", gap: 4,
                 }}>
+                  {isActive && (
+                    <span style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: "var(--gold)",
+                      animation: "pulse-dot 1.5s ease-in-out infinite",
+                    }} />
+                  )}
                   {run.status}
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 14, fontSize: 11, color: "var(--text-muted)", flexWrap: "wrap" }}>
-                <span>{fmtTimestamp(run.created_at)}</span>
-                {run.articles_found > 0 && (
-                  <span>{run.articles_found} found · {run.articles_fetched} fetched · {run.articles_analyzed} analyzed</span>
-                )}
-              </div>
-              {run.stage_message && !["ready", "failed", "cancelled", "completed"].includes(run.status) && (
-                <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>{run.stage_message}</div>
+              {isActive && (
+                <div style={{
+                  padding: "8px 12px", marginTop: 4, marginBottom: 4,
+                  background: "var(--bg)", borderRadius: 4,
+                  border: "1px solid var(--border)",
+                }}>
+                  <div style={{ fontSize: 12, color: "var(--text)", fontWeight: 500, marginBottom: 2 }}>
+                    {STAGE_DESCRIPTIONS[run.status] || run.stage_message || "Processing..."}
+                  </div>
+                  {run.stage_message && STAGE_DESCRIPTIONS[run.status] !== run.stage_message && (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{run.stage_message}</div>
+                  )}
+                  {run.progress_pct > 0 && (
+                    <div style={{ marginTop: 6, height: 4, background: "var(--card-bg)", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", width: `${run.progress_pct}%`,
+                        background: "var(--gold)",
+                        transition: "width 0.4s ease",
+                      }} />
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, fontFamily: "var(--mono)" }}>
+                    {run.progress_pct || 0}% complete
+                    {run.articles_found > 0 && ` · ${run.articles_found} found`}
+                    {run.articles_fetched > 0 && ` · ${run.articles_fetched} fetched`}
+                    {run.articles_analyzed > 0 && ` · ${run.articles_analyzed} analyzed`}
+                  </div>
+                </div>
               )}
-              {run.progress_pct > 0 && run.progress_pct < 100 && (
-                <div style={{ marginTop: 6, height: 4, background: "var(--bg)", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%", width: `${run.progress_pct}%`,
-                    background: STATUS_COLORS[run.status] || "var(--gold)",
-                    transition: "width 0.4s ease",
-                  }} />
+              {!isActive && (
+                <div style={{ display: "flex", gap: 14, fontSize: 11, color: "var(--text-muted)", flexWrap: "wrap" }}>
+                  <span>{fmtTimestamp(run.created_at)}</span>
+                  {run.articles_found > 0 && (
+                    <span>{run.articles_found} found · {run.articles_fetched} fetched · {run.articles_analyzed} analyzed</span>
+                  )}
                 </div>
               )}
               {run.error_message && (
-                <div style={{ marginTop: 6, fontSize: 11, color: "var(--red)" }}>{run.error_message}</div>
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--red)" }}>
+                  {run.error_message}
+                  <button
+                    className="ta-btn-secondary"
+                    onClick={() => retryRun(run.id)}
+                    style={{ fontSize: 10, padding: "3px 10px", marginLeft: 8 }}
+                  >
+                    Retry
+                  </button>
+                </div>
               )}
               {run.status === "ready" && (
                 <div style={{ marginTop: 8 }}>
@@ -404,7 +468,8 @@ export default function OneTimeDashboard({ onReview }) {
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

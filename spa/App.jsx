@@ -541,6 +541,7 @@ export default function TrustAssembly() {
         *{margin:0;padding:0;box-sizing:border-box;}
         @keyframes ta-fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes ta-prog { from{width:0%} to{width:100%} }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .ta-root { min-height:100vh; background:var(--bg); font-family:var(--font); color:var(--text); font-size:13px; line-height:1.6; }
         .ta-root.font-medium { zoom:1.15; }
         .ta-root.font-large { zoom:1.3; }

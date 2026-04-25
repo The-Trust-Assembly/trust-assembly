@@ -139,7 +139,7 @@ export interface AnalyzedArticle {
 export async function analyzeArticles(
   articles: Array<{ url: string; headline: string; text: string }>,
   topic: string,
-  onProgress?: (i: number, total: number) => void
+  onProgress?: (i: number, total: number, analyzedSoFar: AnalyzedArticle[]) => void | Promise<void>
 ): Promise<{
   analyzed: AnalyzedArticle[];
   errors: Array<{ url: string; error: string }>;
@@ -151,7 +151,6 @@ export async function analyzeArticles(
 
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    onProgress?.(i + 1, articles.length);
 
     try {
       const { analysis, usage } = await analyzeArticle(
@@ -166,6 +165,9 @@ export async function analyzeArticles(
     } catch (e) {
       errors.push({ url: article.url, error: e instanceof Error ? e.message : String(e) });
     }
+
+    // Fire after each article completes (success or error)
+    await onProgress?.(i + 1, articles.length, analyzed);
 
     if (i < articles.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, ANALYSIS_DELAY_MS));
