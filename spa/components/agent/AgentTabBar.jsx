@@ -84,8 +84,8 @@ export default function AgentTabBar({
                   gap: 8,
                   padding: "8px 18px",
                   border: "2px solid var(--gold)",
-                  borderBottom: "2px solid var(--card-bg)",
-                  background: "var(--card-bg)",
+                  borderBottom: "2px solid var(--bg)",
+                  background: "var(--bg)",
                   cursor: "default",
                   borderRadius: "8px 8px 0 0",
                   whiteSpace: "nowrap",
@@ -157,7 +157,7 @@ export default function AgentTabBar({
                   padding: "10px 12px",
                   border: "1px solid transparent",
                   borderBottom: "none",
-                  background: hovered ? "var(--card-bg)" : "transparent",
+                  background: hovered ? "var(--bg)" : "transparent",
                   cursor: "pointer",
                   borderRadius: "6px 6px 0 0",
                   transition: "background 0.15s ease, border-color 0.15s ease",
@@ -242,7 +242,7 @@ export default function AgentTabBar({
               transition: "background 0.15s ease, border-color 0.15s ease",
               marginBottom: -2,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-bg)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
           >
             <span

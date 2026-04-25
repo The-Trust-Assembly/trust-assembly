@@ -129,11 +129,6 @@ export default function OneTimeDashboard({ onReview }) {
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <img
-          src="/icons/Golden lighthouse emblem with laurel wreath.png"
-          alt="Trust Assembly"
-          style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", marginBottom: 8 }}
-        />
         <h2
           style={{
             fontFamily: "var(--serif)", fontSize: 22, fontWeight: 600,
