@@ -15,6 +15,11 @@ import React, { useState, useEffect } from "react";
 // (mechanical extraction). Stage C will replace it with a real Sonnet
 // call that generates 7–15 genuinely useful keywords.
 
+const PLATFORM_OPTIONS = [
+  { id: "news", label: "News / Web", sitePrefix: null },
+  { id: "twitter", label: "Twitter / X", sitePrefix: "site:x.com" },
+];
+
 const SCOPE_PRESETS = [
   { label: "Top article", value: "single" },
   { label: "Top 3", value: "top3" },
@@ -71,6 +76,7 @@ export default function SentinelDashboard({ agent, onReview }) {
   const [where_, setWhere] = useState("");
   const [why, setWhy] = useState("");
   const [activePreset, setActivePreset] = useState(0);
+  const [platforms, setPlatforms] = useState(new Set(["news"]));
 
   // Keyword step
   const [keywords, setKeywords] = useState(() => {
@@ -171,6 +177,15 @@ export default function SentinelDashboard({ agent, onReview }) {
     setMessage("");
     setRunning(true);
 
+    // Build platform-prefixed keywords
+    const platformKeywords = [];
+    for (const p of PLATFORM_OPTIONS) {
+      if (!platforms.has(p.id)) continue;
+      for (const kw of keywords) {
+        platformKeywords.push(p.sitePrefix ? `${p.sitePrefix} ${kw}` : kw);
+      }
+    }
+
     try {
       const res = await fetch("/api/agent/run", {
         method: "POST",
@@ -178,7 +193,7 @@ export default function SentinelDashboard({ agent, onReview }) {
         body: JSON.stringify({
           thesis: thesis.trim(),
           scope: SCOPE_PRESETS[activePreset].value,
-          keywords: keywords,
+          keywords: platformKeywords.length > 0 ? platformKeywords : keywords,
         }),
       });
       const data = await res.json();
@@ -391,6 +406,46 @@ export default function SentinelDashboard({ agent, onReview }) {
                         border: `1px solid ${active ? "var(--text)" : "var(--border)"}`,
                         borderRadius: 14,
                         cursor: running ? "not-allowed" : "pointer",
+                        userSelect: "none",
+                      }}
+                    >
+                      {p.label}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Platform selector */}
+            <div style={{ marginTop: 12 }}>
+              <label
+                style={{
+                  display: "block", fontFamily: "var(--serif)", fontSize: 13,
+                  fontWeight: 600, color: "var(--text)", marginBottom: 6,
+                }}
+              >
+                Search Platforms
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {PLATFORM_OPTIONS.map((p) => {
+                  const active = platforms.has(p.id);
+                  return (
+                    <span
+                      key={p.id}
+                      onClick={() => {
+                        if (running) return;
+                        const next = new Set(platforms);
+                        if (active && next.size > 1) next.delete(p.id);
+                        else next.add(p.id);
+                        setPlatforms(next);
+                      }}
+                      style={{
+                        fontFamily: "var(--mono)", fontSize: 11,
+                        padding: "4px 12px",
+                        background: active ? "var(--text)" : "var(--bg)",
+                        color: active ? "var(--card-bg)" : "var(--text)",
+                        border: `1px solid ${active ? "var(--text)" : "var(--border)"}`,
+                        borderRadius: 14, cursor: running ? "not-allowed" : "pointer",
                         userSelect: "none",
                       }}
                     >

@@ -12,6 +12,11 @@ import React, { useState, useEffect } from "react";
 //   - Simpler header
 //   - Available to all logged-in users (not just admin)
 
+const PLATFORM_OPTIONS = [
+  { id: "news", label: "News / Web", sitePrefix: null },
+  { id: "twitter", label: "Twitter / X", sitePrefix: "site:x.com" },
+];
+
 const SCOPE_PRESETS = [
   { label: "Top article", value: "single" },
   { label: "Top 3", value: "top3" },
@@ -60,6 +65,7 @@ export default function OneTimeDashboard({ onReview }) {
   const [newKeyword, setNewKeyword] = useState("");
   const [generatingKeywords, setGeneratingKeywords] = useState(false);
   const [activePreset, setActivePreset] = useState(1); // Default "Top 3"
+  const [platforms, setPlatforms] = useState(new Set(["news"]));
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -133,6 +139,20 @@ export default function OneTimeDashboard({ onReview }) {
     if (keywords.length === 0) { setError("Add at least one keyword."); return; }
     setError(""); setMessage(""); setRunning(true);
 
+    // Build platform-prefixed keywords: for each selected platform
+    // with a sitePrefix, duplicate each keyword with that prefix
+    const platformKeywords = [];
+    for (const p of PLATFORM_OPTIONS) {
+      if (!platforms.has(p.id)) continue;
+      for (const kw of keywords) {
+        if (p.sitePrefix) {
+          platformKeywords.push(`${p.sitePrefix} ${kw}`);
+        } else {
+          platformKeywords.push(kw);
+        }
+      }
+    }
+
     try {
       const res = await fetch("/api/agent/run", {
         method: "POST",
@@ -140,7 +160,7 @@ export default function OneTimeDashboard({ onReview }) {
         body: JSON.stringify({
           thesis: thesis.trim(),
           scope: SCOPE_PRESETS[activePreset].value,
-          keywords: keywords,
+          keywords: platformKeywords.length > 0 ? platformKeywords : keywords,
         }),
       });
       const data = await res.json();
@@ -296,6 +316,46 @@ export default function OneTimeDashboard({ onReview }) {
                     <span
                       key={p.value}
                       onClick={() => !running && setActivePreset(i)}
+                      style={{
+                        fontFamily: "var(--mono)", fontSize: 11,
+                        padding: "4px 12px",
+                        background: active ? "var(--text)" : "var(--bg)",
+                        color: active ? "var(--card-bg)" : "var(--text)",
+                        border: `1px solid ${active ? "var(--text)" : "var(--border)"}`,
+                        borderRadius: 14, cursor: running ? "not-allowed" : "pointer",
+                        userSelect: "none",
+                      }}
+                    >
+                      {p.label}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Platform selector */}
+            <div style={{ marginTop: 12 }}>
+              <label
+                style={{
+                  display: "block", fontFamily: "var(--serif)", fontSize: 13,
+                  fontWeight: 600, color: "var(--text)", marginBottom: 6,
+                }}
+              >
+                Search Platforms
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {PLATFORM_OPTIONS.map((p) => {
+                  const active = platforms.has(p.id);
+                  return (
+                    <span
+                      key={p.id}
+                      onClick={() => {
+                        if (running) return;
+                        const next = new Set(platforms);
+                        if (active && next.size > 1) next.delete(p.id);
+                        else next.add(p.id);
+                        setPlatforms(next);
+                      }}
                       style={{
                         fontFamily: "var(--mono)", fontSize: 11,
                         padding: "4px 12px",
