@@ -325,6 +325,23 @@ export async function POST(
       `;
     }
 
+    // Add user-specified URLs to the candidate list
+    const specificUrls: string[] = Array.isArray(runContext.specificUrls) ? runContext.specificUrls : [];
+    if (specificUrls.length > 0) {
+      const existingUrls = new Set(candidates.map((c) => c.url));
+      for (const url of specificUrls) {
+        if (!existingUrls.has(url)) {
+          candidates.push({
+            url,
+            headline: "",
+            publication: "",
+            summary: "User-specified URL",
+            reasonToCheck: "Included manually by user",
+          });
+        }
+      }
+    }
+
     // Empty short-circuit
     if (candidates.length === 0) {
       const emptyBatch: AgentBatch = {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import UrlTester from "./UrlTester";
 
 // Trust Assembly Agent — One-Time fact-check dashboard
 // ------------------------------------------------------
@@ -72,6 +73,7 @@ export default function OneTimeDashboard({ onReview }) {
   const [generatingKeywords, setGeneratingKeywords] = useState(false);
   const [activePreset, setActivePreset] = useState(1); // Default "Top 3"
   const [platforms, setPlatforms] = useState(new Set(["news"]));
+  const [specificUrls, setSpecificUrls] = useState([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -167,6 +169,7 @@ export default function OneTimeDashboard({ onReview }) {
           thesis: thesis.trim(),
           scope: SCOPE_PRESETS[activePreset].value,
           keywords: platformKeywords.length > 0 ? platformKeywords : keywords,
+          ...(specificUrls.length > 0 ? { context: { specificUrls } } : {}),
         }),
       });
       const data = await res.json();
@@ -303,6 +306,22 @@ export default function OneTimeDashboard({ onReview }) {
                   Add
                 </button>
               </div>
+            </div>
+
+            {/* Specific URLs */}
+            <div style={{ marginTop: 12 }}>
+              <UrlTester onUrlsConfirmed={(urls) => setSpecificUrls(urls)} />
+              {specificUrls.length > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--green)", fontFamily: "var(--mono)" }}>
+                  {specificUrls.length} URL{specificUrls.length === 1 ? "" : "s"} will be included in the scan
+                  <button
+                    onClick={() => setSpecificUrls([])}
+                    style={{ border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, marginLeft: 8 }}
+                  >
+                    (clear)
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Scope */}
