@@ -59,6 +59,22 @@ export default function PhantomDashboard({ agent, onReview }) {
   const [recentRuns, setRecentRuns] = useState([]);
   const [loadingRuns, setLoadingRuns] = useState(true);
 
+  // Deterministic feed filter based on agent config
+  const feedFilter = config.feedFilter || { mode: "all", phrase: "" };
+
+  function matchesFilter(post) {
+    if (feedFilter.mode === "all") return true;
+    const text = (post.summary || "").trimEnd().toLowerCase();
+    const phrase = (feedFilter.phrase || "").trim().toLowerCase();
+    if (!phrase) return feedFilter.mode !== "include"; // No phrase + include mode = show nothing
+    const endsWith = text.endsWith(phrase);
+    return feedFilter.mode === "include" ? endsWith : !endsWith;
+  }
+
+  // Filtered posts for display
+  const filteredPosts = feed ? feed.posts.filter(matchesFilter) : [];
+  const skippedCount = feed ? feed.posts.length - filteredPosts.length : 0;
+
   const loadFeed = useCallback(async () => {
     setLoadingFeed(true);
     setFeedError("");
@@ -114,10 +130,10 @@ export default function PhantomDashboard({ agent, onReview }) {
 
   function selectAll() {
     if (!feed?.posts) return;
-    if (selectedUrls.size === feed.posts.length) {
+    if (selectedUrls.size === filteredPosts.length) {
       setSelectedUrls(new Set());
     } else {
-      setSelectedUrls(new Set(feed.posts.map((p) => p.url)));
+      setSelectedUrls(new Set(filteredPosts.map((p) => p.url)));
     }
   }
 
@@ -198,7 +214,7 @@ export default function PhantomDashboard({ agent, onReview }) {
             Recent Posts
             {feed && (
               <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 8 }}>
-                ({feed.posts.length} from {feed.feedTitle || "feed"})
+                ({filteredPosts.length}{skippedCount > 0 ? ` of ${feed.posts.length}` : ""} from {feed.feedTitle || "feed"}{skippedCount > 0 ? ` · ${skippedCount} filtered` : ""})
               </span>
             )}
           </label>
@@ -210,7 +226,7 @@ export default function PhantomDashboard({ agent, onReview }) {
                 disabled={scanning}
                 style={{ fontSize: 11, padding: "4px 10px" }}
               >
-                {selectedUrls.size === feed.posts.length ? "Deselect All" : "Select All"}
+                {selectedUrls.size === filteredPosts.length ? "Deselect All" : "Select All"}
               </button>
             )}
             <button
@@ -246,7 +262,7 @@ export default function PhantomDashboard({ agent, onReview }) {
           </div>
         )}
 
-        {feed && feed.posts.length === 0 && (
+        {feed && filteredPosts.length === 0 && (
           <div
             style={{
               padding: "16px 20px",
@@ -259,13 +275,15 @@ export default function PhantomDashboard({ agent, onReview }) {
               textAlign: "center",
             }}
           >
-            No posts found in the feed. The author may not have published recently.
+            {skippedCount > 0
+              ? `All ${feed.posts.length} posts were filtered out by your scanning rule. Check Settings to adjust the filter phrase.`
+              : "No posts found in the feed. The author may not have published recently."}
           </div>
         )}
 
-        {feed && feed.posts.length > 0 && (
+        {feed && filteredPosts.length > 0 && (
           <div style={{ maxHeight: 400, overflowY: "auto" }}>
-            {feed.posts.map((post) => {
+            {filteredPosts.map((post) => {
               const selected = selectedUrls.has(post.url);
               return (
                 <div
@@ -342,7 +360,7 @@ export default function PhantomDashboard({ agent, onReview }) {
         )}
 
         {/* Action bar */}
-        {feed && feed.posts.length > 0 && (
+        {feed && filteredPosts.length > 0 && (
           <div style={{ marginTop: 14 }}>
             <button
               className="ta-btn-primary"
