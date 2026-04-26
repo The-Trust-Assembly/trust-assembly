@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import UrlTester from "./UrlTester";
 
 // Trust Assembly Agent — One-Time fact-check dashboard
 // ------------------------------------------------------
@@ -11,6 +12,17 @@ import React, { useState, useEffect } from "react";
 //   - No agent config (reasoning instructions, domain, etc.)
 //   - Simpler header
 //   - Available to all logged-in users (not just admin)
+
+const PLATFORM_OPTIONS = [
+  { id: "news", label: "News / Web", sitePrefix: null, tip: "Searches the open web. Best for news articles, blogs, and public reports." },
+  { id: "twitter", label: "Twitter / X", sitePrefix: "site:x.com", tip: "Searches public tweets and threads. Replies and quote tweets may not appear. Private/protected accounts are excluded." },
+  { id: "youtube", label: "YouTube", sitePrefix: "site:youtube.com", tip: "Finds video pages by title and description. Cannot analyze the video itself — only the page text, title, and description are checked." },
+  { id: "reddit", label: "Reddit", sitePrefix: "site:reddit.com", tip: "Searches public posts and comments. Best for threads with factual claims. Some subreddits restrict indexing." },
+  { id: "wikipedia", label: "Wikipedia", sitePrefix: "site:wikipedia.org", tip: "Searches Wikipedia articles. Useful for cross-referencing factual claims against the encyclopedia." },
+  { id: "substack", label: "Substack", sitePrefix: "site:substack.com", tip: "Searches public Substack posts. Paywalled content behind the fold won't be extracted." },
+  { id: "medium", label: "Medium", sitePrefix: "site:medium.com", tip: "Searches public Medium articles. Metered/paywalled posts may only return partial content." },
+  { id: "facebook", label: "Facebook", sitePrefix: "site:facebook.com", tip: "Limited — most Facebook content requires login. Only public pages and posts are searchable." },
+];
 
 const SCOPE_PRESETS = [
   { label: "Top article", value: "single" },
@@ -60,6 +72,8 @@ export default function OneTimeDashboard({ onReview }) {
   const [newKeyword, setNewKeyword] = useState("");
   const [generatingKeywords, setGeneratingKeywords] = useState(false);
   const [activePreset, setActivePreset] = useState(1); // Default "Top 3"
+  const [platforms, setPlatforms] = useState(new Set(["news"]));
+  const [specificUrls, setSpecificUrls] = useState([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -133,6 +147,20 @@ export default function OneTimeDashboard({ onReview }) {
     if (keywords.length === 0) { setError("Add at least one keyword."); return; }
     setError(""); setMessage(""); setRunning(true);
 
+    // Build platform-prefixed keywords: for each selected platform
+    // with a sitePrefix, duplicate each keyword with that prefix
+    const platformKeywords = [];
+    for (const p of PLATFORM_OPTIONS) {
+      if (!platforms.has(p.id)) continue;
+      for (const kw of keywords) {
+        if (p.sitePrefix) {
+          platformKeywords.push(`${p.sitePrefix} ${kw}`);
+        } else {
+          platformKeywords.push(kw);
+        }
+      }
+    }
+
     try {
       const res = await fetch("/api/agent/run", {
         method: "POST",
@@ -140,7 +168,8 @@ export default function OneTimeDashboard({ onReview }) {
         body: JSON.stringify({
           thesis: thesis.trim(),
           scope: SCOPE_PRESETS[activePreset].value,
-          keywords: keywords,
+          keywords: platformKeywords.length > 0 ? platformKeywords : keywords,
+          ...(specificUrls.length > 0 ? { context: { specificUrls } } : {}),
         }),
       });
       const data = await res.json();
@@ -256,7 +285,7 @@ export default function OneTimeDashboard({ onReview }) {
                   </span>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                 <input
                   type="text"
                   value={newKeyword}
@@ -264,7 +293,7 @@ export default function OneTimeDashboard({ onReview }) {
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyword(); } }}
                   placeholder="Add a keyword and press Enter"
                   style={{
-                    flex: 1, padding: "6px 10px", fontFamily: "var(--mono)",
+                    flex: "1 1 200px", minWidth: 0, padding: "6px 10px", fontFamily: "var(--mono)",
                     fontSize: 12, border: "1px solid var(--border)", borderRadius: 4,
                     background: "var(--bg)", color: "var(--text)",
                   }}
@@ -277,6 +306,22 @@ export default function OneTimeDashboard({ onReview }) {
                   Add
                 </button>
               </div>
+            </div>
+
+            {/* Specific URLs */}
+            <div style={{ marginTop: 12 }}>
+              <UrlTester onUrlsConfirmed={(urls) => setSpecificUrls(urls)} />
+              {specificUrls.length > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--green)", fontFamily: "var(--mono)" }}>
+                  {specificUrls.length} URL{specificUrls.length === 1 ? "" : "s"} will be included in the scan
+                  <button
+                    onClick={() => setSpecificUrls([])}
+                    style={{ border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, marginLeft: 8 }}
+                  >
+                    (clear)
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Scope */}
@@ -312,6 +357,56 @@ export default function OneTimeDashboard({ onReview }) {
                 })}
               </div>
             </div>
+
+            {/* Platform selector */}
+            <div style={{ marginTop: 12 }}>
+              <label
+                style={{
+                  display: "block", fontFamily: "var(--serif)", fontSize: 13,
+                  fontWeight: 600, color: "var(--text)", marginBottom: 6,
+                }}
+              >
+                Search Platforms
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {PLATFORM_OPTIONS.map((p) => {
+                  const active = platforms.has(p.id);
+                  return (
+                    <span
+                      key={p.id}
+                      title={p.tip}
+                      onClick={() => {
+                        if (running) return;
+                        const next = new Set(platforms);
+                        if (active && next.size > 1) next.delete(p.id);
+                        else next.add(p.id);
+                        setPlatforms(next);
+                      }}
+                      style={{
+                        fontFamily: "var(--mono)", fontSize: 11,
+                        padding: "4px 12px",
+                        background: active ? "var(--text)" : "var(--bg)",
+                        color: active ? "var(--card-bg)" : "var(--text)",
+                        border: `1px solid ${active ? "var(--text)" : "var(--border)"}`,
+                        borderRadius: 14, cursor: running ? "not-allowed" : "pointer",
+                        userSelect: "none",
+                      }}
+                    >
+                      {p.label}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Platform tips */}
+            {platforms.size > 0 && (
+              <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.6 }}>
+                {PLATFORM_OPTIONS.filter((p) => platforms.has(p.id)).map((p) => (
+                  <div key={p.id}><strong>{p.label}:</strong> {p.tip}</div>
+                ))}
+              </div>
+            )}
 
             {/* Submit row */}
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>

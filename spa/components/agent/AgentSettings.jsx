@@ -32,6 +32,13 @@ export default function AgentSettings({ agent, onUpdated, onDeleted }) {
     Array.isArray(config.monitoredEntities) ? config.monitoredEntities.join("\n") : ""
   );
 
+  // Phantom feed filter
+  const feedFilter = config.feedFilter || { mode: "all", phrase: "" };
+  const [filterMode, setFilterMode] = useState(feedFilter.mode || "all");
+  const [filterPhrase, setFilterPhrase] = useState(
+    feedFilter.phrase || (feedFilter.mode === "include" ? "For the Assembly." : feedFilter.mode === "skip" ? "Not for the Assembly." : "")
+  );
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -47,6 +54,9 @@ export default function AgentSettings({ agent, onUpdated, onDeleted }) {
     const cfg = agent.config || {};
     setSubstackUrl(cfg.substackUrl || "");
     setMonitoredEntities(Array.isArray(cfg.monitoredEntities) ? cfg.monitoredEntities.join("\n") : "");
+    const ff = cfg.feedFilter || { mode: "all", phrase: "" };
+    setFilterMode(ff.mode || "all");
+    setFilterPhrase(ff.phrase || (ff.mode === "include" ? "For the Assembly." : ff.mode === "skip" ? "Not for the Assembly." : ""));
     setError("");
     setSuccess("");
   }, [agent.id]);
@@ -67,7 +77,14 @@ export default function AgentSettings({ agent, onUpdated, onDeleted }) {
 
     // Type-specific config
     if (agent.type === "phantom") {
-      payload.config = { ...config, substackUrl: substackUrl.trim() };
+      payload.config = {
+        ...config,
+        substackUrl: substackUrl.trim(),
+        feedFilter: {
+          mode: filterMode,
+          phrase: filterMode !== "all" ? filterPhrase : "",
+        },
+      };
     } else if (agent.type === "ward") {
       payload.config = {
         ...config,
@@ -184,16 +201,99 @@ export default function AgentSettings({ agent, onUpdated, onDeleted }) {
 
       {/* Type-specific config */}
       {agent.type === "phantom" && (
-        <div style={{ marginBottom: 18 }}>
-          <label style={labelStyle}>Substack Feed URL</label>
-          <input
-            type="url"
-            value={substackUrl}
-            onChange={(e) => setSubstackUrl(e.target.value)}
-            placeholder="https://greenwald.substack.com"
-            style={{ ...inputStyle, fontFamily: "var(--mono)", fontSize: 13 }}
-          />
-        </div>
+        <>
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Substack Feed URL</label>
+            <input
+              type="url"
+              value={substackUrl}
+              onChange={(e) => setSubstackUrl(e.target.value)}
+              placeholder="https://greenwald.substack.com"
+              style={{ ...inputStyle, fontFamily: "var(--mono)", fontSize: 13 }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Feed Scanning Rule</label>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, lineHeight: 1.6 }}>
+              Control which posts get scanned. The phrase must appear at the <strong>end</strong> of the post.
+              This is a deterministic text match — no AI judgment involved. Case-insensitive, but punctuation must be exact.
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Option 1: Scan all */}
+              <label
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
+                  background: filterMode === "all" ? "var(--bg)" : "transparent",
+                  border: `1px solid ${filterMode === "all" ? "var(--gold)" : "var(--border)"}`,
+                  borderRadius: 6, cursor: "pointer",
+                }}
+                onClick={() => setFilterMode("all")}
+              >
+                <input type="radio" checked={filterMode === "all"} onChange={() => setFilterMode("all")} style={{ marginTop: 2 }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Scan all posts</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Every post in the feed is available for analysis.</div>
+                </div>
+              </label>
+
+              {/* Option 2: Include only */}
+              <label
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
+                  background: filterMode === "include" ? "var(--bg)" : "transparent",
+                  border: `1px solid ${filterMode === "include" ? "var(--gold)" : "var(--border)"}`,
+                  borderRadius: 6, cursor: "pointer",
+                }}
+                onClick={() => { setFilterMode("include"); if (!filterPhrase || filterMode !== "include") setFilterPhrase("For the Assembly."); }}
+              >
+                <input type="radio" checked={filterMode === "include"} onChange={() => {}} style={{ marginTop: 2 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Only scan posts ending with a phrase</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
+                    Only posts whose text ends with this exact phrase will be scanned. Authors can opt posts in by adding this phrase at the end.
+                  </div>
+                  {filterMode === "include" && (
+                    <input
+                      type="text"
+                      value={filterPhrase}
+                      onChange={(e) => setFilterPhrase(e.target.value)}
+                      style={{ ...inputStyle, fontSize: 12, fontFamily: "var(--mono)", padding: "6px 10px" }}
+                    />
+                  )}
+                </div>
+              </label>
+
+              {/* Option 3: Skip matching */}
+              <label
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
+                  background: filterMode === "skip" ? "var(--bg)" : "transparent",
+                  border: `1px solid ${filterMode === "skip" ? "var(--gold)" : "var(--border)"}`,
+                  borderRadius: 6, cursor: "pointer",
+                }}
+                onClick={() => { setFilterMode("skip"); if (!filterPhrase || filterMode !== "skip") setFilterPhrase("Not for the Assembly."); }}
+              >
+                <input type="radio" checked={filterMode === "skip"} onChange={() => {}} style={{ marginTop: 2 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Scan all except posts ending with a phrase</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
+                    All posts are scanned unless their text ends with this exact phrase. Authors can opt posts out by adding this phrase at the end.
+                  </div>
+                  {filterMode === "skip" && (
+                    <input
+                      type="text"
+                      value={filterPhrase}
+                      onChange={(e) => setFilterPhrase(e.target.value)}
+                      style={{ ...inputStyle, fontSize: 12, fontFamily: "var(--mono)", padding: "6px 10px" }}
+                    />
+                  )}
+                </div>
+              </label>
+            </div>
+          </div>
+        </>
       )}
 
       {agent.type === "ward" && (
@@ -227,20 +327,20 @@ export default function AgentSettings({ agent, onUpdated, onDeleted }) {
       {/* Spend limit */}
       <div style={{ marginBottom: 18 }}>
         <label style={labelStyle}>
-          Monthly Spend Limit{" "}
-          <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(USD, optional)</span>
+          Monthly Credit Limit{" "}
+          <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span>
         </label>
         <input
           type="number"
           value={monthlySpendLimit}
           onChange={(e) => setMonthlySpendLimit(e.target.value)}
-          placeholder="e.g. 10.00"
+          placeholder="e.g. 50"
           min="0"
-          step="0.01"
+          step="1"
           style={{ ...inputStyle, fontFamily: "var(--mono)", fontSize: 13 }}
         />
         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-          Agent pauses automatically when this month's spend reaches the limit.
+          Agent pauses automatically when this month's credit usage reaches the limit.
         </div>
       </div>
 

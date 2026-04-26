@@ -76,7 +76,7 @@ export default function FeedbackScreen({ isAdmin, currentUsername }) {
         <div key={item.id} className="ta-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>{item.username === ADMIN_USERNAME ? "\u{1F451} " : ""}@{item.username}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>@{item.username}</span>
               {item.status && (
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: FEEDBACK_STATUS_COLORS[item.status] || "#999", padding: "1px 8px", borderRadius: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {FEEDBACK_STATUS_LABELS[item.status] || item.status}

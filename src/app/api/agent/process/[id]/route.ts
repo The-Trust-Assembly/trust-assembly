@@ -7,6 +7,8 @@ import { isGoogleSearchAvailable } from "@/lib/agent/google-search";
 import { filterByRelevance } from "@/lib/agent/relevance-filter";
 import { fetchArticles } from "@/lib/agent/fetch";
 import { analyzeArticles } from "@/lib/agent/analyze";
+import { verifyQuotes } from "@/lib/agent/verify-quotes";
+import { verifyEvidenceUrls } from "@/lib/agent/verify-urls";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import type {
@@ -151,6 +153,14 @@ export async function POST(
         });
       sonnetUsage.inputTokens += analyzeUsage.inputTokens;
       sonnetUsage.outputTokens += analyzeUsage.outputTokens;
+
+      // Quote + URL verification for Phantom posts
+      const phantomTextByUrl = new Map(articlesForAnalysis.map((a) => [a.url, a.text]));
+      for (const a of analyzed) {
+        const text = phantomTextByUrl.get(a.url);
+        if (text && a.analysis.evidence) verifyQuotes(a.analysis, text);
+      }
+      await verifyEvidenceUrls(analyzed);
 
       await sql`
         UPDATE agent_runs
@@ -313,6 +323,23 @@ export async function POST(
             updated_at = now()
         WHERE id = ${run.id}
       `;
+    }
+
+    // Add user-specified URLs to the candidate list
+    const specificUrls: string[] = Array.isArray(runContext.specificUrls) ? runContext.specificUrls : [];
+    if (specificUrls.length > 0) {
+      const existingUrls = new Set(candidates.map((c) => c.url));
+      for (const url of specificUrls) {
+        if (!existingUrls.has(url)) {
+          candidates.push({
+            url,
+            headline: "",
+            publication: "",
+            summary: "User-specified URL",
+            reasonToCheck: "Included manually by user",
+          });
+        }
+      }
     }
 
     // Empty short-circuit
@@ -504,10 +531,35 @@ export async function POST(
     sonnetUsage.inputTokens += analyzeUsage.inputTokens;
     sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
+    // ---- Phase 3.5: Quote + URL verification ----
+    // Deterministically verify quotes and URLs. No LLM cost.
+    const articleTextByUrl = new Map(
+      articlesForAnalysis.map((a) => [a.url, a.text])
+    );
+    let totalQuotesVerified = 0;
+    let totalQuotesNotFound = 0;
+    for (const a of analyzed) {
+      const text = articleTextByUrl.get(a.url);
+      if (text && a.analysis.evidence) {
+        const result = verifyQuotes(a.analysis, text);
+        totalQuotesVerified += result.verified + result.approximate;
+        totalQuotesNotFound += result.notFound;
+      }
+    }
+
+    // Verify all external URLs cited in evidence
+    const urlResult = await verifyEvidenceUrls(analyzed);
+
+    const verifyMsg = [
+      `${totalQuotesVerified} quotes verified`,
+      totalQuotesNotFound > 0 ? `${totalQuotesNotFound} quotes not found` : "",
+      urlResult.notFound > 0 ? `${urlResult.notFound} URLs broken` : "",
+    ].filter(Boolean).join(", ");
+
     await sql`
       UPDATE agent_runs
       SET status = 'synthesizing',
-          stage_message = ${`Analyzed ${analyzed.length} articles. Synthesizing findings...`},
+          stage_message = ${`Analyzed ${analyzed.length} articles (${verifyMsg}). Synthesizing...`},
           progress_pct = 85,
           articles_analyzed = ${analyzed.length},
           input_tokens = ${totalInputTokens()},

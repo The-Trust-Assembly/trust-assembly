@@ -16,11 +16,11 @@ export default function JuryScoreCard({ username }) {
   return (
     <div className="ta-card" style={{ borderLeft: "4px solid #0D9488" }}>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0D9488", marginBottom: 8, fontWeight: 600 }}>⚖ Jury Score</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {items.map(([c, n, l], i) => (
-          <div key={i} style={{ textAlign: "center", padding: 8, background: "var(--card-bg)", borderRadius: 0 }}>
+          <div key={i} style={{ flex: "1 1 60px", minWidth: 60, textAlign: "center", padding: 8, background: "var(--card-bg)", borderRadius: 0 }}>
             <div style={{ fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700, color: c }}>{n}</div>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginTop: 3 }}>{l}</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginTop: 3, overflowWrap: "break-word" }}>{l}</div>
           </div>
         ))}
       </div>
