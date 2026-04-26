@@ -195,7 +195,7 @@ export async function POST(
         id: `sub-${run.id.substring(0, 8)}-${i}`,
         url: a.url,
         headline: a.headline,
-        approved: a.analysis.verdict !== "skip",
+        approved: a.analysis.verdict !== "skip" && a.analysis.confidence !== "low",
         analysis: a.analysis,
       }));
 
@@ -618,13 +618,13 @@ export async function POST(
       `;
     }
 
-    // Build final reviewable batch. Default approve everything except
-    // 'skip' verdicts; the reviewer can toggle.
+    // Build final reviewable batch.
+    // Auto-approve: skip verdicts excluded, low-confidence auto-unapproved.
     const submissions: SubmissionForReview[] = refined.map((a, i) => ({
       id: `sub-${run.id.substring(0, 8)}-${i}`,
       url: a.url,
       headline: a.headline,
-      approved: a.analysis.verdict !== "skip",
+      approved: a.analysis.verdict !== "skip" && a.analysis.confidence !== "low",
       analysis: a.analysis,
     }));
 

@@ -400,6 +400,16 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                     >
                       {verdict}
                     </span>
+                    {sub.analysis.confidence && (
+                      <span style={{
+                        fontFamily: "var(--mono)", fontSize: 10, padding: "2px 6px", borderRadius: 8,
+                        color: sub.analysis.confidence === "high" ? "var(--green)" : sub.analysis.confidence === "low" ? "var(--red)" : "var(--gold)",
+                        border: `1px solid ${sub.analysis.confidence === "high" ? "var(--green)" : sub.analysis.confidence === "low" ? "var(--red)" : "var(--gold)"}`,
+                      }}>
+                        {sub.analysis.confidence}
+                        {sub.analysis.confidence === "low" && " — auto-excluded"}
+                      </span>
+                    )}
                     <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 12 }}>
                       <input
                         type="checkbox"
