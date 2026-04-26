@@ -9,6 +9,7 @@ import { fetchArticles } from "@/lib/agent/fetch";
 import { analyzeArticles } from "@/lib/agent/analyze";
 import { verifyQuotes } from "@/lib/agent/verify-quotes";
 import { verifyEvidenceUrls } from "@/lib/agent/verify-urls";
+import { verifyVaultEntries } from "@/lib/agent/verify-vault";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import type {
@@ -490,9 +491,15 @@ export async function POST(
     }
 
     // Cap articles to avoid Vercel function timeout (maxDuration=300s).
-    // Each article analysis takes ~20-40s. With 5 articles we stay
-    // safely under 5 minutes including search + fetch + synthesize.
-    const MAX_ARTICLES = 5;
+    // Scale analysis cap with scope tier. Higher tiers allow more
+    // articles but cost more credits.
+    const SCOPE_ARTICLE_LIMITS: Record<string, number> = {
+      quick: 3, single: 3,
+      standard: 5, top3: 5, top10: 5,
+      deep: 8, pages5: 8,
+      comprehensive: 12, max: 12,
+    };
+    const MAX_ARTICLES = SCOPE_ARTICLE_LIMITS[run.scope] || 5;
     if (articlesForAnalysis.length > MAX_ARTICLES) {
       articlesForAnalysis = articlesForAnalysis.slice(0, MAX_ARTICLES);
       await sql`
@@ -586,6 +593,29 @@ export async function POST(
       }));
       sonnetUsage.inputTokens += synth.usage.inputTokens;
       sonnetUsage.outputTokens += synth.usage.outputTokens;
+    }
+
+    // ---- Phase 4.5: Vault entry verification ----
+    // For each standing correction, run a targeted web search to verify
+    // the assertion is factually accurate. Disputed entries are auto-unapproved.
+    if (consolidatedVault.length > 0) {
+      await sql`
+        UPDATE agent_runs
+        SET stage_message = ${`Verifying ${consolidatedVault.length} vault entries...`},
+            progress_pct = 92, updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      const vaultVerify = await verifyVaultEntries(consolidatedVault);
+      sonnetUsage.inputTokens += vaultVerify.usage.inputTokens;
+      sonnetUsage.outputTokens += vaultVerify.usage.outputTokens;
+
+      await sql`
+        UPDATE agent_runs
+        SET stage_message = ${`Vault: ${vaultVerify.verified} verified, ${vaultVerify.disputed} disputed, ${vaultVerify.unverified} unverified.`},
+            progress_pct = 95, updated_at = now()
+        WHERE id = ${run.id}
+      `;
     }
 
     // Build final reviewable batch. Default approve everything except

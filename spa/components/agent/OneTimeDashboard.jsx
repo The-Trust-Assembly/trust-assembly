@@ -25,9 +25,10 @@ const PLATFORM_OPTIONS = [
 ];
 
 const SCOPE_PRESETS = [
-  { label: "Top article", value: "single" },
-  { label: "Top 3", value: "top3" },
-  { label: "Top 10", value: "top10" },
+  { label: "Quick (3 articles)", value: "quick", credits: 1 },
+  { label: "Standard (5 articles)", value: "standard", credits: 2 },
+  { label: "Deep (8 articles)", value: "deep", credits: 4 },
+  { label: "Comprehensive (12 articles)", value: "comprehensive", credits: 8 },
 ];
 
 const STATUS_COLORS = {
@@ -351,7 +352,7 @@ export default function OneTimeDashboard({ onReview }) {
                         userSelect: "none",
                       }}
                     >
-                      {p.label}
+                      {p.label}{p.credits ? <span style={{ opacity: 0.7 }}> · {p.credits} cr</span> : ""}
                     </span>
                   );
                 })}

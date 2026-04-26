@@ -8,12 +8,10 @@ export const dynamic = "force-dynamic";
 // Credit cost based on scope + platform count
 function calculateRunCost(scope: string, keywords?: string[] | null): number {
   const baseCost =
-    scope === "single" ? 1
-    : scope === "top3" ? 1
-    : scope === "top10" ? 2
-    : scope === "pages5" ? 3
-    : scope === "max" ? 3
-    : scope === "30d" ? 2
+    scope === "quick" || scope === "single" ? 1
+    : scope === "standard" || scope === "top3" || scope === "top10" ? 2
+    : scope === "deep" || scope === "pages5" || scope === "30d" ? 4
+    : scope === "comprehensive" || scope === "max" ? 8
     : 1;
 
   // Estimate platform count from keywords: count unique site: prefixes
@@ -57,24 +55,27 @@ export async function POST(request: NextRequest) {
     if (thesis.length > 4000) return err("thesis must be 4000 characters or fewer", 400);
     if (!scope) return err("scope is required", 400);
 
-    // Check credits
+    // Check credits (admin bypasses)
     const cost = calculateRunCost(scope, keywords);
     const creditResult = await sql`
-      SELECT agent_credits FROM users WHERE id = ${session.sub} LIMIT 1
+      SELECT agent_credits, username FROM users WHERE id = ${session.sub} LIMIT 1
     `;
     const currentCredits = creditResult.rows[0]?.agent_credits ?? 0;
+    const isAdmin = creditResult.rows[0]?.username === "thekingofamerica";
 
-    if (currentCredits < cost) {
+    if (!isAdmin && currentCredits < cost) {
       return err(
         `Not enough credits. This run costs ${cost} credit${cost === 1 ? "" : "s"} but you have ${currentCredits}. Purchase more credits to continue.`,
         402
       );
     }
 
-    // Deduct credits
-    await sql`
-      UPDATE users SET agent_credits = agent_credits - ${cost} WHERE id = ${session.sub}
-    `;
+    // Deduct credits (admin skips deduction)
+    if (!isAdmin) {
+      await sql`
+        UPDATE users SET agent_credits = agent_credits - ${cost} WHERE id = ${session.sub}
+      `;
+    }
 
     const result = await sql`
       INSERT INTO agent_runs (user_id, thesis, scope, context, status, stage_message)
@@ -87,8 +88,8 @@ export async function POST(request: NextRequest) {
       runId: row.id,
       status: row.status,
       createdAt: row.created_at,
-      creditsCost: cost,
-      creditsRemaining: currentCredits - cost,
+      creditsCost: isAdmin ? 0 : cost,
+      creditsRemaining: isAdmin ? Infinity : currentCredits - cost,
     });
   } catch (e) {
     return serverError("/api/agent/run", e);

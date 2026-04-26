@@ -21,16 +21,19 @@ import type { ArticleCandidate, TokenUsage } from "./types";
 // Map scope presets to hard limits for Claude web_search path
 function scopeLimits(scope: string): { maxRounds: number; maxArticles: number } {
   switch (scope) {
+    case "quick":
     case "single":
-      return { maxRounds: 1, maxArticles: 1 };
+      return { maxRounds: 2, maxArticles: 5 };
+    case "standard":
     case "top3":
-      return { maxRounds: 2, maxArticles: 3 };
     case "top10":
       return { maxRounds: 3, maxArticles: 10 };
+    case "deep":
     case "pages5":
-      return { maxRounds: 5, maxArticles: 25 };
+      return { maxRounds: 5, maxArticles: 20 };
+    case "comprehensive":
     case "max":
-      return { maxRounds: 10, maxArticles: 50 };
+      return { maxRounds: 8, maxArticles: 40 };
     case "30d":
       return { maxRounds: 4, maxArticles: 15 };
     default:
