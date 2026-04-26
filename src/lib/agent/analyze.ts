@@ -32,7 +32,11 @@ export async function analyzeArticle(
       ? articleText.substring(0, MAX_CHARS) + "\n\n[Article truncated for analysis]"
       : articleText;
 
+  const today = new Date().toISOString().split("T")[0];
+
   const prompt = `You are a fact-checker for Trust Assembly, a civic deliberation platform.
+
+Today's date: ${today}
 
 Analyze the following article for factual accuracy in the context of this topic: "${topic}"
 
@@ -82,6 +86,7 @@ Rules:
 - Use "correction" ONLY when you can cite specific factual errors with evidence
 - Use "affirmation" when the article is factually sound on an important topic
 - Generate MANY vault entries — err on the side of including more rather than fewer. The user will curate and remove ones they don't want. Aim for 3-8 standing corrections per article when the topic is rich with factual claims. Include every distinct factual assertion that could be reused across articles.
+- RECENCY: Today is ${today}. For recent or ongoing events, be VERY careful about stating what has or has not happened. If an event is within the last 30 days, your training data may not cover it — rely ONLY on what the article text says, not your prior knowledge. Never assert that something "has not happened" for recent events unless the article explicitly confirms it. When uncertain, frame claims with the date: "As of [date], according to [source]..." rather than making absolute statements.
 - Standing corrections should be facts, not opinions`;
 
   const response = await claude.messages.create({
