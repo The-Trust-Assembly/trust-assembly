@@ -61,8 +61,19 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
           const asmData = await asmRes.json();
           const list = asmData.joined || asmData.assemblies || asmData.organizations || [];
           setAssemblies(list);
-          // Default-select the first assembly
-          if (list.length > 0) setSelectedOrgIds([list[0].id]);
+          // Auto-suggest assemblies whose description matches the thesis
+          const thesis = (runData.run.thesis || "").toLowerCase();
+          const thesisWords = thesis.split(/\s+/).filter((w) => w.length > 4);
+          const suggested = list.filter((a) => {
+            if (!a.description) return false;
+            const desc = a.description.toLowerCase();
+            return thesisWords.some((w) => desc.includes(w));
+          });
+          if (suggested.length > 0) {
+            setSelectedOrgIds(suggested.map((a) => a.id));
+          } else if (list.length > 0) {
+            setSelectedOrgIds([list[0].id]);
+          }
         }
       } catch (e) {
         setError(e.message || "Failed to load run.");
@@ -267,6 +278,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
               <span
                 key={org.id}
                 onClick={() => toggleOrg(org.id)}
+                title={org.description || ""}
                 style={{
                   cursor: "pointer",
                   padding: "6px 14px",
@@ -471,8 +483,8 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                               </div>
                             )}
                             {ev.url && (
-                              <div style={{ fontFamily: "var(--mono)", fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
-                                <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)" }}>{ev.url}</a>
+                              <div style={{ fontFamily: "var(--mono)", fontSize: 10, marginTop: 2, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, overflow: "hidden" }}>
+                                <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", wordBreak: "break-all", minWidth: 0 }}>{ev.url}</a>
                                 {ev.urlVerified === "verified" && <span style={{ color: "var(--green)" }}>URL confirmed</span>}
                                 {ev.urlVerified === "not_found" && <span style={{ color: "var(--red)" }}>URL broken (404)</span>}
                                 {ev.urlVerified === "error" && <span style={{ color: "var(--gold)" }}>URL unreachable</span>}

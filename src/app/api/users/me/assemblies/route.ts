@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   // Joined assemblies (via organization_members)
   const joinedResult = await sql`
-    SELECT o.id, o.name
+    SELECT o.id, o.name, o.description
     FROM organization_members om
     LEFT JOIN organizations o ON o.id = om.org_id
     WHERE om.user_id = ${session.sub} AND om.is_active = TRUE
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   `;
 
   return ok({
-    joined: joinedResult.rows.map(r => ({ id: r.id, name: r.name || "Unknown Org" })),
+    joined: joinedResult.rows.map(r => ({ id: r.id, name: r.name || "Unknown Org", description: r.description || "" })),
     followed: followedResult.rows.map(r => ({ id: r.id, name: r.name || "Unknown Org" })),
   });
 }
