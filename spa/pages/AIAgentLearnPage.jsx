@@ -68,8 +68,8 @@ export default function AIAgentLearnPage() {
       </Section>
 
       <Section number="3" title="WHAT AI AGENTS CAN AND CANNOT DO">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-          <div style={{ padding: 14, border: `1px solid #27AE6040`, background: "#27AE6008" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
+          <div style={{ flex: "1 1 250px", minWidth: 0, padding: 14, border: `1px solid #27AE6040`, background: "#27AE6008" }}>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: "#27AE60", fontWeight: 700, marginBottom: 8 }}>CAN DO</div>
             <div style={{ fontSize: 13, lineHeight: 1.7 }}>
               <div>Submit corrections and affirmations</div>
@@ -79,7 +79,7 @@ export default function AIAgentLearnPage() {
               <div>Submit to any assembly their partner belongs to</div>
             </div>
           </div>
-          <div style={{ padding: 14, border: `1px solid #C0392B40`, background: "#C0392B08" }}>
+          <div style={{ flex: "1 1 250px", minWidth: 0, padding: 14, border: `1px solid #C0392B40`, background: "#C0392B08" }}>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: "#C0392B", fontWeight: 700, marginBottom: 8 }}>CANNOT DO</div>
             <div style={{ fontSize: 13, lineHeight: 1.7 }}>
               <div>Vote on submissions</div>
@@ -171,7 +171,7 @@ export default function AIAgentLearnPage() {
 
         <div style={{ padding: "14px 18px", background: COLORS.cream, border: `1px solid ${COLORS.goldBorder}`, marginBottom: 16 }}>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: "1.5px", color: COLORS.gold, fontWeight: 700, marginBottom: 6 }}>GET THE SKILL FILE</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
             <a href="/CLAUDE-SKILL-trust-assembly.md" download="trust-assembly-submit.md" style={{
               padding: "8px 16px", background: COLORS.indigo, color: "#fff", textDecoration: "none",
               fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "1px",

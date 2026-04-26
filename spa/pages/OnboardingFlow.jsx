@@ -126,9 +126,9 @@ function OBSubmitStep() {
       {/* ── SECTION 1: The Article ── */}
       <Section num={1} title="The article" isFirst hint="Click to expand — try editing the fields inside">
         <Tip action="Try it — change the headline text and watch the preview update in real time.">Identify the content you want to correct. The more accurately you describe the original, the easier it is for jurors to verify.</Tip>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div className="ta-field"><label>Original Headline *</label><input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} /></div>
-          <div className="ta-field"><label>Author(s) <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label><input value={editAuthor} onChange={e => setEditAuthor(e.target.value)} /></div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+          <div className="ta-field" style={{ flex: "1 1 250px", minWidth: 0 }}><label>Original Headline *</label><input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} /></div>
+          <div className="ta-field" style={{ flex: "1 1 200px", minWidth: 0 }}><label>Author(s) <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label><input value={editAuthor} onChange={e => setEditAuthor(e.target.value)} /></div>
         </div>
         <div className="ta-field"><label>Article URL</label><input value={article.url} readOnly style={{ opacity: 0.7 }} /></div>
       </Section>
@@ -868,9 +868,9 @@ export default function OnboardingFlow({ onComplete, embedded }) {
       {/* Sticky navigation bar — always visible at bottom of viewport */}
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #f5f2ec 12px)", paddingTop: 16, zIndex: 50 }}>
         <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px 16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", background: "#ffffff", border: "1px solid #d9d3c7", boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "14px 20px", background: "#ffffff", border: "1px solid #d9d3c7", boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
             {step > 0 ? <button onClick={prev} style={{ background: "none", border: "1px solid #d9d3c7", padding: "10px 20px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", color: "#5c564d" }}>← Back</button> : <div />}
-            <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {step < 3 && <button onClick={next} style={{ background: "#b8922e", color: "#fff", border: "none", padding: "12px 28px", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, textTransform: "uppercase", cursor: "pointer", borderRadius: 0, letterSpacing: "0.06em" }}>Next Step →</button>}
               {step === 3 && <>
                 <button onClick={() => { setStep(4); topRef.current?.scrollIntoView({ behavior: "smooth" }); }} style={{ background: "none", border: "1px solid #d9d3c7", padding: "12px 24px", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", borderRadius: 0, textTransform: "uppercase", letterSpacing: "0.04em", color: "#5c564d" }}>Deep Dive →</button>

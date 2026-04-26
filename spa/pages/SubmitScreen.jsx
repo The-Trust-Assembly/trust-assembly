@@ -758,14 +758,14 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
             <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "1.5px", fontWeight: 700, color: "#D4850A", marginBottom: 4 }}>{platform.juryGracePeriod.label}</div>
             <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>{platform.juryGracePeriod.reason} Jury window: <strong>{platform.juryGracePeriod.days}</strong>.</div>
           </div>}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="ta-field"><label>{platform?.headlineLabel || "Original Headline *"}</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            <div className="ta-field" style={{ flex: "1 1 280px", minWidth: 0 }}><label>{platform?.headlineLabel || "Original Headline *"}</label>
               {platform?.headlineMultiline
                 ? <textarea value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder={platform?.template === "shortform" ? `Paste the full ${(platform?.contentUnit || "post").toLowerCase()} text` : "The headline as published"} maxLength={500} rows={3} />
                 : <input value={form.originalHeadline} onChange={e => setForm({ ...form, originalHeadline: e.target.value })} placeholder={platform?.template === "product" ? "Full product name as listed" : "The headline as published"} maxLength={500} />}
             </div>
-            {platform?.showSubtitle && <div className="ta-field"><label>{platform.subtitleLabel || "Subtitle (optional)"}</label><input value={form.subtitle || ""} onChange={e => setForm({ ...form, subtitle: e.target.value })} placeholder="Subtitle if present" maxLength={500} /></div>}
-            <div className="ta-field"><label>{platform?.authorLabel || "Author(s)"} <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>
+            {platform?.showSubtitle && <div className="ta-field" style={{ flex: "1 1 280px", minWidth: 0 }}><label>{platform.subtitleLabel || "Subtitle (optional)"}</label><input value={form.subtitle || ""} onChange={e => setForm({ ...form, subtitle: e.target.value })} placeholder="Subtitle if present" maxLength={500} /></div>}
+            <div className="ta-field" style={{ flex: "1 1 200px", minWidth: 0 }}><label>{platform?.authorLabel || "Author(s)"} <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6, minHeight: 24 }}>
                 {authors.map((a, i) => (
                   <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 11, color: "var(--text)" }}>
@@ -1177,7 +1177,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
       </div>{/* end form-side */}
 
       {/* ── RIGHT: CONTENT PREVIEW (hidden on mobile) ── */}
-      <div className="ta-preview-panel" style={{ flex: "0 0 340px", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)" }}>
+      <div className="ta-preview-panel" style={{ flex: "0 0 340px", maxWidth: "100%", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)", overflow: "hidden" }}>
         {(() => { const displayMode = getContentDisplayMode(form.url, bodyText); return <>
         <div style={{ background: "var(--bg)", padding: "6px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <span style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>
@@ -1214,7 +1214,7 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
 
               {/* Corrected headline */}
               {form.replacement && (
-                <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.25, color: form.submissionType === "correction" ? "#c44a3a" : "#2d6e34", marginBottom: 3 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.25, color: form.submissionType === "correction" ? "#c44a3a" : "#2d6e34", marginBottom: 3, overflowWrap: "break-word", wordBreak: "break-word" }}>
                   {previewMode === "clean" ? form.replacement : form.replacement}
                 </div>
               )}
