@@ -10,7 +10,7 @@ export function buildAnonMap(submitterUsername, jurorUsernames) {
   return map;
 }
 
-export function crownUser(username) { return username === ADMIN_USERNAME ? `👑 @${username}` : `@${username}`; }
+export function crownUser(username) { return `@${username}`; }
 
 export function anonName(username, anonMap, isResolved) { return isResolved || !anonMap ? crownUser(username) : (anonMap[username] || crownUser(username)); }
 
