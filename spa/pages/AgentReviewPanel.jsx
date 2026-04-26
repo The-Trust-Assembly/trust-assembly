@@ -353,21 +353,33 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                     style={{ flex: 1, cursor: "pointer", minWidth: 0 }}
                     onClick={() => setExpandedIndex(isExpanded ? -1 : i)}
                   >
-                    {/* Old vs New headline comparison */}
+                    {/* Fetched headline (verified real from the page) */}
+                    {sub.headline && sub.headline !== sub.analysis.originalHeadline && (
+                      <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--green)", marginBottom: 2 }}>
+                        Verified headline from page
+                      </div>
+                    )}
                     <div style={{
-                      fontSize: 13, lineHeight: 1.4, marginBottom: 4,
+                      fontSize: 13, lineHeight: 1.4, marginBottom: 2,
                       textDecoration: verdict === "correction" && sub.analysis.replacement ? "line-through" : "none",
                       color: verdict === "correction" && sub.analysis.replacement ? "var(--text-muted)" : "var(--text)",
                       fontWeight: 600,
                     }}>
-                      {sub.analysis.originalHeadline || sub.headline}
+                      {sub.headline || sub.analysis.originalHeadline}
                     </div>
+                    {/* Mismatch warning: model's claimed headline differs from what we fetched */}
+                    {sub.headline && sub.analysis.originalHeadline && sub.headline !== sub.analysis.originalHeadline && (
+                      <div style={{ fontSize: 10, color: "var(--gold)", fontFamily: "var(--mono)", marginBottom: 2 }}>
+                        Agent claimed: "{sub.analysis.originalHeadline}"
+                      </div>
+                    )}
+                    {/* Proposed replacement */}
                     {verdict === "correction" && sub.analysis.replacement && (
                       <div style={{
                         fontSize: 14, fontWeight: 700, lineHeight: 1.4, marginBottom: 4,
                         color: "var(--green)",
                       }}>
-                        {sub.analysis.replacement}
+                        → {sub.analysis.replacement}
                       </div>
                     )}
                     <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", wordBreak: "break-all" }}>
