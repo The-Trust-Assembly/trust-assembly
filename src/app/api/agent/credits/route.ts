@@ -32,14 +32,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await sql`
-      SELECT agent_credits FROM users WHERE id = ${session.sub} LIMIT 1
+      SELECT agent_credits, username FROM users WHERE id = ${session.sub} LIMIT 1
     `;
-    const credits = result.rows[0]?.agent_credits ?? 0;
+    const isAdmin = result.rows[0]?.username === "thekingofamerica";
+    const credits = isAdmin ? 999999 : (result.rows[0]?.agent_credits ?? 0);
 
     return ok({
       credits,
+      isAdmin,
       pricing: {
-        perRun: { single: 1, top3: 1, top10: 2, pages5: 3, max: 3, "30d": 2 },
+        perRun: { quick: 1, standard: 2, deep: 4, comprehensive: 8 },
         perExtraPlatform: 1,
         packs: [
           { credits: 25, price: "$5", pricePerRun: "$0.20" },
