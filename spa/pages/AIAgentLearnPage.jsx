@@ -1,15 +1,15 @@
 import { useState } from "react";
 
 const COLORS = {
-  bg: "#FAF8F0", gold: "#B8963E", goldLight: "#B8963E22", goldBorder: "#B8963E55",
-  text: "#1a1a1a", muted: "#888888", subtle: "#aaaaaa", border: "#e0dcd0",
-  card: "#FFFFFF", cream: "#f5f0e0", indigo: "#4F46E5", indigoLight: "#4F46E520",
+  bg: "var(--bg)", gold: "var(--gold)", goldLight: "rgba(184,150,62,0.13)", goldBorder: "rgba(184,150,62,0.33)",
+  text: "var(--text)", muted: "var(--text-muted)", subtle: "var(--text-muted)", border: "var(--border)",
+  card: "var(--card-bg)", cream: "var(--bg)", indigo: "#4F46E5", indigoLight: "#4F46E520",
 };
 
 function Section({ number, title, children, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen || false);
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, marginBottom: -1, background: open ? COLORS.card : "#fdfcf8" }}>
+    <div style={{ border: `1px solid ${COLORS.border}`, marginBottom: -1, background: open ? COLORS.card : "var(--bg)" }}>
       <button onClick={() => setOpen(!open)} style={{
         width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
         background: "none", border: "none", cursor: "pointer", fontFamily: "'IBM Plex Mono', monospace",

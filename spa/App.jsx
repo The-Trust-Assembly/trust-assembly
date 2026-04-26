@@ -1070,13 +1070,16 @@ export default function TrustAssembly() {
 
           {/* Floating feedback button — collapsible, visible to non-admin */}
           {!isAdmin && !feedbackDismissed && (
-            <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 90, display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ position: "fixed", bottom: 12, right: 12, zIndex: 90, display: "flex", alignItems: "center", gap: 4, opacity: 0.75, transition: "opacity 0.2s" }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = "0.75"}
+            >
               <button onClick={() => { setShowFeedbackModal(true); setFeedbackSent(false); setFeedbackError(""); }}
-                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", padding: "8px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)" }}>
+                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", padding: "6px 10px", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)", borderRadius: 3 }}>
                 Feedback
               </button>
               <button onClick={() => setFeedbackDismissed(true)}
-                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", width: 28, height: 28, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>
+                style={{ background: "var(--gold)", color: "var(--bg)", border: "none", width: 22, height: 22, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1, borderRadius: 3 }}>
                 &times;
               </button>
             </div>

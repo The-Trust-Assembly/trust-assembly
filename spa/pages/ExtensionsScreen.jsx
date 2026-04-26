@@ -1,7 +1,7 @@
 export default function ExtensionsScreen() {
   const stepStyle = { display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" };
   const numStyle = { background: "var(--gold)", color: "#fff", width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 2 };
-  const codeStyle = { background: "#E8E4DC", padding: "3px 8px", borderRadius: 0, fontFamily: "var(--mono)", fontSize: 12, color: "var(--charcoal)" };
+  const codeStyle = { background: "var(--card-bg)", padding: "3px 8px", borderRadius: 2, fontFamily: "var(--mono)", fontSize: 12, color: "var(--text)", border: "1px solid var(--border)" };
 
   return (
     <div>
@@ -82,7 +82,7 @@ export default function ExtensionsScreen() {
           </div>
           <div style={{ marginBottom: 10 }}>The only URLs we store are the ones <em>submitters voluntarily publish</em> when they submit a correction — that's the article they're correcting, and it's public by design. Your reading activity is completely invisible to us.</div>
           <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, fontSize: 12 }}>
-            <strong>Technical detail:</strong> Results are cached in your browser's <code style={{ background: "#E8E4DC", padding: "1px 4px", borderRadius: 0 }}>sessionStorage</code> for 5 minutes to reduce network requests. This cache is local to your machine, per-tab, and cleared automatically when you close the tab. We never see it.
+            <strong>Technical detail:</strong> Results are cached in your browser's <code style={{ background: "var(--card-bg)", padding: "1px 4px", borderRadius: 2, border: "1px solid var(--border)" }}>sessionStorage</code> for 5 minutes to reduce network requests. This cache is local to your machine, per-tab, and cleared automatically when you close the tab. We never see it.
           </div>
         </div>
       </div>
