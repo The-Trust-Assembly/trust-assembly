@@ -347,7 +347,7 @@ export default function SentinelDashboard({ agent, onReview }) {
               </div>
 
               {/* Add keyword input */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                 <input
                   type="text"
                   value={newKeyword}
@@ -360,7 +360,7 @@ export default function SentinelDashboard({ agent, onReview }) {
                   }}
                   placeholder="Add a keyword and press Enter"
                   style={{
-                    flex: 1,
+                    flex: "1 1 200px", minWidth: 0,
                     padding: "6px 10px",
                     fontFamily: "var(--mono)",
                     fontSize: 12,

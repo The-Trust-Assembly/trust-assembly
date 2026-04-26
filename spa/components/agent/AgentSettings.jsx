@@ -327,20 +327,20 @@ export default function AgentSettings({ agent, onUpdated, onDeleted }) {
       {/* Spend limit */}
       <div style={{ marginBottom: 18 }}>
         <label style={labelStyle}>
-          Monthly Spend Limit{" "}
-          <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(USD, optional)</span>
+          Monthly Credit Limit{" "}
+          <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span>
         </label>
         <input
           type="number"
           value={monthlySpendLimit}
           onChange={(e) => setMonthlySpendLimit(e.target.value)}
-          placeholder="e.g. 10.00"
+          placeholder="e.g. 50"
           min="0"
-          step="0.01"
+          step="1"
           style={{ ...inputStyle, fontFamily: "var(--mono)", fontSize: 13 }}
         />
         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-          Agent pauses automatically when this month's spend reaches the limit.
+          Agent pauses automatically when this month's credit usage reaches the limit.
         </div>
       </div>
 

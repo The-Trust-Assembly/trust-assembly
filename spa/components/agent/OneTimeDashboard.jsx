@@ -285,7 +285,7 @@ export default function OneTimeDashboard({ onReview }) {
                   </span>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                 <input
                   type="text"
                   value={newKeyword}
@@ -293,7 +293,7 @@ export default function OneTimeDashboard({ onReview }) {
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyword(); } }}
                   placeholder="Add a keyword and press Enter"
                   style={{
-                    flex: 1, padding: "6px 10px", fontFamily: "var(--mono)",
+                    flex: "1 1 200px", minWidth: 0, padding: "6px 10px", fontFamily: "var(--mono)",
                     fontSize: 12, border: "1px solid var(--border)", borderRadius: 4,
                     background: "var(--bg)", color: "var(--text)",
                   }}
