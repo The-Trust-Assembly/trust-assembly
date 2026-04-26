@@ -35,6 +35,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
   const [selectedOrgIds, setSelectedOrgIds] = useState([]);
   const [tab, setTab] = useState("submissions");
   const [expandedIndex, setExpandedIndex] = useState(0);
+  const [expandedVaultIndex, setExpandedVaultIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -349,13 +350,27 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
                   <div
-                    style={{ flex: 1, cursor: "pointer" }}
+                    style={{ flex: 1, cursor: "pointer", minWidth: 0 }}
                     onClick={() => setExpandedIndex(isExpanded ? -1 : i)}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, marginBottom: 4 }}>
-                      {sub.headline || sub.analysis.originalHeadline}
+                    {/* Old vs New headline comparison */}
+                    <div style={{
+                      fontSize: 13, lineHeight: 1.4, marginBottom: 4,
+                      textDecoration: verdict === "correction" && sub.analysis.replacement ? "line-through" : "none",
+                      color: verdict === "correction" && sub.analysis.replacement ? "var(--text-muted)" : "var(--text)",
+                      fontWeight: 600,
+                    }}>
+                      {sub.analysis.originalHeadline || sub.headline}
                     </div>
-                    <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-muted)", wordBreak: "break-all" }}>
+                    {verdict === "correction" && sub.analysis.replacement && (
+                      <div style={{
+                        fontSize: 14, fontWeight: 700, lineHeight: 1.4, marginBottom: 4,
+                        color: "var(--green)",
+                      }}>
+                        {sub.analysis.replacement}
+                      </div>
+                    )}
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", wordBreak: "break-all" }}>
                       {sub.url}
                     </div>
                   </div>
@@ -513,31 +528,70 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
           )}
           {vaultEntries.map((ve, i) => {
             const t = ve.entry.type;
+            const isVaultExpanded = expandedVaultIndex === i;
+            const previewText = ve.entry.assertion || ve.entry.content || ve.entry.original || "";
+            const verifyStatus = ve.vaultVerified;
+            const verifyReason = ve.vaultVerifyReason;
             return (
               <div
                 key={ve.id || i}
                 style={{
-                  marginBottom: 12,
+                  marginBottom: 8,
                   background: "var(--card-bg)",
                   border: "1px solid var(--border)",
                   borderLeft: `4px solid ${TYPE_COLORS[t] || "var(--text-muted)"}`,
                   borderRadius: 8,
-                  padding: 16,
+                  overflow: "hidden",
                   opacity: ve.approved ? 1 : 0.55,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{TYPE_LABELS[t] || t}</span>
-                  <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 12 }}>
-                    <input
-                      type="checkbox"
-                      checked={ve.approved}
-                      onChange={() => updateVault(i, { approved: !ve.approved })}
-                      style={{ width: 16, height: 16, accentColor: "var(--gold)" }}
-                    />
-                    {ve.approved ? "Include" : "Exclude"}
-                  </label>
+                {/* Collapsed header — always visible */}
+                <div
+                  onClick={() => setExpandedVaultIndex(isVaultExpanded ? -1 : i)}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "12px 16px", cursor: "pointer",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{TYPE_LABELS[t] || t}</span>
+                      {verifyStatus === "verified" && <span style={{ fontSize: 10, color: "var(--green)", fontFamily: "var(--mono)" }}>verified</span>}
+                      {verifyStatus === "disputed" && <span style={{ fontSize: 10, color: "var(--red)", fontFamily: "var(--mono)" }}>disputed</span>}
+                    </div>
+                    {!isVaultExpanded && (
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {previewText}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 11 }} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={ve.approved}
+                        onChange={() => updateVault(i, { approved: !ve.approved })}
+                        style={{ width: 14, height: 14, accentColor: "var(--gold)" }}
+                      />
+                      {ve.approved ? "Include" : "Exclude"}
+                    </label>
+                    <span style={{ fontSize: 14, color: "var(--text-muted)" }}>{isVaultExpanded ? "−" : "+"}</span>
+                  </div>
                 </div>
+
+                {/* Expanded content */}
+                {isVaultExpanded && (
+                  <div style={{ padding: "0 16px 16px" }}>
+                    {verifyReason && (
+                      <div style={{
+                        padding: "6px 10px", marginBottom: 10, borderRadius: 4, fontSize: 11, lineHeight: 1.5,
+                        background: verifyStatus === "disputed" ? "rgba(196,77,77,0.1)" : "rgba(74,140,92,0.1)",
+                        color: verifyStatus === "disputed" ? "var(--red)" : "var(--green)",
+                        border: `1px solid ${verifyStatus === "disputed" ? "var(--red)" : "var(--green)"}`,
+                      }}>
+                        <strong>Verification:</strong> {String(verifyReason)}
+                      </div>
+                    )}
 
                 {t === "vault" && (
                   <>
@@ -676,6 +730,8 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       />
                     </div>
                   </>
+                )}
+                  </div>
                 )}
               </div>
             );
