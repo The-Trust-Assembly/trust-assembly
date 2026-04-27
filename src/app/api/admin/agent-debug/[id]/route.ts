@@ -88,8 +88,42 @@ export async function GET(
         submissions_count: batch.submissions?.length || 0,
         vault_entries_count: batch.vaultEntries?.length || 0,
         errors_count: batch.errors?.length || 0,
-        narrative_length: batch.narrative?.length || 0,
+        errors: batch.errors || [],
+        narrative: batch.narrative || "",
       },
+      submissions_detail: (batch.submissions || []).map((s: Record<string, unknown>) => {
+        const analysis = (s.analysis || {}) as Record<string, unknown>;
+        const evidence = (analysis.evidence || []) as Array<Record<string, unknown>>;
+        return {
+          url: s.url,
+          headline: s.headline,
+          approved: s.approved,
+          verdict: analysis.verdict,
+          confidence: analysis.confidence,
+          evidence_count: evidence.length,
+          quotes_found: evidence.filter((e) => e.quote && typeof e.quote === "string" && (e.quote as string).length > 10).length,
+          quotes_verified: evidence.filter((e) => e.quoteVerified === "verified").length,
+          quotes_not_found: evidence.filter((e) => e.quoteVerified === "not_found").length,
+          urls_verified: evidence.filter((e) => e.urlVerified === "verified").length,
+          urls_broken: evidence.filter((e) => e.urlVerified === "not_found").length,
+          evidence: evidence.map((e) => ({
+            description: e.description,
+            quote: e.quote || null,
+            quoteVerified: e.quoteVerified || null,
+            url: e.url || null,
+            urlVerified: e.urlVerified || null,
+          })),
+        };
+      }),
+      vault_detail: (batch.vaultEntries || []).map((v: Record<string, unknown>) => {
+        const entry = (v.entry || {}) as Record<string, unknown>;
+        return {
+          type: entry.type,
+          approved: v.approved,
+          verified: (v as Record<string, unknown>).vaultVerified || null,
+          assertion: entry.assertion || entry.content || entry.original || null,
+        };
+      }),
       artifacts: {
         candidates: await countArtifacts(params.id, "candidate"),
         fetched: await countArtifacts(params.id, "fetched_text"),
