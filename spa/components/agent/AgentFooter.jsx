@@ -183,7 +183,7 @@ export default function AgentFooter({ onUpload }) {
           </h3>
           <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 16 }}>
             Use ChatGPT, Gemini, Claude, or any AI to analyze articles. Copy the prompt below into your AI,
-            paste the article URLs, then paste the JSON output here. Costs 1 credit per submission.
+            paste the article URLs, then paste the JSON output here. Free — no credits needed.
           </p>
 
           {/* Step 1: Copy the prompt */}
@@ -331,7 +331,7 @@ export default function AgentFooter({ onUpload }) {
                     })}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>
-                    Cost: {parsedData.submissions.length} credit{parsedData.submissions.length === 1 ? "" : "s"} (1 per submission)
+                    {parsedData.submissions.length} submission{parsedData.submissions.length === 1 ? "" : "s"} ready — no credits needed for bulk uploads
                   </div>
                   <button
                     className="ta-btn-primary"
@@ -352,7 +352,7 @@ export default function AgentFooter({ onUpload }) {
                         if (res.ok) {
                           setSubmitResult({
                             success: true,
-                            message: `Submitted ${data.submitted} correction${data.submitted === 1 ? "" : "s"}/affirmation${data.submitted === 1 ? "" : "s"} and ${data.vaultCreated} vault entries. ${data.errors?.length || 0} errors. Credits remaining: ${data.creditsRemaining}.`,
+                            message: `Submitted ${data.submitted} correction${data.submitted === 1 ? "" : "s"}/affirmation${data.submitted === 1 ? "" : "s"} and ${data.vaultCreated} vault entries. ${data.errors?.length || 0} errors.`,
                           });
                           setParsedData(null);
                         } else {
