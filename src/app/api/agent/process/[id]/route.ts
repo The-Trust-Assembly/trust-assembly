@@ -341,7 +341,7 @@ export async function POST(
         WHERE id = ${run.id}
       `;
 
-      const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords);
+      const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords, isNearTimeout);
       sonnetUsage.inputTokens += searchResult.usage.inputTokens;
       sonnetUsage.outputTokens += searchResult.usage.outputTokens;
       candidates = searchResult.candidates;
@@ -357,6 +357,12 @@ export async function POST(
       await saveArtifacts(run.id, "search", "candidate",
         candidates.map((c) => ({ url: c.url, data: c }))
       );
+    }
+
+    // Auto-chain after search if near timeout
+    if (isNearTimeout() && candidates.length > 0) {
+      await autoChain(run.id);
+      return ok({ runId: run.id, status: "auto-chained", reason: "Near timeout after search, continuing in new function" });
     }
 
     // Add user-specified URLs to the candidate list

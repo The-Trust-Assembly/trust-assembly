@@ -53,7 +53,8 @@ export async function searchForArticles(
   topic: string,
   scope: string,
   onProgress?: (msg: string) => void,
-  keywords?: string[]
+  keywords?: string[],
+  shouldStop?: () => boolean
 ): Promise<SearchResult> {
   if (isGoogleSearchAvailable() && keywords && keywords.length > 0) {
     onProgress?.("Using Google Custom Search...");
@@ -63,7 +64,7 @@ export async function searchForArticles(
 
   // Fallback: Claude web_search
   onProgress?.("Using Claude web search...");
-  const result = await searchWithClaude(topic, scope, onProgress, keywords);
+  const result = await searchWithClaude(topic, scope, onProgress, keywords, shouldStop);
   return { ...result, method: "claude-web-search" };
 }
 
@@ -144,7 +145,8 @@ async function searchWithClaude(
   topic: string,
   scope: string,
   onProgress?: (msg: string) => void,
-  keywords?: string[]
+  keywords?: string[],
+  shouldStop?: () => boolean
 ): Promise<{ candidates: ArticleCandidate[]; usage: TokenUsage }> {
   const claude = getClaudeClient();
   const { maxRounds, maxArticles } = scopeLimits(scope);
@@ -158,7 +160,7 @@ async function searchWithClaude(
       ? `\n\nThe user has identified these search keywords to guide your research:\n${keywords.map((k) => `- ${k}`).join("\n")}`
       : "";
 
-  while (round <= maxRounds && allCandidates.length < maxArticles) {
+  while (round <= maxRounds && allCandidates.length < maxArticles && !shouldStop?.()) {
     onProgress?.(`Search round ${round}...`);
 
     const previousUrls = allCandidates.map((c) => c.url).join("\n");

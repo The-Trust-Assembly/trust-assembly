@@ -48,8 +48,8 @@ export async function GET(
       diagnosis = `Failed: ${run.error_message || "Unknown error"}`;
     } else if (run.status === "ready" || run.status === "completed") {
       diagnosis = `Completed successfully in ${elapsed}s. Cost: $${Number(run.estimated_cost_usd || 0).toFixed(4)}`;
-    } else if (elapsed > 360) {
-      diagnosis = `LIKELY TIMED OUT — stuck in "${run.status}" for ${elapsed}s (Vercel limit: 300s). The serverless function was killed before it could write a failure state. This run cannot recover automatically.`;
+    } else if (elapsed > 300) {
+      diagnosis = `LIKELY TIMED OUT — stuck in "${run.status}" for ${elapsed}s (Vercel limit: 300s). The serverless function was killed before it could write a failure state. This run cannot recover automatically. Use "Mark Failed" then "Retry".`;
     } else if (elapsed > 120) {
       diagnosis = `Still running (${elapsed}s elapsed). May be processing — check again in 30s.`;
     } else {
