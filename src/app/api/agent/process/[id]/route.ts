@@ -11,6 +11,7 @@ import { verifyQuotes } from "@/lib/agent/verify-quotes";
 import { verifyEvidenceUrls } from "@/lib/agent/verify-urls";
 import { verifyVaultEntries } from "@/lib/agent/verify-vault";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
+import { saveArtifact, saveArtifacts, getArtifacts, hasArtifact, countArtifacts } from "@/lib/agent/artifacts";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import type {
   AgentBatch,
@@ -64,6 +65,23 @@ export async function POST(
   // Track costs per-model for accurate estimation
   const sonnetUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
   const haikuUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+
+  // Auto-chain: track elapsed time and self-continue before Vercel kills us
+  const startTime = Date.now();
+  const TIMEOUT_BUFFER_MS = 250_000; // 250s — save 50s buffer before 300s limit
+  function isNearTimeout(): boolean {
+    return Date.now() - startTime > TIMEOUT_BUFFER_MS;
+  }
+  async function autoChain(runId: string): Promise<void> {
+    const retryUrl = new URL(`/api/agent/process/${runId}/retry`, request.url).toString();
+    fetch(retryUrl, {
+      method: "POST",
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+        authorization: request.headers.get("authorization") || "",
+      },
+    }).catch(() => {});
+  }
 
   const totalInputTokens = () => sonnetUsage.inputTokens + haikuUsage.inputTokens;
   const totalOutputTokens = () => sonnetUsage.outputTokens + haikuUsage.outputTokens;
@@ -250,9 +268,21 @@ export async function POST(
   const checkpoint: string | null = existingBatch._checkpoint || null;
   let resumedCandidates: ArticleCandidate[] | null = null;
   let resumedFetched: Array<{ url: string; headline: string; text: string }> | null = null;
+  let resumedAnalyzed: Array<{ url: string; headline: string; analysis: unknown }> | null = null;
 
-  if (checkpoint === "fetch" || checkpoint === "analyze") {
-    // We have fetched articles — skip search and fetch entirely
+  if (checkpoint === "analyze" && Array.isArray(existingBatch.analyzed) && existingBatch.analyzed.length > 0) {
+    // We have partially or fully analyzed articles — skip to synthesis
+    resumedCandidates = existingBatch.candidates || [];
+    resumedFetched = existingBatch.fetched || [];
+    resumedAnalyzed = existingBatch.analyzed;
+    await sql`
+      UPDATE agent_runs
+      SET status = 'synthesizing',
+          stage_message = ${`Resuming from analyze checkpoint (${resumedAnalyzed!.length} already analyzed)...`},
+          progress_pct = 80, updated_at = now()
+      WHERE id = ${run.id}
+    `;
+  } else if (checkpoint === "fetch" || checkpoint === "analyze") {
     resumedCandidates = existingBatch.candidates || [];
     resumedFetched = existingBatch.fetched || [];
     await sql`
@@ -317,13 +347,16 @@ export async function POST(
       candidates = searchResult.candidates;
       searchMethod = searchResult.method;
 
-      // Checkpoint: save search results
+      // Checkpoint: save search results (blob + artifacts)
       await sql`
         UPDATE agent_runs
         SET batch = ${JSON.stringify({ _checkpoint: "search", candidates, searchMethod })},
             updated_at = now()
         WHERE id = ${run.id}
       `;
+      await saveArtifacts(run.id, "search", "candidate",
+        candidates.map((c) => ({ url: c.url, data: c }))
+      );
     }
 
     // Add user-specified URLs to the candidate list
@@ -488,6 +521,10 @@ export async function POST(
             updated_at = now()
         WHERE id = ${run.id}
       `;
+      // Save fetched articles as individual artifacts
+      await saveArtifacts(run.id, "fetch", "fetched_text",
+        articlesForAnalysis.map((a) => ({ url: a.url, data: { headline: a.headline, textLength: a.text.length } }))
+      );
     }
 
     // Cap articles to avoid Vercel function timeout (maxDuration=300s).
@@ -511,6 +548,82 @@ export async function POST(
     }
 
     // ---- Phase 3: Analyze ----
+    // Skip if resuming from an analyze checkpoint with completed results
+    if (resumedAnalyzed && resumedAnalyzed.length > 0) {
+      // Jump straight to Phase 3.5 with the saved analysis results
+      const analyzed = resumedAnalyzed as Array<{ url: string; headline: string; analysis: import("@/lib/agent/types").ArticleAnalysis }>;
+      const analyzeErrors: Array<{ url: string; error: string }> = [];
+
+      // Run quote + URL verification on resumed data
+      const articleTextByUrl = new Map(articlesForAnalysis.map((a) => [a.url, a.text]));
+      for (const a of analyzed) {
+        const text = articleTextByUrl.get(a.url);
+        if (text && a.analysis.evidence) verifyQuotes(a.analysis, text);
+      }
+      await verifyEvidenceUrls(analyzed);
+
+      // Go to synthesis
+      await sql`
+        UPDATE agent_runs
+        SET status = 'synthesizing',
+            stage_message = ${`Resuming synthesis with ${analyzed.length} articles...`},
+            progress_pct = 85, updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      let refined = analyzed;
+      let consolidatedVault: AgentBatch["vaultEntries"] = [];
+      let narrative = "";
+      if (analyzed.length > 0) {
+        const synth = await synthesizeAnalyses(run.thesis, analyzed);
+        refined = synth.refined;
+        narrative = synth.narrative;
+        consolidatedVault = synth.vaultEntries.map((entry, idx) => ({
+          id: `vault-${run.id.substring(0, 8)}-${idx}`,
+          approved: true,
+          entry,
+        }));
+        sonnetUsage.inputTokens += synth.usage.inputTokens;
+        sonnetUsage.outputTokens += synth.usage.outputTokens;
+      }
+
+      // Vault verification
+      if (consolidatedVault.length > 0 && !isNearTimeout()) {
+        const vaultVerify = await verifyVaultEntries(consolidatedVault);
+        sonnetUsage.inputTokens += vaultVerify.usage.inputTokens;
+        sonnetUsage.outputTokens += vaultVerify.usage.outputTokens;
+      }
+
+      const submissions: SubmissionForReview[] = refined.map((a, idx) => ({
+        id: `sub-${run.id.substring(0, 8)}-${idx}`,
+        url: a.url,
+        headline: a.headline,
+        approved: a.analysis.verdict !== "skip" && a.analysis.confidence !== "low",
+        analysis: a.analysis,
+      }));
+
+      const finalBatch: AgentBatch = {
+        topic: run.thesis,
+        submissions,
+        vaultEntries: consolidatedVault,
+        narrative,
+        candidates,
+        errors: fetchErrors,
+        skipped: submissions.filter((s) => s.analysis.verdict === "skip").length,
+      };
+
+      await sql`
+        UPDATE agent_runs
+        SET status = 'ready',
+            stage_message = ${`Complete. ${submissions.length} submissions, ${consolidatedVault.length} vault entries.`},
+            progress_pct = 100, batch = ${JSON.stringify(finalBatch)},
+            input_tokens = ${totalInputTokens()}, output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()}, updated_at = now(), completed_at = now()
+        WHERE id = ${run.id}
+      `;
+      return ok({ runId: run.id, status: "ready", autoChainedResume: true });
+    }
+
     // onProgress fires AFTER each article with the accumulated results.
     // Saves a checkpoint so retry can skip already-analyzed articles.
     const {
@@ -519,6 +632,11 @@ export async function POST(
       usage: analyzeUsage,
     } = await analyzeArticles(articlesForAnalysis, run.thesis, async (i, total, analyzedSoFar) => {
       const pct = 50 + Math.round((i / total) * 30); // 50% → 80%
+      // Save each completed analysis as an individual artifact
+      const latest = analyzedSoFar[analyzedSoFar.length - 1];
+      if (latest) {
+        await saveArtifact(run.id, "analyze", "analysis", latest.analysis, latest.url);
+      }
       await sql`
         UPDATE agent_runs
         SET stage_message = ${`Analyzing article ${i} of ${total}...`},
@@ -537,6 +655,31 @@ export async function POST(
     });
     sonnetUsage.inputTokens += analyzeUsage.inputTokens;
     sonnetUsage.outputTokens += analyzeUsage.outputTokens;
+
+    // Auto-chain: if we're near the Vercel timeout after analysis,
+    // save checkpoint and fire a continuation. The retry will pick up
+    // from the "analyze" checkpoint with all analyzed articles saved.
+    if (isNearTimeout()) {
+      await sql`
+        UPDATE agent_runs
+        SET status = 'queued',
+            stage_message = ${`Analyzed ${analyzed.length} articles. Auto-continuing synthesis...`},
+            batch = ${JSON.stringify({
+              _checkpoint: "analyze",
+              candidates,
+              fetched: articlesForAnalysis,
+              analyzed: analyzed.map((a) => ({ url: a.url, headline: a.headline, analysis: a.analysis })),
+              fetchErrors,
+            })},
+            input_tokens = ${totalInputTokens()},
+            output_tokens = ${totalOutputTokens()},
+            estimated_cost_usd = ${totalCost()},
+            updated_at = now()
+        WHERE id = ${run.id}
+      `;
+      await autoChain(run.id);
+      return ok({ runId: run.id, status: "auto-chained", reason: "Near timeout after analysis, continuing in new function" });
+    }
 
     // ---- Phase 3.5: Quote + URL verification ----
     // Deterministically verify quotes and URLs. No LLM cost.

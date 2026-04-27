@@ -482,8 +482,16 @@ export default function OneTimeDashboard({ onReview }) {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 4 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4, flex: 1 }}>
-                  {run.thesis.length > 100 ? run.thesis.substring(0, 100) + "..." : run.thesis}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
+                    {run.thesis.length > 100 ? run.thesis.substring(0, 100) + "..." : run.thesis}
+                  </div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--text-muted)", marginTop: 2, cursor: "pointer" }}
+                    onClick={() => navigator.clipboard?.writeText(run.id)}
+                    title="Click to copy run ID"
+                  >
+                    {run.id.substring(0, 8)}...
+                  </div>
                 </div>
                 <span style={{
                   fontFamily: "var(--mono)", fontSize: 10, padding: "2px 8px",
