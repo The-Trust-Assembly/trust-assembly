@@ -11,6 +11,7 @@ import { verifyQuotes } from "@/lib/agent/verify-quotes";
 import { verifyEvidenceUrls } from "@/lib/agent/verify-urls";
 import { verifyVaultEntries } from "@/lib/agent/verify-vault";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
+import { saveArtifact, saveArtifacts, getArtifacts, hasArtifact, countArtifacts } from "@/lib/agent/artifacts";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import type {
   AgentBatch,
@@ -346,13 +347,16 @@ export async function POST(
       candidates = searchResult.candidates;
       searchMethod = searchResult.method;
 
-      // Checkpoint: save search results
+      // Checkpoint: save search results (blob + artifacts)
       await sql`
         UPDATE agent_runs
         SET batch = ${JSON.stringify({ _checkpoint: "search", candidates, searchMethod })},
             updated_at = now()
         WHERE id = ${run.id}
       `;
+      await saveArtifacts(run.id, "search", "candidate",
+        candidates.map((c) => ({ url: c.url, data: c }))
+      );
     }
 
     // Add user-specified URLs to the candidate list
@@ -517,6 +521,10 @@ export async function POST(
             updated_at = now()
         WHERE id = ${run.id}
       `;
+      // Save fetched articles as individual artifacts
+      await saveArtifacts(run.id, "fetch", "fetched_text",
+        articlesForAnalysis.map((a) => ({ url: a.url, data: { headline: a.headline, textLength: a.text.length } }))
+      );
     }
 
     // Cap articles to avoid Vercel function timeout (maxDuration=300s).
@@ -624,6 +632,11 @@ export async function POST(
       usage: analyzeUsage,
     } = await analyzeArticles(articlesForAnalysis, run.thesis, async (i, total, analyzedSoFar) => {
       const pct = 50 + Math.round((i / total) * 30); // 50% → 80%
+      // Save each completed analysis as an individual artifact
+      const latest = analyzedSoFar[analyzedSoFar.length - 1];
+      if (latest) {
+        await saveArtifact(run.id, "analyze", "analysis", latest.analysis, latest.url);
+      }
       await sql`
         UPDATE agent_runs
         SET stage_message = ${`Analyzing article ${i} of ${total}...`},

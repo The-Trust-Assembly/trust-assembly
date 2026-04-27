@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, notFound, serverError } from "@/lib/api-utils";
+import { countArtifacts } from "@/lib/agent/artifacts";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,12 @@ export async function GET(
         vault_entries_count: batch.vaultEntries?.length || 0,
         errors_count: batch.errors?.length || 0,
         narrative_length: batch.narrative?.length || 0,
+      },
+      artifacts: {
+        candidates: await countArtifacts(params.id, "candidate"),
+        fetched: await countArtifacts(params.id, "fetched_text"),
+        analyzed: await countArtifacts(params.id, "analysis"),
+        vault: await countArtifacts(params.id, "vault_entry"),
       },
       agent: run.agent_instance_id
         ? {
