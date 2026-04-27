@@ -93,6 +93,11 @@ export async function POST(
   const runContext =
     run.context && typeof run.context === "object" ? run.context : {};
 
+  // Assembly context for lens-specific analysis (translations, framing)
+  const assemblyContext = runContext.orgName
+    ? { name: runContext.orgName as string, description: (runContext.orgDescription as string) || "" }
+    : undefined;
+
   // ---- PHANTOM FEED PATH ----
   // When scope is 'phantom-feed', the run was created by POST /api/agent/feed/[id].
   // Post URLs are pre-selected by the user — skip search/filter entirely and
@@ -169,7 +174,7 @@ export async function POST(
                 progress_pct = ${pct}, articles_analyzed = ${i}, updated_at = now()
             WHERE id = ${run.id}
           `;
-        });
+        }, assemblyContext);
       sonnetUsage.inputTokens += analyzeUsage.inputTokens;
       sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
@@ -658,7 +663,7 @@ export async function POST(
             updated_at = now()
         WHERE id = ${run.id}
       `;
-    });
+    }, assemblyContext);
     sonnetUsage.inputTokens += analyzeUsage.inputTokens;
     sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 

@@ -24,7 +24,8 @@ export async function analyzeArticle(
   url: string,
   headline: string,
   articleText: string,
-  topic: string
+  topic: string,
+  assemblyContext?: { name?: string; description?: string }
 ): Promise<AnalyzeResult> {
   const claude = getClaudeClient();
   const truncated =
@@ -34,10 +35,15 @@ export async function analyzeArticle(
 
   const today = new Date().toISOString().split("T")[0];
 
+  const assemblySection = assemblyContext?.name
+    ? `\nYou are analyzing for the assembly "${assemblyContext.name}".${assemblyContext.description ? `\nAssembly description: ${assemblyContext.description}` : ""}
+When generating translations, interpret language through this assembly's perspective and values. Different assemblies may translate the same phrase differently — that's by design. Your translations should be honest to this assembly's viewpoint while remaining factually grounded.\n`
+    : "";
+
   const prompt = `You are a fact-checker for Trust Assembly, a civic deliberation platform.
 
 Today's date: ${today}
-
+${assemblySection}
 Analyze the following article for factual accuracy in the context of this topic: "${topic}"
 
 Article URL: ${url}
@@ -61,7 +67,7 @@ In addition to your verdict, identify any reusable knowledge that could apply ac
 
 - **Standing Corrections** (type: "vault"): Reusable factual statements with evidence that correct a common misconception. The assertion MUST begin with a simple, declarative statement of fact — lead with the clearest possible factual claim before adding context. Example: "Afroman was not found liable for defamation. The jury ruled his parody videos were protected First Amendment speech." NOT "The court case involving Afroman and the Adams County deputies resulted in..." — always lead with the fact, not the context.
 - **Arguments** (type: "argument"): Logical frameworks that help evaluate claims on this topic. Example: "Protected speech under the First Amendment does not imply the speech's claims are factually true."
-- **Translations** (type: "translation"): Cases where the article uses propaganda, euphemisms, or jargon that obscures meaning. Include the original phrase and a clearer replacement. translationType can be "clarity", "propaganda", "euphemism", or "satirical".
+- **Translations** (type: "translation"): Render loaded, obscure, or rhetorically crafted language into plain, honest English that any reader can immediately understand. Strip away the rhetorical framing and state what the speaker is actually saying. The translation should reflect the perspective of the assembly you're analyzing for — different assemblies may translate the same phrase differently, and that's intentional. Examples: "enhanced interrogation techniques" → "torture" (euphemism), "social murder" → "deaths caused by systemic neglect" or "politically charged framing of preventable deaths" depending on assembly perspective (clarity), "collateral damage" → "civilian deaths" (euphemism), "right-sizing" → "layoffs" (propaganda). translationType can be "clarity", "propaganda", "euphemism", or "satirical". Generate MANY translations — flag every instance of loaded language, jargon, or rhetorical framing in the article.
 
 JSON format:
 {
@@ -151,7 +157,8 @@ export interface AnalyzedArticle {
 export async function analyzeArticles(
   articles: Array<{ url: string; headline: string; text: string }>,
   topic: string,
-  onProgress?: (i: number, total: number, analyzedSoFar: AnalyzedArticle[]) => void | Promise<void>
+  onProgress?: (i: number, total: number, analyzedSoFar: AnalyzedArticle[]) => void | Promise<void>,
+  assemblyContext?: { name?: string; description?: string }
 ): Promise<{
   analyzed: AnalyzedArticle[];
   errors: Array<{ url: string; error: string }>;
@@ -169,7 +176,8 @@ export async function analyzeArticles(
         article.url,
         article.headline,
         article.text,
-        topic
+        topic,
+        assemblyContext
       );
       analyzed.push({ url: article.url, headline: article.headline, analysis });
       totalUsage.inputTokens += usage.inputTokens;
