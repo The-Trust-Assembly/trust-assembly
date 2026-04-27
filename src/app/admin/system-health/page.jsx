@@ -108,6 +108,8 @@ export default function SystemHealthPage() {
   const [grantAmount, setGrantAmount] = useState("10");
   const [grantResult, setGrantResult] = useState(null);
   const [grantLoading, setGrantLoading] = useState(false);
+  const [allRuns, setAllRuns] = useState(null);
+  const [allRunsLoading, setAllRunsLoading] = useState(false);
   const [rulesData, setRulesData] = useState(null);
   const [rulesLoading, setRulesLoading] = useState(false);
 
@@ -860,6 +862,79 @@ export default function SystemHealthPage() {
           <pre style={{ padding: 10, borderRadius: 4, background: "#0f172a", color: "#e2e8f0", fontSize: 11, maxHeight: 300, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
             {JSON.stringify(debugResult, null, 2)}
           </pre>
+        )}
+      </div>
+
+      {/* ── All Agent Runs ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #334155" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 16 }}>All Agent Runs</h3>
+          <button
+            onClick={async () => {
+              setAllRunsLoading(true);
+              try {
+                const res = await fetch("/api/admin/agent-runs?limit=50", { headers: getAuthHeaders() });
+                if (res.ok) setAllRuns(await res.json());
+              } catch {}
+              finally { setAllRunsLoading(false); }
+            }}
+            disabled={allRunsLoading}
+            style={{ ...btnStyle, background: "#3b82f6", fontSize: 12, padding: "6px 14px" }}
+          >
+            {allRunsLoading ? "Loading..." : allRuns ? "Refresh" : "Load Runs"}
+          </button>
+        </div>
+        {allRuns && (
+          <div style={{ maxHeight: 400, overflowY: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #334155" }}>
+                  <th style={thStyle}>ID</th>
+                  <th style={thStyle}>User</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Scope</th>
+                  <th style={thStyle}>Articles</th>
+                  <th style={thStyle}>Cost</th>
+                  <th style={thStyle}>Age</th>
+                  <th style={thStyle}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(allRuns.runs || []).map((r) => {
+                  const elapsed = Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000);
+                  const isStuck = !["ready","completed","failed","cancelled","queued"].includes(r.status) && elapsed > 6;
+                  return (
+                    <tr key={r.id} style={{ borderBottom: "1px solid #1e293b", background: isStuck ? "#7f1d1d22" : "transparent" }}>
+                      <td style={tdStyle}>
+                        <span style={{ cursor: "pointer", color: "#60a5fa" }}
+                          onClick={() => { setDebugRunId(r.id); navigator.clipboard?.writeText(r.id); }}>
+                          {r.id.substring(0, 8)}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>@{r.username || "?"}</td>
+                      <td style={{ ...tdStyle, color: r.status === "ready" || r.status === "completed" ? "#22c55e" : r.status === "failed" ? "#ef4444" : isStuck ? "#ef4444" : "#eab308" }}>
+                        {r.status}{isStuck ? " (stuck)" : ""}
+                      </td>
+                      <td style={tdStyle}>{r.scope}</td>
+                      <td style={tdStyle}>{r.articles_found}/{r.articles_fetched}/{r.articles_analyzed}</td>
+                      <td style={{ ...tdStyle, fontFamily: "monospace" }}>${Number(r.estimated_cost_usd || 0).toFixed(3)}</td>
+                      <td style={tdStyle}>{elapsed < 60 ? `${elapsed}m` : `${Math.round(elapsed/60)}h`}</td>
+                      <td style={tdStyle}>
+                        <button onClick={() => { setDebugRunId(r.id); }}
+                          style={{ ...smallBtnStyle, marginRight: 4 }}>Inspect</button>
+                        {(r.status === "failed" || isStuck) && (
+                          <button onClick={async () => {
+                            await fetch(`/api/agent/process/${r.id}/retry`, { method: "POST", headers: getAuthHeaders() });
+                            setAllRuns(null);
+                          }} style={{ ...smallBtnStyle, background: "#22c55e", color: "#fff" }}>Retry</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
