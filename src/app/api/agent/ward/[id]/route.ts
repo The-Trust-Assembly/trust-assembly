@@ -103,13 +103,29 @@ export async function POST(
       request.url
     ).toString();
 
-    fetch(processUrl, {
-      method: "POST",
-      headers: {
-        cookie: request.headers.get("cookie") || "",
-        authorization: request.headers.get("authorization") || "",
-      },
-    }).catch(() => {});
+    let kickoffOk = false;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const stepRes = await fetch(processUrl, {
+          method: "POST",
+          headers: {
+            cookie: request.headers.get("cookie") || "",
+            authorization: request.headers.get("authorization") || "",
+          },
+        });
+        if (stepRes.ok) { kickoffOk = true; break; }
+      } catch {}
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    if (!kickoffOk) {
+      await sql`
+        UPDATE agent_runs
+        SET error_message = 'Step kickoff failed after 2 attempts. Use admin Retry.',
+            stage_message = 'KICKOFF FAILED — use Retry', updated_at = now()
+        WHERE id = ${run.id}
+      `;
+    }
 
     return ok({
       runId: run.id,
