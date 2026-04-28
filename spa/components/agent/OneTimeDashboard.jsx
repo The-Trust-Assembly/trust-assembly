@@ -45,7 +45,7 @@ const STATUS_COLORS = {
   cancelled: "var(--text-muted)",
 };
 
-const ACTIVE_STATUSES = new Set(["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"]);
+const ACTIVE_STATUSES = new Set(["queued", "searching", "searched", "filtering", "fetching", "fetched", "analyzing", "analyzed", "verifying", "verified", "synthesizing", "submitting"]);
 
 const STAGE_DESCRIPTIONS = {
   queued: "Waiting to start...",
@@ -106,7 +106,22 @@ export default function OneTimeDashboard({ onReview }) {
 
   async function retryRun(runId) {
     try {
-      const res = await fetch(`/api/agent/process/${runId}/retry`, { method: "POST" });
+      const res = await fetch(`/api/agent/step/${runId}`, { method: "POST" });
+      if (res.ok) loadRecentRuns();
+    } catch {}
+  }
+  async function cancelRun(runId) {
+    try {
+      const res = await fetch(`/api/agent/run/${runId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      if (res.ok) loadRecentRuns();
+    } catch {}
+  }
+  async function deleteRun(runId) {
+    try {
+      const res = await fetch(`/api/agent/run/${runId}`, { method: "DELETE" });
       if (res.ok) loadRecentRuns();
     } catch {}
   }
@@ -124,7 +139,7 @@ export default function OneTimeDashboard({ onReview }) {
   useEffect(() => { loadRecentRuns(); }, []);
 
   useEffect(() => {
-    const ACTIVE = ["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"];
+    const ACTIVE = ["queued", "searching", "searched", "filtering", "fetching", "fetched", "analyzing", "analyzed", "verifying", "verified", "synthesizing", "submitting"];
     const hasActive = recentRuns.some((r) => ACTIVE.includes(r.status));
     if (!hasActive) return;
     const interval = setInterval(loadRecentRuns, 3000);
@@ -195,7 +210,7 @@ export default function OneTimeDashboard({ onReview }) {
       });
       const data = await res.json();
       if (res.ok) {
-        fetch(`/api/agent/process/${data.runId}`, { method: "POST" }).catch(() => {});
+        fetch(`/api/agent/step/${data.runId}`, { method: "POST" }).catch(() => {});
         setMessage(`Run started (${data.runId.substring(0, 8)}...). Watch progress below.`);
         setThesis(""); setShowKeywords(false); setKeywords([]);
         loadRecentRuns();
@@ -616,13 +631,26 @@ export default function OneTimeDashboard({ onReview }) {
                 </div>
               )}
               {run.status === "ready" && (
-                <div style={{ marginTop: 8 }}>
-                  <button
-                    className="ta-btn-primary"
-                    onClick={() => onReview && onReview(run.id)}
-                    style={{ fontSize: 11, padding: "5px 14px" }}
-                  >
+                <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button className="ta-btn-primary" onClick={() => onReview && onReview(run.id)} style={{ fontSize: 11, padding: "5px 14px" }}>
                     Review &amp; Submit →
+                  </button>
+                  <button className="ta-btn-secondary" onClick={() => deleteRun(run.id)} style={{ fontSize: 10, padding: "3px 10px", color: "var(--red)", borderColor: "var(--red)" }}>
+                    Delete
+                  </button>
+                </div>
+              )}
+              {isActive && (
+                <div style={{ marginTop: 6 }}>
+                  <button className="ta-btn-secondary" onClick={() => cancelRun(run.id)} style={{ fontSize: 10, padding: "3px 10px" }}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {(run.status === "completed" || run.status === "failed" || run.status === "cancelled") && !run.error_message && (
+                <div style={{ marginTop: 6 }}>
+                  <button className="ta-btn-secondary" onClick={() => deleteRun(run.id)} style={{ fontSize: 10, padding: "3px 10px", color: "var(--red)", borderColor: "var(--red)" }}>
+                    Delete
                   </button>
                 </div>
               )}

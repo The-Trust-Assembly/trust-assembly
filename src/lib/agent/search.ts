@@ -208,28 +208,33 @@ If you cannot find any more relevant articles, return an empty array: []`;
       usage.outputTokens += response.usage.output_tokens;
     }
 
-    // Find the text block — Sonnet 4.6 with web_search may return
-    // multiple content blocks (web_search_tool_result + text).
-    // Look for any text block, even if it's not the first one.
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      onProgress?.(`Search round ${round}: no text in response (${response.content.map((b) => b.type).join(", ")})`);
-      // Try to continue — maybe next round will work
+    // Log response structure for debugging
+    const blockTypes = response.content.map((b) => b.type).join(", ");
+    const stopReason = (response as unknown as Record<string, unknown>).stop_reason || "unknown";
+    await onProgress?.(`Round ${round}: ${response.content.length} blocks (${blockTypes}), stop=${stopReason}`);
+
+    // Find ALL text blocks and concatenate them — Sonnet 4.6 may
+    // split text across multiple blocks interspersed with tool results
+    const textBlocks = response.content.filter((b) => b.type === "text");
+    const fullText = textBlocks.map((b) => b.type === "text" ? b.text : "").join("\n");
+
+    if (!fullText.trim()) {
+      await onProgress?.(`Round ${round}: no text content in response`);
       round++;
       continue;
     }
 
     let candidates: ArticleCandidate[];
     try {
-      candidates = JSON.parse(extractJSON(textBlock.text));
+      candidates = JSON.parse(extractJSON(fullText));
     } catch {
-      onProgress?.(`Search round ${round}: JSON parse failed. Text starts with: ${textBlock.text.substring(0, 100)}...`);
+      await onProgress?.(`Round ${round}: JSON parse failed. Text: ${fullText.substring(0, 200)}...`);
       round++;
       continue;
     }
 
     if (!Array.isArray(candidates) || candidates.length === 0) {
-      onProgress?.(`Search round ${round}: empty or non-array result.`);
+      await onProgress?.(`Round ${round}: empty or non-array result.`);
       break;
     }
 

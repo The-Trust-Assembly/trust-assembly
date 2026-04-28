@@ -99,7 +99,7 @@ export async function POST(
 
     // Fire-and-forget pipeline kickoff
     const processUrl = new URL(
-      `/api/agent/process/${run.id}`,
+      `/api/agent/step/${run.id}`,
       request.url
     ).toString();
 
