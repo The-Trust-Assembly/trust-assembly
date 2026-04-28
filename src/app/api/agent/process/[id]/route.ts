@@ -10,6 +10,7 @@ import { analyzeArticles } from "@/lib/agent/analyze";
 import { verifyQuotes } from "@/lib/agent/verify-quotes";
 import { verifyEvidenceUrls } from "@/lib/agent/verify-urls";
 import { verifyVaultEntries } from "@/lib/agent/verify-vault";
+import { verifyTranslationDropIns } from "@/lib/agent/verify-translations";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
 import { saveArtifact, saveArtifacts, getArtifacts, hasArtifact, countArtifacts } from "@/lib/agent/artifacts";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
@@ -770,6 +771,16 @@ export async function POST(
             progress_pct = 95, updated_at = now()
         WHERE id = ${run.id}
       `;
+    }
+
+    // ---- Phase 4.75: Translation drop-in verification ----
+    // Test each translation's replacement in 5 sentences to verify
+    // it works as a grammatical drop-in substitution.
+    const translationEntries = consolidatedVault.filter((v) => v.entry.type === "translation" && v.entry.testSentences?.length);
+    if (translationEntries.length > 0 && !isNearTimeout()) {
+      const dropInResult = await verifyTranslationDropIns(consolidatedVault);
+      haikuUsage.inputTokens += dropInResult.usage.inputTokens;
+      haikuUsage.outputTokens += dropInResult.usage.outputTokens;
     }
 
     // Build final reviewable batch.

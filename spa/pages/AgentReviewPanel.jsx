@@ -780,6 +780,26 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                         }}
                       />
                     </div>
+                    {ve.entry.replacementPasses === false && (
+                      <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 4, fontSize: 11, background: "rgba(196,77,77,0.1)", border: "1px solid var(--red)", color: "var(--red)" }}>
+                        Drop-in test failed — this translation doesn't fit grammatically as a direct replacement. Auto-excluded.
+                      </div>
+                    )}
+                    {ve.entry.replacementPasses === true && (
+                      <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 4, fontSize: 11, background: "rgba(74,140,92,0.1)", border: "1px solid var(--green)", color: "var(--green)" }}>
+                        Drop-in test passed — fits grammatically in all test sentences.
+                      </div>
+                    )}
+                    {ve.entry.testSentences && ve.entry.testSentences.length > 0 && (
+                      <details style={{ marginTop: 6, fontSize: 10, color: "var(--text-muted)" }}>
+                        <summary style={{ cursor: "pointer" }}>Test sentences ({ve.entry.testSentences.length})</summary>
+                        <div style={{ marginTop: 4, padding: "4px 8px", background: "var(--bg)", borderRadius: 4, lineHeight: 1.6 }}>
+                          {ve.entry.testSentences.map((s, j) => (
+                            <div key={j}>{j + 1}. {s.replace(new RegExp((ve.entry.original || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), ve.entry.translated || "___")}</div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </>
                 )}
                   </div>

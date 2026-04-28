@@ -70,7 +70,23 @@ In addition to your verdict, identify any reusable knowledge that could apply ac
   * "assertion" — The full explanation with context. 2-4 sentences expanding on the lede with specifics, dates, sources. Example: "Afroman was not found liable for defamation. The jury ruled in March 2026 that his parody videos mocking the Adams County deputies' raid on his home were protected First Amendment speech. The deputies had sued for defamation after Afroman created viral content from security footage of their fruitless search."
   Do NOT put the full explanation in the lede. Do NOT put just the lede in the assertion. They are separate fields with separate purposes.
 - **Arguments** (type: "argument"): Logical frameworks that help evaluate claims on this topic. Example: "Protected speech under the First Amendment does not imply the speech's claims are factually true."
-- **Translations** (type: "translation"): Render loaded, obscure, or rhetorically crafted language into plain, honest English that any reader can immediately understand. Strip away the rhetorical framing and state what the speaker is actually saying. The translation should reflect the perspective of the assembly you're analyzing for — different assemblies may translate the same phrase differently, and that's intentional. Examples: "enhanced interrogation techniques" → "torture" (euphemism), "social murder" → "deaths caused by systemic neglect" or "politically charged framing of preventable deaths" depending on assembly perspective (clarity), "collateral damage" → "civilian deaths" (euphemism), "right-sizing" → "layoffs" (propaganda). translationType can be "clarity", "propaganda", "euphemism", or "satirical". Generate MANY translations — flag every instance of loaded language, jargon, or rhetorical framing in the article.
+- **Translations** (type: "translation"): Render loaded, obscure, or rhetorically crafted language into plain, honest English that any reader can immediately understand. The translation MUST be a drop-in replacement — it must fit grammatically into any sentence where the original phrase appears. The translation should reflect the perspective of the assembly you're analyzing for.
+
+  For each translation, you MUST include a "testSentences" array with 5 different grammatically complete sentences that use the ORIGINAL phrase in varied contexts. These will be used to verify the replacement works as a drop-in substitution. Example:
+    original: "enhanced interrogation techniques"
+    translated: "torture"
+    testSentences: [
+      "The CIA used enhanced interrogation techniques on detainees.",
+      "Reports of enhanced interrogation techniques surfaced in 2004.",
+      "He defended the use of enhanced interrogation techniques.",
+      "Enhanced interrogation techniques were banned by executive order.",
+      "Critics called enhanced interrogation techniques a violation of human rights."
+    ]
+  Test: replacing "enhanced interrogation techniques" with "torture" → all 5 sentences still read grammatically. PASS.
+
+  Bad example: original "justifies" → translated "explains the motivation" FAILS because "He explains the motivation the killing" is not grammatical. The translation must be the SAME part of speech and fit as a direct word swap.
+
+  translationType can be "clarity", "propaganda", "euphemism", or "satirical". Generate MANY translations — flag every instance of loaded language, jargon, or rhetorical framing in the article.
 
 JSON format:
 {
@@ -90,7 +106,7 @@ JSON format:
   "vaultEntries": [
     {"type": "vault", "lede": "Short fact, max 120 chars.", "assertion": "Full explanation with dates, context, and sources. 2-4 sentences.", "evidence": "supporting evidence with sources"},
     {"type": "argument", "content": "logical framework or rhetorical tool"},
-    {"type": "translation", "original": "jargon or propaganda phrase", "translated": "clear plain language", "translationType": "propaganda"}
+    {"type": "translation", "original": "enhanced interrogation techniques", "translated": "torture", "translationType": "euphemism", "testSentences": ["The CIA used enhanced interrogation techniques.", "He defended enhanced interrogation techniques.", "Enhanced interrogation techniques were banned.", "Reports of enhanced interrogation techniques emerged.", "Critics condemned enhanced interrogation techniques."]}
   ]
 }
 
