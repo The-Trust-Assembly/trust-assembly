@@ -49,7 +49,9 @@ export async function GET(
     } else if (run.status === "ready" || run.status === "completed") {
       diagnosis = `Completed successfully in ${elapsed}s. Cost: $${Number(run.estimated_cost_usd || 0).toFixed(4)}`;
     } else if (elapsed > 300) {
-      diagnosis = `LIKELY TIMED OUT — stuck in "${run.status}" for ${elapsed}s (Vercel limit: 300s). The serverless function was killed before it could write a failure state. This run cannot recover automatically. Use "Mark Failed" then "Retry".`;
+      diagnosis = `LIKELY TIMED OUT — stuck in "${run.status}" for ${elapsed}s (Vercel limit: 300s). Use "Mark Failed" then "Retry". Auto-chain may not have fired.`;
+    } else if (run.status === "queued" && elapsed > 10) {
+      diagnosis = `Queued for ${elapsed}s — may be auto-chaining from a previous function. Check if progress updates soon.`;
     } else if (elapsed > 120) {
       diagnosis = `Still running (${elapsed}s elapsed). May be processing — check again in 30s.`;
     } else {
@@ -91,18 +93,28 @@ export async function GET(
         errors: batch.errors || [],
         narrative: batch.narrative || "",
       },
+      assembly: run.context?.orgName ? {
+        name: run.context.orgName,
+        description: run.context.orgDescription || null,
+      } : null,
       submissions_detail: (batch.submissions || []).map((s: Record<string, unknown>) => {
         const analysis = (s.analysis || {}) as Record<string, unknown>;
         const evidence = (analysis.evidence || []) as Array<Record<string, unknown>>;
+        const headlineMismatch = s.headline && analysis.originalHeadline && s.headline !== analysis.originalHeadline;
         return {
           url: s.url,
-          headline: s.headline,
+          fetched_headline: s.headline || null,
+          agent_claimed_headline: analysis.originalHeadline || null,
+          headline_mismatch: !!headlineMismatch,
+          replacement: analysis.replacement || null,
           approved: s.approved,
           verdict: analysis.verdict,
           confidence: analysis.confidence,
+          confidence_gated: analysis.confidence === "low",
           evidence_count: evidence.length,
           quotes_found: evidence.filter((e) => e.quote && typeof e.quote === "string" && (e.quote as string).length > 10).length,
           quotes_verified: evidence.filter((e) => e.quoteVerified === "verified").length,
+          quotes_approximate: evidence.filter((e) => e.quoteVerified === "approximate").length,
           quotes_not_found: evidence.filter((e) => e.quoteVerified === "not_found").length,
           urls_verified: evidence.filter((e) => e.urlVerified === "verified").length,
           urls_broken: evidence.filter((e) => e.urlVerified === "not_found").length,
@@ -110,6 +122,7 @@ export async function GET(
             description: e.description,
             quote: e.quote || null,
             quoteVerified: e.quoteVerified || null,
+            quoteContext: e.quoteContext || null,
             url: e.url || null,
             urlVerified: e.urlVerified || null,
           })),
@@ -121,7 +134,14 @@ export async function GET(
           type: entry.type,
           approved: v.approved,
           verified: (v as Record<string, unknown>).vaultVerified || null,
-          assertion: entry.assertion || entry.content || entry.original || null,
+          verifyReason: (v as Record<string, unknown>).vaultVerifyReason || null,
+          lede: entry.lede || null,
+          assertion: entry.assertion || entry.content || null,
+          original: entry.original || null,
+          translated: entry.translated || null,
+          translationType: entry.translationType || null,
+          testSentences: entry.testSentences || null,
+          replacementPasses: entry.replacementPasses != null ? entry.replacementPasses : null,
         };
       }),
       artifacts: {
