@@ -52,16 +52,15 @@ Article Headline: ${headline}
 Article Text:
 ${truncated}
 
-Your analysis should:
-1. Identify specific factual claims in the article
-2. Cross-reference claims against your training knowledge and the context of the thesis
-3. Determine if the headline is misleading, accurate, or needs correction
-4. For EVERY claim you make, find the EXACT sentence or passage in the article text above that supports it and copy it verbatim into the "quote" field. This is non-negotiable — evidence without quotes will be rejected.
+=== END OF ARTICLE TEXT ===
 
-CRITICAL — QUOTING REQUIREMENT:
-Every single evidence item MUST contain a "quote" field with text copied CHARACTER-FOR-CHARACTER from the article above. Do not paraphrase. Do not summarize. Do not write what you think the article said. Find the exact words in the article text and copy them. These quotes are mechanically verified against the source — if you fabricate or paraphrase, the verification will fail and the evidence will be flagged as unverified.
+INSTRUCTIONS (read carefully before generating JSON):
 
-IMPORTANT: Respond with ONLY a valid JSON object. Do not include any text before or after the JSON.
+1. Every evidence item MUST have a "quote" field containing an EXACT sentence copied from the article text above. Search the article text, find the relevant sentence, and copy it character-for-character. Evidence without quotes is INVALID and will be automatically rejected.
+
+2. Every translation MUST be 5 words or fewer. Definitions are NOT translations.
+
+3. Respond with ONLY a valid JSON object.
 
 In addition to your verdict, identify any reusable knowledge that could apply across multiple articles on this topic. These become "vault entries" in Trust Assembly:
 
@@ -70,23 +69,27 @@ In addition to your verdict, identify any reusable knowledge that could apply ac
   * "assertion" — The full explanation with context. 2-4 sentences expanding on the lede with specifics, dates, sources. Example: "Afroman was not found liable for defamation. The jury ruled in March 2026 that his parody videos mocking the Adams County deputies' raid on his home were protected First Amendment speech. The deputies had sued for defamation after Afroman created viral content from security footage of their fruitless search."
   Do NOT put the full explanation in the lede. Do NOT put just the lede in the assertion. They are separate fields with separate purposes.
 - **Arguments** (type: "argument"): Logical frameworks that help evaluate claims on this topic. Example: "Protected speech under the First Amendment does not imply the speech's claims are factually true."
-- **Translations** (type: "translation"): Render loaded, obscure, or rhetorically crafted language into plain, honest English that any reader can immediately understand. The translation MUST be a drop-in replacement — it must fit grammatically into any sentence where the original phrase appears. The translation should reflect the perspective of the assembly you're analyzing for.
+- **Translations** (type: "translation"): Replace loaded language with plain English that fits as a DIRECT word swap in any sentence. The translated phrase must be SHORT (1-5 words max) and the same part of speech as the original.
 
-  For each translation, you MUST include a "testSentences" array with 5 different grammatically complete sentences that use the ORIGINAL phrase in varied contexts. These will be used to verify the replacement works as a drop-in substitution. Example:
-    original: "enhanced interrogation techniques"
-    translated: "torture"
-    testSentences: [
-      "The CIA used enhanced interrogation techniques on detainees.",
-      "Reports of enhanced interrogation techniques surfaced in 2004.",
-      "He defended the use of enhanced interrogation techniques.",
-      "Enhanced interrogation techniques were banned by executive order.",
-      "Critics called enhanced interrogation techniques a violation of human rights."
-    ]
-  Test: replacing "enhanced interrogation techniques" with "torture" → all 5 sentences still read grammatically. PASS.
+  CORRECT examples:
+    "enhanced interrogation techniques" → "torture" (1 word, noun phrase → noun)
+    "social murder" → "systemic neglect killing" (3 words, noun phrase → noun phrase)
+    "Leftist Superstar" → "progressive streamer" (2 words, noun phrase → noun phrase)
+    "sparks fury" → "draws criticism" (2 words, verb phrase → verb phrase)
+    "justifies" → "defends" (1 word, verb → verb)
+    "collateral damage" → "civilian deaths" (2 words)
+    "right-sizing" → "layoffs" (1 word)
 
-  Bad example: original "justifies" → translated "explains the motivation" FAILS because "He explains the motivation the killing" is not grammatical. The translation must be the SAME part of speech and fit as a direct word swap.
+  WRONG — DO NOT DO THIS:
+    "social murder" → "A political-philosophical term from Friedrich Engels..." — THIS IS A DEFINITION, NOT A TRANSLATION. REJECTED.
+    "justifies" → "declared the killing morally permissible or defensible" — TOO LONG. REJECTED.
+    Any translated phrase longer than 5 words → REJECTED.
 
-  translationType can be "clarity", "propaganda", "euphemism", or "satirical". Generate MANY translations — flag every instance of loaded language, jargon, or rhetorical framing in the article.
+  The translated phrase MUST be a direct word swap. If you cannot express it in 5 words or fewer, you cannot translate it — skip it.
+
+  For each translation, include a "testSentences" array with 5 sentences using the ORIGINAL phrase. The replacement will be tested by swapping in the translated phrase. If it doesn't fit grammatically, the translation is rejected automatically.
+
+  translationType: "clarity" | "propaganda" | "euphemism" | "satirical".
 
 JSON format:
 {
