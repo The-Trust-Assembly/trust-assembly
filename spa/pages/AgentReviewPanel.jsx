@@ -551,7 +551,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
           {vaultEntries.map((ve, i) => {
             const t = ve.entry.type;
             const isVaultExpanded = expandedVaultIndex === i;
-            const previewText = ve.entry.assertion || ve.entry.content || ve.entry.original || "";
+            const previewText = ve.entry.lede || ve.entry.assertion || ve.entry.content || ve.entry.original || "";
             const verifyStatus = ve.vaultVerified;
             const verifyReason = ve.vaultVerifyReason;
             return (
@@ -618,15 +618,41 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                 {t === "vault" && (
                   <>
                     <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--gold)", display: "block", marginBottom: 2 }}>
+                        Lede <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(short fact, reads at a glance)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={ve.entry.lede || ""}
+                        onChange={(e) => updateVaultEntry(i, { lede: e.target.value })}
+                        maxLength={120}
+                        placeholder="One sentence — the core fact"
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px",
+                          fontFamily: "var(--serif)",
+                          fontSize: 14,
+                          fontWeight: 600,
+                          border: "1px solid var(--gold)",
+                          borderRadius: 4,
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                        }}
+                      />
+                      <div style={{ fontSize: 9, color: "var(--text-muted)", textAlign: "right", marginTop: 2 }}>
+                        {(ve.entry.lede || "").length}/120
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
                       <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 2 }}>
-                        Assertion
+                        Full Explanation
                       </label>
                       <textarea
                         value={ve.entry.assertion || ""}
                         onChange={(e) => updateVaultEntry(i, { assertion: e.target.value })}
                         style={{
                           width: "100%",
-                          minHeight: 50,
+                          minHeight: 70,
                           padding: "6px 10px",
                           fontFamily: "var(--serif)",
                           fontSize: 13,

@@ -14,7 +14,8 @@ export interface ArticleCandidate {
 
 export interface VaultSuggestion {
   type: "vault" | "argument" | "translation";
-  assertion?: string;
+  lede?: string;        // Short declarative fact (one sentence, reads at a glance)
+  assertion?: string;   // Combined: lede + explanation (for backwards compat + display)
   evidence?: string;
   content?: string;
   original?: string;

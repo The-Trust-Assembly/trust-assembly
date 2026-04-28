@@ -65,7 +65,10 @@ IMPORTANT: Respond with ONLY a valid JSON object. Do not include any text before
 
 In addition to your verdict, identify any reusable knowledge that could apply across multiple articles on this topic. These become "vault entries" in Trust Assembly:
 
-- **Standing Corrections** (type: "vault"): Reusable factual statements with evidence that correct a common misconception. The assertion MUST begin with a simple, declarative statement of fact — lead with the clearest possible factual claim before adding context. Example: "Afroman was not found liable for defamation. The jury ruled his parody videos were protected First Amendment speech." NOT "The court case involving Afroman and the Adams County deputies resulted in..." — always lead with the fact, not the context.
+- **Standing Corrections** (type: "vault"): Reusable factual statements. Each standing correction has TWO separate fields:
+  * "lede" — ONE short sentence stating the core fact. This is the bumper sticker. It must be immediately understandable at a glance with no context needed. Max 120 characters. Examples: "Afroman was not found liable for defamation." / "The raid found no evidence of criminal activity." / "Brian and William Newland are different people."
+  * "assertion" — The full explanation with context. 2-4 sentences expanding on the lede with specifics, dates, sources. Example: "Afroman was not found liable for defamation. The jury ruled in March 2026 that his parody videos mocking the Adams County deputies' raid on his home were protected First Amendment speech. The deputies had sued for defamation after Afroman created viral content from security footage of their fruitless search."
+  Do NOT put the full explanation in the lede. Do NOT put just the lede in the assertion. They are separate fields with separate purposes.
 - **Arguments** (type: "argument"): Logical frameworks that help evaluate claims on this topic. Example: "Protected speech under the First Amendment does not imply the speech's claims are factually true."
 - **Translations** (type: "translation"): Render loaded, obscure, or rhetorically crafted language into plain, honest English that any reader can immediately understand. Strip away the rhetorical framing and state what the speaker is actually saying. The translation should reflect the perspective of the assembly you're analyzing for — different assemblies may translate the same phrase differently, and that's intentional. Examples: "enhanced interrogation techniques" → "torture" (euphemism), "social murder" → "deaths caused by systemic neglect" or "politically charged framing of preventable deaths" depending on assembly perspective (clarity), "collateral damage" → "civilian deaths" (euphemism), "right-sizing" → "layoffs" (propaganda). translationType can be "clarity", "propaganda", "euphemism", or "satirical". Generate MANY translations — flag every instance of loaded language, jargon, or rhetorical framing in the article.
 
@@ -85,7 +88,7 @@ JSON format:
     {"originalText": "exact quote from article that is wrong", "correctedText": "what it should say", "explanation": "why this is wrong"}
   ],
   "vaultEntries": [
-    {"type": "vault", "assertion": "Simple declarative fact first. Then supporting context.", "evidence": "supporting evidence with sources"},
+    {"type": "vault", "lede": "Short fact, max 120 chars.", "assertion": "Full explanation with dates, context, and sources. 2-4 sentences.", "evidence": "supporting evidence with sources"},
     {"type": "argument", "content": "logical framework or rhetorical tool"},
     {"type": "translation", "original": "jargon or propaganda phrase", "translated": "clear plain language", "translationType": "propaganda"}
   ]
