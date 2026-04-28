@@ -48,6 +48,9 @@ function fmtTimestamp(iso) {
 }
 
 export default function PhantomDashboard({ agent, onReview }) {
+  if (!agent) return null;
+  const config = agent.config || {};
+
   const [feed, setFeed] = useState(null);
   const [loadingFeed, setLoadingFeed] = useState(true);
   const [feedError, setFeedError] = useState("");
@@ -112,7 +115,7 @@ export default function PhantomDashboard({ agent, onReview }) {
 
   // Poll while any run is active
   useEffect(() => {
-    const ACTIVE = ["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"];
+    const ACTIVE = ["queued", "searching", "searched", "filtering", "fetching", "fetched", "analyzing", "analyzed", "verifying", "verified", "synthesizing", "submitting"];
     const hasActive = recentRuns.some((r) => ACTIVE.includes(r.status));
     if (!hasActive) return;
     const interval = setInterval(loadRecentRuns, 3000);
@@ -171,7 +174,6 @@ export default function PhantomDashboard({ agent, onReview }) {
     }
   }
 
-  const config = agent.config || {};
 
   return (
     <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 24px" }}>
