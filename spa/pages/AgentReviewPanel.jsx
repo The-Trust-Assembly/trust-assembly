@@ -625,7 +625,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                         type="text"
                         value={ve.entry.lede || ""}
                         onChange={(e) => updateVaultEntry(i, { lede: e.target.value })}
-                        maxLength={120}
+                        maxLength={200}
                         placeholder="One sentence — the core fact"
                         style={{
                           width: "100%",
@@ -640,7 +640,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                         }}
                       />
                       <div style={{ fontSize: 9, color: "var(--text-muted)", textAlign: "right", marginTop: 2 }}>
-                        {(ve.entry.lede || "").length}/120
+                        {(ve.entry.lede || "").length}/200
                       </div>
                     </div>
                     <div style={{ marginBottom: 8 }}>
@@ -650,9 +650,10 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       <textarea
                         value={ve.entry.assertion || ""}
                         onChange={(e) => updateVaultEntry(i, { assertion: e.target.value })}
+                        rows={Math.max(3, Math.ceil((ve.entry.assertion || "").length / 40))}
                         style={{
                           width: "100%",
-                          minHeight: 70,
+                          minHeight: 100,
                           padding: "6px 10px",
                           fontFamily: "var(--serif)",
                           fontSize: 13,
@@ -671,9 +672,10 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       <textarea
                         value={ve.entry.evidence || ""}
                         onChange={(e) => updateVaultEntry(i, { evidence: e.target.value })}
+                        rows={Math.max(3, Math.ceil((ve.entry.evidence || "").length / 40))}
                         style={{
                           width: "100%",
-                          minHeight: 50,
+                          minHeight: 80,
                           padding: "6px 10px",
                           fontFamily: "var(--serif)",
                           fontSize: 13,
@@ -696,9 +698,10 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                     <textarea
                       value={ve.entry.content || ""}
                       onChange={(e) => updateVaultEntry(i, { content: e.target.value })}
+                      rows={Math.max(4, Math.ceil((ve.entry.content || "").length / 40))}
                       style={{
                         width: "100%",
-                        minHeight: 60,
+                        minHeight: 120,
                         padding: "6px 10px",
                         fontFamily: "var(--serif)",
                         fontSize: 13,
