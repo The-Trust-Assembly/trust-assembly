@@ -347,7 +347,9 @@ export async function POST(
         WHERE id = ${run.id}
       `;
 
-      const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords, isNearTimeout);
+      const searchResult = await searchForArticles(run.thesis, run.scope, async (msg) => {
+        await sql`UPDATE agent_runs SET stage_message = ${msg}, updated_at = now() WHERE id = ${run.id}`;
+      }, keywords, isNearTimeout);
       sonnetUsage.inputTokens += searchResult.usage.inputTokens;
       sonnetUsage.outputTokens += searchResult.usage.outputTokens;
       candidates = searchResult.candidates;
