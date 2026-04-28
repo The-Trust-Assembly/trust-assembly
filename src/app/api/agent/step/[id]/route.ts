@@ -39,7 +39,7 @@ async function fireNextStep(
   request: NextRequest
 ): Promise<{ success: boolean; error?: string }> {
   const stepUrl = new URL(`/api/agent/step/${runId}`, request.url).toString();
-  const maxRetries = 3;
+  const maxRetries = 2;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -76,9 +76,11 @@ async function logHandoffFailure(runId: string, step: string, error: string) {
   try {
     await sql`
       UPDATE agent_runs
-      SET stage_message = ${`HANDOFF FAILED at ${step}: ${error}. Use admin Retry to continue.`},
+      SET status = 'failed',
+          stage_message = ${`HANDOFF FAILED at ${step}: ${error}`},
           error_message = ${`Step handoff failed: ${step} → ${error}`},
-          updated_at = now()
+          updated_at = now(),
+          completed_at = now()
       WHERE id = ${runId}
     `;
   } catch {}
@@ -114,7 +116,8 @@ export async function POST(
   if (!session) return forbidden("Login required");
 
   const loadResult = await sql`
-    SELECT id, user_id, thesis, scope, context, status, batch
+    SELECT id, user_id, thesis, scope, context, status, batch,
+           input_tokens, output_tokens, estimated_cost_usd
     FROM agent_runs
     WHERE id = ${params.id} AND user_id = ${session.sub}
     LIMIT 1
@@ -126,6 +129,25 @@ export async function POST(
   const assemblyContext = runContext.orgName
     ? { name: runContext.orgName as string, description: (runContext.orgDescription as string) || "" }
     : undefined;
+
+  // Cost guard: kill the run if it's consumed too much
+  // Max $5.00 per run — prevents runaway costs from infinite loops
+  const MAX_COST_PER_RUN = 5.0;
+  const MAX_TOKENS_PER_RUN = 2_000_000;
+  const currentCost = Number(run.estimated_cost_usd || 0);
+  const currentTokens = (run.input_tokens || 0) + (run.output_tokens || 0);
+
+  if (currentCost >= MAX_COST_PER_RUN || currentTokens >= MAX_TOKENS_PER_RUN) {
+    await sql`
+      UPDATE agent_runs
+      SET status = 'failed',
+          error_message = ${`Run killed: cost $${currentCost.toFixed(2)} exceeded $${MAX_COST_PER_RUN} limit (${currentTokens.toLocaleString()} tokens)`},
+          stage_message = 'Cost limit exceeded',
+          updated_at = now(), completed_at = now()
+      WHERE id = ${run.id}
+    `;
+    return ok({ runId: run.id, status: "failed", reason: "cost_limit", cost: currentCost, tokens: currentTokens });
+  }
 
   // Terminal states — nothing to do
   if (["ready", "completed", "failed", "cancelled"].includes(run.status)) {
