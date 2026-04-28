@@ -132,7 +132,7 @@ export async function POST(
 
   // Cost guard: kill the run if it's consumed too much
   // Max $5.00 per run — prevents runaway costs from infinite loops
-  const MAX_COST_PER_RUN = 5.0;
+  const MAX_COST_PER_RUN = 10.0;
   const MAX_TOKENS_PER_RUN = 2_000_000;
   const currentCost = Number(run.estimated_cost_usd || 0);
   const currentTokens = (run.input_tokens || 0) + (run.output_tokens || 0);
