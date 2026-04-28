@@ -382,11 +382,11 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                         → {sub.analysis.replacement}
                       </div>
                     )}
-                    <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", wordBreak: "break-all" }}>
+                    <a href={sub.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", overflowWrap: "break-word", wordBreak: "break-word", display: "block" }}>
                       {sub.url}
-                    </div>
+                    </a>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", flexShrink: 0 }}>
                     <span
                       style={{
                         fontFamily: "var(--mono)",
@@ -429,13 +429,13 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                         Verdict
                       </label>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {["correction", "affirmation", "skip"].map((v) => (
                           <button
                             key={v}
                             onClick={() => updateAnalysis(i, { verdict: v })}
                             className={verdict === v ? "ta-btn-primary" : "ta-btn-secondary"}
-                            style={{ fontSize: 12, padding: "4px 12px" }}
+                            style={{ fontSize: 11, padding: "4px 10px" }}
                           >
                             {v}
                           </button>
@@ -521,7 +521,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                             )}
                             {ev.url && (
                               <div style={{ fontFamily: "var(--mono)", fontSize: 10, marginTop: 2, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, overflow: "hidden" }}>
-                                <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", wordBreak: "break-all", minWidth: 0 }}>{ev.url}</a>
+                                <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", overflowWrap: "break-word", wordBreak: "break-word", minWidth: 0 }}>{ev.url}</a>
                                 {ev.urlVerified === "verified" && <span style={{ color: "var(--green)" }}>URL confirmed</span>}
                                 {ev.urlVerified === "not_found" && <span style={{ color: "var(--red)" }}>URL broken (404)</span>}
                                 {ev.urlVerified === "error" && <span style={{ color: "var(--gold)" }}>URL unreachable</span>}
@@ -587,7 +587,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       </div>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", flexShrink: 0 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 11 }} onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
