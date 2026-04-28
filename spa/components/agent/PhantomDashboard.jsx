@@ -113,12 +113,25 @@ export default function PhantomDashboard({ agent, onReview }) {
     loadRecentRuns();
   }, [loadFeed]);
 
-  // Poll while any run is active
+  // Client-side step orchestration
+  const steppingRef = React.useRef(new Set());
+
   useEffect(() => {
+    const STEP_STATUSES = new Set(["searched", "fetched", "analyzed", "verified"]);
     const ACTIVE = ["queued", "searching", "searched", "filtering", "fetching", "fetched", "analyzing", "analyzed", "verifying", "verified", "synthesizing", "submitting"];
     const hasActive = recentRuns.some((r) => ACTIVE.includes(r.status));
     if (!hasActive) return;
-    const interval = setInterval(loadRecentRuns, 3000);
+
+    const interval = setInterval(async () => {
+      await loadRecentRuns();
+      for (const r of recentRuns) {
+        if (STEP_STATUSES.has(r.status) && !steppingRef.current.has(r.id)) {
+          steppingRef.current.add(r.id);
+          fetch(`/api/agent/step/${r.id}`, { method: "POST" })
+            .finally(() => steppingRef.current.delete(r.id));
+        }
+      }
+    }, 3000);
     return () => clearInterval(interval);
   }, [recentRuns]);
 
