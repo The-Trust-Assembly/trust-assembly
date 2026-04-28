@@ -19,6 +19,7 @@ const TYPE_IMG = {
   sentinel: "/icons/agent-sentinel.png",
   phantom: "/icons/agent-phantom.png",
   ward: "/icons/agent-ward.png",
+  onetime: "/icons/fact-check-icon.png",
 };
 
 const TYPE_BORDER = {
