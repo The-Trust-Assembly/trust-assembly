@@ -133,7 +133,7 @@ export async function POST(
     // The process route detects scope='phantom-feed' and skips
     // search/filter, going directly to fetch → analyze → synthesize
     const processUrl = new URL(
-      `/api/agent/process/${run.id}`,
+      `/api/agent/step/${run.id}`,
       request.url
     ).toString();
 

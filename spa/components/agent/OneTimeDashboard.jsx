@@ -45,7 +45,7 @@ const STATUS_COLORS = {
   cancelled: "var(--text-muted)",
 };
 
-const ACTIVE_STATUSES = new Set(["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"]);
+const ACTIVE_STATUSES = new Set(["queued", "searching", "searched", "filtering", "fetching", "fetched", "analyzing", "analyzed", "verifying", "verified", "synthesizing", "submitting"]);
 
 const STAGE_DESCRIPTIONS = {
   queued: "Waiting to start...",
@@ -106,7 +106,7 @@ export default function OneTimeDashboard({ onReview }) {
 
   async function retryRun(runId) {
     try {
-      const res = await fetch(`/api/agent/process/${runId}/retry`, { method: "POST" });
+      const res = await fetch(`/api/agent/step/${runId}`, { method: "POST" });
       if (res.ok) loadRecentRuns();
     } catch {}
   }
@@ -124,7 +124,7 @@ export default function OneTimeDashboard({ onReview }) {
   useEffect(() => { loadRecentRuns(); }, []);
 
   useEffect(() => {
-    const ACTIVE = ["queued", "searching", "filtering", "fetching", "analyzing", "synthesizing", "submitting"];
+    const ACTIVE = ["queued", "searching", "searched", "filtering", "fetching", "fetched", "analyzing", "analyzed", "verifying", "verified", "synthesizing", "submitting"];
     const hasActive = recentRuns.some((r) => ACTIVE.includes(r.status));
     if (!hasActive) return;
     const interval = setInterval(loadRecentRuns, 3000);
@@ -195,7 +195,7 @@ export default function OneTimeDashboard({ onReview }) {
       });
       const data = await res.json();
       if (res.ok) {
-        fetch(`/api/agent/process/${data.runId}`, { method: "POST" }).catch(() => {});
+        fetch(`/api/agent/step/${data.runId}`, { method: "POST" }).catch(() => {});
         setMessage(`Run started (${data.runId.substring(0, 8)}...). Watch progress below.`);
         setThesis(""); setShowKeywords(false); setKeywords([]);
         loadRecentRuns();
