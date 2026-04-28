@@ -155,6 +155,35 @@ export async function POST(
   }
 
   try {
+    // ========== PHANTOM FEED: skip search, go straight to fetched ==========
+    if (run.status === "queued" && run.scope === "phantom-feed") {
+      const postUrls: string[] = Array.isArray(runContext.postUrls) ? runContext.postUrls : [];
+      if (postUrls.length === 0) {
+        await sql`
+          UPDATE agent_runs SET status = 'failed', error_message = 'No post URLs in context',
+              stage_message = 'Phantom scan failed — no URLs', updated_at = now(), completed_at = now()
+          WHERE id = ${run.id}
+        `;
+        return ok({ runId: run.id, status: "failed", step: "phantom-no-urls" });
+      }
+
+      // Save post URLs as candidates + go straight to fetch
+      for (const url of postUrls) {
+        await saveArtifact(run.id, "search", "candidate", { url, headline: "", publication: "", summary: "Phantom feed post", reasonToCheck: "" }, url);
+      }
+
+      await sql`
+        UPDATE agent_runs SET status = 'searched',
+            stage_message = ${`${postUrls.length} posts selected. Fetching...`},
+            progress_pct = 20, articles_found = ${postUrls.length}, updated_at = now()
+        WHERE id = ${run.id}
+      `;
+
+      const handoff = await fireNextStep(run.id, request);
+      if (!handoff.success) await logHandoffFailure(run.id, "phantom-queued→searched", handoff.error!);
+      return ok({ runId: run.id, status: "searched", step: "phantom-queue", handoff: handoff.success });
+    }
+
     // ========== STEP: QUEUED → SEARCHED ==========
     if (run.status === "queued") {
       // Generate keywords if not provided
