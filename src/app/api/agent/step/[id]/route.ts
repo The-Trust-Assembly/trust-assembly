@@ -137,21 +137,41 @@ export async function POST(
         return ok({ runId: run.id, status: "failed", step: "phantom-no-urls" });
       }
 
-      // Save post URLs as candidates + go straight to fetch
+      // Save post URLs as candidates, then immediately fetch (no client roundtrip needed)
       for (const url of postUrls) {
         await saveArtifact(run.id, "search", "candidate", { url, headline: "", publication: "", summary: "Phantom feed post", reasonToCheck: "" }, url);
       }
 
+      await updateRun(run.id, "fetching", `Fetching ${postUrls.length} posts...`, 25);
+
+      const { articles: fetched, errors: fetchErrors } = await fetchArticles(postUrls);
+
+      for (const f of fetched) {
+        await saveArtifact(run.id, "fetch", "fetched_text", {
+          headline: f.headline, textLength: f.text.length, text: f.text,
+        }, f.url);
+      }
+
+      if (fetched.length === 0) {
+        await sql`
+          UPDATE agent_runs SET status = 'failed', stage_message = 'All post fetches failed.',
+              error_message = ${`${fetchErrors.length} fetch errors`},
+              articles_found = ${postUrls.length}, articles_fetched = 0,
+              updated_at = now(), completed_at = now()
+          WHERE id = ${run.id}
+        `;
+        return ok({ runId: run.id, status: "failed", step: "phantom-fetch-failed" });
+      }
+
       await sql`
-        UPDATE agent_runs SET status = 'searched',
-            stage_message = ${`${postUrls.length} posts selected. Fetching...`},
-            progress_pct = 20, articles_found = ${postUrls.length}, updated_at = now()
+        UPDATE agent_runs SET status = 'fetched',
+            stage_message = ${`Fetched ${fetched.length}/${postUrls.length}. Analyzing...`},
+            progress_pct = 30, articles_found = ${postUrls.length},
+            articles_fetched = ${fetched.length}, updated_at = now()
         WHERE id = ${run.id}
       `;
 
-      
-      // Client fires next step
-      return ok({ runId: run.id, status: "searched", step: "phantom-queue", needsNextStep: true });
+      return ok({ runId: run.id, status: "fetched", step: "phantom-fetched", needsNextStep: true, articlesFetched: fetched.length });
     }
 
     // ========== STEP: QUEUED → SEARCHED ==========
