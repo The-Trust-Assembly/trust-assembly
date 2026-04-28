@@ -132,17 +132,12 @@ export default function AgentPage({ user }) {
             marginBottom: 24,
           }}
         >
-          <img
-            src="/icons/Golden lighthouse emblem with laurel wreath.png"
-            alt="Trust Assembly"
-            style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }}
-          />
           <div style={{ flex: 1 }}>
             <h1
               style={{
                 fontFamily: "var(--serif)",
                 color: "var(--text)",
-                fontSize: 26,
+                fontSize: 22,
                 margin: 0,
                 letterSpacing: 0.5,
               }}
@@ -244,17 +239,12 @@ export default function AgentPage({ user }) {
           marginBottom: 24,
         }}
       >
-        <img
-          src="/icons/Golden lighthouse emblem with laurel wreath.png"
-          alt="Trust Assembly"
-          style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }}
-        />
         <div style={{ flex: 1 }}>
           <h1
             style={{
               fontFamily: "var(--serif)",
               color: "var(--text)",
-              fontSize: 26,
+              fontSize: 22,
               margin: 0,
               letterSpacing: 0.5,
             }}

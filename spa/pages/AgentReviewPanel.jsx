@@ -382,11 +382,11 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                         → {sub.analysis.replacement}
                       </div>
                     )}
-                    <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", wordBreak: "break-all" }}>
+                    <a href={sub.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text-muted)", overflowWrap: "break-word", wordBreak: "break-word", display: "block" }}>
                       {sub.url}
-                    </div>
+                    </a>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", flexShrink: 0 }}>
                     <span
                       style={{
                         fontFamily: "var(--mono)",
@@ -429,13 +429,13 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
                         Verdict
                       </label>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {["correction", "affirmation", "skip"].map((v) => (
                           <button
                             key={v}
                             onClick={() => updateAnalysis(i, { verdict: v })}
                             className={verdict === v ? "ta-btn-primary" : "ta-btn-secondary"}
-                            style={{ fontSize: 12, padding: "4px 12px" }}
+                            style={{ fontSize: 11, padding: "4px 10px" }}
                           >
                             {v}
                           </button>
@@ -521,7 +521,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                             )}
                             {ev.url && (
                               <div style={{ fontFamily: "var(--mono)", fontSize: 10, marginTop: 2, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, overflow: "hidden" }}>
-                                <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", wordBreak: "break-all", minWidth: 0 }}>{ev.url}</a>
+                                <a href={ev.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", overflowWrap: "break-word", wordBreak: "break-word", minWidth: 0 }}>{ev.url}</a>
                                 {ev.urlVerified === "verified" && <span style={{ color: "var(--green)" }}>URL confirmed</span>}
                                 {ev.urlVerified === "not_found" && <span style={{ color: "var(--red)" }}>URL broken (404)</span>}
                                 {ev.urlVerified === "error" && <span style={{ color: "var(--gold)" }}>URL unreachable</span>}
@@ -551,7 +551,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
           {vaultEntries.map((ve, i) => {
             const t = ve.entry.type;
             const isVaultExpanded = expandedVaultIndex === i;
-            const previewText = ve.entry.assertion || ve.entry.content || ve.entry.original || "";
+            const previewText = ve.entry.lede || ve.entry.assertion || ve.entry.content || ve.entry.original || "";
             const verifyStatus = ve.vaultVerified;
             const verifyReason = ve.vaultVerifyReason;
             return (
@@ -587,7 +587,7 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       </div>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", flexShrink: 0 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 11 }} onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
@@ -618,15 +618,42 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                 {t === "vault" && (
                   <>
                     <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--gold)", display: "block", marginBottom: 2 }}>
+                        Lede <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(short fact, reads at a glance)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={ve.entry.lede || ""}
+                        onChange={(e) => updateVaultEntry(i, { lede: e.target.value })}
+                        maxLength={200}
+                        placeholder="One sentence — the core fact"
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px",
+                          fontFamily: "var(--serif)",
+                          fontSize: 14,
+                          fontWeight: 600,
+                          border: "1px solid var(--gold)",
+                          borderRadius: 4,
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                        }}
+                      />
+                      <div style={{ fontSize: 9, color: "var(--text-muted)", textAlign: "right", marginTop: 2 }}>
+                        {(ve.entry.lede || "").length}/200
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
                       <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 2 }}>
-                        Assertion
+                        Full Explanation
                       </label>
                       <textarea
                         value={ve.entry.assertion || ""}
                         onChange={(e) => updateVaultEntry(i, { assertion: e.target.value })}
+                        rows={Math.max(3, Math.ceil((ve.entry.assertion || "").length / 40))}
                         style={{
                           width: "100%",
-                          minHeight: 50,
+                          minHeight: 100,
                           padding: "6px 10px",
                           fontFamily: "var(--serif)",
                           fontSize: 13,
@@ -645,9 +672,10 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                       <textarea
                         value={ve.entry.evidence || ""}
                         onChange={(e) => updateVaultEntry(i, { evidence: e.target.value })}
+                        rows={Math.max(3, Math.ceil((ve.entry.evidence || "").length / 40))}
                         style={{
                           width: "100%",
-                          minHeight: 50,
+                          minHeight: 80,
                           padding: "6px 10px",
                           fontFamily: "var(--serif)",
                           fontSize: 13,
@@ -670,9 +698,10 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                     <textarea
                       value={ve.entry.content || ""}
                       onChange={(e) => updateVaultEntry(i, { content: e.target.value })}
+                      rows={Math.max(4, Math.ceil((ve.entry.content || "").length / 40))}
                       style={{
                         width: "100%",
-                        minHeight: 60,
+                        minHeight: 120,
                         padding: "6px 10px",
                         fontFamily: "var(--serif)",
                         fontSize: 13,
@@ -751,6 +780,26 @@ export default function AgentReviewPanel({ runId, onBack, onCompleted }) {
                         }}
                       />
                     </div>
+                    {ve.entry.replacementPasses === false && (
+                      <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 4, fontSize: 11, background: "rgba(196,77,77,0.1)", border: "1px solid var(--red)", color: "var(--red)" }}>
+                        Drop-in test failed — this translation doesn't fit grammatically as a direct replacement. Auto-excluded.
+                      </div>
+                    )}
+                    {ve.entry.replacementPasses === true && (
+                      <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 4, fontSize: 11, background: "rgba(74,140,92,0.1)", border: "1px solid var(--green)", color: "var(--green)" }}>
+                        Drop-in test passed — fits grammatically in all test sentences.
+                      </div>
+                    )}
+                    {ve.entry.testSentences && ve.entry.testSentences.length > 0 && (
+                      <details style={{ marginTop: 6, fontSize: 10, color: "var(--text-muted)" }}>
+                        <summary style={{ cursor: "pointer" }}>Test sentences ({ve.entry.testSentences.length})</summary>
+                        <div style={{ marginTop: 4, padding: "4px 8px", background: "var(--bg)", borderRadius: 4, lineHeight: 1.6 }}>
+                          {ve.entry.testSentences.map((s, j) => (
+                            <div key={j}>{j + 1}. {s.replace(new RegExp((ve.entry.original || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), ve.entry.translated || "___")}</div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </>
                 )}
                   </div>

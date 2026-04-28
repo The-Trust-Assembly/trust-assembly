@@ -42,27 +42,8 @@ export async function POST(request: NextRequest) {
     return err("At least one assembly (orgId) is required");
   }
 
-  // Check credits (admin bypasses)
-  const creditCost = submissions.length;
-  const creditResult = await sql`
-    SELECT agent_credits, username FROM users WHERE id = ${session.sub} LIMIT 1
-  `;
-  const currentCredits = creditResult.rows[0]?.agent_credits ?? 0;
-  const isAdmin = creditResult.rows[0]?.username === "thekingofamerica";
-
-  if (!isAdmin && currentCredits < creditCost) {
-    return err(
-      `Not enough credits. This upload costs ${creditCost} credit${creditCost === 1 ? "" : "s"} (1 per submission) but you have ${currentCredits}.`,
-      402
-    );
-  }
-
-  // Deduct credits (admin skips)
-  if (!isAdmin) {
-    await sql`
-      UPDATE users SET agent_credits = agent_credits - ${creditCost} WHERE id = ${session.sub}
-    `;
-  }
+  // Bulk uploads are free — the user already paid for their own AI.
+  // No credit check or deduction needed.
 
   // Helper to make internal API calls with the user's auth
   async function internalPost(path: string, payload: unknown) {
@@ -170,8 +151,6 @@ export async function POST(request: NextRequest) {
   return ok({
     submitted: submittedCount,
     vaultCreated: vaultCount,
-    creditsCost: creditCost,
-    creditsRemaining: currentCredits - creditCost,
     errors: results.filter((r) => r.status === "error"),
     results,
   });

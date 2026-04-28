@@ -70,6 +70,21 @@ export default function OneTimeDashboard({ onReview }) {
     try { return JSON.parse(localStorage.getItem("ta-agent-onetime-keywords") || "[]"); } catch { return []; }
   });
   const [showKeywords, setShowKeywords] = useState(false);
+
+  // Assembly selection (before run, not after)
+  const [assemblies, setAssemblies] = useState([]);
+  const [selectedOrgId, setSelectedOrgId] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/users/me/assemblies")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const list = data?.joined || [];
+        setAssemblies(list);
+        if (list.length > 0 && !selectedOrgId) setSelectedOrgId(list[0].id);
+      })
+      .catch(() => {});
+  }, []);
   const [newKeyword, setNewKeyword] = useState("");
   const [generatingKeywords, setGeneratingKeywords] = useState(false);
   const [activePreset, setActivePreset] = useState(1); // Default "Top 3"
@@ -162,6 +177,8 @@ export default function OneTimeDashboard({ onReview }) {
       }
     }
 
+    const selectedAssembly = assemblies.find((a) => a.id === selectedOrgId);
+
     try {
       const res = await fetch("/api/agent/run", {
         method: "POST",
@@ -170,7 +187,10 @@ export default function OneTimeDashboard({ onReview }) {
           thesis: thesis.trim(),
           scope: SCOPE_PRESETS[activePreset].value,
           keywords: platformKeywords.length > 0 ? platformKeywords : keywords,
-          ...(specificUrls.length > 0 ? { context: { specificUrls } } : {}),
+          context: {
+            ...(specificUrls.length > 0 ? { specificUrls } : {}),
+            ...(selectedOrgId ? { orgId: selectedOrgId, orgName: selectedAssembly?.name, orgDescription: selectedAssembly?.description } : {}),
+          },
         }),
       });
       const data = await res.json();
@@ -214,6 +234,41 @@ export default function OneTimeDashboard({ onReview }) {
           marginBottom: 20,
         }}
       >
+        {/* Assembly selector */}
+        {assemblies.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: "block", fontFamily: "var(--serif)", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
+              Submit to Assembly
+            </label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {assemblies.map((a) => {
+                const sel = a.id === selectedOrgId;
+                return (
+                  <span
+                    key={a.id}
+                    onClick={() => setSelectedOrgId(a.id)}
+                    title={a.description || ""}
+                    style={{
+                      fontFamily: "var(--mono)", fontSize: 11, padding: "4px 12px",
+                      background: sel ? "var(--text)" : "var(--bg)",
+                      color: sel ? "var(--card-bg)" : "var(--text)",
+                      border: `1px solid ${sel ? "var(--text)" : "var(--border)"}`,
+                      borderRadius: 14, cursor: "pointer", userSelect: "none",
+                    }}
+                  >
+                    {a.name}
+                  </span>
+                );
+              })}
+            </div>
+            {selectedOrgId && assemblies.find((a) => a.id === selectedOrgId)?.description && (
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.5 }}>
+                {assemblies.find((a) => a.id === selectedOrgId).description}
+              </div>
+            )}
+          </div>
+        )}
+
         <label
           style={{
             display: "block", fontFamily: "var(--serif)", fontSize: 14,

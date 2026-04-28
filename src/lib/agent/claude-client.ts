@@ -24,12 +24,13 @@ export function getClaudeClient(): Anthropic {
 
 // Pricing per 1M tokens (USD). Used for cost estimation on agent_runs.
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  "claude-sonnet-4-6": { input: 3, output: 15 },
   "claude-sonnet-4-20250514": { input: 3, output: 15 },
   "claude-opus-4-20250514": { input: 15, output: 75 },
   "claude-haiku-4-5-20251001": { input: 0.8, output: 4 },
 };
 
-export const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+export const DEFAULT_MODEL = "claude-sonnet-4-6";
 export const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
 export function estimateCost(model: string, inputTokens: number, outputTokens: number): number {

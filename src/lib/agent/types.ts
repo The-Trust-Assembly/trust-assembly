@@ -14,12 +14,15 @@ export interface ArticleCandidate {
 
 export interface VaultSuggestion {
   type: "vault" | "argument" | "translation";
+  lede?: string;
   assertion?: string;
   evidence?: string;
   content?: string;
   original?: string;
   translated?: string;
   translationType?: "clarity" | "propaganda" | "euphemism" | "satirical";
+  testSentences?: string[];      // 5 sentences using the original phrase
+  replacementPasses?: boolean;   // Does the translation work in all 5 sentences?
 }
 
 export interface InlineEdit {

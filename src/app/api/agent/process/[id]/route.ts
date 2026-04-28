@@ -10,6 +10,7 @@ import { analyzeArticles } from "@/lib/agent/analyze";
 import { verifyQuotes } from "@/lib/agent/verify-quotes";
 import { verifyEvidenceUrls } from "@/lib/agent/verify-urls";
 import { verifyVaultEntries } from "@/lib/agent/verify-vault";
+import { verifyTranslationDropIns } from "@/lib/agent/verify-translations";
 import { synthesizeAnalyses } from "@/lib/agent/synthesize";
 import { saveArtifact, saveArtifacts, getArtifacts, hasArtifact, countArtifacts } from "@/lib/agent/artifacts";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
@@ -93,6 +94,11 @@ export async function POST(
   const runContext =
     run.context && typeof run.context === "object" ? run.context : {};
 
+  // Assembly context for lens-specific analysis (translations, framing)
+  const assemblyContext = runContext.orgName
+    ? { name: runContext.orgName as string, description: (runContext.orgDescription as string) || "" }
+    : undefined;
+
   // ---- PHANTOM FEED PATH ----
   // When scope is 'phantom-feed', the run was created by POST /api/agent/feed/[id].
   // Post URLs are pre-selected by the user — skip search/filter entirely and
@@ -169,7 +175,7 @@ export async function POST(
                 progress_pct = ${pct}, articles_analyzed = ${i}, updated_at = now()
             WHERE id = ${run.id}
           `;
-        });
+        }, assemblyContext);
       sonnetUsage.inputTokens += analyzeUsage.inputTokens;
       sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
@@ -341,7 +347,7 @@ export async function POST(
         WHERE id = ${run.id}
       `;
 
-      const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords);
+      const searchResult = await searchForArticles(run.thesis, run.scope, undefined, keywords, isNearTimeout);
       sonnetUsage.inputTokens += searchResult.usage.inputTokens;
       sonnetUsage.outputTokens += searchResult.usage.outputTokens;
       candidates = searchResult.candidates;
@@ -357,6 +363,12 @@ export async function POST(
       await saveArtifacts(run.id, "search", "candidate",
         candidates.map((c) => ({ url: c.url, data: c }))
       );
+    }
+
+    // Auto-chain after search if near timeout
+    if (isNearTimeout() && candidates.length > 0) {
+      await autoChain(run.id);
+      return ok({ runId: run.id, status: "auto-chained", reason: "Near timeout after search, continuing in new function" });
     }
 
     // Add user-specified URLs to the candidate list
@@ -652,7 +664,7 @@ export async function POST(
             updated_at = now()
         WHERE id = ${run.id}
       `;
-    });
+    }, assemblyContext);
     sonnetUsage.inputTokens += analyzeUsage.inputTokens;
     sonnetUsage.outputTokens += analyzeUsage.outputTokens;
 
@@ -759,6 +771,16 @@ export async function POST(
             progress_pct = 95, updated_at = now()
         WHERE id = ${run.id}
       `;
+    }
+
+    // ---- Phase 4.75: Translation drop-in verification ----
+    // Test each translation's replacement in 5 sentences to verify
+    // it works as a grammatical drop-in substitution.
+    const translationEntries = consolidatedVault.filter((v) => v.entry.type === "translation" && v.entry.testSentences?.length);
+    if (translationEntries.length > 0 && !isNearTimeout()) {
+      const dropInResult = await verifyTranslationDropIns(consolidatedVault);
+      haikuUsage.inputTokens += dropInResult.usage.inputTokens;
+      haikuUsage.outputTokens += dropInResult.usage.outputTokens;
     }
 
     // Build final reviewable batch.
