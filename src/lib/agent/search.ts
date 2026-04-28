@@ -208,17 +208,30 @@ If you cannot find any more relevant articles, return an empty array: []`;
       usage.outputTokens += response.usage.output_tokens;
     }
 
+    // Find the text block — Sonnet 4.6 with web_search may return
+    // multiple content blocks (web_search_tool_result + text).
+    // Look for any text block, even if it's not the first one.
     const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") break;
+    if (!textBlock || textBlock.type !== "text") {
+      onProgress?.(`Search round ${round}: no text in response (${response.content.map((b) => b.type).join(", ")})`);
+      // Try to continue — maybe next round will work
+      round++;
+      continue;
+    }
 
     let candidates: ArticleCandidate[];
     try {
       candidates = JSON.parse(extractJSON(textBlock.text));
     } catch {
-      break;
+      onProgress?.(`Search round ${round}: JSON parse failed. Text starts with: ${textBlock.text.substring(0, 100)}...`);
+      round++;
+      continue;
     }
 
-    if (!Array.isArray(candidates) || candidates.length === 0) break;
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      onProgress?.(`Search round ${round}: empty or non-array result.`);
+      break;
+    }
 
     let newCount = 0;
     for (const c of candidates) {
