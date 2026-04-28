@@ -30,7 +30,7 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "claude-haiku-4-5-20251001": { input: 0.8, output: 4 },
 };
 
-export const DEFAULT_MODEL = "claude-sonnet-4-6-20250627";
+export const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 export const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
 export function estimateCost(model: string, inputTokens: number, outputTokens: number): number {
