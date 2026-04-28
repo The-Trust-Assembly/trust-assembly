@@ -34,42 +34,12 @@ export const maxDuration = 300;
 // retry logic. If the call fails 3 times, it logs the error and the
 // run stays in its current status for manual retry.
 
-async function fireNextStep(
-  runId: string,
-  request: NextRequest
-): Promise<{ success: boolean; error?: string }> {
-  const stepUrl = new URL(`/api/agent/step/${runId}`, request.url).toString();
-  const maxRetries = 2;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await fetch(stepUrl, {
-        method: "POST",
-        headers: {
-          cookie: request.headers.get("cookie") || "",
-          authorization: request.headers.get("authorization") || "",
-        },
-      });
-
-      if (res.ok) {
-        return { success: true };
-      }
-
-      const body = await res.text().catch(() => "");
-      if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, attempt * 2000));
-        continue;
-      }
-      return { success: false, error: `HTTP ${res.status} after ${maxRetries} attempts: ${body.substring(0, 200)}` };
-    } catch (e) {
-      if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, attempt * 2000));
-        continue;
-      }
-      return { success: false, error: `Network error after ${maxRetries} attempts: ${e instanceof Error ? e.message : String(e)}` };
-    }
-  }
-  return { success: false, error: "Exhausted retries" };
+// No server-side self-calling — Vercel detects recursive function
+// calls as infinite loops (508 INFINITE_LOOP_DETECTED). Instead,
+// each step returns { needsNextStep: true } and the client fires
+// the next step via polling.
+function needsNextStep(): { success: true; needsNextStep: true } {
+  return { success: true, needsNextStep: true };
 }
 
 async function logHandoffFailure(runId: string, step: string, error: string) {
@@ -179,9 +149,9 @@ export async function POST(
         WHERE id = ${run.id}
       `;
 
-      const handoff = await fireNextStep(run.id, request);
-      if (!handoff.success) await logHandoffFailure(run.id, "phantom-queued→searched", handoff.error!);
-      return ok({ runId: run.id, status: "searched", step: "phantom-queue", handoff: handoff.success });
+      
+      // Client fires next step
+      return ok({ runId: run.id, status: "searched", step: "phantom-queue", needsNextStep: true });
     }
 
     // ========== STEP: QUEUED → SEARCHED ==========
@@ -242,9 +212,9 @@ export async function POST(
         WHERE id = ${run.id}
       `;
 
-      const handoff = await fireNextStep(run.id, request);
-      if (!handoff.success) await logHandoffFailure(run.id, "searched→fetched", handoff.error!);
-      return ok({ runId: run.id, status: "searched", step: "search", articlesFound: searchResult.candidates.length, handoff: handoff.success });
+      
+      // Client fires next step
+      return ok({ runId: run.id, status: "searched", step: "search", articlesFound: searchResult.candidates.length, needsNextStep: true });
     }
 
     // ========== STEP: SEARCHED → FETCHED ==========
@@ -285,9 +255,9 @@ export async function POST(
         WHERE id = ${run.id}
       `;
 
-      const handoff = await fireNextStep(run.id, request);
-      if (!handoff.success) await logHandoffFailure(run.id, "fetched→analyze", handoff.error!);
-      return ok({ runId: run.id, status: "fetched", step: "fetch", articlesFetched: fetched.length, handoff: handoff.success });
+      
+      // Client fires next step
+      return ok({ runId: run.id, status: "fetched", step: "fetch", articlesFetched: fetched.length, needsNextStep: true });
     }
 
     // ========== STEP: FETCHED → ANALYZE ONE ARTICLE ==========
@@ -302,9 +272,9 @@ export async function POST(
         await updateRun(run.id, "analyzed", `Analyzed ${analyzedCount} articles. Verifying...`, 80, {
           articles_analyzed: analyzedCount,
         });
-        const handoff = await fireNextStep(run.id, request);
-        if (!handoff.success) await logHandoffFailure(run.id, "analyzed→verify", handoff.error!);
-        return ok({ runId: run.id, status: "analyzed", step: "analyze-complete", handoff: handoff.success });
+        
+        // Client fires next step
+        return ok({ runId: run.id, status: "analyzed", step: "analyze-complete", needsNextStep: true });
       }
 
       // Analyze the next un-analyzed article
@@ -315,9 +285,9 @@ export async function POST(
 
       if (!nextArticle) {
         await updateRun(run.id, "analyzed", `Analyzed ${analyzedCount} articles. Verifying...`, 80);
-        const handoff = await fireNextStep(run.id, request);
-        if (!handoff.success) await logHandoffFailure(run.id, "analyzed→verify", handoff.error!);
-        return ok({ runId: run.id, status: "analyzed", step: "analyze-complete", handoff: handoff.success });
+        
+        // Client fires next step
+        return ok({ runId: run.id, status: "analyzed", step: "analyze-complete", needsNextStep: true });
       }
 
       const articleData = nextArticle.data as { headline?: string; text?: string };
@@ -360,9 +330,9 @@ export async function POST(
       `;
 
       // Fire next step (which will be another analyze or move to verified)
-      const handoff = await fireNextStep(run.id, request);
-      if (!handoff.success) await logHandoffFailure(run.id, `analyze-${articleNum}→next`, handoff.error!);
-      return ok({ runId: run.id, status: "fetched", step: `analyze-${articleNum}`, handoff: handoff.success });
+      
+      // Client fires next step
+      return ok({ runId: run.id, status: "fetched", step: `analyze-${articleNum}`, needsNextStep: true });
     }
 
     // ========== STEP: ANALYZED → VERIFIED ==========
@@ -385,9 +355,9 @@ export async function POST(
         WHERE id = ${run.id}
       `;
 
-      const handoff = await fireNextStep(run.id, request);
-      if (!handoff.success) await logHandoffFailure(run.id, "verified→synthesize", handoff.error!);
-      return ok({ runId: run.id, status: "verified", step: "verify", handoff: handoff.success });
+      
+      // Client fires next step
+      return ok({ runId: run.id, status: "verified", step: "verify", needsNextStep: true });
     }
 
     // ========== STEP: VERIFIED → READY ==========
@@ -492,8 +462,8 @@ export async function POST(
     if (run.status === "searching" || run.status === "fetching" || run.status === "verifying" || run.status === "synthesizing") {
       // These are intermediate statuses from the old pipeline. Reset to nearest step status.
       await sql`UPDATE agent_runs SET status = 'queued', updated_at = now() WHERE id = ${run.id}`;
-      const handoff = await fireNextStep(run.id, request);
-      if (!handoff.success) await logHandoffFailure(run.id, "reset→queued", handoff.error!);
+      
+      // Client fires next step
       return ok({ runId: run.id, status: "queued", step: "reset", message: "Reset from intermediate status" });
     }
 

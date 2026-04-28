@@ -138,11 +138,26 @@ export default function OneTimeDashboard({ onReview }) {
 
   useEffect(() => { loadRecentRuns(); }, []);
 
+  // Client-side step orchestration: poll for status + fire next step
+  const steppingRef = React.useRef(new Set());
+
   useEffect(() => {
+    const STEP_STATUSES = new Set(["searched", "fetched", "analyzed", "verified"]);
     const ACTIVE = ["queued", "searching", "searched", "filtering", "fetching", "fetched", "analyzing", "analyzed", "verifying", "verified", "synthesizing", "submitting"];
     const hasActive = recentRuns.some((r) => ACTIVE.includes(r.status));
     if (!hasActive) return;
-    const interval = setInterval(loadRecentRuns, 3000);
+
+    const interval = setInterval(async () => {
+      await loadRecentRuns();
+      // Fire next step for any run that's in a step-transition status
+      for (const r of recentRuns) {
+        if (STEP_STATUSES.has(r.status) && !steppingRef.current.has(r.id)) {
+          steppingRef.current.add(r.id);
+          fetch(`/api/agent/step/${r.id}`, { method: "POST" })
+            .finally(() => steppingRef.current.delete(r.id));
+        }
+      }
+    }, 3000);
     return () => clearInterval(interval);
   }, [recentRuns]);
 
