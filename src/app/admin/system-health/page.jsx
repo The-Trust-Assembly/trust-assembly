@@ -112,6 +112,11 @@ export default function SystemHealthPage() {
   const [allRunsLoading, setAllRunsLoading] = useState(false);
   const [rulesData, setRulesData] = useState(null);
   const [rulesLoading, setRulesLoading] = useState(false);
+  const [prompts, setPrompts] = useState(null);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState(null);
+  const [promptSaving, setPromptSaving] = useState(false);
+  const [promptMsg, setPromptMsg] = useState(null);
 
   const getAuthHeaders = useCallback(() => {
     const cookies = document.cookie.split(";").map(c => c.trim());
@@ -979,6 +984,111 @@ export default function SystemHealthPage() {
         {grantResult && (
           <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: grantResult.error ? "#ef4444" : "#22c55e", background: "#0f172a" }}>
             {grantResult.message || grantResult.error || JSON.stringify(grantResult)}
+          </div>
+        )}
+      </div>
+
+      {/* ── Agent Prompts Editor ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #334155" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 16 }}>Agent Prompt Editor</h3>
+          <button
+            onClick={async () => {
+              setPromptsLoading(true);
+              try {
+                const res = await fetch("/api/admin/agent-prompts", { headers: getAuthHeaders() });
+                if (res.ok) {
+                  const data = await res.json();
+                  setPrompts(data.prompts || []);
+                }
+              } catch {}
+              finally { setPromptsLoading(false); }
+            }}
+            disabled={promptsLoading}
+            style={{ ...btnStyle, background: "#3b82f6", fontSize: 12, padding: "6px 14px" }}
+          >
+            {promptsLoading ? "Loading..." : prompts ? "Refresh" : "Load Prompts"}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 12 }}>
+          Edit the prompts used by the agent pipeline. Changes take effect within 60 seconds (cached). Keys: analyze_instructions, analyze_vault_rules, analyze_translation_rules, analyze_rules
+        </div>
+
+        {/* New prompt button */}
+        {prompts && !editingPrompt && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+              {["analyze_instructions", "analyze_vault_rules", "analyze_translation_rules", "analyze_rules"].map((k) => {
+                const exists = prompts.some((p) => p.key === k);
+                return (
+                  <button key={k} onClick={() => {
+                    const existing = prompts.find((p) => p.key === k);
+                    setEditingPrompt(existing || { key: k, label: k.replace(/_/g, " "), description: "", body: "" });
+                    setPromptMsg(null);
+                  }} style={{ ...smallBtnStyle, background: exists ? "#334155" : "#0f172a", border: exists ? "1px solid #22c55e" : "1px solid #334155" }}>
+                    {exists ? "✓ " : ""}{k}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Editor */}
+        {editingPrompt && (
+          <div style={{ background: "#0f172a", borderRadius: 6, padding: 12, marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontFamily: "monospace", fontSize: 13, color: "#60a5fa", fontWeight: 600 }}>{editingPrompt.key}</span>
+              <button onClick={() => { setEditingPrompt(null); setPromptMsg(null); }} style={{ ...smallBtnStyle }}>Close</button>
+            </div>
+            <input
+              value={editingPrompt.label || ""}
+              onChange={(e) => setEditingPrompt({ ...editingPrompt, label: e.target.value })}
+              placeholder="Label"
+              style={{ width: "100%", padding: "6px 10px", marginBottom: 6, background: "#1e293b", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 12 }}
+            />
+            <input
+              value={editingPrompt.description || ""}
+              onChange={(e) => setEditingPrompt({ ...editingPrompt, description: e.target.value })}
+              placeholder="Description"
+              style={{ width: "100%", padding: "6px 10px", marginBottom: 6, background: "#1e293b", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 12 }}
+            />
+            <textarea
+              value={editingPrompt.body || ""}
+              onChange={(e) => setEditingPrompt({ ...editingPrompt, body: e.target.value })}
+              placeholder="Prompt text..."
+              rows={15}
+              style={{ width: "100%", padding: "8px 10px", background: "#1e293b", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 11, fontFamily: "monospace", lineHeight: 1.6, resize: "vertical" }}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+              <button
+                onClick={async () => {
+                  setPromptSaving(true);
+                  try {
+                    const res = await fetch("/api/admin/agent-prompts", {
+                      method: "POST",
+                      headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                      body: JSON.stringify(editingPrompt),
+                    });
+                    const data = await res.json();
+                    setPromptMsg(data.message || "Saved");
+                    // Refresh list
+                    const listRes = await fetch("/api/admin/agent-prompts", { headers: getAuthHeaders() });
+                    if (listRes.ok) setPrompts((await listRes.json()).prompts || []);
+                  } catch (e) { setPromptMsg("Error: " + e); }
+                  finally { setPromptSaving(false); }
+                }}
+                disabled={promptSaving || !editingPrompt.body}
+                style={{ ...btnStyle, background: "#22c55e", fontSize: 12, padding: "6px 16px" }}
+              >
+                {promptSaving ? "Saving..." : "Save Prompt"}
+              </button>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                {editingPrompt.body?.length || 0} chars
+                {editingPrompt.updated_at && ` · Last saved: ${new Date(editingPrompt.updated_at).toLocaleString()}`}
+              </span>
+            </div>
+            {promptMsg && <div style={{ marginTop: 6, fontSize: 11, color: "#22c55e" }}>{promptMsg}</div>}
           </div>
         )}
       </div>
