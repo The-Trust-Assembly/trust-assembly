@@ -9,7 +9,7 @@
 
 import { sql } from "@/lib/db";
 
-const cache = new Map<string, { body: string; loadedAt: number }>();
+const cache = new Map<string, { body: string; loadedAt: number; source: "db" | "fallback"; updatedAt?: string }>();
 const CACHE_TTL_MS = 60_000; // 1 minute
 
 export async function getPrompt(
@@ -26,18 +26,28 @@ export async function getPrompt(
   // Try DB
   try {
     const result = await sql`
-      SELECT body FROM agent_prompts WHERE key = ${key} LIMIT 1
+      SELECT body, updated_at FROM agent_prompts WHERE key = ${key} LIMIT 1
     `;
     if (result.rows.length > 0 && result.rows[0].body) {
       const body = result.rows[0].body;
-      cache.set(key, { body, loadedAt: Date.now() });
+      cache.set(key, { body, loadedAt: Date.now(), source: "db", updatedAt: result.rows[0].updated_at });
       return applyVariables(body, variables);
     }
   } catch {
     // Table might not exist yet — use fallback
   }
 
+  cache.set(key, { body: fallback, loadedAt: Date.now(), source: "fallback" });
   return applyVariables(fallback, variables);
+}
+
+// Returns metadata about which prompts are loaded and their source
+export function getPromptVersions(): Record<string, { source: "db" | "fallback"; updatedAt?: string; length: number }> {
+  const versions: Record<string, { source: "db" | "fallback"; updatedAt?: string; length: number }> = {};
+  for (const [key, entry] of cache.entries()) {
+    versions[key] = { source: entry.source, updatedAt: entry.updatedAt, length: entry.body.length };
+  }
+  return versions;
 }
 
 function applyVariables(

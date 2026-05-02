@@ -9,6 +9,7 @@
 
 import { getClaudeClient, DEFAULT_MODEL, HAIKU_MODEL } from "./claude-client";
 import { extractJSON } from "./json-extract";
+import { getPrompt } from "./prompts";
 import type { VaultSuggestion, VaultEntryForReview, TokenUsage } from "./types";
 
 export interface VaultVerifyResult {
@@ -47,7 +48,9 @@ export async function verifyVaultEntries(
         ],
         messages: [{
           role: "user",
-          content: `Search the web to verify this factual claim. Find evidence that supports or contradicts it.\n\nClaim: "${assertion}"\n\nReturn ONLY a JSON object: {"supported": true/false, "confidence": "high"/"medium"/"low", "reason": "brief explanation of what you found"}`,
+          content: await getPrompt("verify_vault",
+            `Search the web to verify this factual claim. Find evidence that supports or contradicts it.\n\nClaim: "{{assertion}}"\n\nReturn ONLY a JSON object: {"supported": true/false, "confidence": "high"/"medium"/"low", "reason": "brief explanation of what you found"}`,
+            { assertion }),
         }],
       });
 

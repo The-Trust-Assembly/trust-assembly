@@ -12,6 +12,8 @@ import { verifyVaultEntries } from "@/lib/agent/verify-vault";
 import { verifyTranslationDropIns } from "@/lib/agent/verify-translations";
 import { estimateCost, DEFAULT_MODEL, HAIKU_MODEL } from "@/lib/agent/claude-client";
 import { saveArtifact, getArtifacts, countArtifacts } from "@/lib/agent/artifacts";
+import { logStepTokens } from "@/lib/agent/llm-logger";
+import { getPromptVersions } from "@/lib/agent/prompts";
 import type { AgentBatch, ArticleCandidate, SubmissionForReview, TokenUsage } from "@/lib/agent/types";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +178,12 @@ export async function POST(
 
     // ========== STEP: QUEUED → SEARCHED ==========
     if (run.status === "queued") {
+      // Log prompt versions used for this run
+      const promptVersions = getPromptVersions();
+      if (Object.keys(promptVersions).length > 0) {
+        await saveArtifact(run.id, "meta", "prompt_versions", promptVersions);
+      }
+
       // Generate keywords if not provided
       let keywords: string[] = Array.isArray(runContext.keywords) ? runContext.keywords : [];
       let inputTokens = 0;
@@ -234,6 +242,7 @@ export async function POST(
 
       
       // Client fires next step
+      await logStepTokens(run.id, "search", inputTokens, outputTokens, cost);
       return ok({ runId: run.id, status: "searched", step: "search", articlesFound: searchResult.candidates.length, needsNextStep: true });
     }
 
@@ -321,7 +330,8 @@ export async function POST(
         articleData.headline || "",
         articleData.text || "",
         run.thesis,
-        assemblyContext
+        assemblyContext,
+        run.id
       );
 
       // Verify quotes for this article
@@ -336,12 +346,16 @@ export async function POST(
         analysis,
       }, nextArticle.article_url || undefined);
 
+      // Log per-article tokens
+      const articleCost = estimateCost(DEFAULT_MODEL, usage.inputTokens, usage.outputTokens);
+      await logStepTokens(run.id, `analyze-${articleNum}`, usage.inputTokens, usage.outputTokens, articleCost);
+
       // Update token counts
       await sql`
         UPDATE agent_runs
         SET input_tokens = input_tokens + ${usage.inputTokens},
             output_tokens = output_tokens + ${usage.outputTokens},
-            estimated_cost_usd = estimated_cost_usd + ${estimateCost(DEFAULT_MODEL, usage.inputTokens, usage.outputTokens)},
+            estimated_cost_usd = estimated_cost_usd + ${articleCost},
             articles_analyzed = ${articleNum},
             stage_message = ${`Analyzed ${articleNum} of ${totalToAnalyze}...`},
             progress_pct = ${pct},
