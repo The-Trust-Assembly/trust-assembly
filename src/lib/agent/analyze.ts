@@ -12,6 +12,7 @@
 import { getClaudeClient, DEFAULT_MODEL } from "./claude-client";
 import { extractJSON } from "./json-extract";
 import { getPrompt } from "./prompts";
+import { logLlmCall } from "./llm-logger";
 import type { ArticleAnalysis, TokenUsage } from "./types";
 
 const MAX_CHARS = 30000;
@@ -26,7 +27,8 @@ export async function analyzeArticle(
   headline: string,
   articleText: string,
   topic: string,
-  assemblyContext?: { name?: string; description?: string }
+  assemblyContext?: { name?: string; description?: string },
+  runId?: string
 ): Promise<AnalyzeResult> {
   const claude = getClaudeClient();
   const truncated =
@@ -148,6 +150,13 @@ ${rules}`;
     inputTokens: response.usage?.input_tokens || 0,
     outputTokens: response.usage?.output_tokens || 0,
   };
+
+  // Log raw LLM response for debugging
+  if (runId) {
+    try {
+      await logLlmCall(runId, "analyze", `analyze: ${url}`, response as never, url);
+    } catch {}
+  }
 
   const textBlock = response.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {

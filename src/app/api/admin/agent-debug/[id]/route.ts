@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, notFound, serverError } from "@/lib/api-utils";
-import { countArtifacts } from "@/lib/agent/artifacts";
+import { countArtifacts, getArtifacts, getArtifactsByPhase } from "@/lib/agent/artifacts";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +157,27 @@ export async function GET(
             domain: run.agent_domain,
           }
         : null,
+      // Per-step token breakdown
+      token_breakdown: (await getArtifacts(params.id, "token_usage")).map((a) => ({
+        step: a.article_url || (a.data as Record<string, unknown>).step || "unknown",
+        ...(a.data as Record<string, unknown>),
+      })),
+      // Prompt versions used
+      prompt_versions: ((await getArtifacts(params.id, "prompt_versions"))[0]?.data) || null,
+      // Raw LLM responses (previews only — full text in artifact)
+      llm_responses: (await getArtifacts(params.id, "llm_response")).map((a) => {
+        const d = a.data as Record<string, unknown>;
+        return {
+          label: d.label,
+          article: a.article_url,
+          blockTypes: d.blockTypes,
+          textBlockCount: d.textBlockCount,
+          rawTextLength: d.rawTextLength,
+          rawTextPreview: typeof d.rawTextPreview === "string" ? d.rawTextPreview.substring(0, 300) : null,
+          inputTokens: d.inputTokens,
+          outputTokens: d.outputTokens,
+        };
+      }),
       diagnosis,
     });
   } catch (e) {
