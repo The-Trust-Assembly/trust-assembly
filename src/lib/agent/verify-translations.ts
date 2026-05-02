@@ -7,6 +7,7 @@
 
 import { getClaudeClient, HAIKU_MODEL } from "./claude-client";
 import { extractJSON } from "./json-extract";
+import { getPrompt } from "./prompts";
 import type { VaultEntryForReview, TokenUsage } from "./types";
 
 export async function verifyTranslationDropIns(
@@ -36,12 +37,16 @@ export async function verifyTranslationDropIns(
     return { index: i, original, translated, replaced };
   });
 
-  const prompt = `For each set of sentences below, determine if ALL sentences are grammatically correct and natural-sounding English. A sentence fails if the replacement creates broken grammar, awkward phrasing, or changes the part of speech incorrectly.
+  const testCaseText = testCases.map((tc) => `Set ${tc.index + 1} ("${tc.original}" → "${tc.translated}"):
+${tc.replaced.map((s, j) => `  ${j + 1}. ${s}`).join("\n")}`).join("\n\n");
 
-${testCases.map((tc) => `Set ${tc.index + 1} ("${tc.original}" → "${tc.translated}"):
-${tc.replaced.map((s, j) => `  ${j + 1}. ${s}`).join("\n")}`).join("\n\n")}
+  const prompt = await getPrompt("verify_translations",
+    `For each set of sentences below, determine if ALL sentences are grammatically correct and natural-sounding English. A sentence fails if the replacement creates broken grammar, awkward phrasing, or changes the part of speech incorrectly.
 
-Return ONLY a JSON array of objects: [{"index": 0, "passes": true/false, "reason": "brief explanation"}]`;
+{{testCases}}
+
+Return ONLY a JSON array of objects: [{"index": 0, "passes": true/false, "reason": "brief explanation"}]`,
+    { testCases: testCaseText });
 
   try {
     const response = await claude.messages.create({

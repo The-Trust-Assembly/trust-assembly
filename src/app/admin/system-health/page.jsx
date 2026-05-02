@@ -991,7 +991,12 @@ export default function SystemHealthPage() {
       {/* ── Agent Prompts Editor ── */}
       <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #334155" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Agent Prompt Editor</h3>
+          <h3 style={{ margin: 0, fontSize: 16 }}>
+            Agent Prompt Editor
+            <a href="/admin/prompt-pipeline" target="_blank" style={{ marginLeft: 12, fontSize: 11, color: "#60a5fa", textDecoration: "none", fontWeight: 400 }}>
+              Open Full Pipeline Editor →
+            </a>
+          </h3>
           <button
             onClick={async () => {
               setPromptsLoading(true);

@@ -15,6 +15,7 @@
 
 import { getClaudeClient, DEFAULT_MODEL } from "./claude-client";
 import { extractJSON } from "./json-extract";
+import { getPrompt } from "./prompts";
 import { isGoogleSearchAvailable, googleSearchMulti } from "./google-search";
 import type { ArticleCandidate, TokenUsage } from "./types";
 
@@ -89,11 +90,11 @@ export async function generateKeywordsFromThesis(
     }
   }
 
-  const prompt = `You are a research assistant for Trust Assembly, a civic fact-checking platform.
+  const FALLBACK_KW_PROMPT = `You are a research assistant for Trust Assembly, a civic fact-checking platform.
 
 Given the following thesis that a user wants to fact-check, generate 7–15 search keyword phrases that would be effective for finding relevant articles via Google Search.
 
-Thesis: "${thesis}"${contextBlock}
+Thesis: "{{thesis}}"{{context}}
 
 Guidelines:
 - Include the key proper nouns, organizations, and event names
@@ -104,6 +105,11 @@ Guidelines:
 - Each keyword should be 1–4 words
 
 Return ONLY a valid JSON array of strings. Example: ["keyword one", "keyword two"]`;
+
+  const prompt = await getPrompt("search_keywords", FALLBACK_KW_PROMPT, {
+    thesis,
+    context: contextBlock,
+  });
 
   try {
     const response = await claude.messages.create({
@@ -169,14 +175,14 @@ async function searchWithClaude(
         ? `\n\nYou have already found these articles (do NOT return duplicates):\n${previousUrls}`
         : "";
 
-    const prompt = `You are a research assistant for Trust Assembly, a civic fact-checking platform.
+    const FALLBACK_SEARCH = `You are a research assistant for Trust Assembly, a civic fact-checking platform.
 
 Your task: Find articles related to this topic that may warrant fact-checking (corrections or affirmations).
 
-Topic: ${topic}
-Search scope: ${scope}
-Current search round: ${round}
-Articles found so far: ${allCandidates.length}${previousContext}${keywordHint}
+Topic: {{topic}}
+Search scope: {{scope}}
+Current search round: {{round}}
+Articles found so far: {{found}}{{previousContext}}{{keywordHint}}
 
 Search the web and return a JSON array of articles. For each article include:
 - url: the article URL
@@ -186,9 +192,16 @@ Search the web and return a JSON array of articles. For each article include:
 - reasonToCheck: why this article might warrant fact-checking
 
 IMPORTANT: Return ONLY a valid JSON array. Do not include any text before or after the JSON. Example format:
-[{"url": "...", "headline": "...", "publication": "...", "summary": "...", "reasonToCheck": "..."}]
+[{"url": "...", "headline": "...", "publication": "...", "summary": "...", "reasonToCheck": "..."}]`;
 
-If you cannot find any more relevant articles, return an empty array: []`;
+    const prompt = await getPrompt("search_web", FALLBACK_SEARCH, {
+      topic,
+      scope,
+      round: String(round),
+      found: String(allCandidates.length),
+      previousContext,
+      keywordHint,
+    });
 
     const response = await claude.messages.create({
       model: DEFAULT_MODEL,

@@ -15,6 +15,7 @@
 
 import { getClaudeClient, HAIKU_MODEL } from "./claude-client";
 import { extractJSON } from "./json-extract";
+import { getPrompt } from "./prompts";
 import type { ArticleCandidate, TokenUsage } from "./types";
 
 const RELEVANCE_THRESHOLD = 5;
@@ -40,15 +41,15 @@ async function scoreBatch(
     snippet: c.summary,
   }));
 
-  const prompt = `You are a relevance scorer for Trust Assembly, a civic fact-checking platform.
+  const FALLBACK_RELEVANCE = `You are a relevance scorer for Trust Assembly, a civic fact-checking platform.
 
 A user wants to fact-check this thesis:
-"${thesis}"
+"{{thesis}}"
 
-Below are ${candidates.length} search results. Score each one 0–10 for how relevant it is to the thesis. A score of 0 means completely unrelated; 10 means directly discusses the exact claims in the thesis.
+Below are {{count}} search results. Score each one 0–10 for how relevant it is to the thesis. A score of 0 means completely unrelated; 10 means directly discusses the exact claims in the thesis.
 
 Search results:
-${JSON.stringify(candidateList, null, 2)}
+{{results}}
 
 Return ONLY a JSON array. For each result include:
 - "i": the index number from the input
@@ -58,6 +59,12 @@ Return ONLY a JSON array. For each result include:
 Example: [{"i": 0, "relevance": 8, "reasoning": "Directly discusses the court ruling mentioned in the thesis"}]
 
 Score generously — when in doubt, score higher. We'd rather analyze an extra article than miss a relevant one.`;
+
+  const prompt = await getPrompt("relevance_filter", FALLBACK_RELEVANCE, {
+    thesis,
+    count: String(candidates.length),
+    results: JSON.stringify(candidateList, null, 2),
+  });
 
   try {
     const response = await claude.messages.create({

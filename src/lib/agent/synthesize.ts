@@ -10,6 +10,7 @@
 
 import { getClaudeClient, DEFAULT_MODEL } from "./claude-client";
 import { extractJSON } from "./json-extract";
+import { getPrompt } from "./prompts";
 import type { ArticleAnalysis, VaultSuggestion, TokenUsage } from "./types";
 import type { AnalyzedArticle } from "./analyze";
 
@@ -41,13 +42,13 @@ Vault entries: ${JSON.stringify(ae.vaultEntries || [])}`;
     })
     .join("\n\n");
 
-  const prompt = `You are a senior fact-checker for Trust Assembly, a civic deliberation platform. You have just reviewed ${analyses.length} articles on this topic:
+  const FALLBACK_SYNTH = `You are a senior fact-checker for Trust Assembly, a civic deliberation platform. You have just reviewed {{count}} articles on this topic:
 
-"${topic}"
+"{{topic}}"
 
 Here are the individual analyses produced by a junior fact-checker:
 
-${summaries}
+{{summaries}}
 
 Your job is to SYNTHESIZE these into a coordinated, complete picture. This is critical because:
 1. Later articles may reveal information that changes the verdict on earlier articles
@@ -86,6 +87,12 @@ Rules:
 - Vault entries should be CONSOLIDATED — one standing correction per fact
 - Translations should be DEDUPLICATED — one entry per phrase
 - Inline edits must quote the EXACT text from the article to be replaced`;
+
+  const prompt = await getPrompt("synthesize", FALLBACK_SYNTH, {
+    count: String(analyses.length),
+    topic,
+    summaries,
+  });
 
   const response = await claude.messages.create({
     model: DEFAULT_MODEL,
