@@ -97,6 +97,30 @@ When generating translations, interpret language through this assembly's perspec
   const translationRules = await getPrompt("analyze_translation_rules", FALLBACK_TRANSLATION_RULES);
   const rules = await getPrompt("analyze_rules", FALLBACK_RULES, { today });
 
+  const FALLBACK_JSON_FORMAT = `JSON format:
+{
+  "verdict": "correction",
+  "originalHeadline": "the article's original headline",
+  "replacement": "corrected headline (only if verdict is correction, omit for affirmation/skip)",
+  "reasoning": "detailed explanation with specific claims cited. Max 2000 characters.",
+  "evidence": [
+    {"description": "what this evidence shows", "quote": "EXACT sentence copied from the article text above — character for character"},
+    {"description": "second piece of evidence", "quote": "ANOTHER exact sentence from the article supporting this claim"}
+  ],
+  "confidence": "high",
+  "bodyAnalysis": "optional detailed analysis",
+  "inlineEdits": [
+    {"originalText": "exact quote from article that is wrong", "correctedText": "what it should say", "explanation": "why this is wrong"}
+  ],
+  "vaultEntries": [
+    {"type": "vault", "lede": "Short fact, max 200 chars.", "assertion": "Full explanation with dates, context, and sources. 2-4 sentences.", "evidence": "supporting evidence with sources"},
+    {"type": "argument", "content": "logical framework or rhetorical tool"},
+    {"type": "translation", "original": "enhanced interrogation techniques", "translated": "torture", "translationType": "euphemism", "testSentences": ["The CIA used enhanced interrogation techniques.", "He defended enhanced interrogation techniques.", "Enhanced interrogation techniques were banned.", "Reports of enhanced interrogation techniques emerged.", "Critics condemned enhanced interrogation techniques."]}
+  ]
+}`;
+
+  const jsonFormat = await getPrompt("analyze_json_format", FALLBACK_JSON_FORMAT);
+
   const prompt = `You are a fact-checker for Trust Assembly, a civic deliberation platform.
 
 Today's date: ${today}
@@ -116,27 +140,7 @@ ${instructions}
 ${vaultRules}
 ${translationRules}
 
-JSON format:
-{
-  "verdict": "correction",
-  "originalHeadline": "the article's original headline",
-  "replacement": "corrected headline (only if verdict is correction, omit for affirmation/skip)",
-  "reasoning": "detailed explanation with specific claims cited. Max 2000 characters.",
-  "evidence": [
-    {"description": "what this evidence shows", "quote": "EXACT sentence copied from the article text above — character for character"},
-    {"description": "second piece of evidence", "quote": "ANOTHER exact sentence from the article supporting this claim"}
-  ],
-  "confidence": "high",
-  "bodyAnalysis": "optional detailed analysis",
-  "inlineEdits": [
-    {"originalText": "exact quote from article that is wrong", "correctedText": "what it should say", "explanation": "why this is wrong"}
-  ],
-  "vaultEntries": [
-    {"type": "vault", "lede": "Short fact, max 120 chars.", "assertion": "Full explanation with dates, context, and sources. 2-4 sentences.", "evidence": "supporting evidence with sources"},
-    {"type": "argument", "content": "logical framework or rhetorical tool"},
-    {"type": "translation", "original": "enhanced interrogation techniques", "translated": "torture", "translationType": "euphemism", "testSentences": ["The CIA used enhanced interrogation techniques.", "He defended enhanced interrogation techniques.", "Enhanced interrogation techniques were banned.", "Reports of enhanced interrogation techniques emerged.", "Critics condemned enhanced interrogation techniques."]}
-  ]
-}
+${jsonFormat}
 
 ${rules}`;
 

@@ -58,6 +58,14 @@ const PIPELINE_STEPS = [
     model: "(part of analysis prompt)",
     costEstimate: "(included above)",
     description: "General rules for verdicts (correction/affirmation/skip), mandatory quote requirements, recency awareness (today's date is injected via {{today}}), and vault entry generation guidance. The recency rule prevents hallucinations about recent events.",
+    between: null,
+  },
+  {
+    key: "analyze_json_format",
+    title: "Article Analysis — JSON Output Format",
+    model: "(part of analysis prompt)",
+    costEstimate: "(included above)",
+    description: "The exact JSON schema the model must produce. This tells the model which fields to fill out, their types, and example values. Edit this to add/remove/rename fields. The model reads this as the template for its output.",
     between: "After each article is analyzed, quotes are verified deterministically against the source text (no LLM). URLs cited in evidence are checked with HEAD requests. These verifications are mechanical — not a prompt.",
   },
   {
