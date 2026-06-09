@@ -1,20 +1,24 @@
 import { NextRequest } from "next/server";
 import { ok, err } from "@/lib/api-utils";
+import {
+  fetchHtml,
+  extractAllFields,
+  extractBodyText,
+  type Fields,
+  type FieldResult,
+} from "@/lib/import/extract";
 import registryData from "../../../../site-registry.json";
 
 // In-memory cache (24h TTL)
 const cache = new Map<string, { data: ImportResult; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
-const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
-interface FieldResult { value: string; source: string; confidence: number; }
 interface ImportResult {
   success: boolean;
   platform: string;
   template: string;
   confidence: number;
-  fields: Record<string, FieldResult>;
+  fields: Fields;
   canonical: string;
   submitted: string;
   normalized: string;
@@ -30,7 +34,12 @@ const registry = registryData as Record<string, unknown>;
 const recipes = (registry.recipes || {}) as Record<string, Record<string, unknown>>;
 
 function findRecipe(rawUrl: string): { key: string; recipe: Record<string, unknown> } | null {
-  const hostname = new URL(rawUrl).hostname.replace(/^www\./, "");
+  let hostname: string;
+  try {
+    hostname = new URL(rawUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
   for (const [key, recipe] of Object.entries(recipes)) {
     if (key.startsWith("_")) continue;
     const domains = recipe.domains as string[] | undefined;
@@ -53,7 +62,12 @@ const GLOBAL_STRIP_PARAMS = [
 ];
 
 function normalizeUrl(rawUrl: string, recipe: Record<string, unknown> | null): string {
-  const url = new URL(rawUrl);
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return rawUrl;
+  }
   GLOBAL_STRIP_PARAMS.forEach(p => url.searchParams.delete(p));
   const normRules = recipe?.urlNormalization as Record<string, unknown> | undefined;
   if (normRules?.stripParams) {
@@ -72,188 +86,9 @@ function normalizeUrl(rawUrl: string, recipe: Record<string, unknown> | null): s
   return url.toString();
 }
 
-// ─── Regex-Based Extraction (ported from article-meta) ─────────────
+// ─── Platform APIs ─────────────────────────────────────────────────
 
-function decodeEntities(str: string): string {
-  return str
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&nbsp;/g, " ");
-}
-
-function getMetaContent(html: string, nameOrProp: string): string | null {
-  const patterns = [
-    new RegExp(`<meta[^>]+(?:name|property)=["']${nameOrProp}["'][^>]+content=["']([^"']+)["']`, "i"),
-    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["']${nameOrProp}["']`, "i"),
-  ];
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match?.[1]) return decodeEntities(match[1].trim());
-  }
-  return null;
-}
-
-// Layer 1: Meta tags (og, twitter, standard)
-function extractMetaFields(html: string): Record<string, FieldResult> {
-  const fields: Record<string, FieldResult> = {};
-  const metaMappings: Array<{ field: string; tags: string[]; confidence: number }> = [
-    { field: "title", tags: ["og:title", "twitter:title"], confidence: 0.8 },
-    { field: "description", tags: ["og:description", "twitter:description", "description"], confidence: 0.7 },
-    { field: "author", tags: ["article:author", "author", "twitter:creator", "sailthru.author", "dc.creator"], confidence: 0.7 },
-    { field: "publishDate", tags: ["article:published_time", "date", "pubdate"], confidence: 0.7 },
-    { field: "siteName", tags: ["og:site_name", "twitter:site", "application-name"], confidence: 0.7 },
-    { field: "thumbnail", tags: ["og:image", "twitter:image"], confidence: 0.8 },
-  ];
-  for (const { field, tags, confidence } of metaMappings) {
-    for (const tag of tags) {
-      const value = getMetaContent(html, tag);
-      if (value) { fields[field] = { value, source: "meta", confidence }; break; }
-    }
-  }
-  return fields;
-}
-
-// Layer 2: JSON-LD structured data
-function extractJsonLd(html: string): Record<string, FieldResult> {
-  const fields: Record<string, FieldResult> = {};
-  // Find ALL JSON-LD blocks
-  const ldPattern = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let match;
-  while ((match = ldPattern.exec(html)) !== null) {
-    try {
-      let data = JSON.parse(match[1]);
-      if (data["@graph"]) data = data["@graph"];
-      if (!Array.isArray(data)) data = [data];
-      for (const item of data) {
-        const type = item["@type"];
-        // Articles
-        if (["NewsArticle", "Article", "BlogPosting", "WebPage", "ReportageNewsArticle"].includes(type)) {
-          if (item.headline && !fields.title) fields.title = { value: decodeEntities(String(item.headline)), source: "json-ld", confidence: 0.9 };
-          if (item.description && !fields.description) fields.description = { value: decodeEntities(String(item.description)), source: "json-ld", confidence: 0.85 };
-          if (item.author) {
-            const authors = Array.isArray(item.author) ? item.author : [item.author];
-            const names = authors.map((a: Record<string, string>) => a?.name || (typeof a === "string" ? a : null)).filter(Boolean);
-            if (names.length > 0 && !fields.author) fields.author = { value: names.join(", "), source: "json-ld", confidence: 0.9 };
-          }
-          if (item.datePublished && !fields.publishDate) fields.publishDate = { value: String(item.datePublished), source: "json-ld", confidence: 0.9 };
-          if (item.publisher?.name && !fields.publication) fields.publication = { value: String(item.publisher.name), source: "json-ld", confidence: 0.9 };
-        }
-        // Products
-        if (type === "Product") {
-          if (item.name && !fields.title) fields.title = { value: decodeEntities(String(item.name)), source: "json-ld", confidence: 0.95 };
-          if (item.brand?.name && !fields.brand) fields.brand = { value: String(item.brand.name), source: "json-ld", confidence: 0.95 };
-          if (item.description && !fields.description) fields.description = { value: decodeEntities(String(item.description)), source: "json-ld", confidence: 0.85 };
-          if (item.aggregateRating && !fields.rating) {
-            fields.rating = { value: `${item.aggregateRating.ratingValue}/${item.aggregateRating.bestRating || 5} (${item.aggregateRating.reviewCount || "?"} reviews)`, source: "json-ld", confidence: 0.95 };
-          }
-        }
-        // Videos
-        if (type === "VideoObject") {
-          if (item.name && !fields.title) fields.title = { value: decodeEntities(String(item.name)), source: "json-ld", confidence: 0.9 };
-          if (item.duration && !fields.duration) fields.duration = { value: String(item.duration), source: "json-ld", confidence: 0.9 };
-          if (item.author?.name && !fields.author) fields.author = { value: String(item.author.name), source: "json-ld", confidence: 0.9 };
-        }
-        // Podcasts
-        if (["PodcastEpisode", "AudioObject", "RadioEpisode"].includes(type)) {
-          if (item.name && !fields.title) fields.title = { value: decodeEntities(String(item.name)), source: "json-ld", confidence: 0.9 };
-          if (item.duration && !fields.duration) fields.duration = { value: String(item.duration), source: "json-ld", confidence: 0.9 };
-          if (item.partOfSeries?.name && !fields.showName) fields.showName = { value: String(item.partOfSeries.name), source: "json-ld", confidence: 0.9 };
-        }
-      }
-    } catch { /* invalid JSON-LD */ }
-  }
-  return fields;
-}
-
-// Layer 3: HTML fallbacks
-function extractHtmlFallbacks(html: string): Record<string, FieldResult> {
-  const fields: Record<string, FieldResult> = {};
-
-  // <title> tag (strip common suffixes)
-  if (!fields.title) {
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch?.[1]) {
-      let title = decodeEntities(titleMatch[1].trim());
-      title = title.replace(/\s*[\|\-–—]\s*[^|\-–—]{2,30}$/, "").trim();
-      if (title.length > 10) fields.title = { value: title, source: "html-title", confidence: 0.6 };
-    }
-  }
-
-  // First <h1>
-  if (!fields.title) {
-    const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    if (h1Match?.[1]) {
-      const h1 = decodeEntities(h1Match[1].replace(/<[^>]+>/g, "").trim());
-      if (h1.length > 5) fields.title = { value: h1, source: "html-h1", confidence: 0.5 };
-    }
-  }
-
-  // Author from <a rel="author">
-  const relAuthorMatch = html.match(/<a[^>]+rel=["']author["'][^>]*>([^<]+)<\/a>/gi);
-  if (relAuthorMatch && !fields.author) {
-    const names: string[] = [];
-    for (const m of relAuthorMatch) {
-      const nameMatch = m.match(/>([^<]+)</);
-      if (nameMatch?.[1]) names.push(decodeEntities(nameMatch[1].trim()));
-    }
-    if (names.length > 0) fields.author = { value: names.join(", "), source: "html-rel-author", confidence: 0.6 };
-  }
-
-  // Canonical URL
-  const canonicalMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
-  if (canonicalMatch?.[1]) fields._canonical = { value: canonicalMatch[1], source: "html", confidence: 1.0 };
-  if (!fields._canonical) {
-    const ogUrl = getMetaContent(html, "og:url");
-    if (ogUrl) fields._canonical = { value: ogUrl, source: "meta", confidence: 0.9 };
-  }
-
-  return fields;
-}
-
-// Body text extraction via regex (replaces Readability)
-function extractBodyText(html: string): string | null {
-  // Remove script and style tags
-  const cleaned = html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "");
-
-  let container: string | null = null;
-  // Try <article> tag first
-  const articleMatch = cleaned.match(/<article[\s\S]*?>([\s\S]*?)<\/article>/i);
-  if (articleMatch?.[1]) container = articleMatch[1];
-
-  // Fallback to common article body selectors
-  if (!container) {
-    const selectors = [
-      /role=["']article["']/i,
-      /class=["'][^"']*\barticle-body\b[^"']*["']/i,
-      /class=["'][^"']*\bpost-content\b[^"']*["']/i,
-      /class=["'][^"']*\bentry-content\b[^"']*["']/i,
-      /class=["'][^"']*\bstory-body\b[^"']*["']/i,
-    ];
-    for (const selector of selectors) {
-      const tagPattern = new RegExp(`<(\\w+)[^>]*${selector.source}[^>]*>([\\s\\S]*?)<\\/\\1>`, "i");
-      const match = cleaned.match(tagPattern);
-      if (match?.[2]) { container = match[2]; break; }
-    }
-  }
-
-  // Extract <p> tags
-  const source = container || cleaned;
-  const pMatches = source.match(/<p[\s\S]*?>([\s\S]*?)<\/p>/gi);
-  if (!pMatches || pMatches.length === 0) return null;
-
-  const paragraphs = pMatches
-    .map(p => decodeEntities(p.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()))
-    .filter(text => text.length > 30); // skip short fragments
-
-  if (paragraphs.length === 0) return null;
-  return paragraphs.join("\n\n").slice(0, 10000);
-}
-
-// Layer 4: Platform APIs
-async function extractWithRedditJson(url: string): Promise<Record<string, FieldResult> | null> {
+async function extractWithRedditJson(url: string): Promise<Fields | null> {
   try {
     // Append .json to the path (before query string)
     const u = new URL(url);
@@ -270,7 +105,7 @@ async function extractWithRedditJson(url: string): Promise<Record<string, FieldR
     const data = await response.json();
     const post = data?.[0]?.data?.children?.[0]?.data;
     if (!post) return null;
-    const fields: Record<string, FieldResult> = {};
+    const fields: Fields = {};
     if (post.title) fields.title = { value: post.title, source: "reddit-json", confidence: 1.0 };
     if (post.author) fields.author = { value: `u/${post.author}`, source: "reddit-json", confidence: 1.0 };
     if (post.selftext) fields.body = { value: post.selftext, source: "reddit-json", confidence: 1.0 };
@@ -282,7 +117,7 @@ async function extractWithRedditJson(url: string): Promise<Record<string, FieldR
 }
 
 // Apply site registry metaHints (title stripping, field preferences)
-function applyMetaHints(fields: Record<string, FieldResult>, recipe: Record<string, unknown> | null): void {
+function applyMetaHints(fields: Fields, recipe: Record<string, unknown> | null): void {
   const hints = recipe?.metaHints as Record<string, string> | undefined;
   if (!hints) return;
 
@@ -310,78 +145,29 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
   const template = (recipe?.template as string) || "article";
 
   // Platform APIs (Reddit JSON)
-  let specialFields: Record<string, FieldResult> | null = null;
+  let specialFields: Fields | null = null;
   if (recipe?.extractionStrategy === "reddit_json" || normalizedUrl.includes("reddit.com")) {
     specialFields = await extractWithRedditJson(normalizedUrl);
   }
 
-  // Fetch HTML (first 200KB only — meta tags are in <head>)
-  let html: string | null = null;
-  let fetchError: string | null = null;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const response = await fetch(normalizedUrl, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate",
-        "Cache-Control": "no-cache",
-      },
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (response.ok) {
-      // Read only first 200KB
-      const reader = response.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        let totalBytes = 0;
-        const MAX_BYTES = 200_000;
-        html = "";
-        while (totalBytes < MAX_BYTES) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          html += decoder.decode(value, { stream: true });
-          totalBytes += value.length;
-        }
-        reader.cancel().catch(() => {});
-      }
-    } else {
-      fetchError = `HTTP ${response.status}`;
-      console.warn(`[import] Fetch failed for ${normalizedUrl}: ${fetchError}`);
-    }
-  } catch (e) {
-    fetchError = e instanceof Error ? e.message : String(e);
-    console.warn(`[import] Fetch error for ${normalizedUrl}: ${fetchError}`);
-  }
+  const { html, error: fetchError } = await fetchHtml(normalizedUrl);
+  if (fetchError) console.warn(`[import] Fetch failed for ${normalizedUrl}: ${fetchError}`);
 
   // Run extraction layers — earlier layers fill first, later layers only fill gaps
-  let fields: Record<string, FieldResult> = {};
+  let fields: Fields = {};
 
-  // Layer 4 first (API results are highest confidence)
+  // Platform API results first (highest confidence)
   if (specialFields) {
     for (const [key, val] of Object.entries(specialFields)) { if (!fields[key]) fields[key] = val; }
   }
 
   if (html) {
-    // Layer 2: JSON-LD (high confidence, structured data)
-    const jsonLdFields = extractJsonLd(html);
-    for (const [key, val] of Object.entries(jsonLdFields)) { if (!fields[key]) fields[key] = val; }
-
-    // Layer 1: Meta tags
-    const metaFields = extractMetaFields(html);
-    for (const [key, val] of Object.entries(metaFields)) { if (!fields[key]) fields[key] = val; }
-
-    // Layer 3: HTML fallbacks
-    const htmlFields = extractHtmlFallbacks(html);
+    // Recipe selectors → JSON-LD → meta tags → HTML fallbacks
+    const htmlFields = extractAllFields(html, recipe);
     for (const [key, val] of Object.entries(htmlFields)) { if (!fields[key]) fields[key] = val; }
 
-    // Body text extraction (regex-based, replaces Readability)
     if (!fields.body) {
-      const bodyText = extractBodyText(html);
+      const bodyText = extractBodyText(html, recipe);
       if (bodyText) fields.body = { value: bodyText, source: "html-body", confidence: 0.5 };
     }
   }
@@ -405,7 +191,7 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
   }
 
   // Compute overall confidence
-  const fieldValues = Object.values(fields);
+  const fieldValues = Object.values(fields) as FieldResult[];
   const avgConfidence = fieldValues.length > 0
     ? fieldValues.reduce((sum, f) => sum + f.confidence, 0) / fieldValues.length
     : 0;

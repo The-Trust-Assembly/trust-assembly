@@ -141,6 +141,10 @@ export default function SubmitScreen({ user, onUpdate, draftId, onDraftLoaded, o
         setImportMsg(`Imported ${imported.join(" and ")} from ${result.recipeUsed || result.platform || "page"}.`);
       } else if (Object.keys(fields).length > 0) {
         setImportMsg("Fields already filled — import skipped.");
+      } else if (result.fetchError && /403|401|429/.test(result.fetchError)) {
+        setImportMsg(`The site blocked our request (${result.fetchError}) — fill in fields manually.`);
+      } else if (result.fetchError) {
+        setImportMsg(`Couldn't fetch the page (${result.fetchError}) — fill in fields manually.`);
       } else {
         setImportMsg("No content found on page.");
       }
