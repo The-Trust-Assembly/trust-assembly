@@ -4,6 +4,7 @@ import {
   fetchHtml,
   extractAllFields,
   extractBodyText,
+  normalizeAuthors,
   type Fields,
   type FieldResult,
 } from "@/lib/import/extract";
@@ -174,6 +175,14 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
 
   // Apply site-specific hints (title stripping, etc.)
   applyMetaHints(fields, recipe);
+
+  // Normalize the byline: strip "By", drop publication suffix, cap count
+  if (fields.author?.value) {
+    const siteName = fields.publication?.value || fields.siteName?.value;
+    const normalized = normalizeAuthors(fields.author.value, siteName);
+    if (normalized) fields.author.value = normalized;
+    else delete fields.author;
+  }
 
   // Extract canonical URL
   const canonical = fields._canonical?.value || normalizedUrl;

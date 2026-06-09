@@ -12,7 +12,7 @@ export const PLATFORMS = {
     headlineLabel: "ORIGINAL HEADLINE *",
     headlineMultiline: false,
     subtitleLabel: "SUBTITLE (OPTIONAL)",
-    authorLabel: "AUTHOR(S) (OPTIONAL)",
+    authorLabel: "AUTHOR(S)",
     authorPlaceholder: "Type author name and press Enter",
     section2Title: "REWRITE THE HEADLINE",
     replacementLabel: "PROPOSED REPLACEMENT *",

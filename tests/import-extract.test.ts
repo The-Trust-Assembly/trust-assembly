@@ -231,5 +231,105 @@ test("falls back to page-wide paragraphs when no container matches", () => {
   assert.ok(body!.includes("Paragraph 3"));
 });
 
+// ─── Fixture 7: live-updates pages (CNN-style) ──────────────────────
+// Live blogs repeat byline elements in every update post and in
+// "related story" teasers. A multi:true recipe selector must scope to
+// the page-level byline block, not vacuum the whole page. Body text
+// lives across many <article> posts (or in JSON-LD liveBlogUpdate).
+
+import { normalizeAuthors } from "../src/lib/import/extract.ts";
+
+const CNN_RECIPE = {
+  selectors: {
+    title: { css: "h1.headline__text", attr: null, fallback: "og:title" },
+    author: { css: ".byline__name", attr: null, multi: true, separator: ", " },
+    body: { css: ".article__content p, .zn-body__paragraph" },
+  },
+} as Record<string, unknown>;
+
+const livePost = (i: number, author: string) => `
+<article class="live-story-post">
+  <header><h2>Update ${i}: strikes reported near the border</h2>
+  <div class="byline"><span class="byline__name">${author}</span></div></header>
+  <div class="live-story-post__content">
+    <p>Update ${i} body paragraph one with enough words to pass the extraction length filter comfortably.</p>
+    <p>Update ${i} body paragraph two describing further developments reported by correspondents on the ground.</p>
+  </div>
+</article>`;
+
+const LIVE_PAGE_HTML = `<!DOCTYPE html><html><head>
+<meta property="og:title" content="Live updates: US military launches strikes | CNN">
+</head><body>
+<h1 class="headline__text">Live updates: US military launches strikes</h1>
+<div class="headline__byline">
+  <div class="byline__names">
+    <span class="byline__name">Davis Winkie</span>
+    <span class="byline__name">Alayna Treene</span>
+    <span class="byline__name">Kit Maher</span>
+  </div>
+</div>
+${livePost(1, "Jeremy Diamond")}
+${livePost(2, "Zachary Cohen")}
+${livePost(3, "Haley Britzky")}
+<div class="related-content">
+  <article class="card"><h3>Analysis: what comes next</h3>
+  <span class="byline__name">Aaron Blake</span></article>
+  <article class="card"><h3>Markets react to the news</h3>
+  <span class="byline__name">Matt Egan</span></article>
+</div>
+</body></html>`;
+
+test("live page: multi-selector scopes to page-level byline block", () => {
+  const fields = extractAllFields(LIVE_PAGE_HTML, CNN_RECIPE);
+  assert.equal(fields.author?.value, "Davis Winkie, Alayna Treene, Kit Maher");
+});
+
+test("live page: body concatenates update posts, skips teaser stubs", () => {
+  const body = extractBodyText(LIVE_PAGE_HTML, CNN_RECIPE);
+  assert.ok(body, "body should be extracted");
+  for (const i of [1, 2, 3]) {
+    assert.ok(body!.includes(`Update ${i} body paragraph one`), `missing update ${i}`);
+  }
+  assert.ok(!body!.includes("Markets react"), "related-story teaser leaked into body");
+});
+
+test("JSON-LD liveBlogUpdate assembles body without collecting update authors", () => {
+  const html = `<html><head><script type="application/ld+json">
+  {
+    "@type": "LiveBlogPosting",
+    "headline": "Live updates: severe weather across the plains",
+    "author": { "@type": "Organization", "name": "The Gazette" },
+    "liveBlogUpdate": [
+      { "@type": "BlogPosting", "headline": "Tornado warning issued", "articleBody": "The national weather service issued a warning for three counties.", "author": { "name": "Contributor One" } },
+      { "@type": "BlogPosting", "headline": "Power outages spread", "articleBody": "Utilities reported forty thousand customers without electricity.", "author": { "name": "Contributor Two" } }
+    ]
+  }
+  </script></head><body></body></html>`;
+  const fields = extractAllFields(html, null);
+  assert.equal(fields.title?.value, "Live updates: severe weather across the plains");
+  assert.ok(fields.body?.value.includes("Tornado warning issued"));
+  assert.ok(fields.body?.value.includes("forty thousand customers"));
+  assert.equal(fields.author?.value, "The Gazette");
+});
+
+// ─── Fixture 8: author normalization ────────────────────────────────
+
+test("normalizeAuthors strips 'By', publication suffix, and 'and'", () => {
+  assert.equal(
+    normalizeAuthors("By Kevin Liptak, Alayna Treene and Kit Maher, CNN", "CNN"),
+    "Kevin Liptak, Alayna Treene, Kit Maher"
+  );
+});
+
+test("normalizeAuthors caps runaway contributor lists", () => {
+  const twentyFour = Array.from({ length: 24 }, (_, i) => `Reporter ${i + 1}`).join(", ");
+  const result = normalizeAuthors(twentyFour);
+  assert.equal(result.split(", ").length, 6);
+});
+
+test("normalizeAuthors dedupes repeated names", () => {
+  assert.equal(normalizeAuthors("Jane Doe, jane doe, Jane Doe"), "Jane Doe");
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

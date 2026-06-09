@@ -146,8 +146,21 @@ function extractWithSelector($: CheerioAPI, rule: SelectorRule): string | null {
     (rule.attr ? el.attr(rule.attr) : el.text())?.trim() || null;
 
   if (rule.multi) {
+    // Scope multi-matches to the first match's byline cluster. Live-blog
+    // pages and "related story" teasers repeat byline elements all over
+    // the page — without scoping, a CNN live-updates page yields 20+
+    // authors. On a normal article all authors share one byline block,
+    // so scoping keeps them all.
+    let scoped = elements;
+    const cluster = elements.first().parent().closest(
+      '[class*="byline"], [class*="metadata"], [class*="author"], header, article'
+    );
+    if (cluster.length > 0) {
+      const within = cluster.find(rule.css);
+      if (within.length > 0) scoped = within;
+    }
     const values: string[] = [];
-    elements.each((_, el) => {
+    scoped.each((_, el) => {
       const v = readOne($(el));
       if (v && !values.includes(v)) values.push(v);
     });
@@ -231,6 +244,23 @@ export function extractJsonLd($: CheerioAPI): Fields {
     }
 
     for (const item of items) {
+      // Live blogs: the real content lives in liveBlogUpdate entries.
+      // Assemble their headlines and bodies; do NOT collect per-update
+      // authors — live pages credit 20+ contributors across updates.
+      if (Array.isArray(item.liveBlogUpdate) && !fields.body) {
+        const sections: string[] = [];
+        for (const update of item.liveBlogUpdate as Record<string, unknown>[]) {
+          if (!update || typeof update !== "object") continue;
+          const headline = typeof update.headline === "string" ? update.headline.trim() : "";
+          const body = typeof update.articleBody === "string" ? update.articleBody.trim() : "";
+          if (headline && body) sections.push(`${headline}\n\n${body}`);
+          else if (body) sections.push(body);
+          else if (headline) sections.push(headline);
+        }
+        if (sections.length > 0) {
+          fields.body = { value: sections.join("\n\n").slice(0, 10000), source: "json-ld-liveblog", confidence: 0.85 };
+        }
+      }
       if (typeMatches(item["@type"], ARTICLE_TYPES)) {
         setOnce("title", item.headline || item.name, 0.9);
         setOnce("description", item.description, 0.85);
@@ -420,6 +450,29 @@ export function extractBodyText(html: string, recipe: Record<string, unknown> | 
     if (bestScore > 1500) break; // strong match — no need to scan weaker selectors
   }
 
+  // Live blogs render each update as its own <article>. If several
+  // substantial articles exist, the story is their concatenation in
+  // DOM order — not the single longest update.
+  const articles = $("article");
+  if (articles.length >= 2) {
+    const seen = new Set<string>();
+    const combined: string[] = [];
+    let combinedScore = 0;
+    articles.each((_, el) => {
+      if ($(el).parents("article").length > 0) return; // skip nested articles
+      const paragraphs = paragraphsFrom($, $(el));
+      const score = paragraphs.reduce((sum, p) => sum + p.length, 0);
+      if (score < 150) return; // teaser/related-story stubs
+      for (const p of paragraphs) {
+        if (!seen.has(p)) { seen.add(p); combined.push(p); combinedScore += p.length; }
+      }
+    });
+    if (combinedScore > bestScore) {
+      bestScore = combinedScore;
+      bestParagraphs = combined;
+    }
+  }
+
   if (bestScore < 200) {
     // Last resort: every <p> on the page
     const all = paragraphsFrom($, $("body"));
@@ -429,6 +482,29 @@ export function extractBodyText(html: string, recipe: Record<string, unknown> | 
 
   if (bestParagraphs.length === 0) return null;
   return bestParagraphs.join("\n\n").slice(0, MAX_BODY_CHARS);
+}
+
+// ─── Author normalization ──────────────────────────────────────────
+
+// Bylines arrive as "By Jane O'Brien, Sam D'Angelo and Lee Park, CNN".
+// Strip the "By", drop a trailing publication name, dedupe, and cap —
+// live pages can credit 20+ contributors, which is unusable as form chips.
+const MAX_AUTHORS = 6;
+
+export function normalizeAuthors(raw: string, siteName?: string): string {
+  const stripped = raw.trim().replace(/^by\s+/i, "");
+  const parts = stripped.split(/\s*,\s*|\s+and\s+/i).map((p) => p.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+    if (siteName && lower === siteName.toLowerCase()) continue;
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    names.push(part);
+    if (names.length >= MAX_AUTHORS) break;
+  }
+  return names.join(", ");
 }
 
 // ─── Combined extraction ───────────────────────────────────────────
