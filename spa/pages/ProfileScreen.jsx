@@ -20,6 +20,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
   const [deleting, setDeleting] = useState(false);
   const [openRibbons, setOpenRibbons] = useState({ trust: false, subs: false, reviews: false, disputes: false, di: false, settings: false });
   const [marks, setMarks] = useState(null); // { balance, currency, transactions }
+  const [trustScores, setTrustScores] = useState(null); // { assembly_submitter, assembly_juror, system_submitter, system_juror }
   const toggle = (key) => setOpenRibbons(prev => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => { (async () => {
@@ -38,6 +39,14 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         if (mres.ok) {
           const mdata = await mres.json();
           if (mdata.enabled) setMarks(mdata);
+        }
+      } catch {}
+      // Four trust scores (returns { enabled: false } until migration 027 runs)
+      try {
+        const sres = await fetch("/api/users/me/scores");
+        if (sres.ok) {
+          const sdata = await sres.json();
+          if (sdata.enabled && Object.keys(sdata.scores || {}).length > 0) setTrustScores(sdata.scores);
         }
       } catch {}
     } catch (e) {
@@ -96,6 +105,37 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--red)" }}>{rejectedCount}</div><div className="stat-label">Rejected</div></div>
         {marks && <div className="stat-card" title="Marks pay dispute stakes and are earned through reviews and approved submissions"><div className="stat-num" style={{ color: "var(--gold)" }}>{marks.balance}</div><div className="stat-label">{marks.currency}</div></div>}
       </div>
+
+      {/* Four trust scores: submitter/juror x assembly/system */}
+      {trustScores && (
+        <div style={{ border: "1px solid var(--border)", background: "var(--card-bg)", padding: "12px 14px", marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 8 }}>Trust Scores</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            {[
+              ["assembly_submitter", "Assembly Submitter"],
+              ["assembly_juror", "Assembly Juror"],
+              ["system_submitter", "System Submitter"],
+              ["system_juror", "System Juror"],
+            ].map(([key, label]) => {
+              const s = trustScores[key];
+              return (
+                <div key={key}>
+                  <div style={{ fontSize: 22, fontFamily: "var(--serif)", color: s ? (s.aboveHundred ? "var(--gold)" : "var(--text)") : "var(--text-muted)" }}>
+                    {s ? `${s.displayedPercent}%` : "—"}
+                  </div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
+                    {s ? `${s.rawPoints} pts earned of ${s.pointsPossible} tested` : "Not yet tested"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 8 }}>
+            Percentage shows how often you've been right. Points show how much tested work that judgment rests on. Scores above 100% mean the system was later corrected in your favor.
+          </div>
+        </div>
+      )}
 
       {/* 01: Trust by assembly */}
       <div className="ribbon">

@@ -25,6 +25,7 @@ import { assertTransition } from "@/lib/submission-states";
 import { disputeStake, jurorPayPerRound } from "@/lib/scoring/engine";
 import { creditMarks, payJurors } from "@/lib/scoring/marks";
 import { EARN_SUBMISSION_PASSED_MARKS, EARN_JUROR_REVIEW_MARKS } from "@/lib/scoring/constants";
+import { accrueSubmissionResolution, accrueRescueBonuses } from "@/lib/scoring/accrual";
 
 interface VoteRow {
   approve: boolean;
@@ -215,6 +216,24 @@ export async function tryResolveSubmission(
     }
   } catch (marksError) {
     console.warn("Submission marks payout failed (non-blocking):", marksError);
+  }
+
+  // ── Score accrual (spec A4/A5/A7) — fail-soft, never blocks ──
+  // Submitter earns/banks weighted item points; every juror is scored
+  // against the outcome; deception findings increment the divisor.
+  try {
+    const scoreTarget = sub.is_di && sub.di_partner_id ? sub.di_partner_id : sub.submitted_by;
+    await accrueSubmissionResolution({
+      submissionId,
+      outcome,
+      isCross,
+      orgId: sub.org_id,
+      submitterId: scoreTarget,
+      wasLie,
+      votes,
+    });
+  } catch (scoreError) {
+    console.warn("Score accrual failed (non-blocking):", scoreError);
   }
 
   // Notify the submitter (fire-and-forget, never throws)
@@ -869,6 +888,24 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
       }
     } catch (marksError) {
       console.warn("Dispute marks payout failed (non-blocking):", marksError);
+    }
+
+    // ── Rescue bonuses (spec A6) — visible, named, numerator-only ──
+    // A flipped verdict fires Cassandra for the vindicated submitter
+    // and Whistleblower for original jurors who held the minority line.
+    if (outcome === "upheld") {
+      try {
+        await accrueRescueBonuses({
+          disputeId,
+          submissionId: d.submission_id as string,
+          orgId: d.org_id as string,
+          disputeType: (d.dispute_type as string) || "challenge_approval",
+          round: parseInt(d.dispute_round as string) || 1,
+          originalSubmitterId: d.original_submitter as string,
+        });
+      } catch (rescueError) {
+        console.warn("Rescue bonus accrual failed (non-blocking):", rescueError);
+      }
     }
 
     // Notify both parties
