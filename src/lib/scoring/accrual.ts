@@ -86,7 +86,7 @@ export async function recordScoreEvent(ev: ScoreEvent): Promise<{ ok: boolean; d
        SET points_earned = citizen_scores.points_earned + EXCLUDED.points_earned,
            points_possible = citizen_scores.points_possible + EXCLUDED.points_possible,
            rescue_bonus = citizen_scores.rescue_bonus + EXCLUDED.rescue_bonus,
-           deception_findings = citizen_scores.deception_findings + EXCLUDED.deception_findings,
+           deception_findings = GREATEST(0, citizen_scores.deception_findings + EXCLUDED.deception_findings),
            updated_at = now()
        RETURNING deception_findings`,
       [ev.userId, ev.role, ev.scope, orgId, earned, possible, bonus, deception]
@@ -189,25 +189,14 @@ export async function accrueSubmissionResolution(params: {
 
   // Deception finding: divisor counter + auto-ban review at threshold
   if (wasLie && !passed) {
-    const result = await recordScoreEvent({
+    await applyDeceptionAdjustment({
       userId: submitterId,
-      role: "submitter",
-      scope,
       orgId,
-      eventType: "deception_finding",
+      delta: 1,
+      scope,
       submissionId,
-      deceptionDelta: 1,
-      detail: { outcome },
+      reason: "jury deception finding",
     });
-    if (result.ok && (result.deceptionFindings || 0) >= DECEPTION_AUTOBAN_THRESHOLD) {
-      try {
-        await sql`
-          INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
-          VALUES ('Deception threshold reached — ban review triggered', ${submitterId}, ${orgId}, 'user', ${submitterId},
-                  ${JSON.stringify({ findings: result.deceptionFindings, scope })}::jsonb)
-        `;
-      } catch {}
-    }
   }
 
   // Jurors: full item-set value at stake; earned when vote matched outcome
@@ -226,6 +215,54 @@ export async function accrueSubmissionResolution(params: {
       pointsPossible: totalValue,
       detail: { outcome, matched },
     });
+  }
+}
+
+// ─── Deception finding adjustments (spec A7 + disputable findings) ──
+
+// A deception finding is itself a disputable claim. Clearing one
+// decrements the divisor (floored at zero); a FAILED challenge counts
+// as a fresh finding — dispute it without bullets and the gun goes
+// off in your hand. The third finding triggers ban review.
+export async function applyDeceptionAdjustment(params: {
+  userId: string;
+  orgId: string;
+  delta: 1 | -1;
+  scope?: ScoreScope;
+  submissionId?: string;
+  disputeId?: string;
+  reason: string;
+}): Promise<void> {
+  const { userId, orgId, delta, submissionId, disputeId, reason } = params;
+  const result = await recordScoreEvent({
+    userId,
+    role: "submitter",
+    scope: params.scope || "assembly",
+    orgId,
+    eventType: "deception_finding",
+    submissionId,
+    disputeId,
+    deceptionDelta: delta,
+    detail: { reason },
+  });
+  if (!result.ok) return;
+
+  if (delta > 0 && (result.deceptionFindings || 0) >= DECEPTION_AUTOBAN_THRESHOLD) {
+    try {
+      await sql`
+        INSERT INTO audit_log (action, user_id, org_id, entity_type, entity_id, metadata)
+        VALUES ('Deception threshold reached — ban review triggered', ${userId}, ${orgId}, 'user', ${userId},
+                ${JSON.stringify({ findings: result.deceptionFindings, reason })}::jsonb)
+      `;
+    } catch {}
+    createNotification({
+      userId,
+      type: "deception_threshold",
+      title: "Third deception finding — ban review triggered",
+      body: "Three findings of deliberate deception place your account under ban review.",
+      entityType: "user",
+      entityId: userId,
+    }).catch(() => {});
   }
 }
 

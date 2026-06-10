@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { ok, serverError } from "@/lib/api-utils";
+import { computeScore } from "@/lib/scoring/engine";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export async function GET() {
         s.id, s.url, s.normalized_url, s.original_headline, s.replacement,
         s.submission_type, s.reasoning, s.status, s.author,
         s.created_at, s.resolved_at, s.slug, s.thumbnail_url,
+        u.id AS submitter_id,
         u.username AS submitted_by, u.display_name AS submitted_by_display_name,
         u.total_wins, u.total_losses, u.current_streak,
         o.name AS org_name, o.id AS org_id
@@ -42,6 +44,37 @@ export async function GET() {
       });
     }
 
+    // System Submitter scores (spec A11: the extension/public surfaces
+    // run on System-scope trust). Side-by-side with the legacy
+    // trustScore until the cutover. Fail-soft pre-migration-027.
+    const submitterScores: Record<string, { displayedPercent: number; rawPoints: number; pointsPossible: number }> = {};
+    try {
+      const submitterIds = [...new Set(result.rows.map((r: any) => r.submitter_id).filter(Boolean))];
+      if (submitterIds.length > 0) {
+        const tallies = await sql.query(
+          `SELECT user_id, SUM(points_earned) AS earned, SUM(points_possible) AS possible,
+                  SUM(rescue_bonus) AS bonus, SUM(deception_findings) AS deceptions
+           FROM citizen_scores
+           WHERE user_id = ANY($1) AND role = 'submitter' AND scope = 'system'
+           GROUP BY user_id`,
+          [submitterIds]
+        );
+        for (const row of tallies.rows) {
+          const score = computeScore({
+            pointsEarned: Number(row.earned),
+            pointsPossible: Number(row.possible),
+            rescueBonus: Number(row.bonus),
+            deceptionFindings: Number(row.deceptions),
+          });
+          submitterScores[row.user_id] = {
+            displayedPercent: score.displayedPercent,
+            rawPoints: score.rawPoints,
+            pointsPossible: score.pointsPossible,
+          };
+        }
+      }
+    } catch { /* scoring not migrated yet */ }
+
     const submissions = result.rows.map((s: any) => ({
       id: s.id,
       url: s.url,
@@ -60,6 +93,7 @@ export async function GET() {
       orgName: s.org_name,
       orgId: s.org_id,
       trustScore: 100 + Math.sqrt(Math.max(0, s.total_wins || 0)),
+      systemSubmitterScore: submitterScores[s.submitter_id] || null,
       evidence: evidenceMap[s.id] || [],
     }));
 

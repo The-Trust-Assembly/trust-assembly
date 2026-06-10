@@ -15,6 +15,8 @@ import {
   disputeCooldownDays,
   disputeJurySize,
   jurorPayPerRound,
+  discountedStake,
+  stakeDiscountMultiplier,
   tallySubmission,
   tallyJurorReview,
 } from "../src/lib/scoring/engine.ts";
@@ -154,6 +156,30 @@ test("jury grows by 2 each round from base of 5: round 1 → 7", () => {
 
 test("juror pay: non-recoverable stake split across the round's jury", () => {
   assert.equal(jurorPayPerRound(disputeStake(3), disputeJurySize(3)), Math.floor(40 / 11));
+});
+
+// ─── Reputation-discounted stakes ───────────────────────────────────
+
+test("90%+ record with tested volume pays half stake", () => {
+  assert.equal(discountedStake(1, 95, 100), 5);   // 10 × 0.5
+  assert.equal(discountedStake(3, 95, 100), 20);  // 40 × 0.5
+});
+
+test("75%+ record pays three quarters", () => {
+  assert.equal(discountedStake(1, 80, 100), 8);   // 10 × 0.75
+});
+
+test("high percentage without tested volume buys nothing", () => {
+  assert.equal(stakeDiscountMultiplier(100, 5), 1); // 5 pts tested < 20 minimum
+  assert.equal(discountedStake(1, 100, 5), 10);
+});
+
+test("weak record pays full price", () => {
+  assert.equal(discountedStake(2, 60, 500), 20);
+});
+
+test("discounted stake never drops below 1 Mark", () => {
+  assert.ok(discountedStake(1, 99, 1000) >= 1);
 });
 
 // ─── Edge cases ─────────────────────────────────────────────────────

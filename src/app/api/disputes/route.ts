@@ -6,7 +6,7 @@ import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { logError } from "@/lib/error-logger";
 import { createNotification } from "@/lib/notifications";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
-import { disputeStake } from "@/lib/scoring/engine";
+import { disputeStake, discountedStake, computeScore } from "@/lib/scoring/engine";
 import { marksEnabled, getMarksBalance } from "@/lib/scoring/marks";
 import { CURRENCY_NAME } from "@/lib/scoring/constants";
 
@@ -101,13 +101,13 @@ export async function POST(request: NextRequest) {
 
   // Look up submission to get org_id, original submitter, and status
   const sub = await sql`
-    SELECT id, org_id, submitted_by, status FROM submissions WHERE id = ${submissionId as string}
+    SELECT id, org_id, submitted_by, status, deliberate_lie_finding FROM submissions WHERE id = ${submissionId as string}
   `;
   if (sub.rows.length === 0) {
     return err("Submission not found", 404);
   }
 
-  const { org_id, submitted_by, status: subStatus } = sub.rows[0];
+  const { org_id, submitted_by, status: subStatus, deliberate_lie_finding } = sub.rows[0];
 
   // Validate dispute is on a resolved submission
   const validDisputeStatuses = ["approved", "consensus", "rejected", "consensus_rejected"];
@@ -117,6 +117,18 @@ export async function POST(request: NextRequest) {
 
   // Determine dispute type from body or infer from submission status
   const resolvedType = (disputeType as string) || (subStatus === "rejected" || subStatus === "consensus_rejected" ? "challenge_rejection" : "challenge_approval");
+
+  // Deception findings are themselves disputable — but only by the
+  // person branded, only while a finding stands, and a FAILED
+  // challenge counts as a second finding (resolved in vote-resolution).
+  if (resolvedType === "challenge_deception") {
+    if (!deliberate_lie_finding) {
+      return err("This submission carries no deception finding to challenge.");
+    }
+    if (session.sub !== submitted_by) {
+      return err("Only the submitter can challenge a deception finding against them.");
+    }
+  }
 
   // ── Escalating dispute cooldown and stakes ──
   // Count previous disputes on this submission to determine the round
@@ -148,14 +160,37 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Marks stake (spec A8/A9): base fee × 2^(round-1), non-recoverable ──
+  // Earned reputation discounts the stake (spec B3): a proven record
+  // pays part of the price, so vindication isn't gated on wealth alone.
   // Fail-soft: if migration 027 hasn't run, the economy is disabled and
   // disputes file without a charge.
-  const stakeMarks = disputeStake(disputeRound);
+  let stakeMarks = disputeStake(disputeRound);
+  let stakeDiscounted = false;
+  try {
+    const tallies = await sql`
+      SELECT COALESCE(SUM(points_earned), 0) AS earned, COALESCE(SUM(points_possible), 0) AS possible,
+             COALESCE(SUM(rescue_bonus), 0) AS bonus, COALESCE(SUM(deception_findings), 0) AS deceptions
+      FROM citizen_scores WHERE user_id = ${session.sub}
+    `;
+    const t = tallies.rows[0];
+    const score = computeScore({
+      pointsEarned: Number(t.earned),
+      pointsPossible: Number(t.possible),
+      rescueBonus: Number(t.bonus),
+      deceptionFindings: Number(t.deceptions),
+    });
+    const reduced = discountedStake(disputeRound, score.displayedPercent, score.pointsPossible);
+    if (reduced < stakeMarks) {
+      stakeMarks = reduced;
+      stakeDiscounted = true;
+    }
+  } catch { /* scoring tables not migrated yet — full price */ }
+
   const useMarks = await marksEnabled();
   if (useMarks) {
     const balance = await getMarksBalance(session.sub);
     if (balance !== null && balance < stakeMarks) {
-      return err(`Filing this dispute costs ${stakeMarks} ${CURRENCY_NAME} (round ${disputeRound}). Your balance is ${balance} ${CURRENCY_NAME}. The stake doubles each round and pays the jury.`);
+      return err(`Filing this dispute costs ${stakeMarks} ${CURRENCY_NAME} (round ${disputeRound}${stakeDiscounted ? ", reputation discount applied" : ""}). Your balance is ${balance} ${CURRENCY_NAME}. The stake doubles each round and pays the jury.`);
     }
   }
 

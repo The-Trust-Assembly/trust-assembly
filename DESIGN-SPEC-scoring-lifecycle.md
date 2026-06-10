@@ -271,6 +271,24 @@ never purchasable.)
   profile/citizen lookup; public score ledger with named bonus events; extension
   overlay and public feeds switch to `computeScore()` on System-scope rows.
 
+### B4a. Amendments (user decisions, June 2026)
+
+1. **Blind ballots** — confirmed mostly present: directional tallies hidden
+   until resolution. One leak fixed: dispute juror notes (labeled with vote
+   direction) no longer render while the dispute is pending. *Known residual:
+   vote data still reaches the client store pre-resolution; a determined user
+   can read it in devtools. True blindness requires withholding votes from the
+   data API until resolved — flagged for a future pass.*
+2. **Deception findings are disputable** (`challenge_deception` dispute type):
+   only the branded submitter may file, only while a finding stands. Winning
+   clears the finding and restores the divisor. **Losing counts as a fresh
+   deception finding** ("don't stick to your guns if you don't have bullets") —
+   and the third finding triggers ban review.
+3. **Reputation discounts dispute stakes**: ≥90% displayed score with ≥20
+   tested points → half price; ≥75% → quarter off. You pay with earned
+   reputation or money — and people with earned reputation can take your
+   money if you dispute foolishly. Constants in `constants.ts`.
+
 ### B5. Known deltas from current behavior (intentional)
 
 - Dispute stake becomes `10 × 2^(r-1)` Marks (was abstract `2^r` points).

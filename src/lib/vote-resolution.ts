@@ -25,7 +25,7 @@ import { assertTransition } from "@/lib/submission-states";
 import { disputeStake, jurorPayPerRound } from "@/lib/scoring/engine";
 import { creditMarks, payJurors } from "@/lib/scoring/marks";
 import { EARN_SUBMISSION_PASSED_MARKS, EARN_JUROR_REVIEW_MARKS } from "@/lib/scoring/constants";
-import { accrueSubmissionResolution, accrueRescueBonuses } from "@/lib/scoring/accrual";
+import { accrueSubmissionResolution, accrueRescueBonuses, applyDeceptionAdjustment } from "@/lib/scoring/accrual";
 
 interface VoteRow {
   approve: boolean;
@@ -821,7 +821,28 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
       // Apply escalating stakes — winner gains, loser loses
       const stake = parseFloat(d.stake_points as string) || 2;
       const round = parseInt(d.dispute_round as string) || 1;
-      if (outcome === "upheld") {
+      if (d.dispute_type === "challenge_deception") {
+        // The deception finding itself was on trial (always a self-
+        // dispute by the branded submitter).
+        if (outcome === "upheld") {
+          // Finding overturned — clear the brand
+          await client.query(
+            "UPDATE submissions SET deliberate_lie_finding = FALSE WHERE id = $1",
+            [d.submission_id]
+          );
+          await client.query(
+            "UPDATE users SET deliberate_lies = GREATEST(0, deliberate_lies - 1) WHERE id = $1",
+            [d.original_submitter]
+          );
+        } else {
+          // Finding reaffirmed — challenging without bullets counts
+          // as a fresh deception finding
+          await client.query(
+            "UPDATE users SET deliberate_lies = deliberate_lies + 1, last_deception_finding = $1 WHERE id = $2",
+            [now, d.original_submitter]
+          );
+        }
+      } else if (outcome === "upheld") {
         // Disputer wins: gains stake as dispute_wins, original submitter loses
         await client.query(
           "UPDATE users SET dispute_wins = dispute_wins + 1, total_wins = total_wins + 1 WHERE id = $1",
@@ -890,10 +911,38 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
       console.warn("Dispute marks payout failed (non-blocking):", marksError);
     }
 
+    // ── Deception finding adjustments (disputable findings) ──
+    // Score divisor follows the verdict: cleared on upheld, a second
+    // finding on dismissed (with ban review at the third).
+    if (d.dispute_type === "challenge_deception") {
+      try {
+        await applyDeceptionAdjustment({
+          userId: d.original_submitter as string,
+          orgId: d.org_id as string,
+          delta: outcome === "upheld" ? -1 : 1,
+          submissionId: d.submission_id as string,
+          disputeId,
+          reason: outcome === "upheld" ? "deception finding overturned by dispute jury" : "deception challenge failed",
+        });
+        createNotification({
+          userId: d.original_submitter as string,
+          type: "deception_challenge_resolved",
+          title: outcome === "upheld" ? "Deception finding overturned" : "Deception challenge failed",
+          body: outcome === "upheld"
+            ? "The dispute jury cleared the deception finding. Your score divisor has been restored."
+            : "The jury reaffirmed the finding. The failed challenge counts as a second deception finding.",
+          entityType: "dispute",
+          entityId: disputeId,
+        }).catch(() => {});
+      } catch (deceptionError) {
+        console.warn("Deception adjustment failed (non-blocking):", deceptionError);
+      }
+    }
+
     // ── Rescue bonuses (spec A6) — visible, named, numerator-only ──
     // A flipped verdict fires Cassandra for the vindicated submitter
     // and Whistleblower for original jurors who held the minority line.
-    if (outcome === "upheld") {
+    if (outcome === "upheld" && d.dispute_type !== "challenge_deception") {
       try {
         await accrueRescueBonuses({
           disputeId,

@@ -2,6 +2,33 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
+import { computeScore } from "@/lib/scoring/engine";
+
+// The four trust scores are public record (spec A12). Fail-soft:
+// returns null until migration 027 has been run.
+async function getPublicScores(userId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const tallies = await sql`
+      SELECT role, scope, SUM(points_earned) AS earned, SUM(points_possible) AS possible,
+             SUM(rescue_bonus) AS bonus, SUM(deception_findings) AS deceptions
+      FROM citizen_scores WHERE user_id = ${userId}
+      GROUP BY role, scope
+    `;
+    if (tallies.rows.length === 0) return null;
+    const scores: Record<string, unknown> = {};
+    for (const row of tallies.rows) {
+      scores[`${row.scope}_${row.role}`] = computeScore({
+        pointsEarned: Number(row.earned),
+        pointsPossible: Number(row.possible),
+        rescueBonus: Number(row.bonus),
+        deceptionFindings: Number(row.deceptions),
+      });
+    }
+    return scores;
+  } catch {
+    return null;
+  }
+}
 
 // GET /api/users/[username] — public profile
 export async function GET(
@@ -31,8 +58,11 @@ export async function GET(
     WHERE om.user_id = ${user.id} AND om.is_active = TRUE
   `;
 
+  const trustScores = await getPublicScores(user.id as string);
+
   return ok({
     ...user,
+    trustScores,
     organizations: orgs.rows.map((o: Record<string, unknown>) => ({
       ...o,
       name: o.name || "Unknown Org",

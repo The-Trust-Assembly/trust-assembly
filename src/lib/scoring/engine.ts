@@ -12,6 +12,8 @@ import {
   DISPUTE_BASE_FILING_FEE_MARKS,
   DISPUTE_BASE_JURY_SIZE,
   DISPUTE_JURORS_ADDED_PER_ROUND,
+  STAKE_DISCOUNT_TIERS,
+  MIN_TESTED_POINTS_FOR_DISCOUNT,
   type ScoredItemType,
   type QualityTier,
 } from "./constants.ts";
@@ -102,6 +104,28 @@ export function disputeJurySize(
 export function jurorPayPerRound(stake: number, jurySize: number): number {
   if (jurySize <= 0) return 0;
   return Math.floor(stake / jurySize);
+}
+
+// Earned reputation discounts the stake (never below 1 Mark). The
+// discount only applies once enough work has been tested — score
+// percentage without volume buys nothing.
+export function stakeDiscountMultiplier(displayedPercent: number, pointsPossible: number): number {
+  if (pointsPossible < MIN_TESTED_POINTS_FOR_DISCOUNT) return 1;
+  for (const tier of STAKE_DISCOUNT_TIERS) {
+    if (displayedPercent >= tier.minPercent) return tier.multiplier;
+  }
+  return 1;
+}
+
+export function discountedStake(
+  round: number,
+  displayedPercent: number,
+  pointsPossible: number,
+  baseFee = DISPUTE_BASE_FILING_FEE_MARKS
+): number {
+  const full = disputeStake(round, baseFee);
+  const discounted = Math.round(full * stakeDiscountMultiplier(displayedPercent, pointsPossible));
+  return Math.max(1, discounted);
 }
 
 // ─── Accrual helpers (spec A4, A5) ─────────────────────────────────

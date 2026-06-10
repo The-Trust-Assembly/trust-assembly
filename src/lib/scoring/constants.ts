@@ -58,3 +58,13 @@ export const NEW_CITIZEN_GRANT_MARKS = 100;
 export const DISPUTE_BASE_FILING_FEE_MARKS = 10;
 export const EARN_SUBMISSION_PASSED_MARKS = 2;
 export const EARN_JUROR_REVIEW_MARKS = 1;
+
+// Earned reputation discounts dispute stakes: proven citizens pay
+// less to be heard, so vindication isn't gated on wealth alone.
+// Tiers require a minimum tested volume — a perfect score on three
+// points is enthusiasm, not evidence.
+export const STAKE_DISCOUNT_TIERS: Array<{ minPercent: number; multiplier: number }> = [
+  { minPercent: 90, multiplier: 0.5 },  // proven right 90%+ → half price
+  { minPercent: 75, multiplier: 0.75 }, // solid record → quarter off
+];
+export const MIN_TESTED_POINTS_FOR_DISCOUNT = 20;

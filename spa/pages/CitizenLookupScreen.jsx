@@ -17,6 +17,7 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen, c
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showAssemblies, setShowAssemblies] = useState(false);
+  const [trustScores, setTrustScores] = useState(null);
   const loadData = async () => {
     try {
       const all = (await sG(SK.USERS)) || {};
@@ -30,6 +31,14 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen, c
       const agents = Object.values(all).filter(x => x.isDI && x.diPartner === username);
       setDiAgents(agents);
       setNotFound(false);
+      // Public four-score record (null until migration 027 runs)
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(username)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.trustScores) setTrustScores(data.trustScores);
+        }
+      } catch {}
     } catch (e) {
       console.warn("[CitizenLookup] data load failed:", e);
     }
@@ -66,6 +75,23 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen, c
           </div>
           <Badge profile={p.profile} score={p.trustScore} />
         </div>
+        {trustScores && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>Public Trust Record</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 }}>
+              {[["assembly_submitter", "Assembly Submitter"], ["assembly_juror", "Assembly Juror"], ["system_submitter", "System Submitter"], ["system_juror", "System Juror"]].map(([key, label]) => {
+                const s = trustScores[key];
+                return (
+                  <div key={key}>
+                    <div style={{ fontSize: 18, fontFamily: "var(--serif)", color: s ? (s.aboveHundred ? "var(--gold)" : "var(--text)") : "var(--text-muted)" }}>{s ? `${s.displayedPercent}%` : "—"}</div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</div>
+                    <div style={{ fontSize: 9, color: "var(--text-muted)" }}>{s ? `${s.rawPoints} of ${s.pointsPossible} pts` : "untested"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {myOrgs.length > 0 && (
           <div style={{ marginTop: 10 }}>
             <div onClick={() => setShowAssemblies(!showAssemblies)} style={{ cursor: "pointer", fontSize: 9, fontFamily: "var(--mono)", letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 700, marginBottom: 4, userSelect: "none" }}>
