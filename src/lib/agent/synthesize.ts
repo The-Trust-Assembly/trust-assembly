@@ -21,6 +21,37 @@ export interface SynthesizeResult {
   usage: TokenUsage;
 }
 
+type Evidence = ArticleAnalysis["evidence"][number];
+
+// Carry verification stamps from the original (verified) evidence onto
+// the synthesis output. If the model returned no evidence, keep the
+// original list wholesale — never trade verified evidence for nothing.
+function mergeEvidence(original: Evidence[], synthesized: unknown): Evidence[] {
+  if (!Array.isArray(synthesized) || synthesized.length === 0) return original;
+  const synth = synthesized as Evidence[];
+
+  return synth.map((item, i) => {
+    const match =
+      original.find((o) => o.quote && item.quote && o.quote === item.quote) ||
+      original.find((o) => o.url && item.url && o.url === item.url) ||
+      original[i];
+    if (!match) return item;
+    // Stamps only transfer when the quote is identical (or restored
+    // verbatim) — a paraphrased quote must not inherit "verified".
+    const quoteSame = !!item.quote && match.quote === item.quote;
+    const quoteRestored = !item.quote && !!match.quote;
+    const urlSame = !!item.url && match.url === item.url;
+    return {
+      ...item,
+      quote: item.quote || match.quote,
+      quoteVerified: quoteSame || quoteRestored ? match.quoteVerified : undefined,
+      quoteContext: quoteSame || quoteRestored ? match.quoteContext : undefined,
+      urlVerified: urlSame ? match.urlVerified : undefined,
+      urlDetail: urlSame ? match.urlDetail : undefined,
+    };
+  });
+}
+
 export async function synthesizeAnalyses(
   topic: string,
   analyses: AnalyzedArticle[]
@@ -65,7 +96,7 @@ Respond with ONLY a valid JSON object:
       "originalHeadline": "original headline",
       "replacement": "corrected headline if correction",
       "reasoning": "refined reasoning incorporating cross-article understanding. Max 2000 chars.",
-      "evidence": [{"description": "...", "url": "..."}],
+      "evidence": [{"description": "...", "url": "...", "quote": "preserve the EXACT quote from the input evidence verbatim — do not paraphrase or drop it"}],
       "confidence": "high | medium | low",
       "inlineEdits": [
         {"originalText": "exact wrong text", "correctedText": "corrected text", "explanation": "why"}
@@ -119,14 +150,20 @@ Rules:
     const refined: AnalyzedArticle[] = analyses.map((orig) => {
       const synthEntry = result.analyses?.find((s: { url: string }) => s.url === orig.url);
       if (synthEntry) {
+        // The model re-emits evidence without the deterministic
+        // verification stamps (quoteVerified, urlVerified). Carry them
+        // over from the original evidence — matched by quote, URL, or
+        // position — so verification work is never silently destroyed.
+        const mergedEvidence = mergeEvidence(orig.analysis.evidence, synthEntry.evidence);
         const merged: ArticleAnalysis = {
           verdict: synthEntry.verdict || orig.analysis.verdict,
           originalHeadline: synthEntry.originalHeadline || orig.analysis.originalHeadline,
           replacement: synthEntry.replacement || orig.analysis.replacement,
           reasoning: synthEntry.reasoning || orig.analysis.reasoning,
-          evidence: synthEntry.evidence || orig.analysis.evidence,
+          evidence: mergedEvidence,
           confidence: synthEntry.confidence || orig.analysis.confidence,
           inlineEdits: synthEntry.inlineEdits || orig.analysis.inlineEdits,
+          bodyAnalysis: orig.analysis.bodyAnalysis,
         };
         return { ...orig, analysis: merged };
       }

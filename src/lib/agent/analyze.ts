@@ -140,9 +140,12 @@ JSON format:
 
 ${rules}`;
 
+  // 4096: the prompt demands 3-8 vault entries plus five test sentences
+  // per translation — at 2048 the JSON routinely truncated mid-output,
+  // failed parsing, and silently became verdict "skip".
   const response = await claude.messages.create({
     model: DEFAULT_MODEL,
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
 

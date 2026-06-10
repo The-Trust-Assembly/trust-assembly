@@ -66,7 +66,9 @@ function fuzzyMatch(
     if (sim > bestSimilarity) {
       bestSimilarity = sim;
       bestPosition = i;
-      bestText = articleText.substring(i, i + windowSize);
+      // Positions are in normalized coordinates — slice the normalized
+      // text, not the original (whitespace collapse shifts offsets)
+      bestText = normArticle.substring(i, i + windowSize);
 
       if (sim >= 0.95) break; // Close enough, stop early
     }
@@ -82,7 +84,7 @@ function fuzzyMatch(
       if (sim > bestSimilarity) {
         bestSimilarity = sim;
         bestPosition = i;
-        bestText = articleText.substring(i, i + windowSize);
+        bestText = normArticle.substring(i, i + windowSize);
       }
     }
   }

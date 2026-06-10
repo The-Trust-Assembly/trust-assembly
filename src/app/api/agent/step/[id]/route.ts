@@ -102,8 +102,8 @@ export async function POST(
     ? { name: runContext.orgName as string, description: (runContext.orgDescription as string) || "" }
     : undefined;
 
-  // Cost guard: kill the run if it's consumed too much
-  // Max $5.00 per run — prevents runaway costs from infinite loops
+  // Cost guard: kill the run if it's consumed too much —
+  // prevents runaway costs from infinite loops
   const MAX_COST_PER_RUN = 10.0;
   const MAX_TOKENS_PER_RUN = 2_000_000;
   const currentCost = Number(run.estimated_cost_usd || 0);
@@ -370,26 +370,18 @@ export async function POST(
     }
 
     // ========== STEP: ANALYZED → VERIFIED ==========
+    // Cheap transition. URL verification used to run here, but the
+    // verified analyses were never persisted — the next step reloaded
+    // artifacts and the work was lost. Verification now runs in the
+    // VERIFIED→READY step, on the same in-memory analyses that flow
+    // into synthesis and the final batch.
     if (run.status === "analyzed") {
-      await updateRun(run.id, "verifying", "Verifying URLs...", 82);
-
-      // Load all analyses from artifacts
-      const analysisArtifacts = await getArtifacts(run.id, "analysis");
-      const analyzed = analysisArtifacts.map((a) => {
-        const d = a.data as { url: string; headline: string; analysis: import("@/lib/agent/types").ArticleAnalysis };
-        return d;
-      });
-
-      // URL verification
-      await verifyEvidenceUrls(analyzed);
-
       await sql`
         UPDATE agent_runs
-        SET status = 'verified', stage_message = 'Verified. Synthesizing...', progress_pct = 85, updated_at = now()
+        SET status = 'verified', stage_message = 'Verifying & synthesizing...', progress_pct = 85, updated_at = now()
         WHERE id = ${run.id}
       `;
 
-      
       // Client fires next step
       return ok({ runId: run.id, status: "verified", step: "verify", needsNextStep: true });
     }
@@ -404,6 +396,11 @@ export async function POST(
         const d = a.data as { url: string; headline: string; analysis: import("@/lib/agent/types").ArticleAnalysis };
         return { url: d.url, headline: d.headline, analysis: d.analysis };
       });
+
+      // Verify evidence URLs on the same in-memory analyses that feed
+      // synthesis — the stamps survive the merge into the final batch.
+      await updateRun(run.id, "synthesizing", "Verifying evidence URLs...", 86);
+      await verifyEvidenceUrls(analyzed);
 
       // Synthesize
       let refined = analyzed;

@@ -133,11 +133,16 @@ export async function tryResolveSubmission(
     // Validate state transition before updating
     assertTransition(sub.status, outcome);
 
-    // Update submission status
-    await client.query(
-      "UPDATE submissions SET status = $1, resolved_at = $2, deliberate_lie_finding = $3 WHERE id = $4",
-      [outcome, now, wasLie, submissionId]
+    // Update submission status — conditional on the status we read, so
+    // two concurrent final votes can't both resolve (and both pay out)
+    const claim = await client.query(
+      "UPDATE submissions SET status = $1, resolved_at = $2, deliberate_lie_finding = $3 WHERE id = $4 AND status = $5 RETURNING id",
+      [outcome, now, wasLie, submissionId, sub.status]
     );
+    if (claim.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { resolved: false };
+    }
 
     // Resolve inline edits independently
     await resolveInlineEdits(client, submissionId, votes);
@@ -812,11 +817,17 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
     try {
       await client.query("BEGIN");
 
-      // Update dispute status
-      await client.query(
-        "UPDATE disputes SET status = $1, resolved_at = $2 WHERE id = $3",
+      // Claim resolution atomically — two jurors' final votes can race
+      // here, and only one request may fire reputation changes, Marks
+      // payouts, and rescue bonuses.
+      const claim = await client.query(
+        "UPDATE disputes SET status = $1, resolved_at = $2 WHERE id = $3 AND status = 'pending_review' RETURNING id",
         [outcome, now, disputeId]
       );
+      if (claim.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return { resolved: false };
+      }
 
       // Apply escalating stakes — winner gains, loser loses
       const stake = parseFloat(d.stake_points as string) || 2;
