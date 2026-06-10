@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { serverError } from "@/lib/api-utils";
+import { getCurrentUserFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -8,8 +9,12 @@ export const fetchCache = "force-no-store";
 // GET /api/data/users — returns ALL users keyed by username
 // in the format the v5 SPA expects. Excludes password hashes.
 // Serves sG(SK.USERS) reads from the relational database.
-export async function GET() {
+// email and real_name are private: only included for the requester's
+// own record (the SPA shows them under "Private to you" on the
+// profile page and never for other citizens).
+export async function GET(request: NextRequest) {
   try {
+  const session = await getCurrentUserFromRequest(request);
   // Allow browsers to briefly cache this heavy endpoint (15 seconds).
   // stale-while-revalidate lets the browser serve stale data while fetching fresh.
   const headers = {
@@ -23,7 +28,7 @@ export async function GET() {
       u.is_di, u.di_approved, u.is_admin,
       u.total_wins, u.total_losses, u.current_streak,
       u.dispute_wins, u.dispute_losses, u.deliberate_lies,
-      u.last_deception_finding, u.created_at, u.ip_hash,
+      u.last_deception_finding, u.created_at,
       u.primary_org_id,
       partner.username AS di_partner_username
     FROM users u
@@ -127,8 +132,8 @@ export async function GET() {
       username,
       displayName: row.display_name,
       avatar: row.avatar,
-      realName: row.real_name,
-      email: row.email,
+      realName: session?.sub === uid ? row.real_name : null,
+      email: session?.sub === uid ? row.email : null,
       gender: row.gender,
       age: row.age,
       country: row.country,
@@ -143,7 +148,6 @@ export async function GET() {
       isAdmin: row.is_admin,
       signupDate: row.created_at,
       signupTimestamp: row.created_at ? new Date(row.created_at as string).getTime() : 0,
-      ipHash: row.ip_hash,
       orgId: row.primary_org_id || userOrgIds[0] || null,
       orgIds: userOrgIds,
       totalWins: row.total_wins || 0,

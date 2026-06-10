@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ok, forbidden, notFound, err, serverError } from "@/lib/api-utils";
+import { checkMonthlySpendLimit } from "@/lib/agent/spend-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,10 @@ export async function POST(
     // Deduplicate
     const uniqueKeywords = [...new Set(keywords)].slice(0, 15);
 
+    // Enforce the instance's monthly spend limit
+    const spendCheck = await checkMonthlySpendLimit(agent.id as string);
+    if (!spendCheck.ok) return err(spendCheck.message, 402);
+
     // Create the run
     const runResult = await sql`
       INSERT INTO agent_runs (
@@ -125,6 +130,9 @@ export async function POST(
             stage_message = 'KICKOFF FAILED — use Retry', updated_at = now()
         WHERE id = ${run.id}
       `;
+      // Surface the failure — the run exists but is stuck in 'queued'
+      // until retried, and the user must know that.
+      return err("The scan was created but the pipeline failed to start after 2 attempts. Use Retry on the run, or try again.", 502);
     }
 
     return ok({
