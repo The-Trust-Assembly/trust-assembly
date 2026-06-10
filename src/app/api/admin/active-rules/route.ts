@@ -6,6 +6,12 @@ import {
   WILD_WEST_THRESHOLD, getJurySize, getSuperJurySize, getMajority,
 } from "@/lib/jury-rules";
 import { MAX_LENGTHS } from "@/lib/validation";
+import {
+  ITEM_WEIGHTS, QUALITY_MULTIPLIERS, DECEPTION_AUTOBAN_THRESHOLD,
+  CURRENCY_NAME, NEW_CITIZEN_GRANT_MARKS, DISPUTE_BASE_FILING_FEE_MARKS,
+  EARN_SUBMISSION_PASSED_MARKS, EARN_JUROR_REVIEW_MARKS,
+  STAKE_DISCOUNT_TIERS, MIN_TESTED_POINTS_FOR_DISCOUNT,
+} from "@/lib/scoring/constants";
 import { NextRequest } from "next/server";
 
 // Enrollment mode thresholds (mirrors spa/lib/permissions.js checkEnrollment)
@@ -111,6 +117,8 @@ export async function GET(request: NextRequest) {
         sponsorMinReviews: 10,
         sponsorMinTenureDays: 30,
       },
+      // Legacy formula weights (transitional — displayed alongside the
+      // four-score system until cutover)
       scoringWeights: {
         win: 1.0,
         disputeWin: 2.0,
@@ -123,6 +131,26 @@ export async function GET(request: NextRequest) {
         failedDisputeDrag: 2.0,
         vindicationBase: 10.0,
         persistenceExp: 1.5,
+      },
+      // Four-score system (DESIGN-SPEC-scoring-lifecycle.md, migration 027)
+      fourScoreSystem: {
+        itemWeights: ITEM_WEIGHTS,
+        qualityMultipliers: QUALITY_MULTIPLIERS,
+        rescueBonusFormula: "submission points × 2^n (numerator only)",
+        deceptionDivisor: "displayed = raw ÷ (1 + findings); 3rd finding → ban review",
+        deceptionAutobanThreshold: DECEPTION_AUTOBAN_THRESHOLD,
+        badgeSeed: "badge points add to numerator AND denominator of all four scores",
+      },
+      marksEconomy: {
+        currency: CURRENCY_NAME,
+        newCitizenGrant: NEW_CITIZEN_GRANT_MARKS,
+        baseDisputeFee: DISPUTE_BASE_FILING_FEE_MARKS,
+        stakeFormula: "base × 2^(round-1), non-recoverable, pays the round's jury",
+        cooldownFormula: "2^(round-1) days after a failed round",
+        earnSubmissionPassed: EARN_SUBMISSION_PASSED_MARKS,
+        earnJurorReview: EARN_JUROR_REVIEW_MARKS,
+        stakeDiscounts: STAKE_DISCOUNT_TIERS,
+        minTestedPointsForDiscount: MIN_TESTED_POINTS_FOR_DISCOUNT,
       },
       concessionRecovery: [
         { window: "1 week (1st)", recovery: "100%" },

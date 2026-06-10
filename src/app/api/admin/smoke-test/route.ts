@@ -313,6 +313,49 @@ export async function POST(request: NextRequest) {
     });
 
     // ═══════════════════════════════════════════════════════════════
+    // STAGE 5b: Verify scoring + Marks accrual (migration 027)
+    // Resolution should have written score_events / citizen_scores for
+    // the ghost submitter and jurors, and paid Marks. SKIPs cleanly
+    // when the migration hasn't been run. Ghost rows are removed by
+    // the user-delete CASCADE in cleanup.
+    // ═══════════════════════════════════════════════════════════════
+    await runStage("5b. Verify scoring & Marks accrual", async () => {
+      try {
+        const events = await sql`
+          SELECT event_type, points_earned, points_possible
+          FROM score_events WHERE submission_id = ${ghostIds.submissionId!}
+        `;
+        const tally = await sql`
+          SELECT role FROM citizen_scores WHERE user_id = ${ghostIds.submitterId!}
+        `;
+        const marks = await sql`
+          SELECT reason FROM marks_transactions WHERE submission_id = ${ghostIds.submissionId!}
+        `;
+        const submitterEvent = events.rows.find((e) => e.event_type === "item_adjudicated");
+        const jurorEvents = events.rows.filter((e) => e.event_type === "juror_vote_scored");
+        const pass = !!submitterEvent && jurorEvents.length > 0 && tally.rows.length > 0;
+        return {
+          status: pass ? ("PASS" as const) : ("FAIL" as const),
+          description: pass
+            ? `Accrual recorded: submitter ${submitterEvent?.points_earned}/${submitterEvent?.points_possible} pts, ${jurorEvents.length} juror events, ${marks.rows.length} Marks transactions`
+            : "Resolution did not write score events / tallies",
+          details: {
+            scoreEvents: events.rows.length,
+            jurorEvents: jurorEvents.length,
+            citizenScoreRows: tally.rows.length,
+            marksTransactions: marks.rows.map((m) => m.reason),
+          },
+        };
+      } catch {
+        return {
+          status: "SKIP" as const,
+          description: "Scoring tables not found — run migration 027 to enable scoring & Marks",
+          details: {},
+        };
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════════
     // STAGE 6: Verify corrections API visibility
     // ═══════════════════════════════════════════════════════════════
     await runStage("6. Verify corrections API visibility", async () => {

@@ -105,6 +105,12 @@ export default function SystemHealthPage() {
   const [debugResult, setDebugResult] = useState(null);
   const [debugLoading, setDebugLoading] = useState(false);
   const [grantUsername, setGrantUsername] = useState("");
+  const [econLoading, setEconLoading] = useState(false);
+  const [econData, setEconData] = useState(null);
+  const [marksUsername, setMarksUsername] = useState("");
+  const [marksAmount, setMarksAmount] = useState("100");
+  const [marksLoading, setMarksLoading] = useState(false);
+  const [marksResult, setMarksResult] = useState(null);
   const [grantAmount, setGrantAmount] = useState("10");
   const [grantResult, setGrantResult] = useState(null);
   const [grantLoading, setGrantLoading] = useState(false);
@@ -984,6 +990,85 @@ export default function SystemHealthPage() {
         {grantResult && (
           <div style={{ padding: 8, borderRadius: 4, fontSize: 12, color: grantResult.error ? "#ef4444" : "#22c55e", background: "#0f172a" }}>
             {grantResult.message || grantResult.error || JSON.stringify(grantResult)}
+          </div>
+        )}
+      </div>
+
+      {/* ── Economy & Scoring Health (migrations 026/027) ── */}
+      <div style={{ background: "#1e293b", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #334155" }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16 }}>Economy, Scoring & Import Health</h3>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px" }}>Marks supply and flows, score-event activity, failing import domains, and LLM-generated recipes. Sections show disabled until migrations 026/027 run.</p>
+        <button
+          onClick={async () => {
+            setEconLoading(true);
+            try {
+              const res = await fetch("/api/admin/economy-health", { headers: getAuthHeaders() });
+              setEconData(await res.json());
+            } catch (e) { setEconData({ error: String(e) }); }
+            finally { setEconLoading(false); }
+          }}
+          disabled={econLoading}
+          style={{ ...btnStyle, background: "#10b981", color: "#000" }}
+        >
+          {econLoading ? "Loading..." : "Load Health Report"}
+        </button>
+        {econData && !econData.error && (
+          <div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.7 }}>
+            <div style={{ color: "#facc15", fontWeight: 700 }}>MARKS {econData.marks?.enabled ? "" : "— disabled (run migration 027)"}</div>
+            {econData.marks?.enabled && (
+              <div style={{ color: "#e2e8f0", marginBottom: 8 }}>
+                {econData.marks.supply.holders} holders · {econData.marks.supply.total} total Marks (min {econData.marks.supply.min}, max {econData.marks.supply.max})
+                {(econData.marks.flowsByReason || []).map((f) => <div key={f.reason} style={{ color: "#94a3b8" }}>· {f.reason}: {f.count} tx, net {f.net}</div>)}
+              </div>
+            )}
+            <div style={{ color: "#facc15", fontWeight: 700 }}>SCORING {econData.scoring?.enabled ? "" : "— disabled (run migration 027)"}</div>
+            {econData.scoring?.enabled && (
+              <div style={{ color: "#e2e8f0", marginBottom: 8 }}>
+                {econData.scoring.totals.citizens_scored} citizens scored · {econData.scoring.totals.total_possible} pts tested · {econData.scoring.totals.total_rescue} rescue bonus pts · {econData.scoring.totals.total_deceptions} deception findings
+                {(econData.scoring.last7DaysByType || []).map((e) => <div key={e.event_type} style={{ color: "#94a3b8" }}>· {e.event_type}: {e.count} (7d)</div>)}
+              </div>
+            )}
+            <div style={{ color: "#facc15", fontWeight: 700 }}>IMPORT {econData.import?.enabled ? "" : "— disabled (run migration 026)"}</div>
+            {econData.import?.enabled && (
+              <div style={{ color: "#e2e8f0" }}>
+                {(econData.import.problemDomains || []).length === 0 && <div style={{ color: "#22c55e" }}>No problem domains in the last 14 days.</div>}
+                {(econData.import.problemDomains || []).map((d) => <div key={d.domain} style={{ color: "#94a3b8" }}>· {d.domain}: {d.failures}/{d.attempts} failed, {d.with_body} with body{d.sample_error ? ` — ${d.sample_error}` : ""}</div>)}
+                {(econData.import.generatedRecipes || []).length > 0 && <div style={{ marginTop: 4, color: "#60a5fa" }}>Generated recipes: {econData.import.generatedRecipes.map((r) => `${r.domain} (${Math.round(r.confidence * 100)}%)`).join(", ")}</div>}
+              </div>
+            )}
+          </div>
+        )}
+        {econData?.error && <div style={{ marginTop: 8, color: "#ef4444", fontSize: 12 }}>{econData.error}</div>}
+
+        {/* Grant Marks (mirrors Grant Credits) */}
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <input type="text" value={marksUsername} onChange={(e) => setMarksUsername(e.target.value)} placeholder="Username..."
+            style={{ flex: 1, padding: "8px 12px", background: "#0f172a", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 13 }} />
+          <input type="number" value={marksAmount} onChange={(e) => setMarksAmount(e.target.value)} min="1" max="10000"
+            style={{ width: 90, padding: "8px 12px", background: "#0f172a", border: "1px solid #334155", borderRadius: 4, color: "#e2e8f0", fontSize: 13, textAlign: "center" }} />
+          <button
+            onClick={async () => {
+              if (!marksUsername.trim() || !marksAmount) return;
+              setMarksLoading(true);
+              try {
+                const res = await fetch("/api/admin/grant-marks", {
+                  method: "POST",
+                  headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                  body: JSON.stringify({ username: marksUsername.trim(), amount: parseInt(marksAmount) }),
+                });
+                setMarksResult(await res.json());
+              } catch (e) { setMarksResult({ error: String(e) }); }
+              finally { setMarksLoading(false); }
+            }}
+            disabled={marksLoading || !marksUsername.trim()}
+            style={{ ...btnStyle, background: "#facc15", color: "#000" }}
+          >
+            {marksLoading ? "Granting..." : "Grant Marks"}
+          </button>
+        </div>
+        {marksResult && (
+          <div style={{ marginTop: 8, padding: 8, borderRadius: 4, fontSize: 12, color: marksResult.error ? "#ef4444" : "#22c55e", background: "#0f172a" }}>
+            {marksResult.message || marksResult.error || JSON.stringify(marksResult)}
           </div>
         )}
       </div>
