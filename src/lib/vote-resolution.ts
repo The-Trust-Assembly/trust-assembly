@@ -22,6 +22,9 @@ import { getMajority, TRUSTED_STREAK, CROSS_GROUP_DECEPTION_MULT, isWildWestMode
 import { createNotification } from "@/lib/notifications";
 import { logError } from "@/lib/error-logger";
 import { assertTransition } from "@/lib/submission-states";
+import { disputeStake, jurorPayPerRound } from "@/lib/scoring/engine";
+import { creditMarks, payJurors } from "@/lib/scoring/marks";
+import { EARN_SUBMISSION_PASSED_MARKS, EARN_JUROR_REVIEW_MARKS } from "@/lib/scoring/constants";
 
 interface VoteRow {
   approve: boolean;
@@ -191,8 +194,30 @@ export async function tryResolveSubmission(
     client.release();
   }
 
-  // Notify the submitter (fire-and-forget, never throws)
+  // ── Marks earn flows (spec A9) — fail-soft, never blocks resolution ──
+  // Every voting juror earns the review fee; a passing submission pays
+  // the submitter (the DI partner for DI submissions).
   const isApproved = outcome === "approved" || outcome === "consensus";
+  try {
+    const jurorIds = [...new Set(votes.map((v) => v.user_id))];
+    for (const jurorId of jurorIds) {
+      await creditMarks(jurorId, EARN_JUROR_REVIEW_MARKS, "review_completed", {
+        submissionId,
+        detail: { outcome },
+      });
+    }
+    if (isApproved) {
+      const earner = sub.is_di && sub.di_partner_id ? sub.di_partner_id : sub.submitted_by;
+      await creditMarks(earner, EARN_SUBMISSION_PASSED_MARKS, "submission_passed", {
+        submissionId,
+        detail: { outcome },
+      });
+    }
+  } catch (marksError) {
+    console.warn("Submission marks payout failed (non-blocking):", marksError);
+  }
+
+  // Notify the submitter (fire-and-forget, never throws)
   await createNotification({
     userId: sub.submitted_by,
     type: "submission_resolved",
@@ -730,7 +755,7 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
     // Read dispute and vote counts
     const dispute = await sql`
       SELECT d.id, d.submission_id, d.org_id, d.status, d.disputed_by, d.original_submitter,
-             d.dispute_round, d.stake_points
+             d.dispute_round, d.stake_points, d.dispute_type
       FROM disputes d WHERE d.id = ${disputeId}
     `;
     if (dispute.rows.length === 0 || dispute.rows[0].status !== "pending_review") return { resolved: false };
@@ -813,6 +838,37 @@ export async function tryResolveDispute(disputeId: string): Promise<{ resolved: 
       return { resolved: false };
     } finally {
       client.release();
+    }
+
+    // ── Marks payouts (spec A8/A9) — fail-soft, never blocks resolution ──
+    // The non-recoverable stake pays this round's jurors. A successful
+    // dispute refunds the disputer's stake; a flipped REJECTION
+    // additionally pays the vindicated submitter a Cassandra-style
+    // Marks bonus of base fee × 2^(round-1).
+    try {
+      const round = parseInt(d.dispute_round as string) || 1;
+      const stakeMarks = disputeStake(round);
+      const voters = await sql`SELECT user_id FROM jury_votes WHERE dispute_id = ${disputeId}`;
+      const jurorIds = voters.rows.map((v) => v.user_id as string);
+      await payJurors(jurorIds, jurorPayPerRound(stakeMarks, jurorIds.length), {
+        disputeId,
+        detail: { round, outcome },
+      });
+
+      if (outcome === "upheld") {
+        await creditMarks(d.disputed_by as string, stakeMarks, "vindication_refund", {
+          disputeId,
+          detail: { round },
+        });
+        if (d.dispute_type === "challenge_rejection") {
+          await creditMarks(d.original_submitter as string, stakeMarks, "vindication_bonus", {
+            disputeId,
+            detail: { round, reason: "rejection overturned" },
+          });
+        }
+      }
+    } catch (marksError) {
+      console.warn("Dispute marks payout failed (non-blocking):", marksError);
     }
 
     // Notify both parties

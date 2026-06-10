@@ -19,6 +19,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
   const [deleteInput, setDeleteInput] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [openRibbons, setOpenRibbons] = useState({ trust: false, subs: false, reviews: false, disputes: false, di: false, settings: false });
+  const [marks, setMarks] = useState(null); // { balance, currency, transactions }
   const toggle = (key) => setOpenRibbons(prev => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => { (async () => {
@@ -31,6 +32,14 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
       setJuryScore(js);
       setDiAgents(Object.values(all).filter(x => x.isDI && x.diPartner === user.username));
       setLoadError("");
+      // Marks wallet (returns { enabled: false } until migration 027 runs)
+      try {
+        const mres = await fetch("/api/users/me/marks");
+        if (mres.ok) {
+          const mdata = await mres.json();
+          if (mdata.enabled) setMarks(mdata);
+        }
+      } catch {}
     } catch (e) {
       console.error("ProfileScreen load error:", e);
       setLoadError("Failed to load profile data. Please refresh.");
@@ -85,6 +94,7 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--text)" }}>{mySubs.length}</div><div className="stat-label">Submissions</div></div>
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--green)" }}>{approvedCount}</div><div className="stat-label">Approved</div></div>
         <div className="stat-card"><div className="stat-num" style={{ color: "var(--red)" }}>{rejectedCount}</div><div className="stat-label">Rejected</div></div>
+        {marks && <div className="stat-card" title="Marks pay dispute stakes and are earned through reviews and approved submissions"><div className="stat-num" style={{ color: "var(--gold)" }}>{marks.balance}</div><div className="stat-label">{marks.currency}</div></div>}
       </div>
 
       {/* 01: Trust by assembly */}

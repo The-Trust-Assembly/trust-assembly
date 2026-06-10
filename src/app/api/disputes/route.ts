@@ -6,6 +6,9 @@ import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { logError } from "@/lib/error-logger";
 import { createNotification } from "@/lib/notifications";
 import { isWildWestMode, getJurySize, JURY_POOL_MULTIPLIER } from "@/lib/jury-rules";
+import { disputeStake } from "@/lib/scoring/engine";
+import { marksEnabled, getMarksBalance } from "@/lib/scoring/marks";
+import { CURRENCY_NAME } from "@/lib/scoring/constants";
 
 const SOURCE_FILE = "src/app/api/disputes/route.ts";
 
@@ -144,6 +147,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // ── Marks stake (spec A8/A9): base fee × 2^(round-1), non-recoverable ──
+  // Fail-soft: if migration 027 hasn't run, the economy is disabled and
+  // disputes file without a charge.
+  const stakeMarks = disputeStake(disputeRound);
+  const useMarks = await marksEnabled();
+  if (useMarks) {
+    const balance = await getMarksBalance(session.sub);
+    if (balance !== null && balance < stakeMarks) {
+      return err(`Filing this dispute costs ${stakeMarks} ${CURRENCY_NAME} (round ${disputeRound}). Your balance is ${balance} ${CURRENCY_NAME}. The stake doubles each round and pays the jury.`);
+    }
+  }
+
   // Check if this is a third-party dispute on a rejection (grace period applies)
   const isSelfDispute = session.sub === submitted_by;
   const isRejectionDispute = resolvedType === "challenge_rejection";
@@ -164,6 +179,22 @@ export async function POST(request: NextRequest) {
          disputeRound, stakePoints, cooldownUntil]
       );
       const d = result.rows[0];
+
+      // Charge the stake atomically with creation — the balance check
+      // and decrement are one UPDATE, so concurrent filings can't
+      // double-spend. Non-recoverable; it funds juror pay (spec A8).
+      if (useMarks) {
+        const charged = await client.query(
+          "UPDATE users SET marks_balance = marks_balance - $1 WHERE id = $2 AND marks_balance >= $1 RETURNING marks_balance",
+          [stakeMarks, session.sub]
+        );
+        if (charged.rows.length === 0) throw new Error("INSUFFICIENT_MARKS");
+        await client.query(
+          `INSERT INTO marks_transactions (user_id, amount, reason, dispute_id, submission_id, detail)
+           VALUES ($1, $2, 'dispute_stake', $3, $4, $5)`,
+          [session.sub, -stakeMarks, d.id, submissionId, JSON.stringify({ round: disputeRound })]
+        );
+      }
 
       // Update dispute tracking on submissions table
       await client.query(
@@ -197,6 +228,9 @@ export async function POST(request: NextRequest) {
       return d;
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_MARKS") {
+      return err(`Filing this dispute costs ${stakeMarks} ${CURRENCY_NAME} (round ${disputeRound}), which exceeds your balance.`);
+    }
     await logError({
       userId: session.sub,
       sessionInfo: session.username,
@@ -227,7 +261,7 @@ export async function POST(request: NextRequest) {
       entityId: dispute.id as string,
     }).catch(() => {});
 
-    return ok({ ...dispute, gracePeriod: true, gracePeriodUntil }, 201);
+    return ok({ ...dispute, gracePeriod: true, gracePeriodUntil, stakeMarks: useMarks ? stakeMarks : null }, 201);
   }
 
   // Notify the original submitter about the dispute (no grace period)
@@ -277,5 +311,5 @@ export async function POST(request: NextRequest) {
     console.error("Dispute jury assignment failed:", juryError);
   }
 
-  return ok(dispute, 201);
+  return ok({ ...dispute, stakeMarks: useMarks ? stakeMarks : null }, 201);
 }

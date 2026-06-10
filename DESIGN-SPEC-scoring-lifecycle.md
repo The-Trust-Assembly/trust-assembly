@@ -174,7 +174,8 @@ All pricing uses a fictional, non-convertible internal currency. No real money.
 | Juror pay per dispute round | filing stake ÷ jury size (rounded down) |
 | Earn: submission passes review | +2 marks |
 | Earn: juror completes a review | +1 mark |
-| Earn: Cassandra/Whistleblower vindication | stake refund of the vindicated round + bonus marks = 10 × 2^(n-1) |
+| Earn: winning a dispute | the disputer's stake for that round is refunded (`vindication_refund`) |
+| Earn: rejection overturned | the vindicated submitter receives bonus marks equal to that round's stake, i.e. `10 × 2^(r-1)` (`vindication_bonus`) |
 
 (Marks are an economy for *dispute friction and juror pay*; trust scores are
 never purchasable.)
