@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ExplainBox, HighlightField, SubHeadline, StatusPill, RatingInput, Icon, DeliberateLieCheckbox, LegalDisclaimer } from "../components/ui";
 import { NEWS_RUBRIC, FUN_RUBRIC } from "../lib/constants";
-import { W } from "../lib/scoring";
 
 const OB_STEPS = ["submit", "review", "compare", "launch", "additional"];
 const OB_STEP_LABELS = ["1. Submit", "2. Review", "3. Results", "4. Begin", "5. Deep Dive"];
@@ -494,9 +493,10 @@ function OBLaunchStep() {
           <h3 style={{ fontFamily: "var(--serif)", fontSize: 16, margin: "0 0 10px" }}>What You've Learned</h3>
           <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)" }}>
             <p style={{ marginBottom: 8 }}><strong>Submit corrections</strong> — identify misleading headlines, propose factual replacements, attach evidence, make in-line edits, and build your Assembly's Vault.</p>
-            <p style={{ marginBottom: 8 }}><strong>Jury review</strong> — randomly selected jurors rate your work on accuracy, newsworthiness, and interestingness. A Deliberate Deception Finding adds massive drag to your Trust Score.</p>
+            <p style={{ marginBottom: 8 }}><strong>Jury review</strong> — randomly selected jurors rate your work on accuracy, newsworthiness, and interestingness. A Deliberate Deception Finding divides your entire displayed score.</p>
             <p style={{ marginBottom: 8 }}><strong>The result</strong> — approved corrections advance to cross-group review. What survives both achieves Consensus — truth verified by strangers who have no reason to agree with you except that you're right.</p>
-            <p style={{ marginBottom: 8 }}><strong>Your reputation</strong> — every submission builds or damages your Trust Score. Volume has diminishing returns but quality multiplies everything. Lies are devastating. The only way to win is to tell the truth.</p>
+            <p style={{ marginBottom: 8 }}><strong>Your four scores</strong> — Submitter and Juror, each inside your Assembly and across the whole system. Every score is one fraction: points earned ÷ points tested, shown beside the raw volume of work behind it. Being vindicated after rejection fires a Cassandra bonus that can push you above 100%. Lies divide everything. The only way to win is to tell the truth.</p>
+            <p style={{ marginBottom: 8 }}><strong>Marks</strong> — the civic currency. You start with 100. Jurors earn 1 per review, approved submissions pay 2, and disputes stake 10 (doubling each round — the stake pays the jury). A strong record discounts your stakes.</p>
             <p style={{ marginBottom: 8 }}><strong>Badges</strong> — you earn badges automatically as you participate: submission milestones, trusted contributor status, founding Assemblies, and more. Each badge adds +1 to your Trust Score and appears on your public profile.</p>
             <p style={{ marginBottom: 0 }}><strong>Trusted Contributor</strong> — 10 consecutive approved corrections in an Assembly earns trusted status. Your submissions skip jury review (but remain disputable). One disputed loss revokes it instantly.</p>
           </div>
@@ -547,83 +547,81 @@ function OBAdditionalStep() {
         <div style={{ padding: 16, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 16 }}>
           {/* Friendly header */}
           <div style={{ fontFamily: "var(--serif)", fontSize: 15, color: "var(--text)", lineHeight: 1.5, marginBottom: 12 }}>
-            We know this looks complicated. It's just math for <strong style={{ color: "var(--gold)" }}>try your best to do the right thing</strong>.
+            It all reduces to one fraction: <strong style={{ color: "var(--gold)" }}>points you earned ÷ points your work made possible</strong>. Everything else is detail.
           </div>
-          {/* Variable legend */}
-          <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0, marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: "var(--text-sec)" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 6 }}>What the variables mean</div>
+          {/* The four scores */}
+          <div style={{ padding: 10, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: "var(--text-sec)" }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: 6 }}>You carry four separate scores</div>
             <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 10px" }}>
-              <span style={{ fontFamily: "var(--mono)", color: "var(--green)", fontWeight: 700 }}>Points</span><span>Your wins, dispute wins, and streak bonus — how much good work you've done</span>
-              <span style={{ fontFamily: "var(--mono)", color: "var(--green)", fontWeight: 700 }}>√</span><span>Square root — more work helps, but you can't grind your way to the top</span>
-              <span style={{ fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>Quality</span><span>How important and interesting jurors rated your work</span>
-              <span style={{ fontFamily: "var(--mono)", color: "var(--red)", fontWeight: 700 }}>Drag</span><span>Your losses and lies — this divides your score, so mistakes pull you down</span>
-              <span style={{ fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>Cassandra</span><span>Bonus for being right when everyone said you were wrong</span>
+              <span style={{ fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>Assembly Submitter</span><span>How your claims hold up inside your own community</span>
+              <span style={{ fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>Assembly Juror</span><span>How sound your judgment is inside your community</span>
+              <span style={{ fontFamily: "var(--mono)", color: "var(--green)", fontWeight: 700 }}>System Submitter</span><span>How your claims survive review by strangers — harder to earn, more valuable</span>
+              <span style={{ fontFamily: "var(--mono)", color: "var(--green)", fontWeight: 700 }}>System Juror</span><span>Your judgment across group lines — this powers the browser extension's credibility overlay</span>
             </div>
+            <div style={{ marginTop: 6 }}>Writing claims and judging claims are different skills, and trust inside one group is different from trust across groups. The system never mixes them.</div>
           </div>
           {/* Visual formula equation */}
           <div style={{ padding: 14, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 14 }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--text-muted)", marginBottom: 8 }}>TRUST SCORE =</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--text-muted)", marginBottom: 8 }}>EACH SCORE =</div>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "var(--text-muted)" }}>(</div>
               <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "rgba(74,158,85,0.09)", border: "1.5px solid #059669", borderRadius: 0 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--green)", marginBottom: 2 }}>√ Points</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--green)" }}>√ W + DW + S</div>
-              </div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "var(--text-muted)" }}>×</div>
-              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "var(--card-bg)", border: "1.5px solid #0D9488", borderRadius: 0 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--gold)", marginBottom: 2 }}>Quality</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--gold)" }}>Q<sup>1.5</sup></div>
-              </div>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "var(--text-muted)" }}>÷</div>
-              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "rgba(196,74,58,0.09)", border: "1.5px solid #DC2626", borderRadius: 0 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--red)", marginBottom: 2 }}>Drag</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--red)" }}>1 + √L + D</div>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--green)", marginBottom: 2 }}>Earned</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--green)" }}>points that passed</div>
               </div>
               <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "var(--text-muted)" }}>+</div>
               <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "rgba(212,168,67,0.09)", border: "1.5px solid #CA8A04", borderRadius: 0 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--gold)", marginBottom: 2 }}>Cassandra</div>
-                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--gold)" }}>V<sup>★</sup></div>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--gold)", marginBottom: 2 }}>Rescue Bonus</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--gold)" }}>pts × 2<sup>n</sup></div>
+              </div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "var(--text-muted)" }}>) ÷</div>
+              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "var(--card-bg)", border: "1.5px solid #0D9488", borderRadius: 0 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--gold)", marginBottom: 2 }}>Possible</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--gold)" }}>all tested points</div>
+              </div>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "var(--text-muted)" }}>÷</div>
+              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", padding: "6px 12px", background: "rgba(196,74,58,0.09)", border: "1.5px solid #DC2626", borderRadius: 0 }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 7, textTransform: "uppercase", color: "var(--red)", marginBottom: 2 }}>Deception</div>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 16, fontWeight: 700, color: "var(--red)" }}>1 + lies</div>
               </div>
             </div>
           </div>
           {/* Component explanations */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>
             <div style={{ padding: 10, background: "rgba(74,158,85,0.09)", borderRadius: 0 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--green)", marginBottom: 4, fontWeight: 700 }}>√ Points</div>
-              <div>Each approved correction: <strong>+1 point</strong></div>
-              <div>Dispute won: <strong>+{W.disputeWin} points</strong></div>
-              <div>Streak bonus: <strong>+1</strong> per {W.streakInterval} consecutive wins</div>
-              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>Volume has <strong>diminishing returns</strong> (square root). You can't farm your way to the top.</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--green)", marginBottom: 4, fontWeight: 700 }}>Weighted Items</div>
+              <div>Every item you submit creates <strong>possible points</strong>; items that pass review add the same value to <strong>earned</strong>.</div>
+              <div style={{ marginTop: 4 }}>Headline corrections, body edits, affirmations, translations: <strong>weight 1</strong>. Standing corrections and arguments: <strong>2</strong>. Foundational beliefs: <strong>3</strong>.</div>
+              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>Jury importance ratings multiply weights: low <strong>0.5×</strong>, normal <strong>1×</strong>, high <strong>3×</strong>. Important work counts triple.</div>
             </div>
             <div style={{ padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--gold)", marginBottom: 4, fontWeight: 700 }}>Quality Multiplier</div>
-              <div>Average of <strong>Newsworthiness</strong> + <strong>Interestingness</strong> ratings from jurors</div>
-              <div>Capped at {W.qualityCap} (ratings beyond ~8+8 give no extra benefit)</div>
-              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>Raised to power {W.qualityExp} — trivial corrections are <strong>penalized</strong>, important work is <strong>amplified</strong>.</div>
-            </div>
-            <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", borderRadius: 0 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--red)", marginBottom: 4, fontWeight: 700 }}>Drag (divides your score)</div>
-              <div>Regular losses: <strong>diminishing</strong> (inside √)</div>
-              <div>Failed disputes: <strong>diminishing</strong> (inside √)</div>
-              <div style={{ color: "var(--red)", fontWeight: 700 }}>Lies: <strong>+{W.lieDrag} each</strong> (linear, no mercy)</div>
-              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>First few losses hurt most. Lies bypass the diminishing curve — each one is devastating.</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--gold)", marginBottom: 4, fontWeight: 700 }}>Two Numbers, Always</div>
+              <div><strong>Percentage</strong> shows how often you've been right.</div>
+              <div><strong>Raw points</strong> show how much tested work that judgment rests on.</div>
+              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>100% on 8 points is perfect but lightly tested. 92% on 2,400 points is slightly lower — and far more proven. The system shows both, so nobody can hide behind either.</div>
             </div>
             <div style={{ padding: 10, background: "rgba(212,168,67,0.09)", borderRadius: 0 }}>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--gold)", marginBottom: 4, fontWeight: 700 }}>Cassandra Bonus (additive)</div>
-              <div><strong>{W.vindicationBase}×</strong> base per vindication</div>
-              <div>Scales with <strong>impact</strong> (news × fun) and <strong>persistence</strong> (rejections^{W.persistenceExp})</div>
-              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>A historic vindication after 3 rejections can catapult a brand-new citizen to the top. (Coming soon.)</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--gold)", marginBottom: 4, fontWeight: 700 }}>Rescue Bonuses (Cassandra & Whistleblower)</div>
+              <div>The crowd is sometimes wrong at first. When a dispute later vindicates you, a bonus of <strong>submission points × 2<sup>n</sup></strong> fires — n is how many times the system said no before saying yes.</div>
+              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}><strong>Cassandra</strong> rescues submitters; <strong>Whistleblower</strong> rescues jurors who voted against the group and were proven right. Bonuses grow your numerator only — a score <strong>above 100%</strong> means the system was later corrected in your favor. Every bonus is a visible, named event.</div>
+            </div>
+            <div style={{ padding: 10, background: "rgba(196,74,58,0.09)", borderRadius: 0 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 8, textTransform: "uppercase", color: "var(--red)", marginBottom: 4, fontWeight: 700 }}>Deception Divides</div>
+              <div>Honest mistakes just sit in your denominator — being wrong is part of participating.</div>
+              <div style={{ color: "var(--red)", fontWeight: 700 }}>Deliberate deception divides your whole displayed score: one finding halves it, two cut it to a third.</div>
+              <div style={{ fontSize: 11, color: "var(--text-sec)", marginTop: 4 }}>Findings are <strong>disputable</strong> — but a failed challenge counts as a second finding, and the third triggers ban review. Don't stick to your guns if you don't have bullets.</div>
             </div>
           </div>
           <div style={{ marginTop: 10, fontSize: 9, color: "var(--text-muted)", fontFamily: "var(--mono)", lineHeight: 1.5 }}>
-            All weights are community-votable in future elections. The formula shape is permanent; only the coefficients change.
+            Your legacy Trust Score remains visible during the transition. All weights and tiers are community-votable in future elections.
           </div>
         </div>
 
         <div style={{ padding: 16, background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: 0, marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-sec)", marginBottom: 12 }}>Individual Scoring — Jury Service</div>
           <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)" }}>
-            <p style={{ marginBottom: 8 }}>Jurors are scored on alignment with the final verdict. When you vote with the majority, your reputation as a reliable reviewer grows. When you're the outlier, it costs — but less than a submission loss, because disagreement in good faith is expected.</p>
-            <p style={{ marginBottom: 0 }}>The system tracks your review history across all Assemblies. Consistent, fair-minded jurors become eligible for sponsorship roles faster and get weighted higher in Assembly reputation calculations.</p>
+            <p style={{ marginBottom: 8 }}>Every review you vote on puts the full weighted value of its items at stake in your <strong>Juror score</strong>: match the jury's outcome and you earn those points; land in the minority and they sit in your denominator. Ballots are blind — you never see how others voted before casting.</p>
+            <p style={{ marginBottom: 0 }}>Honest dissent is protected by the <strong>Whistleblower bonus</strong>: if a later dispute proves your minority vote right, you earn the submission's points × 2<sup>n</sup> — often worth far more than the points you risked. The system pays for courage with receipts, not for guessing the room.</p>
           </div>
         </div>
 
@@ -636,8 +634,8 @@ function OBAdditionalStep() {
           </div>
         </div>
 
-        <ExplainBox title="The Deception Penalty Cascade" icon="🚨" color="#991B1B">
-          A Deliberate Deception finding doesn't just hurt your score — it triggers a cooldown. You must complete a streak of consecutive approved submissions before your reputation can recover. If you're an AI Agent partner, a deception finding against your AI Agent suspends all linked accounts. The system makes honesty the only sustainable strategy.
+        <ExplainBox title="The Deception Penalty" icon="🚨" color="#991B1B">
+          A Deliberate Deception finding divides your entire displayed score — one finding halves it, two cut it to a third. You can dispute a finding you believe is wrong: win and it's cleared completely, score restored. But a failed challenge counts as a <strong>second finding</strong>, and a third triggers ban review. If you're an AI Agent partner, a finding against your AI Agent suspends all linked accounts. The system makes honesty the only sustainable strategy — and gives the wrongly accused a real path back.
         </ExplainBox>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>
@@ -651,9 +649,9 @@ function OBAdditionalStep() {
         <p style={{ fontSize: 15, color: "var(--text)", lineHeight: 1.6, marginBottom: 16 }}>Sometimes a correction gets approved but contains an error. The dispute mechanism lets any citizen challenge an approved correction — and if they're right, they earn the highest reward in the system.</p>
 
         <ExplainBox title="Disputes & The Cassandra Rule" icon="🔮" color="#7C3AED">
-          <strong>Disputes (+{W.disputeWin} pts):</strong> If you spot an error in an approved correction, you can challenge it. A new jury reviews the dispute. Win and you earn +{W.disputeWin} points. Lose and you take drag. Only challenge what you can prove.
+          <strong>Disputes cost Marks:</strong> Filing a dispute stakes <strong>10 Marks</strong> — and the stake doubles every round on the same claim (round 3 costs 40, round 10 costs 5,120). The stake is non-recoverable; it pays the jury. Win and your stake is refunded. A strong track record earns a discount: citizens proven right 90%+ of the time pay half. You pay with earned reputation or money — only challenge what you can prove.
           <br /><br />
-          <strong>The Cassandra Rule:</strong> Named for the prophet no one believed. If your correction is disputed and the dispute is upheld — meaning the jury said you were wrong — but you refuse to concede because you believe you're right, and you are later vindicated, you earn an additive bonus that scales with the story's importance and the number of rejections you weathered. A single historic vindication can propel a brand-new citizen to the top of the system. The full Cassandra vindication path is being built for a future release.
+          <strong>The Cassandra Rule:</strong> Named for the prophet no one believed. If your correction is rejected, you persist through dispute rounds, and a later jury vindicates you, a bonus of <strong>your submission's points × 2<sup>n</sup></strong> fires — n is the number of times you were told no. It lands in your numerator only, so vindicated citizens can carry scores <strong>above 100%</strong>. Every Cassandra event is public and named. This is live today — the system keeps a record of when the crowd was wrong, too.
         </ExplainBox>
 
         <div style={{ padding: 16, background: "rgba(212,168,67,0.09)", border: "1.5px solid #B45309", borderRadius: 0, marginBottom: 16 }}>
@@ -706,7 +704,7 @@ function OBAdditionalStep() {
             </div>
             <div style={{ marginTop: 12, padding: 10, background: "var(--card-bg)", borderRadius: 0 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--gold)", fontWeight: 700 }}>⚖ DISPUTE UPHELD</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>You earn <strong>+{W.disputeWin} points</strong> for successfully catching an error in an approved correction. The original submitter takes drag — not for deception, but for inaccuracy.</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Your 10-Mark stake is <strong>refunded</strong>, the dispute jurors split the stake as pay, and the win strengthens your record. The original submitter's item points stay in their denominator — an honest mistake, not deception. If any original jurors voted against approving it, their Whistleblower bonus fires.</div>
             </div>
           </div>
         )}
