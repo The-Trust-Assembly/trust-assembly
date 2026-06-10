@@ -3,8 +3,10 @@ import { sql } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, notFound, forbidden } from "@/lib/api-utils";
 import { computeScore } from "@/lib/scoring/engine";
+import { getBadgePoints } from "@/lib/scoring/badges";
 
-// The four trust scores are public record (spec A12). Fail-soft:
+// The four trust scores are public record (spec A12). Badges seed
+// every score with points over points (cold start). Fail-soft:
 // returns null until migration 027 has been run.
 async function getPublicScores(userId: string): Promise<Record<string, unknown> | null> {
   try {
@@ -14,15 +16,21 @@ async function getPublicScores(userId: string): Promise<Record<string, unknown> 
       FROM citizen_scores WHERE user_id = ${userId}
       GROUP BY role, scope
     `;
-    if (tallies.rows.length === 0) return null;
+    const badgePoints = (await getBadgePoints([userId])).get(userId) || 0;
+    if (tallies.rows.length === 0 && badgePoints === 0) return null;
+
     const scores: Record<string, unknown> = {};
-    for (const row of tallies.rows) {
-      scores[`${row.scope}_${row.role}`] = computeScore({
-        pointsEarned: Number(row.earned),
-        pointsPossible: Number(row.possible),
-        rescueBonus: Number(row.bonus),
-        deceptionFindings: Number(row.deceptions),
-      });
+    for (const scope of ["assembly", "system"]) {
+      for (const role of ["submitter", "juror"]) {
+        const row = tallies.rows.find((r) => r.scope === scope && r.role === role);
+        scores[`${scope}_${role}`] = computeScore({
+          pointsEarned: Number(row?.earned || 0),
+          pointsPossible: Number(row?.possible || 0),
+          rescueBonus: Number(row?.bonus || 0),
+          deceptionFindings: Number(row?.deceptions || 0),
+          badgePoints,
+        });
+      }
     }
     return scores;
   } catch {

@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db";
 import { ok, serverError } from "@/lib/api-utils";
 import { computeScore } from "@/lib/scoring/engine";
+import { getBadgePoints } from "@/lib/scoring/badges";
 
 export const dynamic = "force-dynamic";
 
@@ -49,8 +50,9 @@ export async function GET() {
     // trustScore until the cutover. Fail-soft pre-migration-027.
     const submitterScores: Record<string, { displayedPercent: number; rawPoints: number; pointsPossible: number }> = {};
     try {
-      const submitterIds = [...new Set(result.rows.map((r: any) => r.submitter_id).filter(Boolean))];
+      const submitterIds = [...new Set(result.rows.map((r: any) => r.submitter_id).filter(Boolean))] as string[];
       if (submitterIds.length > 0) {
+        const badgePointsMap = await getBadgePoints(submitterIds);
         const tallies = await sql.query(
           `SELECT user_id, SUM(points_earned) AS earned, SUM(points_possible) AS possible,
                   SUM(rescue_bonus) AS bonus, SUM(deception_findings) AS deceptions
@@ -59,18 +61,23 @@ export async function GET() {
            GROUP BY user_id`,
           [submitterIds]
         );
-        for (const row of tallies.rows) {
+        const tallyByUser = new Map(tallies.rows.map((r: any) => [r.user_id as string, r]));
+        for (const userId of submitterIds) {
+          const row = tallyByUser.get(userId);
           const score = computeScore({
-            pointsEarned: Number(row.earned),
-            pointsPossible: Number(row.possible),
-            rescueBonus: Number(row.bonus),
-            deceptionFindings: Number(row.deceptions),
+            pointsEarned: Number(row?.earned || 0),
+            pointsPossible: Number(row?.possible || 0),
+            rescueBonus: Number(row?.bonus || 0),
+            deceptionFindings: Number(row?.deceptions || 0),
+            badgePoints: badgePointsMap.get(userId) || 0,
           });
-          submitterScores[row.user_id] = {
-            displayedPercent: score.displayedPercent,
-            rawPoints: score.rawPoints,
-            pointsPossible: score.pointsPossible,
-          };
+          if (score.pointsPossible > 0) {
+            submitterScores[userId] = {
+              displayedPercent: score.displayedPercent,
+              rawPoints: score.rawPoints,
+              pointsPossible: score.pointsPossible,
+            };
+          }
         }
       }
     } catch { /* scoring not migrated yet */ }

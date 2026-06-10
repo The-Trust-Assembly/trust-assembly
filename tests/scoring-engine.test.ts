@@ -182,6 +182,33 @@ test("discounted stake never drops below 1 Mark", () => {
   assert.ok(discountedStake(1, 99, 1000) >= 1);
 });
 
+// ─── Badge seed: points over points (cold start) ────────────────────
+
+test("badges give a brand-new citizen a record: 0/0 + 3 badge pts → 100% on 3", () => {
+  const score = computeScore({ pointsEarned: 0, pointsPossible: 0, rescueBonus: 0, deceptionFindings: 0, badgePoints: 3 });
+  assert.equal(score.displayedPercent, 100);
+  assert.equal(score.pointsPossible, 3);
+  assert.equal(score.badgePoints, 3);
+});
+
+test("badge seed adds to BOTH sides: 10/20 + 5 badge pts → 15/25 = 60%", () => {
+  const score = computeScore({ pointsEarned: 10, pointsPossible: 20, rescueBonus: 0, deceptionFindings: 0, badgePoints: 5 });
+  assert.equal(score.displayedPercent, 60);
+  assert.equal(score.pointsPossible, 25);
+});
+
+test("badge seed dilutes as real work accumulates", () => {
+  const early = computeScore({ pointsEarned: 5, pointsPossible: 10, rescueBonus: 0, deceptionFindings: 0, badgePoints: 5 });
+  const late = computeScore({ pointsEarned: 500, pointsPossible: 1000, rescueBonus: 0, deceptionFindings: 0, badgePoints: 5 });
+  assert.equal(early.displayedPercent, 66.7);  // seed pulls a thin 50% up hard
+  assert.equal(late.displayedPercent, 50.2);   // same seed barely moves a deep record
+});
+
+test("badge seed cannot outrun the deception divisor", () => {
+  const score = computeScore({ pointsEarned: 0, pointsPossible: 0, rescueBonus: 0, deceptionFindings: 1, badgePoints: 4 });
+  assert.equal(score.displayedPercent, 50); // 100% ÷ (1 + 1)
+});
+
 // ─── Edge cases ─────────────────────────────────────────────────────
 
 test("zero possible points → 0%, no division by zero", () => {

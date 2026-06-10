@@ -81,11 +81,12 @@ export default function CitizenLookupScreen({ username, onBack, onViewCitizen, c
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 }}>
               {[["assembly_submitter", "Assembly Submitter"], ["assembly_juror", "Assembly Juror"], ["system_submitter", "System Submitter"], ["system_juror", "System Juror"]].map(([key, label]) => {
                 const s = trustScores[key];
+                const tested = s && s.pointsPossible > 0;
                 return (
                   <div key={key}>
-                    <div style={{ fontSize: 18, fontFamily: "var(--serif)", color: s ? (s.aboveHundred ? "var(--gold)" : "var(--text)") : "var(--text-muted)" }}>{s ? `${s.displayedPercent}%` : "—"}</div>
+                    <div style={{ fontSize: 18, fontFamily: "var(--serif)", color: tested ? (s.aboveHundred ? "var(--gold)" : "var(--text)") : "var(--text-muted)" }}>{tested ? `${s.displayedPercent}%` : "—"}</div>
                     <div style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</div>
-                    <div style={{ fontSize: 9, color: "var(--text-muted)" }}>{s ? `${s.rawPoints} of ${s.pointsPossible} pts` : "untested"}</div>
+                    <div style={{ fontSize: 9, color: "var(--text-muted)" }}>{tested ? `${s.rawPoints} of ${s.pointsPossible} pts${s.badgePoints > 0 ? ` · ${s.badgePoints} badge` : ""}` : "untested"}</div>
                   </div>
                 );
               })}

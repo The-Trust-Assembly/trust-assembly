@@ -118,21 +118,22 @@ export default function ProfileScreen({ user, onViewCitizen, theme, setTheme, fo
               ["system_juror", "System Juror"],
             ].map(([key, label]) => {
               const s = trustScores[key];
+              const tested = s && s.pointsPossible > 0;
               return (
                 <div key={key}>
-                  <div style={{ fontSize: 22, fontFamily: "var(--serif)", color: s ? (s.aboveHundred ? "var(--gold)" : "var(--text)") : "var(--text-muted)" }}>
-                    {s ? `${s.displayedPercent}%` : "—"}
+                  <div style={{ fontSize: 22, fontFamily: "var(--serif)", color: tested ? (s.aboveHundred ? "var(--gold)" : "var(--text)") : "var(--text-muted)" }}>
+                    {tested ? `${s.displayedPercent}%` : "—"}
                   </div>
                   <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</div>
                   <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
-                    {s ? `${s.rawPoints} pts earned of ${s.pointsPossible} tested` : "Not yet tested"}
+                    {tested ? `${s.rawPoints} pts earned of ${s.pointsPossible} tested${s.badgePoints > 0 ? ` · ${s.badgePoints} from badges` : ""}` : "Not yet tested"}
                   </div>
                 </div>
               );
             })}
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 8 }}>
-            Percentage shows how often you've been right. Points show how much tested work that judgment rests on. Scores above 100% mean the system was later corrected in your favor.
+            Percentage shows how often you've been right. Points show how much tested work that judgment rests on. Badges seed both sides of the fraction, so new citizens start with a record. Scores above 100% mean the system was later corrected in your favor.
           </div>
         </div>
       )}

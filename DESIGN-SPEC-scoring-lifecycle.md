@@ -289,6 +289,18 @@ never purchasable.)
    reputation or money — and people with earned reputation can take your
    money if you dispute foolishly. Constants in `constants.ts`.
 
+4. **Badges seed scores with points over points** (cold start): each badge
+   point adds 1 to BOTH the numerator and denominator of all four scores. A
+   new citizen who joins assemblies, submits once, and serves on a jury has a
+   visible tested record on day one (e.g. 100% on 3 points) instead of an
+   empty 0/0. Because the seed sits on both sides of the fraction it cannot
+   inflate a percentage the way free numerator points would, and it dilutes
+   to irrelevance as real adjudicated work accumulates. Badge point values:
+   1 per badge (milestones, memberships, founder/trusted/early-adopter), with
+   manual awards configurable (`firstTester` = 10). Server logic in
+   `src/lib/scoring/badges.ts` mirrors the client's `computeBadges()`; the
+   client controls what displays, the server controls what badges are worth.
+
 ### B5. Known deltas from current behavior (intentional)
 
 - Dispute stake becomes `10 × 2^(r-1)` Marks (was abstract `2^r` points).

@@ -32,6 +32,7 @@ export interface ScoreTally {
   pointsPossible: number;  // weighted points from ALL adjudicated items / votes
   rescueBonus: number;     // Cassandra/Whistleblower points (numerator only)
   deceptionFindings: number;
+  badgePoints?: number;    // badges add POINTS OVER POINTS: numerator AND denominator
 }
 
 export interface ComputedScore {
@@ -39,27 +40,36 @@ export interface ComputedScore {
   displayedPercent: number;  // (earned + bonus) / possible, ÷ (1 + deceptions)
   rawPoints: number;         // tested volume = pointsEarned (+ bonus), the "raw points" display
   pointsPossible: number;
+  badgePoints: number;       // seed contribution included in the totals above
   aboveHundred: boolean;     // true when vindication pushed the score past 100%
 }
 
 export function computeScore(tally: ScoreTally): ComputedScore {
   const { pointsEarned, pointsPossible, rescueBonus, deceptionFindings } = tally;
+  const badgePoints = Math.max(0, tally.badgePoints || 0);
 
-  if (pointsPossible <= 0) {
-    return { rawPercent: 0, displayedPercent: 0, rawPoints: 0, pointsPossible: 0, aboveHundred: false };
+  // Badge seed (cold start): a 1-point badge adds 1 earned AND 1
+  // possible, giving new citizens a small tested record from day one.
+  // The seed dilutes as real adjudicated work accumulates.
+  const earned = pointsEarned + badgePoints;
+  const possible = pointsPossible + badgePoints;
+
+  if (possible <= 0) {
+    return { rawPercent: 0, displayedPercent: 0, rawPoints: 0, pointsPossible: 0, badgePoints, aboveHundred: false };
   }
 
-  const rawPercent = (pointsEarned / pointsPossible) * 100;
+  const rawPercent = (earned / possible) * 100;
   // Bonuses grow the numerator only; the denominator never changes (spec A6).
-  const boostedPercent = ((pointsEarned + rescueBonus) / pointsPossible) * 100;
+  const boostedPercent = ((earned + rescueBonus) / possible) * 100;
   // Deliberate deception divides the displayed score (spec A7).
   const displayedPercent = boostedPercent / (1 + Math.max(0, deceptionFindings));
 
   return {
     rawPercent: round1(rawPercent),
     displayedPercent: round1(displayedPercent),
-    rawPoints: pointsEarned + rescueBonus,
-    pointsPossible,
+    rawPoints: earned + rescueBonus,
+    pointsPossible: possible,
+    badgePoints,
     aboveHundred: displayedPercent > 100,
   };
 }

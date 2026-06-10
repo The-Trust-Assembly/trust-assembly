@@ -4,6 +4,7 @@ import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, unauthorized } from "@/lib/api-utils";
 import { scoringEnabled } from "@/lib/scoring/accrual";
 import { computeScore } from "@/lib/scoring/engine";
+import { getBadgePoints } from "@/lib/scoring/badges";
 
 export const dynamic = "force-dynamic";
 
@@ -26,16 +27,25 @@ export async function GET(request: NextRequest) {
       FROM citizen_scores WHERE user_id = ${session.sub}
     `;
 
-    // Aggregate per role × scope (assembly rows merge across orgs)
-    const buckets: Record<string, { pointsEarned: number; pointsPossible: number; rescueBonus: number; deceptionFindings: number }> = {};
+    // Badge seed: points over points, applied to all four scores
+    const badgePoints = (await getBadgePoints([session.sub])).get(session.sub) || 0;
+
+    // Aggregate per role × scope (assembly rows merge across orgs).
+    // Seed every bucket — including the four empty ones a brand-new
+    // citizen starts with — so badges give a visible record on day one.
+    const buckets: Record<string, { pointsEarned: number; pointsPossible: number; rescueBonus: number; deceptionFindings: number; badgePoints: number }> = {};
+    for (const scope of ["assembly", "system"]) {
+      for (const role of ["submitter", "juror"]) {
+        buckets[`${scope}_${role}`] = { pointsEarned: 0, pointsPossible: 0, rescueBonus: 0, deceptionFindings: 0, badgePoints };
+      }
+    }
     for (const row of tallies.rows) {
-      const key = `${row.scope}_${row.role}`;
-      const bucket = buckets[key] || { pointsEarned: 0, pointsPossible: 0, rescueBonus: 0, deceptionFindings: 0 };
+      const bucket = buckets[`${row.scope}_${row.role}`];
+      if (!bucket) continue;
       bucket.pointsEarned += Number(row.points_earned);
       bucket.pointsPossible += Number(row.points_possible);
       bucket.rescueBonus += Number(row.rescue_bonus);
       bucket.deceptionFindings += Number(row.deception_findings);
-      buckets[key] = bucket;
     }
 
     const scores: Record<string, unknown> = {};
