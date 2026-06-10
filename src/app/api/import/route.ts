@@ -4,11 +4,17 @@ import {
   fetchHtml,
   extractAllFields,
   extractBodyText,
+  findAmpUrl,
   normalizeAuthors,
   type Fields,
   type FieldResult,
 } from "@/lib/import/extract";
+import { generateRecipe, validateRecipe } from "@/lib/import/llm-recipe";
+import { getStoredRecipe, saveRecipe, logImport } from "@/lib/import/recipe-store";
 import registryData from "../../../../site-registry.json";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // In-memory cache (24h TTL)
 const cache = new Map<string, { data: ImportResult; timestamp: number }>();
@@ -24,6 +30,7 @@ interface ImportResult {
   submitted: string;
   normalized: string;
   recipeUsed: string | null;
+  recipeSource: "registry" | "generated" | null;
   fetchError?: string;
   extractionTime: string;
   fromCache?: boolean;
@@ -136,18 +143,54 @@ function applyMetaHints(fields: Fields, recipe: Record<string, unknown> | null):
 
 // ─── Main Import Function ──────────────────────────────────────────
 
+// Extraction is "weak" when the article body is missing or stubby —
+// the trigger for the AMP fallback and the LLM recipe generator.
+const WEAK_BODY_CHARS = 400;
+// Don't re-ask the LLM about a domain more than once per window —
+// a fresh low-confidence recipe means the domain genuinely can't be
+// extracted (JS-only shell), so this acts as a negative cache too.
+const RECIPE_REGEN_WINDOW_MS = 6 * 60 * 60 * 1000;
+
+function bodyIsWeak(fields: Fields): boolean {
+  return !fields.body || fields.body.value.length < WEAK_BODY_CHARS;
+}
+
+// Re-extract with a recipe and merge: recipe-sourced fields win,
+// everything else only fills gaps.
+function mergeRecipeExtraction(html: string, recipeObj: Record<string, unknown>, fields: Fields): void {
+  const re = extractAllFields(html, recipeObj);
+  for (const [key, val] of Object.entries(re)) {
+    if (val.source === "recipe" || !fields[key]) fields[key] = val;
+  }
+  if (bodyIsWeak(fields)) {
+    const body = extractBodyText(html, recipeObj);
+    if (body && body.length > (fields.body?.value.length || 0)) {
+      fields.body = { value: body, source: "recipe-body", confidence: 0.8 };
+    }
+  }
+}
+
 async function importUrl(rawUrl: string): Promise<ImportResult> {
   const startTime = Date.now();
   const recipeMatch = findRecipe(rawUrl);
-  const recipe = recipeMatch?.recipe || null;
-  const normalizedUrl = normalizeUrl(rawUrl, recipe);
+  const manualRecipe = recipeMatch?.recipe || null;
+  const normalizedUrl = normalizeUrl(rawUrl, manualRecipe);
+  const domain = (() => {
+    try { return new URL(normalizedUrl).hostname.replace(/^www\./, ""); } catch { return ""; }
+  })();
 
-  let platform = (recipe?.platform as string) || "article";
-  const template = (recipe?.template as string) || "article";
+  // Generated recipe from a previous LLM run (manual registry wins)
+  const stored = manualRecipe ? null : await getStoredRecipe(domain);
+  const recipe = manualRecipe || (stored && stored.confidence > 0 ? stored.recipe : null);
+  let recipeSource: ImportResult["recipeSource"] =
+    manualRecipe ? "registry" : recipe ? "generated" : null;
+
+  let platform = (manualRecipe?.platform as string) || "article";
+  const template = (manualRecipe?.template as string) || "article";
 
   // Platform APIs (Reddit JSON)
   let specialFields: Fields | null = null;
-  if (recipe?.extractionStrategy === "reddit_json" || normalizedUrl.includes("reddit.com")) {
+  if (manualRecipe?.extractionStrategy === "reddit_json" || normalizedUrl.includes("reddit.com")) {
     specialFields = await extractWithRedditJson(normalizedUrl);
   }
 
@@ -171,10 +214,49 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
       const bodyText = extractBodyText(html, recipe);
       if (bodyText) fields.body = { value: bodyText, source: "html-body", confidence: 0.5 };
     }
+
+    // ── AMP fallback: free, no LLM. JS-rendered shells often link a
+    // static AMP variant that extracts cleanly.
+    if (bodyIsWeak(fields)) {
+      const ampUrl = findAmpUrl(html, normalizedUrl);
+      if (ampUrl) {
+        const amp = await fetchHtml(ampUrl);
+        if (amp.html) {
+          const ampFields = extractAllFields(amp.html, recipe);
+          for (const [key, val] of Object.entries(ampFields)) { if (!fields[key]) fields[key] = val; }
+          const ampBody = extractBodyText(amp.html, recipe);
+          if (ampBody && ampBody.length > (fields.body?.value.length || 0)) {
+            fields.body = { value: ampBody, source: "amp-body", confidence: 0.6 };
+          }
+        }
+      }
+    }
+
+    // ── LLM recipe generation: when extraction is still weak, ask
+    // Haiku for CSS selectors (never content), validate them against
+    // this page, and cache per-domain. Stale/failed recipes regenerate
+    // after the window — that's the redesign drift detection.
+    const recipeIsFresh = stored && Date.now() - stored.updatedAt.getTime() < RECIPE_REGEN_WINDOW_MS;
+    if (bodyIsWeak(fields) && !manualRecipe && !recipeIsFresh && process.env.ANTHROPIC_API_KEY && domain) {
+      const generated = await generateRecipe(normalizedUrl, html);
+      if (generated) {
+        const validation = validateRecipe(html, generated);
+        if (validation.valid) {
+          mergeRecipeExtraction(html, generated as unknown as Record<string, unknown>, fields);
+          recipeSource = "generated";
+          await saveRecipe(domain, generated as unknown as Record<string, unknown>, validation.confidence);
+        } else {
+          // Negative cache: remember that this domain can't be solved
+          // with selectors right now, so we don't pay for the call again
+          // on every import for the next window.
+          await saveRecipe(domain, { selectors: {} }, 0);
+        }
+      }
+    }
   }
 
   // Apply site-specific hints (title stripping, etc.)
-  applyMetaHints(fields, recipe);
+  applyMetaHints(fields, manualRecipe);
 
   // Normalize the byline: strip "By", drop publication suffix, cap count
   if (fields.author?.value) {
@@ -189,8 +271,8 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
   delete fields._canonical;
 
   // URL-based platform overrides
-  if (recipe?.urlOverrides) {
-    const overrides = recipe.urlOverrides as Record<string, Record<string, string>>;
+  if (manualRecipe?.urlOverrides) {
+    const overrides = manualRecipe.urlOverrides as Record<string, Record<string, string>>;
     if (overrides.pathContains) {
       const path = new URL(normalizedUrl).pathname;
       for (const [pathFragment, overridePlatform] of Object.entries(overrides.pathContains)) {
@@ -205,7 +287,7 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     ? fieldValues.reduce((sum, f) => sum + f.confidence, 0) / fieldValues.length
     : 0;
 
-  return {
+  const result: ImportResult = {
     success: Object.keys(fields).length > 0,
     platform,
     template,
@@ -214,10 +296,28 @@ async function importUrl(rawUrl: string): Promise<ImportResult> {
     canonical,
     submitted: rawUrl,
     normalized: normalizedUrl,
-    recipeUsed: recipeMatch?.key || null,
+    recipeUsed: recipeMatch?.key || (recipeSource === "generated" ? domain : null),
+    recipeSource,
     fetchError: fetchError || undefined,
     extractionTime: `${Date.now() - startTime}ms`,
   };
+
+  // Telemetry — fire and forget; failing domains become visible in
+  // import_logs instead of guesswork.
+  if (domain) {
+    logImport({
+      domain,
+      url: normalizedUrl,
+      success: result.success,
+      confidence: result.confidence,
+      fieldsFound: Object.keys(fields),
+      bodyChars: fields.body?.value.length || 0,
+      recipeSource: recipeSource || "none",
+      fetchError: fetchError || undefined,
+    }).catch(() => {});
+  }
+
+  return result;
 }
 
 // ─── API Routes ────────────────────────────────────────────────────
@@ -259,7 +359,8 @@ export async function POST(request: NextRequest) {
     return ok({
       success: false, platform: "article", template: "article", confidence: 0,
       fields: {}, canonical: url, submitted: url, normalized: url,
-      recipeUsed: null, fetchError: e instanceof Error ? e.message : String(e), extractionTime: "0ms",
+      recipeUsed: null, recipeSource: null,
+      fetchError: e instanceof Error ? e.message : String(e), extractionTime: "0ms",
     });
   }
 }

@@ -14,16 +14,28 @@ import {
 
 let passed = 0;
 let failed = 0;
+const pending: Promise<void>[] = [];
 
-function test(name: string, fn: () => void) {
+function test(name: string, fn: () => void | Promise<void>) {
+  const report = (e?: unknown) => {
+    if (e === undefined) {
+      passed++;
+      console.log(`  ok    ${name}`);
+    } else {
+      failed++;
+      console.error(`  FAIL  ${name}`);
+      console.error(`        ${e instanceof Error ? e.message : e}`);
+    }
+  };
   try {
-    fn();
-    passed++;
-    console.log(`  ok    ${name}`);
+    const result = fn();
+    if (result instanceof Promise) {
+      pending.push(result.then(() => report()).catch((e) => report(e)));
+    } else {
+      report();
+    }
   } catch (e) {
-    failed++;
-    console.error(`  FAIL  ${name}`);
-    console.error(`        ${e instanceof Error ? e.message : e}`);
+    report(e);
   }
 }
 
@@ -331,5 +343,92 @@ test("normalizeAuthors dedupes repeated names", () => {
   assert.equal(normalizeAuthors("Jane Doe, jane doe, Jane Doe"), "Jane Doe");
 });
 
+// ─── Fixture 9: self-healing LLM recipe pipeline ────────────────────
+// The model only ever sees a structural digest and returns selectors;
+// content is always extracted deterministically by cheerio.
+
+import { findAmpUrl } from "../src/lib/import/extract.ts";
+import { buildDomDigest, generateRecipe, validateRecipe } from "../src/lib/import/llm-recipe.ts";
+
+const STRANGE_SITE_HTML = `<!DOCTYPE html><html><head>
+<title>City approves stadium deal | The Bugle</title>
+</head><body>
+<div class="bgl-masthead"><h2>The Bugle</h2></div>
+<h1 class="bgl-hed">City approves controversial stadium deal in 5-4 vote</h1>
+<div class="bgl-credit"><span class="bgl-credit-name">Rosa Martinez</span></div>
+<time datetime="2026-06-09T18:00:00Z">June 9</time>
+<div class="bgl-story-text">
+  <p>The city council approved the stadium financing package after a marathon session that stretched past midnight on Tuesday.</p>
+  <p>Opponents argued the public contribution had grown far beyond the figure presented to voters during last year's referendum campaign.</p>
+  <p>The mayor defended the deal, saying the projected tax revenue from surrounding development would cover the city's bond obligations.</p>
+  <p>Construction is expected to begin in the fall, with the first season in the new venue planned for two years later.</p>
+</div>
+<div class="bgl-related"><p>Related: Voters approved the referendum by a narrow margin last November after a contentious campaign season.</p></div>
+</body></html>`;
+
+test("DOM digest surfaces headline, byline, and container selectors", () => {
+  const digest = buildDomDigest(STRANGE_SITE_HTML);
+  assert.ok(digest.includes("h1.bgl-hed"), "missing headline selector");
+  assert.ok(digest.includes("div.bgl-story-text"), "missing body container selector");
+  assert.ok(digest.includes("4 paragraphs"), "missing paragraph count");
+  assert.ok(!digest.includes("marathon session that stretched past midnight on Tuesday.</p>"), "raw HTML leaked into digest");
+});
+
+test("generateRecipe + validateRecipe: model selectors extract deterministically", async () => {
+  // Fake model: answers with selectors as Haiku would, based on the digest
+  const fakeModel = async (prompt: string) => {
+    assert.ok(prompt.includes("h1.bgl-hed"), "digest not in prompt");
+    return `{"selectors": {
+      "title": {"css": "h1.bgl-hed"},
+      "author": {"css": ".bgl-credit-name", "multi": true},
+      "publishDate": {"css": "time", "attr": "datetime"},
+      "body": {"css": ".bgl-story-text p"}
+    }}`;
+  };
+  const recipe = await generateRecipe("https://bugle.example/stadium", STRANGE_SITE_HTML, fakeModel);
+  assert.ok(recipe, "recipe should parse");
+  const validation = validateRecipe(STRANGE_SITE_HTML, recipe!);
+  assert.ok(validation.valid, "recipe should validate");
+  assert.ok(validation.titleOk);
+  assert.ok(validation.bodyChars > 400, `body too short: ${validation.bodyChars}`);
+
+  // And the recipe drives the standard extractor end to end
+  const fields = extractAllFields(STRANGE_SITE_HTML, recipe as unknown as Record<string, unknown>);
+  assert.equal(fields.title?.value, "City approves controversial stadium deal in 5-4 vote");
+  assert.equal(fields.author?.value, "Rosa Martinez");
+  assert.equal(fields.publishDate?.value, "2026-06-09T18:00:00Z");
+  const body = extractBodyText(STRANGE_SITE_HTML, recipe as unknown as Record<string, unknown>);
+  assert.ok(body!.startsWith("The city council approved"), "body must be verbatim page text");
+  assert.ok(!body!.includes("Related:"), "related teaser leaked into recipe body");
+});
+
+test("validateRecipe rejects hallucinated selectors", () => {
+  const bad = { selectors: { title: { css: ".does-not-exist" }, body: { css: ".also-fake p" } } };
+  const validation = validateRecipe(STRANGE_SITE_HTML, bad);
+  assert.equal(validation.valid, false);
+  assert.equal(validation.confidence, 0);
+});
+
+test("generateRecipe survives a rambling model response", async () => {
+  const chatty = async () => `Sure! Based on the digest, here is the recipe:\n{"selectors": {"title": {"css": "h1.bgl-hed"}}}\nLet me know if you need anything else.`;
+  const recipe = await generateRecipe("https://x.example", STRANGE_SITE_HTML, chatty);
+  assert.equal(recipe?.selectors?.title?.css, "h1.bgl-hed");
+});
+
+test("generateRecipe returns null on model failure", async () => {
+  const broken = async () => { throw new Error("rate limited"); };
+  assert.equal(await generateRecipe("https://x.example", STRANGE_SITE_HTML, broken), null);
+});
+
+test("findAmpUrl resolves relative amphtml links", () => {
+  const html = `<html><head><link rel="amphtml" href="/2026/06/09/story.amp.html"></head><body></body></html>`;
+  assert.equal(
+    findAmpUrl(html, "https://news.example/2026/06/09/story.html"),
+    "https://news.example/2026/06/09/story.amp.html"
+  );
+  assert.equal(findAmpUrl("<html><head></head></html>", "https://news.example/a"), null);
+});
+
+await Promise.all(pending);
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -484,6 +484,23 @@ export function extractBodyText(html: string, recipe: Record<string, unknown> | 
   return bestParagraphs.join("\n\n").slice(0, MAX_BODY_CHARS);
 }
 
+// ─── AMP fallback ──────────────────────────────────────────────────
+
+// Many news sites still publish AMP variants — static, selector-simple
+// HTML with the full article body. When the canonical page is a
+// JS-rendered shell, the AMP page usually extracts cleanly for free.
+export function findAmpUrl(html: string, baseUrl: string): string | null {
+  const $ = cheerio.load(html);
+  const href = $('link[rel="amphtml"]').attr("href")?.trim();
+  if (!href) return null;
+  try {
+    const resolved = new URL(href, baseUrl).toString();
+    return resolved === baseUrl ? null : resolved;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Author normalization ──────────────────────────────────────────
 
 // Bylines arrive as "By Jane O'Brien, Sam D'Angelo and Lee Park, CNN".
