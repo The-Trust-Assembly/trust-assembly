@@ -1257,7 +1257,7 @@ async function renderSubmitTab() {
         : browser.tabs.sendMessage.bind(browser.tabs);
       // Detect content type for platform-adaptive form labels
       sendMsg(tab.id, { type: "TA_GET_CONTENT_TYPE" }, (response) => {
-        if (response && response.contentType) {
+        if (response && response.contentType && response.contentType !== detectedContentType) {
           detectedContentType = response.contentType;
           renderSubmitTab(); // Re-render with platform-adaptive labels
         }
