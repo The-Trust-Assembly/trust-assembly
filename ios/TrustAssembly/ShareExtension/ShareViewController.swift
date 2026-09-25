@@ -2,12 +2,14 @@ import UIKit
 import UniformTypeIdentifiers
 
 /// Share Extension — receives a URL from Safari or any app and creates
-/// a server-side draft on Trust Assembly. When the user opens the main
-/// app, the draft auto-loads in the Submit form.
-class ShareViewController: UIViewController {
+/// a server-side draft on Trust Assembly. A Share extension is not allowed to
+/// foreground its containing app, so it leaves a one-shot deep link in the
+/// App Group for the main app to consume on its next activation.
+final class ShareViewController: UIViewController {
 
     private let sharedSuiteName = "group.org.trustassembly.shared"
     private let baseURL = "https://trustassembly.org"
+    private let pendingDeepLinkKey = "ta-pending-deep-link"
 
     private var statusLabel: UILabel!
     private var urlLabel: UILabel!
@@ -87,7 +89,7 @@ class ShareViewController: UIViewController {
 
         // Buttons
         submitButton = UIButton(type: .system)
-        submitButton.setTitle("Save Draft & Open App", for: .normal)
+        submitButton.setTitle("Save Draft", for: .normal)
         submitButton.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
         submitButton.backgroundColor = UIColor(red: 0.72, green: 0.59, blue: 0.24, alpha: 1)
         submitButton.setTitleColor(.white, for: .normal)
@@ -157,8 +159,16 @@ class ShareViewController: UIViewController {
                         DispatchQueue.main.async {
                             if let url = data as? URL {
                                 self?.handleURL(url.absoluteString)
+                            } else if let url = data as? NSURL {
+                                self?.handleURL(url.absoluteString ?? "")
+                            } else if let url = data as? String {
+                                self?.handleURL(url)
                             } else if let urlData = data as? Data, let url = URL(dataRepresentation: urlData, relativeTo: nil) {
                                 self?.handleURL(url.absoluteString)
+                            } else {
+                                self?.statusLabel.text = error == nil
+                                    ? "The shared item did not contain a web link"
+                                    : "Could not read the shared link"
                             }
                         }
                     }
@@ -167,8 +177,13 @@ class ShareViewController: UIViewController {
                 if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
                     provider.loadItem(forTypeIdentifier: UTType.plainText.identifier) { [weak self] data, error in
                         DispatchQueue.main.async {
-                            if let text = data as? String, text.hasPrefix("http") {
-                                self?.handleURL(text)
+                            if let text = data as? String,
+                               let url = self?.firstWebURL(in: text) {
+                                self?.handleURL(url.absoluteString)
+                            } else {
+                                self?.statusLabel.text = error == nil
+                                    ? "The shared text did not contain a web link"
+                                    : "Could not read the shared text"
                             }
                         }
                     }
@@ -179,18 +194,47 @@ class ShareViewController: UIViewController {
     }
 
     private func handleURL(_ url: String) {
-        sharedURL = url
-        urlLabel.text = url
+        let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsedURL = URL(string: trimmedURL),
+              ["http", "https"].contains(parsedURL.scheme?.lowercased() ?? ""),
+              parsedURL.host?.isEmpty == false else {
+            statusLabel.text = "Only web links can be submitted"
+            return
+        }
+        sharedURL = parsedURL.absoluteString
+        urlLabel.text = parsedURL.absoluteString
 
         // Fetch headline via import API
-        fetchHeadline(url: url)
+        fetchHeadline(url: parsedURL.absoluteString)
+    }
+
+    private func firstWebURL(in text: String) -> URL? {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let directURL = URL(string: trimmedText),
+           ["http", "https"].contains(directURL.scheme?.lowercased() ?? ""),
+           directURL.host?.isEmpty == false {
+            return directURL
+        }
+
+        guard let detector = try? NSDataDetector(
+            types: NSTextCheckingResult.CheckingType.link.rawValue
+        ) else { return nil }
+
+        let range = NSRange(trimmedText.startIndex..., in: trimmedText)
+        return detector.matches(in: trimmedText, options: [], range: range)
+            .compactMap(\.url)
+            .first {
+                ["http", "https"].contains($0.scheme?.lowercased() ?? "")
+                    && $0.host?.isEmpty == false
+            }
     }
 
     // MARK: - Fetch article metadata
 
     private func fetchHeadline(url: String) {
-        guard let encodedURL = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let apiURL = URL(string: "\(baseURL)/api/import?url=\(encodedURL)") else { return }
+        guard var components = URLComponents(string: "\(baseURL)/api/import") else { return }
+        components.queryItems = [URLQueryItem(name: "url", value: url)]
+        guard let apiURL = components.url else { return }
 
         var request = URLRequest(url: apiURL)
         request.timeoutInterval = 10
@@ -208,7 +252,11 @@ class ShareViewController: UIViewController {
                     self?.headlineLabel.text = "(Could not fetch headline — you can add it in the app)"
                     return
                 }
-                let title = json["title"] as? String ?? json["headline"] as? String
+                let fields = json["fields"] as? [String: Any]
+                let titleField = fields?["title"] as? [String: Any]
+                let title = titleField?["value"] as? String
+                    ?? json["title"] as? String
+                    ?? json["headline"] as? String
                 self?.fetchedHeadline = title
                 self?.headlineLabel.text = title ?? "(No headline found)"
             }
@@ -253,28 +301,51 @@ class ShareViewController: UIViewController {
         ]
 
         guard let apiURL = URL(string: "\(baseURL)/api/drafts"),
-              let bodyData = try? JSONSerialization.data(withJSONObject: body) else { return }
+              let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+            submitButton.isEnabled = true
+            statusLabel.text = "Could not prepare draft"
+            return
+        }
 
         var request = URLRequest(url: apiURL)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = bodyData
+        request.timeoutInterval = 15
 
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
-                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    self?.statusLabel.text = "Draft saved! Opening app..."
-                    self?.statusLabel.textColor = UIColor(red: 0.11, green: 0.37, blue: 0.25, alpha: 1)
+                guard let self else { return }
+                if let httpResponse = response as? HTTPURLResponse,
+                   (200..<300).contains(httpResponse.statusCode),
+                   let data,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let draft = json["draft"] as? [String: Any],
+                   let draftID = draft["id"] as? String {
+                    // Add a unique query value so an already-running Feed
+                    // WKWebView reloads and fetches the newly saved draft.
+                    var deepLink = URLComponents(string: "\(self.baseURL)/feed")
+                    deepLink?.queryItems = [URLQueryItem(name: "sharedDraft", value: draftID)]
+                    if let deepLinkURL = deepLink?.url?.absoluteString {
+                        UserDefaults(suiteName: self.sharedSuiteName)?
+                            .set(deepLinkURL, forKey: self.pendingDeepLinkKey)
+                    }
 
-                    // Open the main app to the submit screen
+                    self.statusLabel.text = "Draft saved. Open Trust Assembly to continue."
+                    self.statusLabel.textColor = UIColor(red: 0.11, green: 0.37, blue: 0.25, alpha: 1)
+
+                    // Share extensions cannot use public API to foreground the
+                    // containing app. Return to the host after showing success.
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                        self?.extensionContext?.completeRequest(returningItems: nil)
+                        self.extensionContext?.completeRequest(returningItems: nil)
                     }
                 } else {
-                    self?.submitButton.isEnabled = true
-                    self?.statusLabel.text = "Failed to save — try again"
-                    self?.statusLabel.textColor = UIColor(red: 0.77, green: 0.34, blue: 0.25, alpha: 1)
+                    self.submitButton.isEnabled = true
+                    let message = data
+                        .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }?["error"] as? String
+                    self.statusLabel.text = message ?? "Failed to save — try again"
+                    self.statusLabel.textColor = UIColor(red: 0.77, green: 0.34, blue: 0.25, alpha: 1)
                 }
             }
         }.resume()

@@ -154,7 +154,9 @@ const TA = {
         method: "POST",
       });
       if (!res.ok) return null;
-      return await res.json();
+      const data = await res.json();
+      await storageRemove(["ta-assemblies"]);
+      return data;
     } catch (e) {
       return null;
     }
@@ -169,7 +171,9 @@ const TA = {
         method: "DELETE",
       });
       if (!res.ok) return null;
-      return await res.json();
+      const data = await res.json();
+      await storageRemove(["ta-assemblies"]);
+      return data;
     } catch (e) {
       return null;
     }
@@ -257,7 +261,7 @@ const TA = {
    */
   async getProfile(username) {
     try {
-      const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(username)}/profile`);
+      const res = await fetch(`${API_BASE}/api/users/${encodeURIComponent(username)}`);
       if (!res.ok) return null;
       return await res.json();
     } catch (e) {
@@ -270,7 +274,7 @@ const TA = {
    */
   async getAssembly(id) {
     try {
-      const res = await fetch(`${API_BASE}/api/assemblies/${encodeURIComponent(id)}`);
+      const res = await fetch(`${API_BASE}/api/orgs/${encodeURIComponent(id)}`);
       if (!res.ok) return null;
       return await res.json();
     } catch (e) {
@@ -284,9 +288,22 @@ const TA = {
    */
   async getTranslations(orgId) {
     try {
-      const res = await fetch(`${API_BASE}/api/translations/${encodeURIComponent(orgId)}`);
+      const query = new URLSearchParams({
+        type: "translation",
+        orgId,
+        status: "approved",
+        limit: "100",
+      });
+      const res = await fetch(`${API_BASE}/api/vault?${query.toString()}`);
       if (!res.ok) return [];
-      return await res.json();
+      const data = await res.json();
+      return (data.entries || []).map(entry => ({
+        ...entry,
+        original: entry.original_text,
+        translated: entry.translated_text,
+        type: entry.translation_type,
+        orgName: entry.org_name,
+      }));
     } catch (e) {
       return [];
     }

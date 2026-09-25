@@ -18,11 +18,10 @@ struct ModeSelectionView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     // Lighthouse icon
-                    Image("lighthouse-gold")
-                        .resizable()
-                        .scaledToFit()
+                    Image(systemName: "light.beacon.max.fill")
+                        .font(.system(size: 58))
+                        .foregroundColor(gold)
                         .frame(width: 72, height: 72)
-                        .clipShape(Circle())
                         .padding(.top, 40)
 
                     Text("How would you like to\nuse Trust Assembly?")

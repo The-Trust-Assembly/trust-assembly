@@ -179,53 +179,62 @@
   //
   // Solution: route the fetch through the background service worker,
   // which runs in the extension's origin and is not subject to CORS.
-  // Falls back to direct fetch (via TA.getForURL) if messaging fails.
-  function fetchViaBackground(url) {
-    const apiUrl = (typeof TA !== "undefined" ? "https://trustassembly.org" : "https://trustassembly.org")
-      + "/api/corrections?url=" + encodeURIComponent(url);
-    return new Promise((resolve) => {
-      const empty = { corrections: [], affirmations: [], translations: [], meta: {} };
+  // All Trust Assembly API reads go through the host. That is required for
+  // Manifest V3 CORS behavior and lets the WebView host validate and proxy
+  // the same public requests without exposing authenticated APIs to a page.
+  function fetchJsonViaBackground(apiUrl) {
+    return new Promise((resolve, reject) => {
       try {
         const rt = (typeof chrome !== "undefined" && chrome.runtime) ? chrome.runtime
           : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
         if (!rt || !rt.sendMessage) {
-          console.warn("[TrustAssembly] No runtime.sendMessage — falling back to direct fetch");
-          TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+          fetch(apiUrl)
+            .then(response => {
+              if (!response.ok) throw new Error(`Request failed (${response.status})`);
+              return response.json();
+            })
+            .then(resolve, reject);
           return;
         }
         rt.sendMessage({ type: "TA_FETCH", url: apiUrl }, (response) => {
           if (rt.lastError) {
-            console.warn("[TrustAssembly] Background fetch failed:", rt.lastError.message, "— falling back to direct fetch");
-            TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+            reject(new Error(rt.lastError.message || "Background request failed"));
             return;
           }
-          if (response && response.ok && response.data) {
-            const data = response.data;
-            // Normalize: older API versions may return flat array
-            if (Array.isArray(data)) {
-              resolve({
-                corrections: data.filter(s => s.submissionType !== "affirmation"),
-                affirmations: data.filter(s => s.submissionType === "affirmation"),
-                translations: [],
-                meta: {}
-              });
-            } else {
-              resolve({
-                corrections: data.corrections || [],
-                affirmations: data.affirmations || [],
-                translations: data.translations || [],
-                meta: data.meta || {}
-              });
-            }
+          if (response?.ok && response.data) {
+            resolve(response.data);
           } else {
-            console.warn("[TrustAssembly] Background fetch returned error:", response?.error);
-            TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+            reject(new Error(response?.error || "Background request failed"));
           }
         });
-      } catch (e) {
-        console.warn("[TrustAssembly] Exception sending message to background:", e.message);
-        TA.getForURL(url).then(resolve).catch(() => resolve(empty));
+      } catch (error) {
+        reject(error);
       }
+    });
+  }
+
+  function fetchViaBackground(url) {
+    const empty = { corrections: [], affirmations: [], translations: [], meta: {} };
+    const apiUrl = `${TA_API_BASE}/api/corrections?url=${encodeURIComponent(url)}`;
+    return fetchJsonViaBackground(apiUrl).then(data => {
+      // Normalize older API versions that returned a flat submission array.
+      if (Array.isArray(data)) {
+        return {
+          corrections: data.filter(s => s.submissionType !== "affirmation"),
+          affirmations: data.filter(s => s.submissionType === "affirmation"),
+          translations: [],
+          meta: {}
+        };
+      }
+      return {
+        corrections: data.corrections || [],
+        affirmations: data.affirmations || [],
+        translations: data.translations || [],
+        meta: data.meta || {}
+      };
+    }).catch(error => {
+      console.warn("[TrustAssembly] Correction request failed:", error?.message || error);
+      return empty;
     });
   }
 
@@ -2067,16 +2076,10 @@
     try {
       // Fetch all three vault types in parallel
       const currentUrl = encodeURIComponent(window.location.href.replace(/\/+$/, "").split("?")[0].split("#")[0]);
-      const [vaultRes, argsRes, beliefsRes] = await Promise.all([
-        fetch(`${TA_API_BASE}/api/vault?type=vault&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
-        fetch(`${TA_API_BASE}/api/vault?type=argument&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
-        fetch(`${TA_API_BASE}/api/vault?type=belief&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
-      ]);
-
       const [vaultData, argsData, beliefsData] = await Promise.all([
-        vaultRes.ok ? vaultRes.json() : { entries: [] },
-        argsRes.ok ? argsRes.json() : { entries: [] },
-        beliefsRes.ok ? beliefsRes.json() : { entries: [] },
+        fetchJsonViaBackground(`${TA_API_BASE}/api/vault?type=vault&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
+        fetchJsonViaBackground(`${TA_API_BASE}/api/vault?type=argument&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
+        fetchJsonViaBackground(`${TA_API_BASE}/api/vault?type=belief&orgIds=${encodeURIComponent(orgIds)}&status=approved&limit=5&url=${currentUrl}`),
       ]);
 
       const vault = vaultData.entries || [];

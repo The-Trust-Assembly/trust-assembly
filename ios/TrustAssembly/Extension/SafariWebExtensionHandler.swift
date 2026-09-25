@@ -4,7 +4,7 @@ import os.log
 /// Bridge between the native app and the Safari Web Extension.
 /// Handles token synchronization via App Groups so the extension
 /// can authenticate without a separate login.
-class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
+final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
     private let logger = Logger(subsystem: "org.trustassembly", category: "extension")
     private let sharedSuiteName = "group.org.trustassembly.shared"
@@ -12,6 +12,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
     func beginRequest(with context: NSExtensionContext) {
         let request = context.inputItems.first as? NSExtensionItem
+        let message = request?.userInfo?[SFExtensionMessageKey] as? [String: Any]
 
         let profile: UUID?
         if #available(iOS 17.0, *) {
@@ -20,15 +21,26 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             profile = nil
         }
 
-        // Read shared auth token from App Group
+        guard message?["type"] as? String == "getAuthState" else {
+            complete(context, response: [
+                "ok": false,
+                "error": "Unsupported native message",
+            ])
+            return
+        }
+
+        // Read shared auth state from the App Group. JavaScript must request
+        // this through browser.runtime.sendNativeMessage; browser storage and
+        // UserDefaults are separate sandboxes.
         let defaults = UserDefaults(suiteName: sharedSuiteName)
         let token = defaults?.string(forKey: sharedTokenKey)
 
-        // Build response message for the extension's background.js
-        let response = NSExtensionItem()
-        var responseDict: [String: Any] = [:]
+        var responseDict: [String: Any] = [
+            "ok": true,
+            "loggedIn": token?.isEmpty == false,
+        ]
 
-        if let token = token {
+        if let token, !token.isEmpty {
             responseDict["authToken"] = token
             logger.info("Providing auth token to extension")
         } else {
@@ -41,8 +53,16 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         if let displayName = defaults?.string(forKey: "ta-display-name") {
             responseDict["displayName"] = displayName
         }
+        if let profile {
+            responseDict["profile"] = profile.uuidString
+        }
 
+        complete(context, response: responseDict)
+    }
+
+    private func complete(_ context: NSExtensionContext, response responseDict: [String: Any]) {
+        let response = NSExtensionItem()
         response.userInfo = [SFExtensionMessageKey: responseDict]
         context.completeRequest(returningItems: [response], completionHandler: nil)
-    }
+     }
 }

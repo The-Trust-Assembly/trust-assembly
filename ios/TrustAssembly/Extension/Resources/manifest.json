@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "Trust Assembly",
+  "version": "1.1.0",
+  "description": "Truth Will Out. Overlay community-verified corrections, affirmations, and translations on any webpage.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "notifications",
+    "alarms",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["api-client.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "native-background.js"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon48.png",
+        "icon48-corrected.png",
+        "icon48-affirmed.png",
+        "icon48-pending.png",
+        "icon128.png",
+        "icon128-corrected.png",
+        "icon128-affirmed.png",
+        "icon128-pending.png"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

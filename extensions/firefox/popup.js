@@ -190,7 +190,7 @@ function renderLoginGate() {
       <input type="password" id="login-pass-gate" placeholder="Password" autocomplete="current-password">
       <button class="login-btn" id="btn-login-gate">Sign In</button>
       <div id="login-error-gate" class="login-error" style="display:none"></div>
-      <div class="login-hint">Don't have an account? <a href="https://trustassembly.org/#register" target="_blank" style="color:#B8963E">Register on trustassembly.org</a></div>
+      <div class="login-hint">Don't have an account? <a href="https://trustassembly.org/register" target="_blank" style="color:#B8963E">Register on trustassembly.org</a></div>
     </div>
   `;
   document.getElementById("btn-login-gate").addEventListener("click", doLoginGate);
@@ -676,7 +676,7 @@ async function renderSubmitTab() {
         <input type="password" id="login-pass" placeholder="Password" autocomplete="current-password">
         <button class="login-btn" id="btn-login">Sign In</button>
         <div id="login-error" class="login-error" style="display:none"></div>
-        <div class="login-hint">Don't have an account? <a href="https://trustassembly.org/#register" target="_blank" style="color:#B8963E">Register on trustassembly.org</a></div>
+        <div class="login-hint">Don't have an account? <a href="https://trustassembly.org/register" target="_blank" style="color:#B8963E">Register on trustassembly.org</a></div>
       </div>
     `;
     document.getElementById("btn-login").addEventListener("click", doLogin);
@@ -693,7 +693,7 @@ async function renderSubmitTab() {
           <div class="empty-icon">⚖</div>
           You must be a member of at least one assembly to submit.
           <br><br>
-          <a href="https://trustassembly.org/#orgs" target="_blank" style="color:#B8963E">Join an assembly on trustassembly.org</a>
+          <a href="https://trustassembly.org/orgs" target="_blank" style="color:#B8963E">Join an assembly on trustassembly.org</a>
         </div>
       </div>
     `;
@@ -1380,20 +1380,27 @@ async function doSubmit() {
     return;
   }
 
-  // Get submission ID(s) for vault linking
+  // The submission endpoint returns one result per selected assembly in the
+  // same order as orgIds. Preserve that association because vault entries
+  // require an explicit assembly even when linked to a submission.
   const submissionIds = result.submissions
     ? result.submissions.map(s => s.id)
     : result.id ? [result.id] : [];
+  const submissionTargets = submissionIds.map((id, index) => ({
+    id,
+    orgId: selectedOrgs[index] || selectedOrgs[0],
+  }));
 
   // Submit vault artifacts — one entry per vault item per submission (each submission maps to one org)
   const vaultPromises = [];
 
-  for (const subId of submissionIds) {
+  for (const target of submissionTargets) {
     for (const item of formState.vaultItems.correction) {
       if (item.assertion && item.evidence) {
         vaultPromises.push(TA.submitVault({
           type: "vault",
-          submissionId: subId,
+          submissionId: target.id,
+          orgId: target.orgId,
           assertion: item.assertion.trim(),
           evidence: item.evidence.trim(),
         }));
@@ -1404,7 +1411,8 @@ async function doSubmit() {
       if (item.content) {
         vaultPromises.push(TA.submitVault({
           type: "argument",
-          submissionId: subId,
+          submissionId: target.id,
+          orgId: target.orgId,
           content: item.content.trim(),
         }));
       }
@@ -1414,7 +1422,8 @@ async function doSubmit() {
       if (item.content) {
         vaultPromises.push(TA.submitVault({
           type: "belief",
-          submissionId: subId,
+          submissionId: target.id,
+          orgId: target.orgId,
           content: item.content.trim(),
         }));
       }
@@ -1424,7 +1433,8 @@ async function doSubmit() {
       if (item.original && item.translated) {
         vaultPromises.push(TA.submitVault({
           type: "translation",
-          submissionId: subId,
+          submissionId: target.id,
+          orgId: target.orgId,
           original: item.original.trim(),
           translated: item.translated.trim(),
           translationType: item.translationType || "clarity",
@@ -1433,11 +1443,8 @@ async function doSubmit() {
     }
   }
 
-  if (vaultPromises.length > 0) {
-    Promise.all(vaultPromises).catch(e => {
-      console.warn("[Trust Assembly] Vault submission error:", e.message);
-    });
-  }
+  const vaultResults = vaultPromises.length > 0 ? await Promise.all(vaultPromises) : [];
+  const vaultErrors = vaultResults.filter(vaultResult => vaultResult?.error);
 
   const orgCount = selectedOrgs.length;
   msgEl.className = "submit-msg success";
@@ -1449,6 +1456,10 @@ async function doSubmit() {
   }
   if (vaultPromises.length > 0) {
     msgEl.textContent += ` ${vaultPromises.length} vault artifact(s) linked.`;
+  }
+  if (vaultErrors.length > 0) {
+    msgEl.className = "submit-msg error";
+    msgEl.textContent = `${isAffirm ? "Affirmation" : "Correction"} submitted, but ${vaultErrors.length} vault artifact(s) failed: ${vaultErrors[0].error}`;
   }
   msgEl.style.display = "block";
 
@@ -1507,7 +1518,7 @@ async function renderAssembliesTab() {
 
   html += '<h3>Joined Assemblies</h3>';
   if (userAssemblies.joined.length === 0) {
-    html += '<div style="font-size:11px; color:#B0A89C; padding:8px 0;">No memberships. <a href="https://trustassembly.org/#orgs" target="_blank" style="color:#B8963E">Join on the web</a></div>';
+    html += '<div style="font-size:11px; color:#B0A89C; padding:8px 0;">No memberships. <a href="https://trustassembly.org/orgs" target="_blank" style="color:#B8963E">Join on the web</a></div>';
   } else {
     userAssemblies.joined.forEach(org => {
       html += `

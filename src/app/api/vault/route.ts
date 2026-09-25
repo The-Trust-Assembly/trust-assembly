@@ -2,18 +2,41 @@ import { NextRequest } from "next/server";
 import { sql, withTransaction } from "@/lib/db";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { ok, err, unauthorized, serverError } from "@/lib/api-utils";
-import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { validateFields, MAX_LENGTHS, isValidUUID } from "@/lib/validation";
 import { slugify } from "@/lib/slugify";
+import { normalizeUrl } from "@/lib/normalize-url";
 
 // GET /api/vault — list vault entries (filterable by type)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const orgId = searchParams.get("orgId");
   const orgIds = searchParams.get("orgIds"); // comma-separated list of org IDs
-  const status = searchParams.get("status");
+  const requestedStatus = searchParams.get("status");
   const type = searchParams.get("type") || "vault";
-  const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
-  const offset = parseInt(searchParams.get("offset") || "0");
+  const parsedLimit = Number.parseInt(searchParams.get("limit") || "50", 10);
+  const parsedOffset = Number.parseInt(searchParams.get("offset") || "0", 10);
+  const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 50;
+  const offset = Number.isFinite(parsedOffset) ? Math.min(Math.max(parsedOffset, 0), 10_000) : 0;
+
+  if (!["vault", "argument", "belief", "translation"].includes(type)) {
+    return err("Invalid vault type");
+  }
+  if (orgId && !isValidUUID(orgId)) return err("Invalid orgId");
+
+  const requestedOrgIds = orgIds
+    ? [...new Set(orgIds.split(",").map(id => id.trim()).filter(Boolean))]
+    : [];
+  if (requestedOrgIds.length > 25 || requestedOrgIds.some(id => !isValidUUID(id))) {
+    return err("Invalid orgIds");
+  }
+
+  const session = await getCurrentUserFromRequest(request);
+  if (requestedStatus && !["pending", "approved", "rejected"].includes(requestedStatus)) {
+    return err("Invalid status");
+  }
+  // Vault reads are public for the browser overlay, but unfinished and
+  // rejected material must not leak to anonymous readers.
+  const status = session ? requestedStatus : "approved";
 
   let query: string;
   const params: unknown[] = [];
@@ -73,14 +96,11 @@ export async function GET(request: NextRequest) {
   if (orgId) {
     query += ` AND org_id = $${paramIndex++}`;
     params.push(orgId);
-  } else if (orgIds) {
-    const ids = orgIds.split(",").map(s => s.trim()).filter(Boolean);
-    if (ids.length > 0) {
-      const placeholders = ids.map((_, i) => `$${paramIndex + i}`).join(", ");
-      paramIndex += ids.length;
+  } else if (requestedOrgIds.length > 0) {
+      const placeholders = requestedOrgIds.map((_, i) => `$${paramIndex + i}`).join(", ");
+      paramIndex += requestedOrgIds.length;
       query += ` AND org_id IN (${placeholders})`;
-      params.push(...ids);
-    }
+      params.push(...requestedOrgIds);
   }
   if (status) {
     query += ` AND status = $${paramIndex++}`;
@@ -92,7 +112,7 @@ export async function GET(request: NextRequest) {
   const filterUrl = searchParams.get("url");
   if (filterUrl && type !== "translation") {
     query += ` AND submission_id IN (SELECT id FROM submissions WHERE normalized_url = $${paramIndex} OR url = $${paramIndex})`;
-    params.push(filterUrl.trim().replace(/\/+$/, "").toLowerCase());
+    params.push(normalizeUrl(filterUrl));
     paramIndex++;
   }
 
@@ -127,18 +147,39 @@ export async function POST(request: NextRequest) {
   const targetOrgIds: string[] = orgIds && Array.isArray(orgIds) && orgIds.length > 0
     ? orgIds
     : orgId ? [orgId] : [];
+  const uniqueOrgIds = [...new Set(targetOrgIds)];
 
-  if (targetOrgIds.length === 0) {
+  if (uniqueOrgIds.length === 0) {
     return err("orgId or orgIds is required");
   }
+  if (uniqueOrgIds.some(id => typeof id !== "string" || !isValidUUID(id))) {
+    return err("Invalid assembly ID");
+  }
 
-  // If submissionId is provided, verify the submission exists and belongs to this user
+  // Vault entries belong to assemblies, so use the same active-membership
+  // boundary as ordinary submissions instead of accepting arbitrary org IDs.
+  for (const targetOrgId of uniqueOrgIds) {
+    const membership = await sql`
+      SELECT id FROM organization_members
+      WHERE org_id = ${targetOrgId} AND user_id = ${session.sub} AND is_active = TRUE
+    `;
+    if (membership.rows.length === 0) {
+      return err("You must be a member of all selected assemblies to submit");
+    }
+  }
+
+  // A linked artifact must stay in the same assembly as its submission. Without
+  // this check, a caller could attach their submission to another assembly's
+  // standing vault record.
   if (submissionId) {
     const sub = await sql`
-      SELECT id FROM submissions WHERE id = ${submissionId} AND submitted_by = ${session.sub}
+      SELECT id, org_id FROM submissions WHERE id = ${submissionId} AND submitted_by = ${session.sub}
     `;
     if (sub.rows.length === 0) {
       return err("Invalid submission ID");
+    }
+    if (uniqueOrgIds.length !== 1 || sub.rows[0].org_id !== uniqueOrgIds[0]) {
+      return err("Vault artifact assembly must match its linked submission");
     }
   }
 
@@ -184,7 +225,7 @@ export async function POST(request: NextRequest) {
     const results = await withTransaction(async (client) => {
       const txResults: unknown[] = [];
 
-      for (const targetOrgId of targetOrgIds) {
+      for (const targetOrgId of uniqueOrgIds) {
         switch (entryType) {
           case "argument": {
             const result = await client.query(

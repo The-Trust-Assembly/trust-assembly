@@ -1,4 +1,10 @@
-# browser-extension
+# browser-extension (legacy prototype)
+
+> This directory is an obsolete headline-replacement prototype and is not a
+> production extension target. The maintained Chrome, Firefox, Safari, and
+> mobile WebView implementation is generated from `packages/trust-overlay`.
+> See the repository `EXTENSIONS-README.md` and run `npm run build:overlay`
+> from the repository root.
 
 This is the browser-extension that transforms users' media feed.
 

@@ -1,0 +1,11 @@
+{
+  "name": "@trust-assembly/overlay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Canonical Trust Assembly browser overlay and generated platform packages",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "test": "node scripts/test.mjs"
+  }
+}

@@ -1,21 +1,32 @@
 import SwiftUI
+import UIKit
 import UserNotifications
 
 @main
 struct TrustAssemblyApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .task {
+                    await appState.restoreSession()
+                    appState.consumePendingShareDeepLink()
+                }
                 .onOpenURL { url in
-                    // Handle Universal Links and deep links
-                    if let resolved = DeepLinkService.resolve(url) {
-                        // Navigate to the resolved URL in the web view
-                        // The WKWebView will handle the routing
-                        print("[TrustAssembly] Deep link: \(resolved)")
+                    appState.openURL(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL {
+                        appState.openURL(url)
+                    }
+                }
+                .onChange(of: scenePhase) { phase in
+                    if phase == .active {
+                        appState.consumePendingShareDeepLink()
                     }
                 }
         }
@@ -31,6 +42,21 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+
+        // APNs can change a token between launches. Ask for a current token on
+        // every launch when the user has already granted permission.
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            if [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) {
+                await MainActor.run {
+                    application.registerForRemoteNotifications()
+                }
+            }
+        }
+
+        if let userInfo = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+            routeNotification(userInfo)
+        }
         return true
     }
 
@@ -72,12 +98,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Extract the deep link from the notification payload
         if let urlString = userInfo["url"] as? String,
            let url = URL(string: urlString) {
-            if let resolved = DeepLinkService.resolve(url) {
-                // Navigate to the deep link
-                print("[TrustAssembly] Notification tap → \(resolved)")
+            Task { @MainActor in
+                AppState.shared.openURL(url)
             }
         }
 
         completionHandler()
+    }
+
+    private func routeNotification(_ userInfo: [AnyHashable: Any]) {
+        guard let urlString = userInfo["url"] as? String,
+              let url = URL(string: urlString) else { return }
+        Task { @MainActor in
+            AppState.shared.openURL(url)
+        }
     }
 }

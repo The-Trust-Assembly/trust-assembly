@@ -4,32 +4,61 @@ import Foundation
 /// Maps trustassembly.org URLs to in-app navigation.
 struct DeepLinkService {
 
-    /// Parse a URL into an in-app path for the WKWebView
-    static func resolve(_ url: URL) -> String? {
-        let host = url.host?.replacingOccurrences(of: "www.", with: "")
-        guard host == "trustassembly.org" else { return nil }
+    private static let canonicalScheme = "https"
+    private static let canonicalHost = "trustassembly.org"
 
-        let path = url.path
-
-        // Direct web paths the WKWebView can load
-        // /record/{id} — submission detail
-        // /citizen/{username} — citizen profile
-        // /verify-email?token=xxx — email verification
-        // /feed — main feed
-        // /submit — submit screen
-        // /review — review screen
-
-        if path.hasPrefix("/record/") ||
-           path.hasPrefix("/citizen/") ||
-           path.hasPrefix("/verify-email") ||
-           path == "/feed" ||
-           path == "/submit" ||
-           path == "/review" ||
-           path == "/" {
-            return url.absoluteString
+    /// Convert a trusted Universal Link or `trustassembly://` URL into the
+    /// canonical HTTPS URL loaded by the WKWebView. URLs for other origins are
+    /// deliberately rejected.
+    static func resolve(_ url: URL) -> URL? {
+        if url.scheme?.lowercased() == canonicalScheme {
+            let host = url.host?.lowercased()
+            guard host == canonicalHost || host == "www.\(canonicalHost)" else { return nil }
+            return canonicalURL(
+                path: url.path,
+                percentEncodedQuery: URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery
+            )
         }
 
-        // Default: load the full URL in WKWebView
-        return url.absoluteString
+        guard url.scheme?.lowercased() == "trustassembly" else { return nil }
+
+        // Custom links use the host as the first path component, for example:
+        // trustassembly://record/123 -> https://trustassembly.org/record/123
+        var pathComponents: [String] = []
+        if let host = url.host, !host.isEmpty {
+            pathComponents.append(host)
+        }
+        pathComponents.append(contentsOf: url.pathComponents.filter { $0 != "/" })
+        let path = "/" + pathComponents.joined(separator: "/")
+        return canonicalURL(
+            path: path,
+            percentEncodedQuery: URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery
+        )
+    }
+
+    static func preferredTab(for url: URL, mode: UserMode) -> String {
+        let path = url.path
+
+        if path == "/profile" || path.hasPrefix("/citizen/") {
+            return "profile"
+        }
+        if mode == .contributor {
+            if path == "/submit" { return "submit" }
+            if path == "/review" { return "review" }
+            if path == "/vault" { return "vault" }
+        } else {
+            if path == "/consensus" { return "explore" }
+            if path == "/orgs" || path.hasPrefix("/assembly/") { return "assemblies" }
+        }
+        return "feed"
+    }
+
+    private static func canonicalURL(path: String, percentEncodedQuery: String?) -> URL? {
+        var components = URLComponents()
+        components.scheme = canonicalScheme
+        components.host = canonicalHost
+        components.path = path.isEmpty ? "/" : path
+        components.percentEncodedQuery = percentEncodedQuery
+        return components.url
     }
 }

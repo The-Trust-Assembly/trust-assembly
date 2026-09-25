@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 380px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #FDFBF5;
+      color: #2B2B2B;
+    }
+    .header {
+      background: linear-gradient(180deg, #1a1a1a 0%, #222 100%);
+      color: #F0EDE6;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-icon { display: flex; align-items: center; justify-content: center; }
+    .header-icon svg { width: 22px; height: 22px; }
+    .header-title { font-size: 14px; font-weight: 600; letter-spacing: 0.1em; line-height: 1; }
+    .header-title .cap { font-size: 19px; }
+    .header-motto { font-size: 8px; letter-spacing: 0.12em; color: #B8963E; font-weight: 500; margin-top: 2px; }
+    .header-user {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .header-user .username { font-weight: 600; }
+    .header-user button {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #F0EDE6;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .header-user button:hover { background: rgba(255,255,255,0.25); }
+
+    /* Detach button */
+    .btn-detach {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: #F0EDE6;
+      font-size: 13px;
+      padding: 3px 6px;
+      border-radius: 2px;
+      cursor: pointer;
+      margin-left: auto;
+      margin-right: 4px;
+      opacity: 0.7;
+      line-height: 1;
+    }
+    .btn-detach:hover { opacity: 1; background: rgba(255,255,255,0.25); }
+
+    /* Multi-assembly checkboxes */
+    .org-checkboxes {
+      margin-bottom: 8px;
+    }
+    .org-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      margin-bottom: 2px;
+      font-size: 12px;
+      color: #1B2A4A;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .org-checkbox-label:hover { background: #F0EDE6; }
+    .org-checkbox { margin: 0; cursor: pointer; }
+
+    /* Inline edit entries */
+    .inline-edit-entry {
+      padding: 8px;
+      margin-bottom: 6px;
+      border: 1px solid #DCD8D0;
+      border-left: 3px solid #C4573F;
+      border-radius: 3px;
+      background: #fff;
+    }
+    .inline-edit-entry input {
+      display: block;
+      width: 100%;
+      padding: 5px 8px;
+      margin-bottom: 4px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 11px;
+      background: #fff;
+    }
+
+    /* Add button style for vault/inline edits */
+    .add-vault-item-btn:hover {
+      background: #F0EDE6 !important;
+      border-color: #B8963E !important;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex;
+      padding: 0 14px;
+      border-bottom: 1px solid #eee;
+      background: #fff;
+    }
+    .tab-bar button {
+      padding: 9px 0;
+      margin-right: 18px;
+      font-size: 12.5px;
+      font-weight: 400;
+      border: none;
+      background: none;
+      color: #999;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.12s;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .tab-bar button.active {
+      color: #1a1a1a;
+      font-weight: 600;
+      border-bottom-color: #1a1a1a;
+    }
+    .tab-bar button:hover { color: #1a1a1a; }
+
+    .status {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #5A5650;
+      border-bottom: 1px solid #DCD8D0;
+      line-height: 1.5;
+    }
+    .status-count {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1B2A4A;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .status-zero { color: #B0A89C; }
+
+    /* Site mute toggle */
+    .site-mute-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      border-bottom: 1px solid #DCD8D0;
+      background: #F0EDE6;
+      font-size: 11px;
+      color: #5A5650;
+    }
+    .site-mute-bar strong { color: #1B2A4A; }
+    .mute-switch {
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: #1B5E3F;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .mute-switch.muted { background: #DCD8D0; }
+    .mute-knob {
+      display: block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      position: absolute;
+      top: 2px;
+      left: 18px;
+      transition: left 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .mute-switch.muted .mute-knob { left: 2px; }
+
+    .corrections-list {
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 8px 12px;
+    }
+    .correction-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      background: #fff;
+    }
+    .correction-item.type-correction { border-left: 3px solid #C4573F; }
+    .correction-item.type-affirmation { border-left: 3px solid #1B5E3F; }
+    .correction-item.type-translation { border-left: 3px solid #D4850A; }
+    /* Color-coding by approval status */
+    .correction-item.status-approved { border-left: 4px solid #1B5E3F; }
+    .correction-item.status-consensus { border-left: 4px solid #5B2D8E; }
+
+    .meta { font-size: 9px; color: #7A7570; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .headline-old { display: none; }
+    .headline-new {
+      font-size: 13px; font-weight: 700; color: #C4573F; margin-top: 2px;
+      position: relative; cursor: help;
+    }
+    .headline-new .headline-original-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 0;
+      z-index: 999;
+      background: #1B2A4A;
+      color: #F0EDE6;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.4;
+      max-width: 340px;
+      min-width: 160px;
+      white-space: normal;
+      box-shadow: 0 4px 12px rgba(27,42,74,0.3);
+      font-weight: 400;
+      font-style: normal;
+      pointer-events: none;
+    }
+    .headline-new .headline-original-tooltip .tooltip-label {
+      font-size: 8px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #B8963E; margin-bottom: 3px;
+    }
+    .headline-new:hover .headline-original-tooltip { display: block; }
+    .headline-affirmed { font-size: 13px; font-weight: 700; color: #1B5E3F; }
+    .trans-pair { font-size: 12px; margin-top: 2px; }
+    .trans-orig { color: #7A7570; font-style: italic; }
+    .trans-arrow { color: #D4850A; font-weight: 700; }
+    .trans-result { color: #D4850A; font-weight: 700; }
+
+    /* Relationship badge */
+    .rel-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 1px 5px;
+      border-radius: 2px;
+      margin-left: 4px;
+    }
+    .rel-badge.joined { background: #1B5E3F; color: #fff; }
+    .rel-badge.followed { background: #2A6B6B; color: #fff; }
+
+    /* Collapsed group */
+    .conflict-others {
+      font-size: 10px;
+      color: #B8963E;
+      cursor: pointer;
+      padding: 4px 10px;
+      margin-bottom: 8px;
+    }
+    .conflict-others:hover { text-decoration: underline; }
+    .conflict-hidden { display: none; }
+
+    .footer {
+      padding: 10px 16px;
+      border-top: 1px solid #DCD8D0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer a {
+      font-size: 10px;
+      color: #B8963E;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+    }
+    .footer a:hover { text-decoration: underline; }
+    .footer-motto { font-size: 9px; color: #B0A89C; font-style: italic; }
+
+    .loading { text-align: center; padding: 24px; color: #B0A89C; font-size: 12px; }
+    .empty {
+      text-align: center;
+      padding: 24px 16px;
+      color: #B0A89C;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .empty-icon { font-size: 28px; margin-bottom: 8px; }
+
+    .settings {
+      padding: 10px 16px;
+      border-top: 1px solid #DCD8D0;
+    }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 11px;
+      color: #5A5650;
+    }
+    .toggle-row input { margin-left: 8px; }
+
+    /* Login form */
+    .login-panel {
+      padding: 16px;
+      border-bottom: 1px solid #DCD8D0;
+    }
+    .login-panel h3 { font-size: 13px; margin-bottom: 10px; color: #1B2A4A; }
+    .login-panel input {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 12px;
+      background: #fff;
+    }
+    .login-panel .login-btn {
+      width: 100%;
+      padding: 8px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .login-panel .login-btn:hover { background: #333; }
+    .login-panel .login-error { color: #C4573F; font-size: 11px; margin-top: 6px; }
+    .login-panel .login-hint { font-size: 10px; color: #B0A89C; margin-top: 8px; }
+
+    /* Submit form */
+    .submit-panel {
+      padding: 12px 16px;
+    }
+    .submit-panel h3 { font-size: 13px; margin-bottom: 10px; color: #1B2A4A; }
+    .submit-panel label { font-size: 11px; color: #5A5650; display: block; margin-bottom: 3px; }
+    .submit-panel input, .submit-panel select, .submit-panel textarea {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 12px;
+      background: #fff;
+    }
+    .submit-panel textarea { resize: vertical; min-height: 60px; }
+    .submit-panel .submit-btn {
+      width: 100%;
+      padding: 8px;
+      background: #1B5E3F;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .submit-panel .submit-btn:hover { background: #247A51; }
+    .submit-msg { font-size: 11px; margin-top: 6px; }
+    .submit-msg.error { color: #C4573F; }
+    .submit-msg.success { color: #1B5E3F; }
+
+    /* Submission type toggle */
+    .type-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1.5px solid #DCD8D0;
+    }
+    .type-toggle button {
+      flex: 1;
+      padding: 8px 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: #fff;
+      color: #7A7570;
+      transition: all 0.15s;
+    }
+    .type-toggle button.active-correction {
+      background: #C4573F;
+      color: #fff;
+    }
+    .type-toggle button.active-affirmation {
+      background: #1B5E3F;
+      color: #fff;
+    }
+    .type-toggle .type-desc {
+      font-size: 8px;
+      font-weight: 400;
+      opacity: 0.8;
+      margin-top: 1px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .affirm-banner {
+      padding: 8px 10px;
+      background: #F0FAF4;
+      border: 1px solid rgba(27,94,63,0.25);
+      border-radius: 3px;
+      margin-bottom: 10px;
+      font-size: 11px;
+      color: #1B5E3F;
+      line-height: 1.4;
+    }
+
+    /* Author tags */
+    .author-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 8px;
+      min-height: 22px;
+    }
+    .author-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      background: #F0EDE6;
+      border: 1px solid #DCD8D0;
+      border-radius: 10px;
+      font-size: 10px;
+      color: #1B2A4A;
+    }
+    .author-tag .remove {
+      cursor: pointer;
+      font-size: 12px;
+      color: #7A7570;
+      margin-left: 2px;
+      line-height: 1;
+    }
+    .author-tag .remove:hover { color: #C4573F; }
+    .author-hint { font-size: 9px; color: #B0A89C; margin-top: -4px; margin-bottom: 8px; }
+
+    /* Vault artifacts section */
+    .vault-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #DCD8D0;
+    }
+    .vault-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #7A7570;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .vault-section-title:hover { color: #1B2A4A; }
+    .vault-type-row {
+      margin-bottom: 8px;
+      padding: 8px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      background: #fff;
+    }
+    .vault-type-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .vault-type-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #1B2A4A;
+    }
+    .vault-type-toggle {
+      font-size: 9px;
+      color: #B8963E;
+      font-weight: 600;
+    }
+    .vault-type-body {
+      margin-top: 6px;
+    }
+    .vault-type-desc {
+      font-size: 10px;
+      color: #7A7570;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .vault-type-body input, .vault-type-body textarea, .vault-type-body select {
+      display: block;
+      width: 100%;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      border: 1px solid #DCD8D0;
+      border-radius: 3px;
+      font-size: 11px;
+      background: #fff;
+    }
+    .vault-type-body textarea { resize: vertical; min-height: 48px; }
+    .vault-color-correction { border-left: 3px solid #B8963E; }
+    .vault-color-argument { border-left: 3px solid #2A6B6B; }
+    .vault-color-belief { border-left: 3px solid #5B2D8E; }
+    .vault-color-translation { border-left: 3px solid #D4850A; }
+
+    /* Assemblies panel */
+    .assemblies-panel {
+      padding: 12px 16px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .assemblies-panel h3 { font-size: 13px; margin-bottom: 10px; color: #1B2A4A; }
+    .assembly-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #F0EDE6;
+    }
+    .assembly-row .name { font-size: 12px; font-weight: 600; }
+    .assembly-row .role { font-size: 10px; color: #7A7570; }
+    .assembly-row button {
+      font-size: 10px;
+      padding: 3px 10px;
+      border: 1px solid #DCD8D0;
+      border-radius: 2px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .assembly-row button:hover { background: #F0EDE6; }
+    .assembly-row button.following { background: #2A6B6B; color: #fff; border-color: #2A6B6B; }
+
+    /* Design Mode tab */
+    .design-panel { padding: 12px 16px; max-height: 400px; overflow-y: auto; }
+    .design-panel h3 { font-size: 12px; margin-bottom: 8px; color: #1B2A4A; }
+    .design-btn {
+      display: block; width: 100%; padding: 8px; margin-bottom: 6px;
+      background: #1a1a1a; color: #fff; border: none; border-radius: 3px;
+      font-size: 11px; font-weight: 600; cursor: pointer; text-align: left;
+    }
+    .design-btn:hover { background: #333; }
+    .design-btn.active { background: #B8963E; }
+    .design-btn-secondary {
+      display: block; width: 100%; padding: 6px 8px; margin-bottom: 4px;
+      background: #fff; color: #1B2A4A; border: 1.5px solid #DCD8D0; border-radius: 3px;
+      font-size: 10px; font-weight: 600; cursor: pointer; text-align: left;
+    }
+    .design-btn-secondary:hover { background: #F0EDE6; border-color: #B8963E; }
+    .design-info {
+      font-size: 10px; color: #7A7570; line-height: 1.5; padding: 8px;
+      background: #F0EDE6; border-radius: 3px; margin-bottom: 8px;
+    }
+    .design-report {
+      font-size: 10px; font-family: monospace; color: #2B2B2B; line-height: 1.6;
+      padding: 8px; background: #fff; border: 1px solid #DCD8D0; border-radius: 3px;
+      max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+    }
+    .design-nav {
+      display: flex; gap: 4px; align-items: center; margin-bottom: 8px;
+    }
+    .design-nav button {
+      padding: 4px 10px; border: 1px solid #DCD8D0; background: #fff;
+      border-radius: 3px; cursor: pointer; font-size: 14px; font-weight: 700;
+    }
+    .design-nav button:hover { background: #F0EDE6; }
+    .design-nav span { font-size: 10px; color: #7A7570; flex: 1; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-icon">
+      <img src="icon48.png" alt="Trust Assembly" style="width:28px;height:28px;border-radius:50%" />
+    </div>
+    <div style="flex:1">
+      <div class="header-title"><span class="cap">T</span>RUST <span class="cap">A</span>SSEMBLY</div>
+      <div class="header-motto">TRUTH WILL OUT</div>
+    </div>
+    <button class="btn-detach" id="btn-detach" title="Open in floating window">⧉</button>
+    <div class="header-user" id="header-user" style="display:none">
+      <span class="username" id="header-username"></span>
+      <button id="btn-signout">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="tab-bar" id="tab-bar">
+    <button class="active" data-tab="corrections">This Page</button>
+    <button data-tab="submit">Submit</button>
+    <button data-tab="assemblies">Assemblies</button>
+  </div>
+
+  <div id="tab-corrections">
+    <div id="site-mute-container"></div>
+    <div id="content">
+      <div class="loading">Checking this page...</div>
+    </div>
+  </div>
+
+  <div id="tab-submit" style="display:none">
+    <div id="submit-gate"></div>
+  </div>
+
+  <div id="tab-assemblies" style="display:none">
+    <div id="assemblies-content"></div>
+  </div>
+
+  <div id="tab-design" style="display:none">
+    <div id="design-content" class="design-panel"></div>
+  </div>
+
+  <div class="settings">
+    <div class="toggle-row">
+      <label>Show translations inline</label>
+      <input type="checkbox" id="toggle-translations" checked>
+    </div>
+    <div class="toggle-row">
+      <label>Show floating badge</label>
+      <input type="checkbox" id="toggle-badge" checked>
+    </div>
+  </div>
+
+  <div style="padding: 8px 16px; font-size: 9px; color: #7A7570; line-height: 1.5; border-top: 1px solid #DCD8D0; background: #F0EDE6;">
+    🔒 <strong>Privacy:</strong> This extension sends the current page URL to check for corrections. We do not log, store, or track which pages you visit. No browsing history. No IP logging. No analytics. <a href="https://trustassembly.org/extensions" target="_blank" style="color: #2A6B6B;">Learn more</a>
+  </div>
+
+  <div class="footer">
+    <a href="https://trustassembly.org" target="_blank">trustassembly.org</a>
+    <span class="footer-motto" style="font-style:normal; color:#999; font-size:9px">Truth Will Out.</span>
+  </div>
+
+  <script src="api-client.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
