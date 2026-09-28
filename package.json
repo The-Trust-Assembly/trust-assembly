@@ -7,7 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:overlay": "node packages/trust-overlay/scripts/build.mjs",
+    "check:overlay": "node packages/trust-overlay/scripts/build.mjs --check",
+    "test:overlay": "node packages/trust-overlay/scripts/test.mjs",
+    "check:mobile": "npm --prefix apps/mobile run check"
   },
   "keywords": [
     "fact-checking",

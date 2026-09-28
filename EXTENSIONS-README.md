@@ -2,7 +2,7 @@
 
 **Corrections, affirmations, and translations — delivered where you read.**
 
-Three browser-specific packages that overlay Trust Assembly's community-verified content directly onto any webpage.
+Three browser-specific packages that overlay Trust Assembly's community-verified content directly onto any webpage. Their runtime files are generated from one shared source in `packages/trust-overlay`; the mobile WebView uses the same overlay through a small platform adapter.
 
 ---
 
@@ -179,6 +179,19 @@ extensions/safari/
 ---
 
 ## Development
+
+### Shared source and generated packages
+
+Do not edit the copies of `content.js`, `content.css`, `api-client.js`, popup,
+background, or icon files inside an individual browser directory. Edit the
+canonical files under `packages/trust-overlay`, then synchronize every target:
+
+```bash
+npm run build:overlay
+```
+
+Use `npm run check:overlay` in CI to fail when a generated browser or mobile
+artifact is stale.
 
 ### Testing Without an API
 

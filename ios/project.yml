@@ -1,0 +1,101 @@
+name: TrustAssembly
+
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    iOS: "16.4"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: 5.9
+    CODE_SIGN_STYLE: Automatic
+  configs:
+    Debug:
+      APS_ENVIRONMENT: development
+    Release:
+      APS_ENVIRONMENT: production
+
+targets:
+  TrustAssembly:
+    type: application
+    platform: iOS
+    sources:
+      - path: TrustAssembly/Sources
+      - path: TrustAssembly/Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    info:
+      path: TrustAssembly/Info.plist
+    entitlements:
+      path: TrustAssembly/TrustAssembly.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.trustassembly.app
+        PRODUCT_NAME: Trust Assembly
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - target: TrustAssemblySafariExtension
+        embed: true
+      - target: TrustAssemblyShareExtension
+        embed: true
+
+  TrustAssemblySafariExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TrustAssembly/Extension/SafariWebExtensionHandler.swift
+      - path: TrustAssembly/Extension/Resources
+        buildPhase: resources
+      - path: ../extensions/safari
+        excludes:
+          - manifest.json
+        buildPhase: resources
+      - path: TrustAssembly/Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    info:
+      path: TrustAssembly/Extension/Info.plist
+    entitlements:
+      path: TrustAssembly/Extension/SafariWebExtension.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.trustassembly.app.safari
+        PRODUCT_NAME: Trust Assembly Safari Extension
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: NO
+
+  TrustAssemblyShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TrustAssembly/ShareExtension/ShareViewController.swift
+      - path: TrustAssembly/Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    info:
+      path: TrustAssembly/ShareExtension/Info.plist
+    entitlements:
+      path: TrustAssembly/ShareExtension/ShareExtension.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.trustassembly.app.share
+        PRODUCT_NAME: Submit to Trust Assembly
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: NO
+
+schemes:
+  TrustAssembly:
+    build:
+      targets:
+        TrustAssembly: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release

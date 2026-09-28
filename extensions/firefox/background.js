@@ -8,6 +8,7 @@ const runtime = typeof chrome !== "undefined" ? chrome.runtime : browser.runtime
 const action = typeof chrome !== "undefined" ? chrome.action : browser.browserAction;
 const tabs = typeof chrome !== "undefined" && chrome.tabs ? chrome.tabs : (typeof browser !== "undefined" ? browser.tabs : null);
 const notifications = typeof chrome !== "undefined" && chrome.notifications ? chrome.notifications : (typeof browser !== "undefined" && browser.notifications ? browser.notifications : null);
+const alarms = typeof chrome !== "undefined" && chrome.alarms ? chrome.alarms : (typeof browser !== "undefined" && browser.alarms ? browser.alarms : null);
 
 // ── Storage helpers (mirror from api-client.js for background context) ──
 function getStorage() {
@@ -35,6 +36,7 @@ function storageSet(obj) {
 const API_BASE = "https://trustassembly.org";
 const TOKEN_KEY = "ta-auth-token";
 const NOTIFICATION_POLL_INTERVAL = 60000; // 60 seconds
+const NOTIFICATION_ALARM = "ta-notification-poll";
 const NOTIF_SEEN_KEY = "ta-notif-seen";
 
 let pollTimer = null;
@@ -176,16 +178,30 @@ async function checkAndNotify() {
 
 // ── Polling lifecycle ──
 function startPolling() {
-  if (pollTimer) return;
   checkAndNotify(); // immediate first check
-  pollTimer = setInterval(checkAndNotify, NOTIFICATION_POLL_INTERVAL);
+  if (alarms?.create) {
+    // MV3 service workers are suspended between events, so timers are not a
+    // reliable scheduler. Browser alarms wake the worker for each poll.
+    alarms.create(NOTIFICATION_ALARM, {
+      periodInMinutes: NOTIFICATION_POLL_INTERVAL / 60000,
+    });
+    return;
+  }
+  if (!pollTimer) pollTimer = setInterval(checkAndNotify, NOTIFICATION_POLL_INTERVAL);
 }
 
 function stopPolling() {
+  if (alarms?.clear) alarms.clear(NOTIFICATION_ALARM);
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
   }
+}
+
+if (alarms?.onAlarm) {
+  alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === NOTIFICATION_ALARM) checkAndNotify();
+  });
 }
 
 // Start polling on install/startup
@@ -238,8 +254,23 @@ runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Proxy fetch requests from content scripts (CORS bypass)
   if (message.type === "TA_FETCH") {
-    fetch(message.url)
-      .then(res => res.json())
+    let apiUrl;
+    try {
+      apiUrl = new URL(message.url);
+      const allowedPath = apiUrl.pathname === "/api/corrections" || apiUrl.pathname === "/api/vault";
+      if (apiUrl.protocol !== "https:" || apiUrl.hostname !== "trustassembly.org" || !allowedPath) {
+        throw new Error("Public API URL is not allowed");
+      }
+    } catch (error) {
+      sendResponse({ ok: false, error: error.message || "Invalid public API URL" });
+      return false;
+    }
+
+    fetch(apiUrl.toString())
+      .then(res => {
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        return res.json();
+      })
       .then(data => sendResponse({ ok: true, data }))
       .catch(err => sendResponse({ ok: false, error: err.message }));
     return true; // keep message channel open for async response

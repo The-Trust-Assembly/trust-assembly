@@ -2,22 +2,28 @@ name: CI
 
 on:
   push:
-    branches: [main, claude/**]
+    branches: [main, claude/**, codex/**]
   pull_request:
     branches: [main]
 
 jobs:
-  build:
+  web-and-overlay:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
+
+      - name: Verify generated extension and mobile overlay files
+        run: npm run check:overlay
+
+      - name: Test shared overlay bridge
+        run: npm run test:overlay
 
       - name: Type check
         run: npx tsc --noEmit
@@ -27,3 +33,52 @@ jobs:
         env:
           POSTGRES_URL: postgres://ci:ci@localhost:5432/ci
           JWT_SECRET: ci-placeholder-secret-not-real
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - run: npm ci --prefix apps/mobile
+
+      - name: Type-check and test mobile app
+        run: npm run check:mobile
+
+      - name: Bundle Android app
+        run: npm run export:android --prefix apps/mobile
+
+  ios-native:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build shared Safari extension files
+        run: npm run build:overlay
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Compile unsigned simulator app and extensions
+        run: >-
+          xcodebuild
+          -project ios/TrustAssembly.xcodeproj
+          -scheme TrustAssembly
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build

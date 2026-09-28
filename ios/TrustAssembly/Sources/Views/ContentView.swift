@@ -6,13 +6,12 @@ import SwiftUI
 /// 3. Contributor: Feed, Submit, Review, Vaults, Profile
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedTab = "feed"
-
-    private let baseURL = "https://trustassembly.org"
 
     var body: some View {
         ZStack {
-            if appState.needsModeSelection && appState.isAuthenticated {
+            if appState.isRestoringSession {
+                ProgressView("Restoring session…")
+            } else if appState.needsModeSelection && appState.isAuthenticated {
                 ModeSelectionView()
             } else if !appState.isAuthenticated {
                 anonymousView
@@ -27,34 +26,19 @@ struct ContentView: View {
     @ViewBuilder
     private var anonymousView: some View {
         NavigationStack {
-            TrustWebView(url: URL(string: "\(baseURL)/#consensus")!)
+            // The current web application presents its public discovery and
+            // sign-in experience at the root route. Deep links can replace
+            // this URL with a public record/citizen route.
+            TrustWebView(url: appState.anonymousURL())
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         HStack(spacing: 6) {
-                            Image("lighthouse-gold")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 22, height: 22)
-                                .clipShape(Circle())
+                            Image(systemName: "light.beacon.max.fill")
+                                .font(.system(size: 19))
                             Text("TRUST ASSEMBLY")
                                 .font(.system(size: 13, weight: .bold))
                                 .tracking(1.5)
                                 .foregroundColor(Color(red: 0.72, green: 0.59, blue: 0.24))
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            // Navigate to login/register in the web view
-                            // The WKWebView bridge handles auth events
-                            selectedTab = "feed"
-                        } label: {
-                            Text("Sign In")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .background(Color(red: 0.72, green: 0.59, blue: 0.24))
-                                .cornerRadius(6)
                         }
                     }
                 }
@@ -67,9 +51,9 @@ struct ContentView: View {
 
     @ViewBuilder
     private var authenticatedTabView: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $appState.selectedTab) {
             // ── Feed (both modes) ──
-            TrustWebView(url: URL(string: "\(baseURL)/#feed")!)
+            TrustWebView(url: appState.url(forTab: "feed", defaultPath: "feed"))
                 .tabItem {
                     Label("Feed", systemImage: "house.fill")
                 }
@@ -77,35 +61,35 @@ struct ContentView: View {
 
             if appState.userMode == .contributor {
                 // ── Submit (contributor only) ──
-                TrustWebView(url: URL(string: "\(baseURL)/#submit")!)
+                TrustWebView(url: appState.url(forTab: "submit", defaultPath: "submit"))
                     .tabItem {
                         Label("Submit", systemImage: "plus.circle.fill")
                     }
                     .tag("submit")
 
                 // ── Review (contributor only) ──
-                TrustWebView(url: URL(string: "\(baseURL)/#review")!)
+                TrustWebView(url: appState.url(forTab: "review", defaultPath: "review"))
                     .tabItem {
                         Label("Review", systemImage: "scale.3d")
                     }
                     .tag("review")
 
                 // ── Vaults (contributor only) ──
-                TrustWebView(url: URL(string: "\(baseURL)/#vault")!)
+                TrustWebView(url: appState.url(forTab: "vault", defaultPath: "vault"))
                     .tabItem {
                         Label("Vaults", systemImage: "archivebox.fill")
                     }
                     .tag("vault")
             } else {
                 // ── Explore (follower only) ──
-                TrustWebView(url: URL(string: "\(baseURL)/#consensus")!)
+                TrustWebView(url: appState.url(forTab: "explore", defaultPath: "consensus"))
                     .tabItem {
                         Label("Explore", systemImage: "safari.fill")
                     }
                     .tag("explore")
 
                 // ── Assemblies (follower only) ──
-                TrustWebView(url: URL(string: "\(baseURL)/#orgs")!)
+                TrustWebView(url: appState.url(forTab: "assemblies", defaultPath: "orgs"))
                     .tabItem {
                         Label("Assemblies", systemImage: "person.3.fill")
                     }
@@ -113,7 +97,7 @@ struct ContentView: View {
             }
 
             // ── Profile (both modes) ──
-            TrustWebView(url: URL(string: "\(baseURL)/#profile")!)
+            TrustWebView(url: appState.url(forTab: "profile", defaultPath: "profile"))
                 .tabItem {
                     Label("Profile", systemImage: "person.crop.circle.fill")
                 }
