@@ -16,7 +16,7 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
         let profile: UUID?
         if #available(iOS 17.0, *) {
-            profile = request?.userInfo?[SFExtensionProfileRequestKey] as? UUID
+            profile = request?.userInfo?[SFExtensionProfileKey] as? UUID
         } else {
             profile = nil
         }
@@ -64,5 +64,5 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         let response = NSExtensionItem()
         response.userInfo = [SFExtensionMessageKey: responseDict]
         context.completeRequest(returningItems: [response], completionHandler: nil)
-     }
+    }
 }
