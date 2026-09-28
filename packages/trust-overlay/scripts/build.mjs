@@ -31,6 +31,81 @@ const sharedFiles = [
   "icon128-pending.png",
 ];
 
+const crcTable = Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
+  }
+  return value >>> 0;
+});
+
+function crc32(bytes) {
+  let value = 0xffffffff;
+  for (const byte of bytes) {
+    value = crcTable[(value ^ byte) & 0xff] ^ (value >>> 8);
+  }
+  return (value ^ 0xffffffff) >>> 0;
+}
+
+function createZip(entries) {
+  const localRecords = [];
+  const centralRecords = [];
+  let offset = 0;
+
+  for (const { name, data } of entries) {
+    const filename = Buffer.from(name, "utf8");
+    const checksum = crc32(data);
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0, 6);
+    localHeader.writeUInt16LE(0, 8);
+    localHeader.writeUInt16LE(0, 10);
+    localHeader.writeUInt16LE(0x0021, 12);
+    localHeader.writeUInt32LE(checksum, 14);
+    localHeader.writeUInt32LE(data.length, 18);
+    localHeader.writeUInt32LE(data.length, 22);
+    localHeader.writeUInt16LE(filename.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+    localRecords.push(localHeader, filename, data);
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0, 8);
+    centralHeader.writeUInt16LE(0, 10);
+    centralHeader.writeUInt16LE(0, 12);
+    centralHeader.writeUInt16LE(0x0021, 14);
+    centralHeader.writeUInt32LE(checksum, 16);
+    centralHeader.writeUInt32LE(data.length, 20);
+    centralHeader.writeUInt32LE(data.length, 24);
+    centralHeader.writeUInt16LE(filename.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(offset, 42);
+    centralRecords.push(centralHeader, filename);
+
+    offset += localHeader.length + filename.length + data.length;
+  }
+
+  const centralDirectory = Buffer.concat(centralRecords);
+  const endRecord = Buffer.alloc(22);
+  endRecord.writeUInt32LE(0x06054b50, 0);
+  endRecord.writeUInt16LE(0, 4);
+  endRecord.writeUInt16LE(0, 6);
+  endRecord.writeUInt16LE(entries.length, 8);
+  endRecord.writeUInt16LE(entries.length, 10);
+  endRecord.writeUInt32LE(centralDirectory.length, 12);
+  endRecord.writeUInt32LE(offset, 16);
+  endRecord.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...localRecords, centralDirectory, endRecord]);
+}
+
 async function assertMatches(source, destination) {
   const [expected, actual] = await Promise.all([
     readFile(source),
@@ -63,6 +138,37 @@ async function buildBrowserTargets() {
       path.join(manifestsDirectory, `${browser}.json`),
       path.join(destinationDirectory, "manifest.json"),
     );
+  }
+}
+
+async function buildBrowserPackages() {
+  for (const browser of browserTargets) {
+    const entries = await Promise.all([
+      ...sharedFiles.map(async (filename) => ({
+        name: filename,
+        data: await readFile(path.join(sourceDirectory, filename)),
+      })),
+      (async () => ({
+        name: "manifest.json",
+        data: await readFile(path.join(manifestsDirectory, `${browser}.json`)),
+      }))(),
+    ]);
+    const archive = createZip(entries);
+    const destination = path.join(
+      repositoryRoot,
+      "public",
+      `trust-assembly-${browser}.zip`,
+    );
+
+    if (checkOnly) {
+      const current = await readFile(destination).catch(() => null);
+      if (!current || !archive.equals(current)) {
+        throw new Error(`Generated package is stale: ${path.relative(repositoryRoot, destination)}`);
+      }
+    } else {
+      await mkdir(path.dirname(destination), { recursive: true });
+      await writeFile(destination, archive);
+    }
   }
 }
 
@@ -114,5 +220,6 @@ async function buildMobileModule() {
 }
 
 await buildBrowserTargets();
+await buildBrowserPackages();
 await buildMobileModule();
-console.log(checkOnly ? "Shared overlay outputs are current." : "Built browser and mobile overlay outputs.");
+console.log(checkOnly ? "Shared overlay outputs are current." : "Built browser, packaged, and mobile overlay outputs.");

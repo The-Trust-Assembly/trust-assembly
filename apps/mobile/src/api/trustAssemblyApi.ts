@@ -64,7 +64,7 @@ export async function authedFetch(url: string, opts: RequestInit = {}): Promise<
 
   const res = await fetch(url, { ...opts, headers });
 
-  if (res.status === 401) {
+  if (res.status === 401 && token) {
     await clearAuthStorage();
     authInvalidatedListener?.();
   }
@@ -184,19 +184,24 @@ function normalizeAssemblies(data: { joined?: RawAssembly[]; followed?: RawAssem
   };
 }
 
-/** Get user's joined + followed assemblies; cache is offline fallback only. */
+/** Fetch current assemblies from the server and update the offline cache. */
+export async function refreshUserAssemblies(): Promise<AssemblyResponse> {
+  const data = await apiFetch<{ joined?: RawAssembly[]; followed?: RawAssembly[] }>(
+    `/api/users/me/assemblies`,
+  );
+  const normalized = normalizeAssemblies(data);
+  await AsyncStorage.setItem(ASSEMBLIES_KEY, JSON.stringify(normalized));
+  return normalized;
+}
+
+/** Get assemblies with cached data as an offline fallback. */
 export async function getUserAssemblies(): Promise<AssemblyResponse> {
   try {
-    const data = await apiFetch<{ joined?: RawAssembly[]; followed?: RawAssembly[] }>(
-      `/api/users/me/assemblies`
-    );
-    const normalized = normalizeAssemblies(data);
-    await AsyncStorage.setItem(ASSEMBLIES_KEY, JSON.stringify(normalized));
-    return normalized;
-  } catch {
+    return await refreshUserAssemblies();
+  } catch (error) {
     const cached = await getCachedAssemblies();
     if (cached) return cached;
-    return { joined: [], followed: [] };
+    throw error;
   }
 }
 

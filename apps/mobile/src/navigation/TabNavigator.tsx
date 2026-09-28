@@ -17,6 +17,7 @@ import SubmitScreen from '../screens/SubmitScreen';
 import AssembliesScreen from '../screens/AssembliesScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { COLORS } from '../utils/constants';
+import { BrowserPageProvider } from '../storage/browserPageContext';
 
 export type TabParamList = {
   Browser: { url?: string } | undefined;
@@ -29,8 +30,9 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 export default function TabNavigator() {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
+    <BrowserPageProvider>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'ellipse';
           switch (route.name) {
@@ -50,12 +52,13 @@ export default function TabNavigator() {
           height: 60,
         },
         headerShown: false,
-      })}
-    >
-      <Tab.Screen name="Browser" component={BrowserScreen} />
-      <Tab.Screen name="Submit" component={SubmitScreen} />
-      <Tab.Screen name="Assemblies" component={AssembliesScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
-    </Tab.Navigator>
+        })}
+      >
+        <Tab.Screen name="Browser" component={BrowserScreen} />
+        <Tab.Screen name="Submit" component={SubmitScreen} options={{ tabBarLabel: 'Submit Page' }} />
+        <Tab.Screen name="Assemblies" component={AssembliesScreen} />
+        <Tab.Screen name="Settings" component={SettingsScreen} />
+      </Tab.Navigator>
+    </BrowserPageProvider>
   );
 }

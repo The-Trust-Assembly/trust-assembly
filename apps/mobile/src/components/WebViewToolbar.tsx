@@ -84,8 +84,9 @@ export default function WebViewToolbar({
             </View>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.button} onPress={onSubmitPage} accessibilityLabel="Submit a review for this page">
-          <Ionicons name="create-outline" size={21} color={COLORS.navy} />
+        <TouchableOpacity style={styles.submitButton} onPress={onSubmitPage} accessibilityLabel="Use this page in the submission form">
+          <Ionicons name="create-outline" size={18} color={COLORS.navy} />
+          <Text style={styles.submitButtonText}>Use Page</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -129,6 +130,22 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.4,
+  },
+  submitButton: {
+    minWidth: 72,
+    height: 36,
+    borderRadius: 18,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    backgroundColor: '#F0EDE6',
+  },
+  submitButtonText: {
+    color: COLORS.navy,
+    fontSize: 9,
+    fontWeight: '700',
   },
   badgeButton: {
     width: 36,

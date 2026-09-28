@@ -9,3 +9,6 @@ build/
 .next/
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# Legacy ad-hoc prototype archive; release ZIPs live in public/ and are generated.
+/files.zip

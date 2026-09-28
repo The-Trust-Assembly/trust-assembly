@@ -5,10 +5,11 @@
  * Ported from extensions/chrome/popup.js assemblies tab.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, RefreshControl, Alert, ScrollView } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../utils/constants';
-import { getUserAssemblies, unfollowOrg } from '../api/trustAssemblyApi';
+import { refreshUserAssemblies, unfollowOrg } from '../api/trustAssemblyApi';
 import type { Assembly } from '../types/trustAssembly';
 import { useAuth } from '../storage/authContext';
 
@@ -17,26 +18,38 @@ export default function AssembliesScreen({ navigation }: any) {
   const [followed, setFollowed] = useState<Assembly[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { user } = useAuth();
 
   const loadAssemblies = useCallback(async () => {
+    if (!user) {
+      setJoined([]);
+      setFollowed([]);
+      setLoadError(null);
+      setIsLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
-      const data = await getUserAssemblies();
-      if (data) {
-        setJoined(data.joined || []);
-        setFollowed(data.followed || []);
-      }
-    } catch (e) {
-      console.warn('Error loading assemblies:', e);
+      setLoadError(null);
+      const data = await refreshUserAssemblies();
+      setJoined(data.joined || []);
+      setFollowed(data.followed || []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load assemblies';
+      setLoadError(message);
+      console.warn('Error loading assemblies:', error);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    setIsLoading(true);
     loadAssemblies();
-  }, [loadAssemblies]);
+  }, [loadAssemblies]));
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -101,17 +114,6 @@ export default function AssembliesScreen({ navigation }: any) {
     );
   };
 
-  if (isLoading && !refreshing) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.navy} />
-        <Text style={styles.loadingText}>Loading assemblies...</Text>
-      </View>
-    );
-  }
-
-  const total = joined.length + followed.length;
-
   if (!user) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -123,19 +125,47 @@ export default function AssembliesScreen({ navigation }: any) {
     );
   }
 
+  if (isLoading && !refreshing) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={COLORS.navy} />
+        <Text style={styles.loadingText}>Loading assemblies for @{user.username}…</Text>
+      </View>
+    );
+  }
+
+  const total = joined.length + followed.length;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Assemblies</Text>
+        <View>
+          <Text style={styles.headerTitle}>Assemblies</Text>
+          <Text style={styles.signedInText}>Signed in as @{user.username}</Text>
+        </View>
       </View>
 
-      {total === 0 ? (
+      {loadError ? (
+        <View style={styles.centered}>
+          <Text style={styles.errorTitle}>Assemblies could not be loaded</Text>
+          <Text style={styles.errorText}>{loadError}</Text>
+          <TouchableOpacity style={styles.signInButton} onPress={onRefresh}>
+            <Text style={styles.signInText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : total === 0 ? (
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No assemblies found.</Text>
-          <Text style={styles.hint}>Join or follow assemblies from the website to see them here.</Text>
+          <Text style={styles.hint}>Your session is valid, but the server returned no active memberships or followed assemblies.</Text>
+          <TouchableOpacity
+            style={styles.directoryButton}
+            onPress={() => navigation.navigate('Browser', { url: 'https://trustassembly.org/orgs' })}
+          >
+            <Text style={styles.directoryText}>Browse Assembly Directory</Text>
+          </TouchableOpacity>
         </View>
       ) : (
-                <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           {renderSection('Joined Assemblies', joined)}
           {renderSection('Followed Assemblies', followed)}
         </ScrollView>
@@ -149,6 +179,7 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center', flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#DCD8D0', backgroundColor: '#fff' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: COLORS.navy },
+  signedInText: { fontSize: 10, color: '#7A7570', marginTop: 2 },
   section: { backgroundColor: '#fff', marginHorizontal: 16, marginTop: 16, borderRadius: 8, overflow: 'hidden' },
   sectionTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, color: '#7A7570', padding: 12, paddingBottom: 4 },
   item: { flexDirection: 'row', padding: 12, borderBottomWidth: 1, borderBottomColor: '#F0EDE6', backgroundColor: '#fff', alignItems: 'center' },
@@ -166,7 +197,11 @@ const styles = StyleSheet.create({
   trustText: { fontSize: 11, fontWeight: '700', color: COLORS.gold },
   loadingText: { marginTop: 12, fontSize: 13, color: COLORS.navy },
   emptyText: { fontSize: 15, color: '#7A7570', textAlign: 'center', marginBottom: 8 },
-  hint: { fontSize: 12, color: '#AAA' },
+  hint: { fontSize: 12, color: '#7A7570', textAlign: 'center', paddingHorizontal: 28, lineHeight: 18 },
+  errorTitle: { fontSize: 16, color: COLORS.red, fontWeight: '700', marginBottom: 8 },
+  errorText: { fontSize: 12, color: '#7A7570', textAlign: 'center', marginBottom: 16, paddingHorizontal: 28 },
   signInButton: { backgroundColor: COLORS.navy, borderRadius: 6, paddingHorizontal: 20, paddingVertical: 10 },
   signInText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  directoryButton: { marginTop: 16, borderWidth: 1, borderColor: COLORS.navy, borderRadius: 6, paddingHorizontal: 16, paddingVertical: 10 },
+  directoryText: { color: COLORS.navy, fontSize: 13, fontWeight: '700' },
 });

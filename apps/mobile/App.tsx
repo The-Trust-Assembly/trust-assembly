@@ -24,6 +24,8 @@ import AuthScreen from './src/screens/AuthScreen';
 import CorrectionsScreen from './src/screens/CorrectionsScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { COLORS } from './src/utils/constants';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -51,11 +53,18 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <RootNavigator />
-      </NavigationContainer>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <SafeAreaView
+        edges={['top', 'bottom', 'left', 'right']}
+        style={{ flex: 1, backgroundColor: COLORS.vellum }}
+      >
+        <AuthProvider>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

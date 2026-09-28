@@ -6,14 +6,15 @@
  * translations). Ported from extensions/chrome/popup.js submit form.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Switch, Linking } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Switch, Linking, ActivityIndicator } from 'react-native';
 import { COLORS } from '../utils/constants';
-import { submitCorrection, submitVault, saveDraft, getDraft, getDrafts, getDraftByUrl, getUserAssemblies, deleteDraft } from '../api/trustAssemblyApi';
+import { submitCorrection, submitVault, saveDraft, getDraft, getDrafts, getDraftByUrl, refreshUserAssemblies, deleteDraft } from '../api/trustAssemblyApi';
 import { getFormState, saveFormState, clearFormState, FormState } from '../storage/settingsStore';
 import { useAuth } from '../storage/authContext';
 import type { Assembly, SubmissionDraft } from '../types/trustAssembly';
 import { correctionCacheKey, normalizeBrowserUrl } from '../utils/urlUtils';
+import { useBrowserPage } from '../storage/browserPageContext';
 
 interface SubmitScreenProps {
   route?: { params?: { url?: string; title?: string } };
@@ -54,7 +55,12 @@ const TRANSLATION_TYPES = [
 export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
   const routeUrl = route?.params?.url || '';
   const routeTitle = route?.params?.title || '';
-  const [sourceUrl, setSourceUrl] = useState(routeUrl);
+  const { page: browserPage } = useBrowserPage();
+  const activePageUrl = normalizeBrowserUrl(browserPage.url) || normalizeBrowserUrl(routeUrl) || '';
+  const activePageTitle = browserPage.title || routeTitle;
+  const activePageAuthors = browserPage.authors;
+  const activeContentType = browserPage.contentType;
+  const [sourceUrl, setSourceUrl] = useState(activePageUrl);
   const [submitType, setSubmitType] = useState<'correction' | 'affirmation'>('correction');
   const [headline, setHeadline] = useState('');
   const [replacement, setReplacement] = useState('');
@@ -62,6 +68,8 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
   const [userAssemblies, setUserAssemblies] = useState<{ joined: Assembly[]; followed: Assembly[] }>({ joined: [], followed: [] });
+  const [assembliesLoading, setAssembliesLoading] = useState(false);
+  const [assembliesError, setAssembliesError] = useState<string | null>(null);
   const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [inlineEdits, setInlineEdits] = useState<Array<{ id: string; original: string; replacement: string; reasoning?: string }>>([]);
@@ -77,6 +85,8 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
   const [drafts, setDrafts] = useState<SubmissionDraft<FormState>[]>([]);
   const [pendingUrlDraft, setPendingUrlDraft] = useState<SubmissionDraft<FormState> | null>(null);
   const [contentType, setContentType] = useState('article');
+  const lastAutoPageKey = useRef('');
+  const lastAutoTitle = useRef('');
   const { user } = useAuth();
 
   const applyFormState = useCallback((draftData: Partial<FormState>) => {
@@ -100,27 +110,60 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
     if (draftData.url) setSourceUrl(draftData.url);
   }, []);
 
-  // ── Load data on mount ──
+  const loadAssemblies = useCallback(async () => {
+    if (!user) {
+      setUserAssemblies({ joined: [], followed: [] });
+      setAssembliesLoading(false);
+      setAssembliesError(null);
+      return;
+    }
+
+    setAssembliesLoading(true);
+    setAssembliesError(null);
+    try {
+      setUserAssemblies(await refreshUserAssemblies());
+    } catch (error) {
+      setAssembliesError(error instanceof Error ? error.message : 'Could not load your assemblies.');
+    } finally {
+      setAssembliesLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadAssemblies();
+  }, [loadAssemblies]);
+
+  // ── Load drafts and form state on mount ──
   useEffect(() => {
     const loadData = async () => {
       if (!user) return;
       try {
-        const assemblies = await getUserAssemblies();
-        setUserAssemblies(assemblies || { joined: [], followed: [] });
-
         const [draftList, saved] = await Promise.all([getDrafts(), getFormState()]);
         setDrafts(draftList as SubmissionDraft<FormState>[]);
 
-        const normalizedRouteUrl = normalizeBrowserUrl(routeUrl);
-        if (normalizedRouteUrl) {
-          setSourceUrl(normalizedRouteUrl);
-          if (routeTitle) setHeadline((current) => current || routeTitle);
-          const urlDraft = await getDraftByUrl(normalizedRouteUrl) as SubmissionDraft<FormState> | null;
+        if (activePageUrl) {
+          const pageKey = correctionCacheKey(activePageUrl);
+          const pageChanged = pageKey !== lastAutoPageKey.current;
+          setSourceUrl(activePageUrl);
+          if (pageChanged) {
+            setHeadline(activePageTitle);
+            setSelectedAuthors(activePageAuthors);
+            setPendingUrlDraft(null);
+          } else if (activePageTitle) {
+            setHeadline((current) => (!current || current === lastAutoTitle.current) ? activePageTitle : current);
+          }
+          if (!pageChanged && activePageAuthors.length > 0) {
+            setSelectedAuthors((current) => current.length > 0 ? current : activePageAuthors);
+          }
+          if (activeContentType) setContentType(activeContentType);
+          lastAutoPageKey.current = pageKey;
+          lastAutoTitle.current = activePageTitle;
+          const urlDraft = await getDraftByUrl(activePageUrl) as SubmissionDraft<FormState> | null;
           if (urlDraft) setPendingUrlDraft(urlDraft);
         }
 
         const savedUrl = saved.url ? normalizeBrowserUrl(saved.url) : null;
-        if (!normalizedRouteUrl || (savedUrl && correctionCacheKey(savedUrl) === correctionCacheKey(normalizedRouteUrl))) {
+        if (!activePageUrl || (savedUrl && correctionCacheKey(savedUrl) === correctionCacheKey(activePageUrl))) {
           applyFormState(saved);
         }
       } catch (e) {
@@ -128,7 +171,7 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
       }
     };
     loadData();
-  }, [applyFormState, routeTitle, routeUrl, user]);
+  }, [activeContentType, activePageAuthors, activePageTitle, activePageUrl, applyFormState, user]);
 
   // ── Auto-save form state (debounced) ──
   useEffect(() => {
@@ -438,6 +481,30 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
     );
   }
 
+  if (assembliesLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color={COLORS.gold} size="large" />
+        <Text style={styles.loadingText}>Loading your assemblies…</Text>
+      </View>
+    );
+  }
+
+  if (assembliesError) {
+    return (
+      <ScrollView contentContainerStyle={styles.emptyContainer}>
+        <View style={styles.card}>
+          <Text style={styles.emptyIcon}>⚠</Text>
+          <Text style={styles.emptyTitle}>Assemblies could not be loaded</Text>
+          <Text style={styles.emptyText}>{assembliesError}</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={loadAssemblies}>
+            <Text style={styles.primaryBtnText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
   if (joinedOrgs.length === 0) {
     return (
       <ScrollView contentContainerStyle={styles.emptyContainer}>
@@ -471,6 +538,25 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
           >
             <Text style={[styles.typeBtnText, isAffirm ? styles.typeBtnTextActive : null]}>Affirmation</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={[styles.workflowNote, isAffirm && styles.workflowNoteAffirmation]}>
+          <Text style={styles.workflowNoteTitle}>
+            {isAffirm ? 'Affirm a page you have verified' : 'Correct the current page'}
+          </Text>
+          <Text style={styles.workflowNoteText}>
+            {isAffirm
+              ? 'Affirmations confirm that a specific page is accurate and important. Open an article in Browser, verify it against evidence, then switch back here or tap Use Page to submit it for assembly review.'
+              : 'Open an article in Browser, then switch back here or tap Use Page to carry its URL, headline, authors, and content type into this form.'}
+          </Text>
+          {!activePageUrl && (
+            <TouchableOpacity
+              style={styles.workflowButton}
+              onPress={() => navigation?.navigate('Browser')}
+            >
+              <Text style={styles.workflowButtonText}>Open Browser</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Content type picker */}
@@ -532,7 +618,9 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
           <Text style={styles.label}>Reasoning (required)</Text>
           <TextInput
             style={[styles.textInput, styles.textArea]}
-            placeholder="Why is this correction needed?"
+            placeholder={isAffirm
+              ? 'Why is this page accurate? What independent evidence supports it?'
+              : 'Why is the original misleading? What evidence supports the correction?'}
             value={reasoning}
             onChangeText={setReasoning}
             multiline
@@ -753,6 +841,8 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
 const styles = StyleSheet.create({
   scrollContent: { padding: 12, backgroundColor: COLORS.vellum },
   emptyContainer: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: COLORS.vellum },
+  loadingText: { fontSize: 13, color: COLORS.navy },
   card: { backgroundColor: COLORS.linen, borderRadius: 12, padding: 16, marginBottom: 12 },
   title: { fontSize: 18, fontWeight: '700', color: COLORS.navy, marginBottom: 12 },
   emptyIcon: { fontSize: 36, textAlign: 'center', marginBottom: 8 },
@@ -766,6 +856,12 @@ const styles = StyleSheet.create({
   typeBtnInactive: { backgroundColor: 'transparent' },
   typeBtnActiveCorrection: { backgroundColor: COLORS.red },
   typeBtnActiveAffirmation: { backgroundColor: COLORS.green },
+  workflowNote: { marginBottom: 16, padding: 12, borderRadius: 6, backgroundColor: '#F8EEE9', borderLeftWidth: 3, borderLeftColor: COLORS.red },
+  workflowNoteAffirmation: { backgroundColor: '#EAF4EE', borderLeftColor: COLORS.green },
+  workflowNoteTitle: { color: COLORS.navy, fontSize: 13, fontWeight: '700', marginBottom: 4 },
+  workflowNoteText: { color: '#5A5650', fontSize: 11, lineHeight: 17 },
+  workflowButton: { alignSelf: 'flex-start', marginTop: 10, borderWidth: 1, borderColor: COLORS.navy, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 6 },
+  workflowButtonText: { color: COLORS.navy, fontSize: 11, fontWeight: '700' },
   typeBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.navy },
   typeBtnTextActive: { color: COLORS.linen },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 12 },

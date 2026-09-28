@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Linking,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -35,6 +34,7 @@ import {
   normalizeBrowserUrl,
 } from '../utils/urlUtils';
 import type { CorrectionsResponse, TASettings } from '../types/trustAssembly';
+import { useBrowserPage } from '../storage/browserPageContext';
 
 interface BridgeMessage {
   type: string;
@@ -42,7 +42,64 @@ interface BridgeMessage {
   url?: string;
   count?: number;
   signalType?: string;
+  title?: string;
+  authors?: unknown;
+  contentType?: string;
 }
+
+const PAGE_METADATA_SCRIPT = `
+  (function () {
+    function textFrom(selector, attribute) {
+      var element = document.querySelector(selector);
+      if (!element) return '';
+      return String(attribute ? element.getAttribute(attribute) || '' : element.textContent || '').trim();
+    }
+    var title =
+      textFrom('meta[property="og:title"]', 'content') ||
+      textFrom('meta[name="twitter:title"]', 'content') ||
+      textFrom('article h1') ||
+      textFrom('main h1') ||
+      textFrom('h1') ||
+      String(document.title || '').trim();
+    var authors = [];
+    function addAuthor(value) {
+      var name = String(value || '').replace(/^by\\s+/i, '').trim();
+      if (name && name.length <= 100 && authors.indexOf(name) < 0) authors.push(name);
+    }
+    document.querySelectorAll('meta[name="author"], meta[property="article:author"], meta[name="byl"]').forEach(function (element) {
+      addAuthor(element.getAttribute('content'));
+    });
+    document.querySelectorAll('script[type="application/ld+json"]').forEach(function (element) {
+      try {
+        var parsed = JSON.parse(element.textContent || 'null');
+        var queue = Array.isArray(parsed) ? parsed.slice() : [parsed];
+        while (queue.length) {
+          var item = queue.shift();
+          if (!item || typeof item !== 'object') continue;
+          if (Array.isArray(item['@graph'])) queue.push.apply(queue, item['@graph']);
+          var author = item.author || item.creator;
+          (Array.isArray(author) ? author : [author]).forEach(function (value) {
+            if (typeof value === 'string') addAuthor(value);
+            else if (value && value.name) addAuthor(value.name);
+          });
+        }
+      } catch (_) {}
+    });
+    var host = String(location.hostname || '').toLowerCase();
+    var contentType = /youtube|vimeo/.test(host) ? 'video'
+      : /twitter|x\\.com|tiktok|facebook|reddit|linkedin/.test(host) ? 'shortform'
+      : /podcast|spotify|soundcloud/.test(host) ? 'audio'
+      : 'article';
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: 'TA_PAGE_METADATA',
+      url: location.href,
+      title: title.slice(0, 1000),
+      authors: authors.slice(0, 10),
+      contentType: contentType
+    }));
+  })();
+  true;
+`;
 
 function javaScriptLiteral(value: unknown): string {
   const serialized = JSON.stringify(value);
@@ -55,6 +112,7 @@ function javaScriptLiteral(value: unknown): string {
 
 export default function BrowserScreen({ navigation, route }: any) {
   const { user } = useAuth();
+  const { updatePage } = useBrowserPage();
   const webViewRef = useRef<WebView>(null);
   const inFlightFetches = useRef(new Map<string, Promise<CorrectionsResponse>>());
   const assembliesRequestRef = useRef<{
@@ -67,11 +125,27 @@ export default function BrowserScreen({ navigation, route }: any) {
   const [sourceUrl, setSourceUrl] = useState(DEFAULT_BROWSER_URL);
   const [currentUrl, setCurrentUrl] = useState(DEFAULT_BROWSER_URL);
   const [currentTitle, setCurrentTitle] = useState('');
+  const [currentAuthors, setCurrentAuthors] = useState<string[]>([]);
+  const [currentContentType, setCurrentContentType] = useState('article');
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [correctionCount, setCorrectionCount] = useState<number | undefined>();
   const [settings, setSettings] = useState<TASettings>({ showBadge: true, showTranslations: true });
   const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    const url = normalizeBrowserUrl(currentUrl);
+    if (url) updatePage({
+      url,
+      title: currentTitle,
+      authors: currentAuthors,
+      contentType: currentContentType,
+    });
+  }, [currentAuthors, currentContentType, currentTitle, currentUrl, updatePage]);
+
+  const requestPageMetadata = useCallback(() => {
+    webViewRef.current?.injectJavaScript(PAGE_METADATA_SCRIPT);
+  }, []);
 
   const dispatchToPage = useCallback((message: unknown) => {
     const payload = javaScriptLiteral(message);
@@ -294,6 +368,22 @@ export default function BrowserScreen({ navigation, route }: any) {
       case 'TA_BADGE_CLICK':
         navigation.navigate('Corrections', { url: currentUrl });
         break;
+      case 'TA_PAGE_METADATA': {
+        const metadataUrl = normalizeBrowserUrl(message.url || '');
+        if (!metadataUrl || correctionCacheKey(metadataUrl) !== correctionCacheKey(topLevelUrl)) return;
+        if (typeof message.title === 'string') setCurrentTitle(message.title.trim().slice(0, 1000));
+        if (Array.isArray(message.authors)) {
+          setCurrentAuthors(message.authors
+            .filter((author): author is string => typeof author === 'string')
+            .map((author) => author.trim())
+            .filter(Boolean)
+            .slice(0, 10));
+        }
+        if (typeof message.contentType === 'string' && ['article', 'video', 'shortform', 'audio', 'product'].includes(message.contentType)) {
+          setCurrentContentType(message.contentType);
+        }
+        break;
+      }
       default:
         // The page is untrusted. Ignore unknown and state-changing commands.
         break;
@@ -307,6 +397,9 @@ export default function BrowserScreen({ navigation, route }: any) {
       return;
     }
     setCorrectionCount(undefined);
+    setCurrentTitle('');
+    setCurrentAuthors([]);
+    setCurrentContentType('article');
     currentUrlRef.current = nextUrl;
     pageGenerationRef.current += 1;
     setCurrentUrl(nextUrl);
@@ -386,7 +479,7 @@ export default function BrowserScreen({ navigation, route }: any) {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <WebViewToolbar
         canGoBack={canGoBack}
         canGoForward={canGoForward}
@@ -416,10 +509,16 @@ export default function BrowserScreen({ navigation, route }: any) {
           pageGenerationRef.current += 1;
           currentUrlRef.current = url;
           setCurrentUrl(url);
+          setCurrentTitle('');
+          setCurrentAuthors([]);
+          setCurrentContentType('article');
           setCorrectionCount(undefined);
         }}
         onNavigationStateChange={handleNavigation}
-        onLoadEnd={() => sendPreferencesToPage(currentUrl).catch(() => undefined)}
+        onLoadEnd={() => {
+          sendPreferencesToPage(currentUrl).catch(() => undefined);
+          requestPageMetadata();
+        }}
         onShouldStartLoadWithRequest={(request) => {
           const parsed = normalizeBrowserUrl(request.url);
           if (parsed) return true;
@@ -438,7 +537,7 @@ export default function BrowserScreen({ navigation, route }: any) {
         allowsBackForwardNavigationGestures
         style={styles.webView}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
