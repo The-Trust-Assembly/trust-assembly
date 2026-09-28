@@ -31,6 +31,23 @@ const sharedFiles = [
   "icon128-pending.png",
 ];
 
+const packagedTextExtensions = new Set([".css", ".html", ".js", ".json"]);
+
+function normalizeText(value) {
+  return value.replace(/\r\n?/g, "\n");
+}
+
+async function readCanonicalText(filename) {
+  return normalizeText(await readFile(filename, "utf8"));
+}
+
+async function readPackageData(filename) {
+  const data = await readFile(filename);
+  return packagedTextExtensions.has(path.extname(filename).toLowerCase())
+    ? Buffer.from(normalizeText(data.toString("utf8")), "utf8")
+    : data;
+}
+
 const crcTable = Array.from({ length: 256 }, (_, index) => {
   let value = index;
   for (let bit = 0; bit < 8; bit += 1) {
@@ -146,11 +163,11 @@ async function buildBrowserPackages() {
     const entries = await Promise.all([
       ...sharedFiles.map(async (filename) => ({
         name: filename,
-        data: await readFile(path.join(sourceDirectory, filename)),
+        data: await readPackageData(path.join(sourceDirectory, filename)),
       })),
       (async () => ({
         name: "manifest.json",
-        data: await readFile(path.join(manifestsDirectory, `${browser}.json`)),
+        data: await readPackageData(path.join(manifestsDirectory, `${browser}.json`)),
       }))(),
     ]);
     const archive = createZip(entries);
@@ -174,9 +191,9 @@ async function buildBrowserPackages() {
 
 async function buildMobileModule() {
   const [adapterTemplate, contentScript, contentCss] = await Promise.all([
-    readFile(path.join(packageRoot, "adapters", "webview.js"), "utf8"),
-    readFile(path.join(sourceDirectory, "content.js"), "utf8"),
-    readFile(path.join(sourceDirectory, "content.css"), "utf8"),
+    readCanonicalText(path.join(packageRoot, "adapters", "webview.js")),
+    readCanonicalText(path.join(sourceDirectory, "content.js")),
+    readCanonicalText(path.join(sourceDirectory, "content.css")),
   ]);
 
   const iconFiles = sharedFiles.filter((filename) => filename.endsWith(".png"));
