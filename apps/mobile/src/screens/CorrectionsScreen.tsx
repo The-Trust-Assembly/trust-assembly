@@ -88,12 +88,15 @@ export default function CorrectionsScreen({ route, navigation }: CorrectionsScre
 }
 
 function renderCorrection({ item }: { item: Correction }) {
+  const ownPending = item.isOwnSubmission === true;
   return (
-    <View style={[styles.card, styles.correctionCard]}>
+    <View style={[styles.card, styles.correctionCard, ownPending && styles.pendingCard]}>
       <View style={styles.cardMeta}>
-        <Text style={styles.correctionLabel}>🔴 Correction</Text>
+        <Text style={[styles.correctionLabel, ownPending && styles.pendingLabel]}>
+          {ownPending ? '🟡 Your pending correction' : '🔴 Correction'}
+        </Text>
         <Text style={styles.orgName}>{item.orgName || 'Assembly'}</Text>
-        <Text style={styles.status}>● {item.status || 'approved'}</Text>
+        <Text style={styles.status}>● {(item.status || 'approved').replace(/_/g, ' ')}</Text>
       </View>
       <Text style={styles.replacement}>{item.replacement}</Text>
       <Text style={styles.original}>{item.originalHeadline}</Text>
@@ -106,11 +109,15 @@ function renderCorrection({ item }: { item: Correction }) {
 }
 
 function renderAffirmation({ item }: { item: Affirmation }) {
+  const ownPending = item.isOwnSubmission === true;
   return (
-    <View style={[styles.card, styles.affirmationCard]}>
+    <View style={[styles.card, styles.affirmationCard, ownPending && styles.pendingCard]}>
       <View style={styles.cardMeta}>
-        <Text style={styles.affirmationLabel}>🟢 Affirmation</Text>
+        <Text style={[styles.affirmationLabel, ownPending && styles.pendingLabel]}>
+          {ownPending ? '🟡 Your pending affirmation' : '🟢 Affirmation'}
+        </Text>
         <Text style={styles.orgName}>{item.orgName || 'Assembly'}</Text>
+        <Text style={styles.status}>● {(item.status || 'approved').replace(/_/g, ' ')}</Text>
       </View>
       <Text style={styles.replacement}>{item.replacement}</Text>
       <Text style={styles.original}>{item.originalHeadline}</Text>
@@ -145,10 +152,12 @@ const styles = StyleSheet.create({
   card: { marginHorizontal: 16, marginVertical: 6, borderRadius: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: '#DCD8D0' },
   correctionCard: { borderLeftWidth: 3, borderLeftColor: COLORS.red },
   affirmationCard: { borderLeftWidth: 3, borderLeftColor: COLORS.green },
+  pendingCard: { borderLeftColor: COLORS.gold },
   translationCard: { borderLeftWidth: 3, borderLeftColor: COLORS.orange },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderBottomWidth: 1, borderBottomColor: '#F0EDE6' },
   correctionLabel: { fontSize: 11, fontWeight: '700', color: COLORS.red },
   affirmationLabel: { fontSize: 11, fontWeight: '700', color: COLORS.green },
+  pendingLabel: { color: COLORS.gold },
   translationLabel: { fontSize: 11, fontWeight: '700', color: COLORS.orange },
   orgName: { fontSize: 10, color: '#7A7570' },
   status: { fontSize: 10, color: '#7A7570', marginLeft: 'auto' },

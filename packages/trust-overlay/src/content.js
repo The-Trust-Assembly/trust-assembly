@@ -22,6 +22,8 @@
   // Current settings (defaults: both on)
   let settings = { showBadge: true, showTranslations: true };
   const MUTED_KEY = "ta-muted-sites";
+  const OWN_PENDING_KEY = "ta-own-pending-submissions-v1";
+  const OWN_PENDING_TTL = 30 * 24 * 60 * 60 * 1000;
 
   // ── Per-site mute helpers ──
   function getSiteDomain() {
@@ -126,6 +128,9 @@
 
     // Tooltips
     document.querySelectorAll(".ta-headline-tooltip").forEach(el => el.remove());
+
+    // Linked feed headlines — restore the publisher's text.
+    document.querySelectorAll(".ta-feed-headline-corrected").forEach(restoreFeedHeadline);
   }
 
   // ── Read settings from storage ──
@@ -162,9 +167,17 @@
 
   function setCachedData(url, data) {
     try {
+      // Private pending previews live in extension storage, not the page's
+      // session cache. They are merged every time data is rendered so a stale
+      // public cache can never hide (or outlive) the user's local submission.
+      const publicData = {
+        ...data,
+        corrections: (data.corrections || []).filter(item => !item.isOwnSubmission),
+        affirmations: (data.affirmations || []).filter(item => !item.isOwnSubmission),
+      };
       sessionStorage.setItem("ta-cache:" + url, JSON.stringify({
         timestamp: Date.now(),
-        data: data
+        data: publicData
       }));
     } catch (e) {
       // sessionStorage full or unavailable — ignore
@@ -182,13 +195,13 @@
   // All Trust Assembly API reads go through the host. That is required for
   // Manifest V3 CORS behavior and lets the WebView host validate and proxy
   // the same public requests without exposing authenticated APIs to a page.
-  function fetchJsonViaBackground(apiUrl) {
+  function fetchJsonViaBackground(apiUrl, options = {}) {
     return new Promise((resolve, reject) => {
       try {
         const rt = (typeof chrome !== "undefined" && chrome.runtime) ? chrome.runtime
           : (typeof browser !== "undefined" && browser.runtime) ? browser.runtime : null;
         if (!rt || !rt.sendMessage) {
-          fetch(apiUrl)
+          fetch(apiUrl, options)
             .then(response => {
               if (!response.ok) throw new Error(`Request failed (${response.status})`);
               return response.json();
@@ -196,7 +209,12 @@
             .then(resolve, reject);
           return;
         }
-        rt.sendMessage({ type: "TA_FETCH", url: apiUrl }, (response) => {
+        rt.sendMessage({
+          type: "TA_FETCH",
+          url: apiUrl,
+          method: options.method || "GET",
+          body: options.body,
+        }, (response) => {
           if (rt.lastError) {
             reject(new Error(rt.lastError.message || "Background request failed"));
             return;
@@ -213,28 +231,420 @@
     });
   }
 
-  function fetchViaBackground(url) {
+  function getOwnPendingSubmissions() {
+    return new Promise(resolve => {
+      const storage = getStorageRef();
+      if (!storage) { resolve([]); return; }
+      storage.get([OWN_PENDING_KEY], result => {
+        try {
+          const entries = JSON.parse(result[OWN_PENDING_KEY] || "[]");
+          resolve(Array.isArray(entries) ? entries : []);
+        } catch (_) { resolve([]); }
+      });
+    });
+  }
+
+  async function mergeOwnPendingSubmissions(url, data) {
+    const entries = await getOwnPendingSubmissions();
+    const publicCorrections = (data.corrections || []).filter(item => !item.isOwnSubmission);
+    const publicAffirmations = (data.affirmations || []).filter(item => !item.isOwnSubmission);
+    if (entries.length === 0) {
+      return { ...data, corrections: publicCorrections, affirmations: publicAffirmations };
+    }
+
+    const now = Date.now();
+    const publicIds = new Set([
+      ...publicCorrections,
+      ...publicAffirmations,
+    ].map(item => item.id).filter(Boolean));
+    const retained = entries.filter(entry => (
+      entry && typeof entry.id === "string" && !publicIds.has(entry.id) &&
+      now - Number(entry.cachedAt || 0) < OWN_PENDING_TTL
+    ));
+    if (retained.length !== entries.length) {
+      const storage = getStorageRef();
+      if (storage) storage.set({ [OWN_PENDING_KEY]: JSON.stringify(retained) });
+    }
+
+    const target = normalizeLinkedUrl(url);
+    const matching = retained.filter(entry => normalizeLinkedUrl(entry.url) === target);
+    if (matching.length === 0) return data;
+    return {
+      ...data,
+      corrections: [
+        ...publicCorrections,
+        ...matching.filter(entry => entry.submissionType !== "affirmation"),
+      ],
+      affirmations: [
+        ...publicAffirmations,
+        ...matching.filter(entry => entry.submissionType === "affirmation"),
+      ],
+      meta: { ...(data.meta || {}), ownPending: matching.length },
+    };
+  }
+
+  async function fetchViaBackground(url) {
     const empty = { corrections: [], affirmations: [], translations: [], meta: {} };
     const apiUrl = `${TA_API_BASE}/api/corrections?url=${encodeURIComponent(url)}`;
     return fetchJsonViaBackground(apiUrl).then(data => {
       // Normalize older API versions that returned a flat submission array.
       if (Array.isArray(data)) {
-        return {
+        return mergeOwnPendingSubmissions(url, {
           corrections: data.filter(s => s.submissionType !== "affirmation"),
           affirmations: data.filter(s => s.submissionType === "affirmation"),
           translations: [],
           meta: {}
-        };
+        });
       }
-      return {
+      const normalized = {
         corrections: data.corrections || [],
         affirmations: data.affirmations || [],
         translations: data.translations || [],
         meta: data.meta || {}
       };
+      return mergeOwnPendingSubmissions(url, normalized);
     }).catch(error => {
       console.warn("[TrustAssembly] Correction request failed:", error?.message || error);
-      return empty;
+      return mergeOwnPendingSubmissions(url, empty);
+    });
+  }
+
+  // ── Corrections for linked headlines in feeds and homepages ──
+  const FEED_CACHE_KEY = "ta-feed-correction-cache-v1";
+  const FEED_POSITIVE_TTL = 60 * 60 * 1000;
+  const FEED_NEGATIVE_TTL = 15 * 60 * 1000;
+  const FEED_CACHE_LIMIT = 800;
+  const FEED_BATCH_LIMIT = 40;
+  const feedTargets = new Map();
+  const feedPendingUrls = new Set();
+  let ownPendingFeedEntriesPromise = null;
+  let feedCache = {};
+  let feedCacheLoaded = false;
+  let feedCachePromise = null;
+  let feedBatchTimer = null;
+  let feedSaveTimer = null;
+  let feedIntersectionObserver = null;
+  let feedMutationObserver = null;
+
+  function normalizeLinkedUrl(raw) {
+    try {
+      let parsed = new URL(raw, window.location.href);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+
+      // Unwrap common news/search/social redirect links before matching.
+      for (const key of ["url", "u", "q", "target", "dest", "destination", "redirect"]) {
+        const nested = parsed.searchParams.get(key);
+        if (!nested || !/^https?:\/\//i.test(nested)) continue;
+        try { parsed = new URL(nested); } catch (_) {}
+        break;
+      }
+
+      parsed.hostname = parsed.hostname.replace(/^www\./, "");
+      parsed.hash = "";
+      if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
+        parsed.pathname = parsed.pathname.slice(0, -1);
+      }
+      [
+        "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+        "fbclid", "gclid", "ref", "source",
+      ].forEach(key => parsed.searchParams.delete(key));
+      return parsed.toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function loadOwnPendingFeedEntries({ force = false } = {}) {
+    if (force) ownPendingFeedEntriesPromise = null;
+    if (ownPendingFeedEntriesPromise) return ownPendingFeedEntriesPromise;
+    ownPendingFeedEntriesPromise = getOwnPendingSubmissions().then(entries => {
+      const now = Date.now();
+      return entries.filter(entry => (
+        entry && typeof entry.id === "string" &&
+        entry.submissionType !== "affirmation" &&
+        typeof entry.replacement === "string" && entry.replacement.trim() &&
+        now - Number(entry.cachedAt || 0) < OWN_PENDING_TTL
+      ));
+    });
+    return ownPendingFeedEntriesPromise;
+  }
+
+  function mergeOwnPendingFeedMatches(url, publicMatches, pendingEntries) {
+    const normalizedUrl = normalizeLinkedUrl(url);
+    const ownMatches = pendingEntries.filter(entry => normalizeLinkedUrl(entry.url) === normalizedUrl);
+    if (ownMatches.length === 0) return publicMatches;
+    const ownIds = new Set(ownMatches.map(entry => entry.id));
+    // The author's pending version takes precedence in their local preview.
+    return [...ownMatches, ...publicMatches.filter(item => !ownIds.has(item.id))];
+  }
+
+  function loadFeedCache() {
+    if (feedCacheLoaded) return Promise.resolve(feedCache);
+    if (feedCachePromise) return feedCachePromise;
+    feedCachePromise = new Promise(resolve => {
+      const storage = getStorageRef();
+      if (!storage) {
+        feedCacheLoaded = true;
+        resolve(feedCache);
+        return;
+      }
+      storage.get([FEED_CACHE_KEY], result => {
+        try {
+          const parsed = JSON.parse(result[FEED_CACHE_KEY] || "{}");
+          if (parsed && typeof parsed === "object") feedCache = parsed;
+        } catch (_) {}
+        feedCacheLoaded = true;
+        resolve(feedCache);
+      });
+    });
+    return feedCachePromise;
+  }
+
+  function scheduleFeedCacheSave() {
+    if (feedSaveTimer) return;
+    feedSaveTimer = setTimeout(() => {
+      feedSaveTimer = null;
+      const entries = Object.entries(feedCache)
+        .sort((a, b) => (b[1]?.timestamp || 0) - (a[1]?.timestamp || 0))
+        .slice(0, FEED_CACHE_LIMIT);
+      feedCache = Object.fromEntries(entries);
+      const storage = getStorageRef();
+      if (storage) storage.set({ [FEED_CACHE_KEY]: JSON.stringify(feedCache) });
+    }, 500);
+  }
+
+  function getFreshFeedCacheEntry(url) {
+    const entry = feedCache[url];
+    if (!entry || !Array.isArray(entry.matches)) return null;
+    const ttl = entry.matches.length > 0 ? FEED_POSITIVE_TTL : FEED_NEGATIVE_TTL;
+    if (Date.now() - entry.timestamp > ttl) {
+      delete feedCache[url];
+      return null;
+    }
+    return entry;
+  }
+
+  function findLinkedHeadlineTarget(anchor) {
+    if (!(anchor instanceof Element)) return null;
+    if (anchor.closest("nav, header, footer, [role='navigation'], [role='menu'], .ta-feed-marker")) return null;
+
+    const headlineSelector = [
+      "h1", "h2", "h3", "h4", "h5", "h6", "[role='heading']",
+      "[class*='headline' i]", "[class*='title' i]", "[data-testid*='headline' i]",
+    ].join(",");
+    let target = anchor.matches(headlineSelector) ? anchor : anchor.querySelector(headlineSelector);
+    if (!target) {
+      const text = (anchor.textContent || "").replace(/\s+/g, " ").trim();
+      const card = anchor.closest("article, [role='article'], [class*='card' i], [class*='story' i]");
+      if (!card || text.length < 24 || text.length > 320) return null;
+      target = anchor;
+    }
+
+    const text = (target.textContent || "").replace(/\s+/g, " ").trim();
+    if (text.length < 12 || text.length > 500 || text.split(/\s+/).length < 3) return null;
+    if (target.dataset.taFeedAnnotated === "true") return null;
+    return target;
+  }
+
+  function addFeedTarget(url, target) {
+    let targets = feedTargets.get(url);
+    if (!targets) {
+      targets = new Set();
+      feedTargets.set(url, targets);
+    }
+    targets.add(target);
+  }
+
+  function applyFeedCorrection(url, matches) {
+    if (!Array.isArray(matches) || matches.length === 0) return;
+    const correction = matches[0];
+    const replacement = decodeHtmlEntities(correction.replacement || "").trim();
+    if (!replacement) return;
+
+    for (const target of feedTargets.get(url) || []) {
+      if (!target.isConnected || target.dataset.taFeedAnnotated === "true") continue;
+      const original = (target.textContent || "").replace(/\s+/g, " ").trim();
+      if (!original) continue;
+
+      target.dataset.taFeedAnnotated = "true";
+      target.dataset.taFeedOriginal = original;
+      target.classList.add("ta-feed-headline-corrected");
+      target.textContent = "";
+
+      const correctedText = document.createElement("span");
+      correctedText.className = "ta-feed-corrected-text";
+      correctedText.textContent = replacement;
+
+      const marker = document.createElement("span");
+      marker.className = "ta-feed-marker";
+      marker.setAttribute("role", "button");
+      marker.setAttribute("tabindex", "0");
+      const assemblyName = decodeHtmlEntities(correction.orgName || "Trust Assembly");
+      marker.setAttribute("aria-label", `Corrected by ${assemblyName}. Show publisher headline.`);
+      marker.textContent = `Corrected · ${assemblyName}${matches.length > 1 ? ` +${matches.length - 1}` : ""}`;
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "ta-feed-original-tooltip";
+      const tooltipLabel = document.createElement("strong");
+      tooltipLabel.textContent = "Publisher headline";
+      const tooltipText = document.createElement("span");
+      tooltipText.textContent = original;
+      tooltip.append(tooltipLabel, tooltipText);
+      marker.appendChild(tooltip);
+
+      const toggleTooltip = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        marker.classList.toggle("ta-feed-marker-open");
+      };
+      marker.addEventListener("click", toggleTooltip);
+      marker.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") toggleTooltip(event);
+      });
+
+      target.append(correctedText, document.createTextNode(" "), marker);
+    }
+  }
+
+  function restoreFeedHeadline(target) {
+    if (!target?.dataset?.taFeedAnnotated) return;
+    if (target.dataset.taFeedOriginal) target.textContent = target.dataset.taFeedOriginal;
+    target.classList.remove("ta-feed-headline-corrected");
+    delete target.dataset.taFeedAnnotated;
+    delete target.dataset.taFeedOriginal;
+  }
+
+  async function refreshOwnPendingFeedCorrections() {
+    const pendingEntries = await loadOwnPendingFeedEntries({ force: true });
+    for (const [url, targets] of feedTargets) {
+      for (const target of targets) restoreFeedHeadline(target);
+      const publicMatches = getFreshFeedCacheEntry(url)?.matches || [];
+      applyFeedCorrection(url, mergeOwnPendingFeedMatches(url, publicMatches, pendingEntries));
+    }
+  }
+
+  async function requestFeedBatch(urls) {
+    const pendingEntries = await loadOwnPendingFeedEntries();
+    // Local previews do not depend on the server batch succeeding. This is
+    // what makes a correction stored only in this browser visible on pages
+    // that link to its article.
+    for (const url of urls) {
+      applyFeedCorrection(url, mergeOwnPendingFeedMatches(url, [], pendingEntries));
+    }
+
+    try {
+      const data = await fetchJsonViaBackground(`${TA_API_BASE}/api/corrections/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls }),
+      });
+      const results = data && typeof data.results === "object" ? data.results : {};
+      for (const url of urls) {
+        const publicMatches = Array.isArray(results[url]) ? results[url] : [];
+        // Persist only public results. Pending submissions are private to this
+        // browser profile and are merged at render time.
+        feedCache[url] = { timestamp: Date.now(), matches: publicMatches };
+        applyFeedCorrection(
+          url,
+          mergeOwnPendingFeedMatches(url, publicMatches, pendingEntries),
+        );
+      }
+      scheduleFeedCacheSave();
+    } catch (error) {
+      console.warn("[TrustAssembly] Feed correction batch failed:", error?.message || error);
+    }
+  }
+
+  function scheduleFeedBatch(url) {
+    // Scale note: a periodically refreshed Bloom filter can reject definite
+    // misses before enqueueing. It is deliberately deferred until the corpus
+    // is large enough to justify the added download and refresh complexity.
+    feedPendingUrls.add(url);
+    if (feedBatchTimer) return;
+    feedBatchTimer = setTimeout(async () => {
+      feedBatchTimer = null;
+      const urls = [...feedPendingUrls].slice(0, FEED_BATCH_LIMIT);
+      urls.forEach(item => feedPendingUrls.delete(item));
+      if (urls.length) await requestFeedBatch(urls);
+      if (feedPendingUrls.size) scheduleFeedBatch([...feedPendingUrls][0]);
+    }, 120);
+  }
+
+  async function processVisibleFeedLink(anchor) {
+    const target = findLinkedHeadlineTarget(anchor);
+    if (!target) return;
+    const url = normalizeLinkedUrl(anchor.href);
+    if (!url || url === normalizeLinkedUrl(window.location.href)) return;
+    addFeedTarget(url, target);
+    await loadFeedCache();
+    const cached = getFreshFeedCacheEntry(url);
+    if (cached) {
+      const pendingEntries = await loadOwnPendingFeedEntries();
+      applyFeedCorrection(
+        url,
+        mergeOwnPendingFeedMatches(url, cached.matches, pendingEntries),
+      );
+      return;
+    }
+    scheduleFeedBatch(url);
+  }
+
+  function scanLinkedHeadlines(root = document) {
+    if (!feedIntersectionObserver) return;
+    const anchors = [];
+    if (root instanceof Element && root.matches("a[href]")) anchors.push(root);
+    if (root.querySelectorAll) anchors.push(...root.querySelectorAll("a[href]"));
+    for (const anchor of anchors) {
+      if (anchor.dataset.taFeedObserved === "true") continue;
+      if (!findLinkedHeadlineTarget(anchor)) continue;
+      anchor.dataset.taFeedObserved = "true";
+      feedIntersectionObserver.observe(anchor);
+    }
+  }
+
+  function startLinkedHeadlineLookup() {
+    if (feedIntersectionObserver) return;
+    feedIntersectionObserver = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        feedIntersectionObserver.unobserve(entry.target);
+        processVisibleFeedLink(entry.target);
+      }
+    }, { rootMargin: "250px 0px", threshold: 0.01 });
+
+    scanLinkedHeadlines(document);
+    let scanPending = false;
+    const pendingRoots = new Set();
+    feedMutationObserver = new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) pendingRoots.add(node);
+        }
+      }
+      if (scanPending || pendingRoots.size === 0) return;
+      scanPending = true;
+      const schedule = window.requestIdleCallback || (callback => setTimeout(callback, 100));
+      schedule(() => {
+        scanPending = false;
+        const roots = [...pendingRoots];
+        pendingRoots.clear();
+        roots.forEach(root => scanLinkedHeadlines(root));
+      });
+    });
+    feedMutationObserver.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function stopLinkedHeadlineLookup() {
+    feedIntersectionObserver?.disconnect();
+    feedMutationObserver?.disconnect();
+    feedIntersectionObserver = null;
+    feedMutationObserver = null;
+    feedTargets.clear();
+    feedPendingUrls.clear();
+    if (feedBatchTimer) clearTimeout(feedBatchTimer);
+    feedBatchTimer = null;
+    document.querySelectorAll("[data-ta-feed-observed]").forEach(anchor => {
+      delete anchor.dataset.taFeedObserved;
     });
   }
 
@@ -942,7 +1352,9 @@
         try { await waitForElement(site.waitSelector, 5000); } catch (e) {}
       }
       let data = getCachedData(url);
-      if (!data) {
+      if (data) {
+        data = await mergeOwnPendingSubmissions(url, data);
+      } else {
         data = await fetchViaBackground(url);
         setCachedData(url, data);
       }
@@ -958,6 +1370,10 @@
       }
       return;
     }
+
+    // Feed/homepage corrections are discovered independently of the current
+    // page lookup, and only links near the viewport are sent in capped batches.
+    startLinkedHeadlineLookup();
 
     // Detect the site architecture
     const site = getSiteType();
@@ -978,6 +1394,7 @@
     let data = getCachedData(url);
     if (data) {
       console.log("[TrustAssembly] Using cached data for:", url);
+      data = await mergeOwnPendingSubmissions(url, data);
     } else {
       console.log("[TrustAssembly] Fetching from API for:", url);
       data = await fetchViaBackground(url);
@@ -1006,6 +1423,10 @@
 
   function applyData(data, url) {
     const total = data.corrections.length + data.affirmations.length + data.translations.length;
+
+    // Record even an empty public result. A later local pending submission can
+    // then refresh this page immediately through the storage-change listener.
+    window.__trustAssemblyData = data;
 
     // Determine page signal type
     let signalType = "neutral";
@@ -1047,9 +1468,6 @@
     if (settings.showBadge) {
       renderBadge(data);
     }
-
-    // Store data on window for later use by settings changes
-    window.__trustAssemblyData = data;
 
     // Start watching for dynamically loaded content (Twitter feeds,
     // Facebook posts, SPA navigations, infinite scroll, etc.)
@@ -1111,6 +1529,16 @@
     return hash;
   }
 
+  async function refreshCurrentPageData() {
+    const url = window.location.href;
+    sessionStorage.removeItem("ta-cache:" + url);
+    const freshData = await fetchViaBackground(url);
+    removeAllInjections();
+    lastDataHash = hashData(freshData);
+    setCachedData(url, freshData);
+    applyData(freshData, url);
+  }
+
   // ── Listen for settings change messages from popup/background ──
   function listenForSettingsChanges() {
     const runtime = (typeof chrome !== "undefined" && chrome.runtime) ? chrome.runtime
@@ -1123,8 +1551,10 @@
         const domain = getSiteDomain();
         if (message.domain !== domain) return;
         if (message.muted) {
+          stopLinkedHeadlineLookup();
           removeAllInjections();
         } else {
+          startLinkedHeadlineLookup();
           const data = window.__trustAssemblyData;
           if (data) applyData(data, window.location.href);
         }
@@ -1152,6 +1582,12 @@
         } else if (!settings.showTranslations && oldSettings.showTranslations) {
           removeTranslations();
         }
+      }
+
+      if (message.type === "TA_REFRESH_OWN_PENDING") {
+        refreshCurrentPageData().catch(() => {});
+        sendResponse({ ok: true });
+        return true;
       }
 
       // ── Design Mode handlers ──
@@ -1279,6 +1715,11 @@
     storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== "local") return;
       const data = window.__trustAssemblyData;
+      if (changes[OWN_PENDING_KEY] !== undefined) {
+        ownPendingFeedEntriesPromise = null;
+        if (data) refreshCurrentPageData().catch(() => {});
+        refreshOwnPendingFeedCorrections().catch(() => {});
+      }
       if (!data) return;
 
       if (changes.showBadge !== undefined) {
@@ -1416,7 +1857,7 @@
           <span class="ta-ext-profile-badge" style="border-color:${COLORS.red}; color:${COLORS.red}">
             ${profile} · ${score}
           </span>
-          <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${formatStatus(sub.status)}</span>
+          <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${sub.isOwnSubmission ? "Your submission · " : ""}${formatStatus(sub.status)}</span>
         </div>
         <div class="ta-ext-headline-replacement">${escapeHtml(sub.replacement)}<div class="ta-ext-headline-original-tooltip"><div class="ta-tooltip-label">Original Headline</div>${escapeHtml(sub.originalHeadline)}</div></div>
         ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
@@ -1495,7 +1936,7 @@
             <span class="ta-ext-profile-badge" style="border-color:${COLORS.green}; color:${COLORS.green}">
               ${profile} · ${score}
             </span>
-            <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${formatStatus(sub.status)}</span>
+            <span class="ta-ext-status-stamp ta-ext-stamp-${statusImg}">${sub.isOwnSubmission ? "Your submission · " : ""}${formatStatus(sub.status)}</span>
           </div>
           <div class="ta-ext-headline-affirmed">${escapeHtml(sub.originalHeadline)}</div>
           ${sub.author ? `<div class="ta-ext-author">Author: ${escapeHtml(sub.author)}</div>` : ""}
@@ -1625,8 +2066,8 @@
         // Replace headline text with the corrected version
         el.textContent = sub.replacement;
 
-        // Color-code: red for corrections
-        el.style.setProperty("color", "#C4573F", "important");
+        // Pending personal previews are gold; reviewed corrections are red.
+        el.style.setProperty("color", sub.isOwnSubmission ? COLORS.gold : COLORS.red, "important");
         el.style.setProperty("position", "relative", "important");
         el.style.setProperty("cursor", "help", "important");
         el.classList.add("ta-inline-headline-corrected");
@@ -1679,9 +2120,9 @@
               const originalText = node.textContent.trim();
               parent.dataset.taOriginalText = originalText;
 
-              // Replace text with corrected version, color-coded red
+              // Replace text with corrected version; pending previews use gold.
               node.textContent = sub.replacement;
-              parent.style.setProperty("color", "#C4573F", "important");
+              parent.style.setProperty("color", sub.isOwnSubmission ? COLORS.gold : COLORS.red, "important");
               parent.style.setProperty("position", "relative", "important");
               parent.style.setProperty("cursor", "help", "important");
               parent.classList.add("ta-inline-headline-corrected");
@@ -2572,6 +3013,8 @@
       .replace(/&apos;/g, "'")
       .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
       .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&nbsp;/g, " ")
       .replace(/&amp;/g, "&");
   }
 
@@ -2590,12 +3033,27 @@
     const labels = {
       approved: "Approved", consensus: "Consensus",
       cross_review: "Cross-Group Review", pending_review: "Under Review",
+      pending_jury: "Waiting for Review", di_pending: "Partner Review",
       rejected: "Rejected", upheld: "Dispute Upheld"
     };
     return labels[status] || status || "Approved";
   }
 
   // ── Detect article authors from page metadata ──
+  function flattenStructuredData(value, result = [], depth = 0) {
+    if (!value || depth > 4) return result;
+    if (Array.isArray(value)) {
+      value.forEach(item => flattenStructuredData(item, result, depth + 1));
+      return result;
+    }
+    if (typeof value !== "object") return result;
+    result.push(value);
+    for (const key of ["@graph", "mainEntity", "mainEntityOfPage", "itemListElement"]) {
+      if (value[key]) flattenStructuredData(value[key], result, depth + 1);
+    }
+    return result;
+  }
+
   function detectAuthors() {
     const authors = [];
     const seen = new Set();
@@ -2626,7 +3084,7 @@
     document.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
       try {
         const data = JSON.parse(script.textContent);
-        const items = Array.isArray(data) ? data : [data];
+        const items = flattenStructuredData(data);
         items.forEach(item => {
           const authorField = item.author || item.creator;
           if (!authorField) return;
@@ -2681,6 +3139,16 @@
       if (message.type === "TA_GET_CONTENT_TYPE") {
         const siteInfo = detectSiteType();
         sendResponse({ contentType: siteInfo.contentType || "article", siteName: siteInfo.name || "generic" });
+        return true;
+      }
+      if (message.type === "TA_GET_PAGE_INFO") {
+        const siteInfo = detectSiteType();
+        sendResponse({
+          headline: detectHeadline() || "",
+          authors: detectAuthors(),
+          contentType: siteInfo.contentType || "article",
+          siteName: siteInfo.name || "generic",
+        });
         return true;
       }
       // Live preview: update headline text in real-time as user types
@@ -2921,6 +3389,14 @@
   // Uses the site-type branching tree to pick the best selectors,
   // then falls back through CMS attributes, og:title, and page title.
   function detectHeadline() {
+    // If Trust Assembly has already replaced the visible headline, return the
+    // publisher's stored original rather than feeding the correction back into
+    // a new submission form.
+    const corrected = document.querySelector("[data-ta-original-text]");
+    if (corrected?.dataset?.taOriginalText?.trim()) {
+      return corrected.dataset.taOriginalText.trim();
+    }
+
     const site = getSiteType();
 
     // Phase 1: Site-specific selectors (most reliable for this CMS)
@@ -2969,8 +3445,12 @@
       const ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
       for (const script of ldScripts) {
         const data = JSON.parse(script.textContent);
-        const headline = data.headline || (Array.isArray(data) ? data[0]?.headline : null);
-        if (headline && headline.trim().length > 5) return headline.trim();
+        for (const item of flattenStructuredData(data)) {
+          const types = Array.isArray(item["@type"]) ? item["@type"] : [item["@type"]];
+          const contentType = types.some(type => /Article|Posting|News|Video|Audio|Podcast|Product/i.test(type || ""));
+          const headline = item.headline || (contentType ? item.name : null);
+          if (typeof headline === "string" && headline.trim().length > 5) return headline.trim();
+        }
       }
     } catch (e) {}
 

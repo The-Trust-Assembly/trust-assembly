@@ -1,4 +1,4 @@
-import { readFile, writeFile, copyFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -8,6 +8,38 @@ const packageRoot = path.resolve(scriptDirectory, "..");
 const sourceDirectory = path.join(packageRoot, "src");
 const manifestsDirectory = path.join(packageRoot, "manifests");
 const checkOnly = process.argv.includes("--check");
+const devMode = process.argv.includes("--dev");
+const productionApiBase = "https://trustassembly.org";
+
+function readArgument(name) {
+  const inline = process.argv.find(argument => argument.startsWith(`${name}=`));
+  if (inline) return inline.slice(name.length + 1);
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function validateApiBase(rawValue) {
+  const value = String(rawValue || "").trim().replace(/\/$/, "");
+  let parsed;
+  try { parsed = new URL(value); } catch { throw new Error(`Invalid --api-base URL: ${value}`); }
+  if (!devMode) throw new Error("--api-base may only be used with --dev");
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error("The development API base must be an HTTP(S) origin without credentials");
+  }
+  if (parsed.pathname !== "" && parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    throw new Error("The development API base must not include a path, query, or fragment");
+  }
+  return parsed.origin;
+}
+
+const requestedApiBase = readArgument("--api-base");
+if (requestedApiBase && !devMode) throw new Error("--api-base requires --dev");
+const apiBase = devMode
+  ? validateApiBase(requestedApiBase || "http://localhost:3000")
+  : productionApiBase;
+const browserOutputRoot = devMode
+  ? path.join(repositoryRoot, ".dev", "trust-overlay")
+  : path.join(repositoryRoot, "extensions");
 
 const browserTargets = ["chrome", "firefox", "safari"];
 const sharedFiles = [
@@ -46,6 +78,26 @@ async function readPackageData(filename) {
   return packagedTextExtensions.has(path.extname(filename).toLowerCase())
     ? Buffer.from(normalizeText(data.toString("utf8")), "utf8")
     : data;
+}
+
+async function readBrowserOutputData(filename, { manifest = false, browser } = {}) {
+  if (!devMode) return readFile(filename);
+  const data = await readPackageData(filename);
+  if (!packagedTextExtensions.has(path.extname(filename).toLowerCase())) return data;
+
+  let text = data.toString("utf8").replaceAll(productionApiBase, apiBase);
+  if (manifest) {
+    const parsed = JSON.parse(text);
+    parsed.name = `${parsed.name} (Local Dev)`;
+    parsed.description = `${parsed.description} Development API: ${apiBase}`;
+    if (browser === "firefox" && parsed.browser_specific_settings?.gecko) {
+      // Keep local authentication/storage isolated from the installed
+      // production add-on, whose explicit Gecko ID would otherwise be reused.
+      parsed.browser_specific_settings.gecko.id = "extension-local-dev@trustassembly.org";
+    }
+    text = `${JSON.stringify(parsed, null, 2)}\n`;
+  }
+  return Buffer.from(text, "utf8");
 }
 
 const crcTable = Array.from({ length: 256 }, (_, index) => {
@@ -123,28 +175,26 @@ function createZip(entries) {
   return Buffer.concat([...localRecords, centralDirectory, endRecord]);
 }
 
-async function assertMatches(source, destination) {
-  const [expected, actual] = await Promise.all([
-    readFile(source),
-    readFile(destination).catch(() => null),
-  ]);
+async function assertDataMatches(expected, destination) {
+  const actual = await readFile(destination).catch(() => null);
   if (!actual || !expected.equals(actual)) {
     throw new Error(`Generated file is stale: ${path.relative(repositoryRoot, destination)}`);
   }
 }
 
-async function copyOrCheck(source, destination) {
+async function copyOrCheck(source, destination, options) {
+  const expected = await readBrowserOutputData(source, options);
   if (checkOnly) {
-    await assertMatches(source, destination);
+    await assertDataMatches(expected, destination);
     return;
   }
   await mkdir(path.dirname(destination), { recursive: true });
-  await copyFile(source, destination);
+  await writeFile(destination, expected);
 }
 
 async function buildBrowserTargets() {
   for (const browser of browserTargets) {
-    const destinationDirectory = path.join(repositoryRoot, "extensions", browser);
+    const destinationDirectory = path.join(browserOutputRoot, browser);
     for (const filename of sharedFiles) {
       await copyOrCheck(
         path.join(sourceDirectory, filename),
@@ -154,6 +204,7 @@ async function buildBrowserTargets() {
     await copyOrCheck(
       path.join(manifestsDirectory, `${browser}.json`),
       path.join(destinationDirectory, "manifest.json"),
+      { manifest: true, browser },
     );
   }
 }
@@ -196,11 +247,28 @@ async function buildMobileModule() {
     readCanonicalText(path.join(sourceDirectory, "content.css")),
   ]);
 
-  const iconFiles = sharedFiles.filter((filename) => filename.endsWith(".png"));
-  const iconEntries = await Promise.all(iconFiles.map(async (filename) => {
-    const bytes = await readFile(path.join(sourceDirectory, filename));
-    return [filename, `data:image/png;base64,${bytes.toString("base64")}`];
-  }));
+  // The page UI only renders toolbar-sized icons. Reuse the 48px assets for
+  // 128px names in the WebView adapter instead of embedding four additional
+  // large base64 images into the JavaScript evaluated on every navigation.
+  const mobileIconSources = {
+    "icon48.png": "icon48.png",
+    "icon48-affirmed.png": "icon48-affirmed.png",
+    "icon48-corrected.png": "icon48-corrected.png",
+    "icon48-pending.png": "icon48-pending.png",
+    "icon128.png": "icon48.png",
+    "icon128-affirmed.png": "icon48-affirmed.png",
+    "icon128-corrected.png": "icon48-corrected.png",
+    "icon128-pending.png": "icon48-pending.png",
+  };
+  const mobileIconData = new Map();
+  const iconEntries = [];
+  for (const [name, sourceName] of Object.entries(mobileIconSources)) {
+    if (!mobileIconData.has(sourceName)) {
+      const bytes = await readFile(path.join(sourceDirectory, sourceName));
+      mobileIconData.set(sourceName, `data:image/png;base64,${bytes.toString("base64")}`);
+    }
+    iconEntries.push([name, mobileIconData.get(sourceName)]);
+  }
   const iconMap = Object.fromEntries(iconEntries);
   const adapter = adapterTemplate.replace(
     "__TA_MOBILE_ICON_MAP__",
@@ -237,6 +305,12 @@ async function buildMobileModule() {
 }
 
 await buildBrowserTargets();
-await buildBrowserPackages();
-await buildMobileModule();
-console.log(checkOnly ? "Shared overlay outputs are current." : "Built browser, packaged, and mobile overlay outputs.");
+if (devMode) {
+  console.log(checkOnly
+    ? `Development overlay outputs are current for ${apiBase}.`
+    : `Built development overlays in ${path.relative(repositoryRoot, browserOutputRoot)} for ${apiBase}.`);
+} else {
+  await buildBrowserPackages();
+  await buildMobileModule();
+  console.log(checkOnly ? "Shared overlay outputs are current." : "Built browser, packaged, and mobile overlay outputs.");
+}

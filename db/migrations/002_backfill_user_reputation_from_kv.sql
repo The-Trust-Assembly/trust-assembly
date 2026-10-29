@@ -128,25 +128,16 @@ WITH ordered_outcomes AS (
   FROM submissions s
   WHERE s.status IN ('approved', 'consensus', 'rejected', 'consensus_rejected')
     AND s.resolved_at IS NOT NULL
-),
-streaks AS (
-  SELECT
-    user_id,
-    COUNT(*) FILTER (WHERE rn <= (
-      SELECT COALESCE(MIN(o2.rn) - 1, MAX(o3.rn))
-      FROM ordered_outcomes o2
-      WHERE o2.user_id = ordered_outcomes.user_id
-        AND o2.status IN ('rejected', 'consensus_rejected')
-      -- if no losses, count all wins
-    )) AS streak_placeholder
-  FROM ordered_outcomes
-  WHERE status IN ('approved', 'consensus')
-  GROUP BY user_id
 )
--- Actually, simpler approach: just count consecutive wins from the top
+-- Count consecutive wins from the most recent outcome back to the first loss.
 UPDATE users u SET current_streak = streak_calc.streak
 FROM (
-  SELECT user_id, COUNT(*) AS streak
+  SELECT
+    user_id,
+    COUNT(*) FILTER (
+      WHERE status IN ('approved', 'consensus')
+        AND (first_loss_rn IS NULL OR rn < first_loss_rn)
+    ) AS streak
   FROM (
     SELECT
       user_id,
@@ -156,8 +147,6 @@ FROM (
       MIN(CASE WHEN status IN ('rejected', 'consensus_rejected') THEN rn END) OVER (PARTITION BY user_id) AS first_loss_rn
     FROM ordered_outcomes
   ) sub
-  WHERE status IN ('approved', 'consensus')
-    AND (first_loss_rn IS NULL OR rn < first_loss_rn)
   GROUP BY user_id
 ) streak_calc
 WHERE u.id = streak_calc.user_id

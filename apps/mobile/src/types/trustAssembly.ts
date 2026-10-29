@@ -60,11 +60,12 @@ export interface Correction {
   submittedBy: string;
   orgName: string;
   orgId?: string;
-  status: 'approved' | 'pending' | 'consensus' | 'rejected';
+  status: 'approved' | 'pending' | 'pending_jury' | 'pending_review' | 'di_pending' | 'cross_review' | 'consensus' | 'rejected';
   trustScore: number | null;
   profile: UserProfile;
   inlineEdits?: Array<{ original: string; replacement: string; reasoning?: string | null }>;
   type?: 'correction' | 'affirmation' | 'translation';
+  isOwnSubmission?: boolean;
 }
 
 export interface Affirmation {
@@ -78,10 +79,11 @@ export interface Affirmation {
   submittedBy: string;
   orgName: string;
   orgId?: string;
-  status: 'approved' | 'pending' | 'consensus';
+  status: 'approved' | 'pending' | 'pending_jury' | 'pending_review' | 'di_pending' | 'cross_review' | 'consensus';
   trustScore: number | null;
   profile: UserProfile;
   inlineEdits?: Array<{ original: string; replacement: string; reasoning?: string | null }>;
+  isOwnSubmission?: boolean;
 }
 
 export interface CorrectionsResponse {
@@ -141,6 +143,7 @@ export interface SubmissionDraft<T = unknown> {
 
 export interface SubmissionResultItem {
   id: string;
+  status?: string;
 }
 
 export interface SubmissionResult {
@@ -212,7 +215,7 @@ export type WebViewMessage =
 // ── WebView → Native Message Types ──
 
 export type NativeMessage =
-  | { type: 'TA_FETCH'; requestId: string; url: string }
+  | { type: 'TA_FETCH'; requestId: string; url: string; method?: string; body?: string }
   | { type: 'TA_COUNT'; count: number; url: string; signalType?: string }
   | { type: 'TA_DESIGN_SCAN_RESULT'; headlines: Array<{ text: string; selector: string; index: number }> }
   | { type: 'TA_DESIGN_REPORT_READY'; report: string }

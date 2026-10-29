@@ -1,24 +1,59 @@
-import { sql } from "@vercel/postgres";
+import { sql as vercelSql } from "@vercel/postgres";
 import type { VercelPoolClient } from "@vercel/postgres";
+import { Pool as NodePostgresPool } from "pg";
+import { isLocalPostgresUrl } from "@/lib/development-environment";
 
-// Re-export the sql tagged template from @vercel/postgres.
-// Vercel Postgres reads POSTGRES_URL from environment automatically.
-// For local dev, set POSTGRES_URL in .env.local.
-//
-// IMPORTANT: The sql`` tagged template uses the neon() HTTP driver under the
-// hood. Each sql`` call creates a new stateless HTTP request — there is NO
-// persistent connection. This means BEGIN/COMMIT/ROLLBACK across separate
-// sql`` calls are NO-OPS (each runs on a different connection).
-//
-// For real transactions, use withTransaction() below, which calls
-// sql.connect() to get a dedicated pooled connection.
-export { sql };
+type Primitive = string | number | boolean | undefined | null;
+
+const connectionString = process.env.POSTGRES_URL;
+
+const useLocalPostgres = isLocalPostgresUrl(connectionString);
+const globalForDatabase = globalThis as typeof globalThis & {
+  trustAssemblyLocalPostgresPool?: NodePostgresPool;
+};
+
+function getLocalPool(): NodePostgresPool {
+  if (!connectionString) {
+    throw new Error("POSTGRES_URL is required to connect to PostgreSQL");
+  }
+
+  // Preserve the pool during Next.js development hot reloads so each reload
+  // does not leave another set of connections open.
+  globalForDatabase.trustAssemblyLocalPostgresPool ??= new NodePostgresPool({
+    connectionString,
+  });
+  return globalForDatabase.trustAssemblyLocalPostgresPool;
+}
+
+async function localTaggedQuery(
+  strings: TemplateStringsArray,
+  ...values: Primitive[]
+) {
+  let query = strings[0] ?? "";
+  for (let index = 1; index < strings.length; index += 1) {
+    query += `$${index}${strings[index] ?? ""}`;
+  }
+  return getLocalPool().query(query, values);
+}
+
+const localSql = Object.assign(localTaggedQuery, {
+  query: (query: string, values?: unknown[]) => getLocalPool().query(query, values),
+  connect: () => getLocalPool().connect(),
+});
+
+/**
+ * Database interface shared by production and local development.
+ *
+ * Hosted Vercel/Neon databases keep using @vercel/postgres. A localhost
+ * POSTGRES_URL uses node-postgres because Neon's stateless HTTP query
+ * transport cannot connect to a normal PostgreSQL server on port 5432.
+ */
+export const sql = (useLocalPostgres ? localSql : vercelSql) as typeof vercelSql;
 
 /**
  * Execute a callback inside a real database transaction.
  *
- * Uses sql.connect() to get a dedicated pooled connection (NOT the stateless
- * neon HTTP driver). BEGIN/COMMIT/ROLLBACK actually work on this connection.
+ * Uses sql.connect() to get a dedicated pooled connection.
  *
  * Usage:
  *   const result = await withTransaction(async (client) => {
@@ -36,18 +71,15 @@ export async function withTransaction<T>(
     const result = await fn(client);
     await client.query("COMMIT");
     return result;
-  } catch (e) {
+  } catch (error) {
     await client.query("ROLLBACK");
-    throw e;
+    throw error;
   } finally {
     client.release();
   }
 }
 
-/**
- * Check if a user is an active member of an organization.
- * Returns true if the membership exists and is active.
- */
+/** Check whether a user is an active member of an organization. */
 export async function checkOrgMembership(orgId: string, userId: string): Promise<boolean> {
   const result = await sql`
     SELECT id FROM organization_members

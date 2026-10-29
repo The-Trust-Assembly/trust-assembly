@@ -21,6 +21,7 @@ require.extensions['.ts'] = (module, filename) => {
 };
 
 const {
+  DEFAULT_BROWSER_URL,
   buildOverlayFetchRequest,
   correctionCacheKey,
   extractSharedUrl,
@@ -30,6 +31,10 @@ const {
 test.after(() => {
   if (originalTsLoader) require.extensions['.ts'] = originalTsLoader;
   else delete require.extensions['.ts'];
+});
+
+test('uses a recognizable news homepage for a fresh browser session', () => {
+  assert.equal(DEFAULT_BROWSER_URL, 'https://ground.news/');
 });
 
 test('normalizes safe browser addresses and rejects privileged schemes', () => {
@@ -77,6 +82,37 @@ test('bridge blocks non-public endpoints and invalid assembly identifiers', () =
     buildOverlayFetchRequest(
       'https://trustassembly.org/api/vault?orgIds=not-a-uuid&type=vault',
       'https://example.com',
+    ),
+    null,
+  );
+});
+
+test('bridge permits only capped, valid correction batches', () => {
+  const body = JSON.stringify({
+    urls: [
+      'https://www.example.com/story/?utm_source=feed#top',
+      'https://news.example.org/article',
+    ],
+  });
+  assert.deepEqual(
+    buildOverlayFetchRequest(
+      'https://trustassembly.org/api/corrections/batch',
+      'https://ground.news/',
+      'POST',
+      body,
+    ),
+    {
+      kind: 'correction-batch',
+      path: '/api/corrections/batch',
+      urls: ['https://www.example.com/story/?utm_source=feed#top', 'https://news.example.org/article'],
+    },
+  );
+  assert.equal(
+    buildOverlayFetchRequest(
+      'https://trustassembly.org/api/corrections/batch',
+      'https://ground.news/',
+      'GET',
+      body,
     ),
     null,
   );

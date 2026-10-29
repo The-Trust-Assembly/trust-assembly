@@ -34,6 +34,7 @@ function storageSet(obj) {
 }
 
 const API_BASE = "https://trustassembly.org";
+const API_ORIGIN = new URL(API_BASE).origin;
 const TOKEN_KEY = "ta-auth-token";
 const NOTIFICATION_POLL_INTERVAL = 60000; // 60 seconds
 const NOTIFICATION_ALARM = "ta-notification-poll";
@@ -255,18 +256,45 @@ runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Proxy fetch requests from content scripts (CORS bypass)
   if (message.type === "TA_FETCH") {
     let apiUrl;
+    let fetchOptions = {};
     try {
       apiUrl = new URL(message.url);
-      const allowedPath = apiUrl.pathname === "/api/corrections" || apiUrl.pathname === "/api/vault";
-      if (apiUrl.protocol !== "https:" || apiUrl.hostname !== "trustassembly.org" || !allowedPath) {
+      const isBatch = apiUrl.pathname === "/api/corrections/batch";
+      const allowedPath = apiUrl.pathname === "/api/corrections" || apiUrl.pathname === "/api/vault" || isBatch;
+      if (apiUrl.origin !== API_ORIGIN || !allowedPath) {
         throw new Error("Public API URL is not allowed");
+      }
+      const method = String(message.method || "GET").toUpperCase();
+      if ((!isBatch && method !== "GET") || (isBatch && method !== "POST")) {
+        throw new Error("Public API method is not allowed");
+      }
+      if (isBatch) {
+        if (typeof message.body !== "string" || message.body.length > 170000) {
+          throw new Error("Invalid correction batch body");
+        }
+        const parsed = JSON.parse(message.body);
+        if (!Array.isArray(parsed.urls) || parsed.urls.length < 1 || parsed.urls.length > 40) {
+          throw new Error("Invalid correction batch body");
+        }
+        for (const rawUrl of parsed.urls) {
+          if (typeof rawUrl !== "string" || rawUrl.length > 4096) throw new Error("Invalid correction batch URL");
+          const articleUrl = new URL(rawUrl);
+          if (articleUrl.protocol !== "http:" && articleUrl.protocol !== "https:") {
+            throw new Error("Invalid correction batch URL");
+          }
+        }
+        fetchOptions = {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ urls: parsed.urls }),
+        };
       }
     } catch (error) {
       sendResponse({ ok: false, error: error.message || "Invalid public API URL" });
       return false;
     }
 
-    fetch(apiUrl.toString())
+    fetch(apiUrl.toString(), fetchOptions)
       .then(res => {
         if (!res.ok) throw new Error(`Request failed (${res.status})`);
         return res.json();

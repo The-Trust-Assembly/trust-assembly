@@ -5,7 +5,8 @@
 
 // ── Backend API ──
 
-export const TA_API_BASE = 'https://trustassembly.org';
+const configuredApiBase = process.env.EXPO_PUBLIC_TA_API_BASE?.trim().replace(/\/$/, '');
+export const TA_API_BASE = configuredApiBase || 'https://trustassembly.org';
 export const TOKEN_KEY = 'ta-auth-token';
 export const USER_KEY = 'ta-auth-user';
 export const ASSEMBLIES_KEY = 'ta-assemblies';
@@ -13,6 +14,8 @@ export const MUTED_KEY = 'ta-muted-sites';
 export const SETTINGS_KEY = 'ta-settings';
 export const CACHED_CORRECTIONS_KEY = 'ta-cached-corrections';
 export const FORM_STATE_KEY = 'ta-form-draft';
+export const LAST_BROWSER_URL_KEY = 'ta-last-browser-url';
+export const OWN_PENDING_SUBMISSIONS_KEY = 'ta-own-pending-submissions-v1';
 
 // ── Cache ──
 

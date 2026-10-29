@@ -185,6 +185,9 @@ State persisted via `chrome.storage.local` across sessions.
 ```env
 POSTGRES_URL=postgres://user:password@host:5432/trust_assembly
 JWT_SECRET=your-secure-random-secret
+# Optional local-development convenience. New accounts are considered verified
+# only when NODE_ENV is not production and POSTGRES_URL uses localhost.
+TA_DEV_AUTO_VERIFY_EMAIL=true
 ```
 
 ---

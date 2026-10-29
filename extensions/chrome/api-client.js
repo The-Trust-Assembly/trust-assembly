@@ -10,6 +10,8 @@
 const API_BASE = "https://trustassembly.org";
 const TOKEN_KEY = "ta-auth-token";
 const USER_KEY = "ta-auth-user";
+const OWN_PENDING_KEY = "ta-own-pending-submissions-v1";
+const OWN_PENDING_TTL = 30 * 24 * 60 * 60 * 1000;
 
 // ── Storage helpers (cross-browser) ──
 function getStorage() {
@@ -61,7 +63,7 @@ const TA = {
     const res = await fetch(url, { ...opts, headers });
     // Auto-clear expired tokens
     if (res.status === 401) {
-      await storageRemove([TOKEN_KEY, USER_KEY, "ta-assemblies"]);
+      await storageRemove([TOKEN_KEY, USER_KEY, "ta-assemblies", OWN_PENDING_KEY]);
     }
     return res;
   },
@@ -79,6 +81,10 @@ const TA = {
       if (!res.ok) return null;
       const data = await res.json();
       if (data.token) {
+        const previous = await this.getStoredUser();
+        if (previous?.id && previous.id !== data.id) {
+          await storageRemove([OWN_PENDING_KEY]);
+        }
         await storageSet({
           [TOKEN_KEY]: data.token,
           [USER_KEY]: JSON.stringify({ username: data.username, displayName: data.displayName, id: data.id }),
@@ -95,7 +101,7 @@ const TA = {
    * Clear stored auth.
    */
   async logout() {
-    await storageRemove([TOKEN_KEY, USER_KEY, "ta-assemblies"]);
+    await storageRemove([TOKEN_KEY, USER_KEY, "ta-assemblies", OWN_PENDING_KEY]);
   },
 
   /**
@@ -127,13 +133,29 @@ const TA = {
   async getMyAssemblies() {
     try {
       const res = await this._authedFetch(`${API_BASE}/api/users/me/assemblies`);
-      if (!res.ok) return { joined: [], followed: [] };
+      if (!res.ok) {
+        return {
+          joined: [],
+          followed: [],
+          error: res.status === 401
+            ? "Your session has expired. Sign out and sign in again."
+            : "Could not verify your assembly memberships.",
+        };
+      }
       const data = await res.json();
+      const normalized = {
+        joined: Array.isArray(data.joined) ? data.joined : [],
+        followed: Array.isArray(data.followed) ? data.followed : [],
+      };
       // Cache locally for badge rendering
-      await storageSet({ "ta-assemblies": JSON.stringify(data) });
-      return data;
+      await storageSet({ "ta-assemblies": JSON.stringify(normalized) });
+      return normalized;
     } catch (e) {
-      return { joined: [], followed: [] };
+      return {
+        joined: [],
+        followed: [],
+        error: "Could not reach Trust Assembly to verify your memberships.",
+      };
     }
   },
 
@@ -200,6 +222,60 @@ const TA = {
     } catch (e) {
       return { error: e.message };
     }
+  },
+
+  /** Cache a successful submission locally for its author's pending preview. */
+  async cacheOwnSubmissionPreviews(payload, result, assemblies, user) {
+    const created = Array.isArray(result?.submissions)
+      ? result.submissions
+      : result?.id ? [result] : [];
+    if (created.length === 0 || !payload?.url) return;
+
+    const orgIds = Array.isArray(payload.orgIds) && payload.orgIds.length > 0
+      ? payload.orgIds
+      : payload.orgId ? [payload.orgId] : [];
+    const orgList = [...(assemblies?.joined || []), ...(assemblies?.followed || [])];
+    const now = Date.now();
+    const stored = await storageGet([OWN_PENDING_KEY]);
+    let entries = [];
+    try {
+      entries = JSON.parse(stored[OWN_PENDING_KEY] || "[]");
+      if (!Array.isArray(entries)) entries = [];
+    } catch (_) { entries = []; }
+
+    entries = entries.filter(entry => (
+      entry && typeof entry.id === "string" && now - Number(entry.cachedAt || 0) < OWN_PENDING_TTL
+    ));
+    const newIds = new Set(created.map(item => item.id));
+    entries = entries.filter(entry => !newIds.has(entry.id));
+
+    created.forEach((item, index) => {
+      const status = item.status || "pending_review";
+      if (["approved", "consensus", "rejected", "consensus_rejected"].includes(status)) return;
+      const orgId = orgIds[index] || orgIds[0] || "";
+      const org = orgList.find(candidate => candidate.id === orgId);
+      entries.push({
+        id: item.id,
+        url: payload.url,
+        submissionType: payload.submissionType,
+        originalHeadline: payload.originalHeadline,
+        replacement: payload.replacement || "",
+        reasoning: payload.reasoning,
+        author: payload.author || "",
+        evidence: Array.isArray(payload.evidence) ? payload.evidence : [],
+        inlineEdits: Array.isArray(payload.inlineEdits) ? payload.inlineEdits : [],
+        submittedBy: user?.username || "You",
+        orgId,
+        orgName: org?.name || "Your Assembly",
+        status,
+        trustScore: null,
+        profile: { displayName: user?.displayName || user?.username || "You" },
+        isOwnSubmission: true,
+        cachedAt: now,
+      });
+    });
+
+    await storageSet({ [OWN_PENDING_KEY]: JSON.stringify(entries.slice(-100)) });
   },
 
   /**
