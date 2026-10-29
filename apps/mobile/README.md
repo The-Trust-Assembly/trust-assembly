@@ -21,6 +21,27 @@ overlay. Do not edit `src/generated/trustOverlay.generated.ts` directly.
 The app can browse public pages without an account. Sign-in is required for
 submissions and membership features. Incoming links use either
 `trustassembly://open?url=...` or `https://trustassembly.org/mobile/open?url=...`.
+On a fresh installation the browser opens Ground News. After that, it restores
+the last valid page the user opened; rebuilding without uninstalling or clearing
+application data preserves that browser location.
+
+### Use a local API
+
+Expo development builds can override the production server without changing
+committed source or generated overlay files. For a USB-connected Android phone,
+forward the computer's development server and start Expo in the same shell:
+
+```powershell
+adb reverse tcp:3000 tcp:3000
+$env:EXPO_PUBLIC_TA_API_BASE = "http://127.0.0.1:3000"
+node .\node_modules\expo\bin\cli run:android
+```
+
+Start the website separately on port 3000 with
+`NEXT_PUBLIC_APP_URL=http://localhost:3000`. Remove the environment variable
+(`Remove-Item Env:EXPO_PUBLIC_TA_API_BASE`) to return mobile builds to
+`https://trustassembly.org`. Android cleartext HTTP is enabled for this local
+development workflow; production still defaults to HTTPS.
 
 ## Test on a physical Android device from Windows
 
@@ -55,8 +76,8 @@ The Java command must report version 17, and the phone must have status
 `device`, not `unauthorized`. From this directory, install and launch the app:
 
 ```powershell
-npm.cmd ci
-npx.cmd expo run:android
+npm ci
+node .\node_modules\expo\bin\cli run:android
 ```
 
 When more than one Android device is connected, use `--device` without a value
@@ -64,7 +85,7 @@ and select the device interactively. Expo expects a display name such as
 `Pixel 8 Pro`, not the ADB serial number:
 
 ```powershell
-npx.cmd expo run:android --device
+node .\node_modules\expo\bin\cli run:android --device
 ```
 
 The first run generates the ignored `android/` directory, builds a debug APK,
@@ -83,8 +104,9 @@ adb reverse tcp:8081 tcp:8081
 
 ### Common Windows errors
 
-- `npx.ps1 cannot be loaded`: run `npx.cmd` (and `npm.cmd`) instead of changing
-  the system execution policy.
+- `npx` or `npx.cmd` is unavailable: run Expo's installed CLI directly with
+  `node .\node_modules\expo\bin\cli run:android`. NVM v2 may provide executable
+  shims named `npm` and `npx` without separately discoverable `.cmd` files.
 - `Unsupported class file major version 71`: Gradle used JDK 27. Point
   `JAVA_HOME` to JDK 17, verify `java -version`, run
   `.\android\gradlew.bat --stop`, and rebuild.
@@ -96,12 +118,15 @@ adb reverse tcp:8081 tcp:8081
 ### Physical-device smoke test
 
 1. Browse several external HTTP(S) pages and verify the overlay loads.
-2. Open correction details and test mute/unmute and display settings.
-3. Sign in and verify joined/followed assembly badges.
-4. Save and resume a draft, then submit a correction or affirmation.
-5. Test a `trustassembly://open?url=...` deep link.
-6. Temporarily disable networking and verify cached correction behavior.
-7. Sign out and confirm protected actions require authentication.
+2. Open a news homepage or feed containing a link to a corrected article.
+   Verify the corrected linked headline and assembly marker appear, then tap
+   the marker to reveal the publisher's original headline.
+3. Open correction details and test mute/unmute and display settings.
+4. Sign in and verify joined/followed assembly badges.
+5. Save and resume a draft, then submit a correction or affirmation.
+6. Test a `trustassembly://open?url=...` deep link.
+7. Temporarily disable networking and verify cached correction behavior.
+8. Sign out and confirm protected actions require authentication.
 
 The Expo dependencies, including `expo-system-ui`, are committed in
 `package.json` and `package-lock.json`. JDK/SDK environment variables and

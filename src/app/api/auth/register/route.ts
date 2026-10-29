@@ -7,6 +7,7 @@ import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 import { logError } from "@/lib/error-logger";
 import { sendWelcomeEmail } from "@/lib/email";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { shouldAutoVerifyEmail } from "@/lib/development-environment";
 
 // Email is intentionally NOT unique in the schema — DIs may share their
 // partner's email. Uniqueness for non-DI accounts is enforced in
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
 
   const { username, displayName, realName, email, password, gender, age, country, state, politicalAffiliation, turnstileToken } = body as Record<string, string>;
   const isDI = gender === "di";
+  const autoVerifyEmail = shouldAutoVerifyEmail();
 
   // Turnstile bot verification (skip for AI Agent accounts)
   if (!isDI && process.env.TURNSTILE_SECRET_KEY) {
@@ -88,13 +90,17 @@ export async function POST(request: NextRequest) {
       const result = await client.query(
         `INSERT INTO users (
           username, display_name, real_name, email, password_hash, salt,
-          gender, age, country, state, political_affiliation, is_di
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          gender, age, country, state, political_affiliation, is_di,
+          email_verified, email_verified_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+          $13, CASE WHEN $13 THEN NOW() ELSE NULL END
+        )
         RETURNING id, username, display_name, created_at`,
         [
           uname, displayName, realName || null, email.toLowerCase(), hash, salt,
           gender || "Undisclosed", age || "Undisclosed", country || null, state || null,
-          politicalAffiliation || null, isDI,
+          politicalAffiliation || null, isDI, autoVerifyEmail,
         ]
       );
 
@@ -151,7 +157,7 @@ export async function POST(request: NextRequest) {
   await setSessionCookie(token);
 
   // Email verification + welcome (fire-and-forget)
-  if (email && !isDI) {
+  if (email && !isDI && !autoVerifyEmail) {
     try {
       const verificationToken = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours

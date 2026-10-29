@@ -7,7 +7,7 @@
 
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TA_API_BASE, TOKEN_KEY, USER_KEY, ASSEMBLIES_KEY } from '../utils/constants';
+import { TA_API_BASE, TOKEN_KEY, USER_KEY, ASSEMBLIES_KEY, OWN_PENDING_SUBMISSIONS_KEY } from '../utils/constants';
 import type {
   TAUser,
   TAUserSummary,
@@ -23,6 +23,7 @@ import type {
   SubmissionResult,
   VaultSubmissionResult,
 } from '../types/trustAssembly';
+import { mergeOwnPendingForUrl } from '../storage/pendingSubmissionStore';
 
 // ── Storage Helpers ──
 
@@ -49,6 +50,7 @@ async function clearAuthStorage(): Promise<void> {
     secureRemove(TOKEN_KEY),
     secureRemove(USER_KEY),
     AsyncStorage.removeItem(ASSEMBLIES_KEY),
+    AsyncStorage.removeItem(OWN_PENDING_SUBMISSIONS_KEY),
   ]);
 }
 
@@ -102,8 +104,8 @@ export async function publicApiFetch<T>(path: string, opts: RequestInit = {}): P
   return (await res.json()) as T;
 }
 
-export async function getPublicOverlayResource(path: string): Promise<unknown> {
-  return publicApiFetch<unknown>(path);
+export async function getPublicOverlayResource(path: string, opts: RequestInit = {}): Promise<unknown> {
+  return publicApiFetch<unknown>(path, opts);
 }
 
 // ── Auth ──
@@ -129,6 +131,10 @@ export async function login(username: string, password: string): Promise<TAUser 
     });
 
     if (data.token) {
+      const previousUser = await getStoredUser();
+      if (previousUser?.id && previousUser.id !== data.id) {
+        await AsyncStorage.removeItem(OWN_PENDING_SUBMISSIONS_KEY);
+      }
       const userSummary: TAUserSummary = {
         username: data.username,
         displayName: data.displayName,
@@ -448,7 +454,7 @@ export async function submitCorrection(payload: unknown): Promise<SubmissionResu
 
 /** Alias for getForURL — fetch corrections for a URL */
 export async function getCorrections(url: string): Promise<CorrectionsResponse> {
-  return getForURL(url);
+  return mergeOwnPendingForUrl(url, await getForURL(url));
 }
 
 /** Submit a vault artifact (standing correction, argument, belief, or translation) */

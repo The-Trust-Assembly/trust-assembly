@@ -4,7 +4,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SETTINGS_KEY, MUTED_KEY, CACHED_CORRECTIONS_KEY, CACHE_TTL, DEFAULT_SETTINGS } from '../utils/constants';
+import { SETTINGS_KEY, MUTED_KEY, CACHED_CORRECTIONS_KEY, CACHE_TTL, DEFAULT_SETTINGS, LAST_BROWSER_URL_KEY } from '../utils/constants';
 import type { TASettings, SiteMuteMap, CachedCorrections } from '../types/trustAssembly';
 import type { CorrectionsResponse } from '../types/trustAssembly';
 import { correctionCacheKey } from '../utils/urlUtils';
@@ -124,6 +124,24 @@ export async function cacheCorrections(url: string, data: CorrectionsResponse): 
 
 export async function clearCachedCorrections(): Promise<void> {
   await AsyncStorage.removeItem(CACHED_CORRECTIONS_KEY);
+}
+
+// ── Browser session ──
+
+export async function getLastBrowserUrl(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(LAST_BROWSER_URL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLastBrowserUrl(url: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LAST_BROWSER_URL_KEY, url);
+  } catch (error) {
+    console.warn('[Trust Assembly] Failed to save browser location:', error);
+  }
 }
 
 // ── Form State (port from popup.js) ──

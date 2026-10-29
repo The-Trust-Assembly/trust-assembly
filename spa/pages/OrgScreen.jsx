@@ -10,6 +10,17 @@ import { UsernameLink, SubHeadline, StatusPill, InviteCTA, Empty, Loader, Icon }
 import AssemblyGuide from "../components/AssemblyGuide";
 import { queryKeys } from "../lib/queryKeys";
 
+function normalizeOrgMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  return Object.fromEntries(Object.entries(value).map(([id, org]) => [id, {
+    ...org,
+    id: org.id || id,
+    members: Array.isArray(org.members) ? org.members : [],
+    founders: Array.isArray(org.founders) ? org.founders : [],
+  }]));
+}
+
 function OrgAvatar({ org, size = 48 }) {
   return (
     <div style={{ width: size, height: size, flexShrink: 0, border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg)" }}>
@@ -82,7 +93,7 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
       const avatarStatus = Object.values(o).map(org => `${org.name}: ${org.avatar ? 'HAS AVATAR (' + org.avatar.length + ' chars)' : 'no avatar'}`);
       console.log("[OrgScreen load] Avatar status:", avatarStatus.join(", "));
     }
-    setOrgs(o || {}); setSubs(s || {}); setApps(a || {}); setConcessions(c || {}); setLoading(false);
+    setOrgs(normalizeOrgMap(o)); setSubs(s || {}); setApps(a || {}); setConcessions(c || {}); setLoading(false);
     invalidateOrgs();
     // Load followed orgs from relational API
     try {
@@ -95,6 +106,15 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
     } catch (e) { /* will use local state */ }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const refreshOrgs = async () => {
+    // The SPA data endpoint returns the full camelCase organization contract,
+    // including member/founder username arrays. The summary /api/orgs endpoint
+    // only returns member_count and cannot safely replace OrgScreen state.
+    const response = await fetch("/api/data/orgs", { cache: "no-store" });
+    if (!response.ok) throw new Error("Failed to refresh assemblies");
+    setOrgs(normalizeOrgMap(await response.json()));
+  };
 
   const orgStats = useMemo(() => {
     if (!orgs || !subs) return {};
@@ -136,8 +156,8 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
       const id = data.data?.id || data.id;
       const newIds = [...myOrgIds, id];
       await updateUser({ orgId: id, orgIds: newIds });
-      // Refresh org list from server
-      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.organizations || orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
+      // Refresh the full SPA organization records, including member arrays.
+      await refreshOrgs();
     } catch (e) { setError("Network error creating assembly"); return; }
     setCreating(false); setNewOrg({ name: "", description: "", charter: "" });
   };
@@ -188,10 +208,8 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
     } catch (e) { setError("Network error joining assembly"); return; }
     const newIds = [...myOrgIds, oid];
     await updateUser({ orgId: oid, orgIds: newIds });
-    // Refresh org list from server
-    try {
-      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.organizations || orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
-    } catch (e) { /* will refresh on next load */ }
+    // Refresh the full SPA organization records, including member arrays.
+    try { await refreshOrgs(); } catch (e) { /* will refresh on next load */ }
   };
 
   const leaveOrg = async (oid) => {
@@ -204,10 +222,8 @@ export default function OrgScreen({ user, onUpdate, onViewCitizen, initialViewin
     const newIds = myOrgIds.filter(id => id !== oid);
     const newActive = user.orgId === oid ? newIds[0] : user.orgId;
     await updateUser({ orgId: newActive, orgIds: newIds });
-    // Refresh org list from server
-    try {
-      const orgsRes = await fetch("/api/orgs"); if (orgsRes.ok) { const orgsData = await orgsRes.json(); const orgMap = {}; for (const o of (orgsData.organizations || orgsData.data || [])) { orgMap[o.id] = o; } setOrgs(orgMap); }
-    } catch (e) { /* will refresh on next load */ }
+    // Refresh the full SPA organization records, including member arrays.
+    try { await refreshOrgs(); } catch (e) { /* will refresh on next load */ }
   };
 
   const [followedOrgIds, setFollowedOrgIds] = useState(user.followedOrgIds || []);

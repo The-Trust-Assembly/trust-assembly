@@ -7,43 +7,63 @@
 let currentUrl = null;
 let currentUser = null;
 let userAssemblies = null; // { joined: [], followed: [] }
+let userAssembliesLoadedAt = 0;
+let userAssembliesRequest = null;
 let pendingUrlDraft = null; // Server draft for current URL (checked on popup open)
 let cachedDraftsList = null; // Cached list of all user drafts
 
-// ── Form state persistence ──
-const FORM_STATE_KEY = "ta-form-draft";
-let formState = {
-  submitType: "correction",
-  headline: "",
-  replacement: "",
-  reasoning: "",
-  selectedAuthors: [],
-  selectedOrgIds: [],
-  inlineEdits: [],
-  vaultItems: { correction: [], argument: [], belief: [], translation: [] },
-  vaultSectionsOpen: {},
-  vaultBodyOpen: false,
-  inlineEditsOpen: false,
-};
+async function getActiveTab() {
+  const query = { active: true, currentWindow: true };
 
-async function saveFormState() {
-  try {
-    await storageSet({ [FORM_STATE_KEY]: JSON.stringify(formState) });
-  } catch (e) {}
-}
+  // Firefox exposes both namespaces, but only `browser` consistently returns
+  // promises. Prefer it so an awaited chrome.tabs.query() cannot resolve to
+  // undefined before page metadata detection starts.
+  if (typeof browser !== "undefined" && browser.tabs?.query) {
+    const tabs = await browser.tabs.query(query);
+    return tabs?.[0] || null;
+  }
 
-async function loadFormState() {
-  try {
-    const result = await storageGet([FORM_STATE_KEY]);
-    if (result[FORM_STATE_KEY]) {
-      const saved = JSON.parse(result[FORM_STATE_KEY]);
-      formState = { ...formState, ...saved };
+  if (typeof chrome === "undefined" || !chrome.tabs?.query) return null;
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = tabs => {
+      if (settled) return;
+      settled = true;
+      resolve(tabs?.[0] || null);
+    };
+    try {
+      const result = chrome.tabs.query(query, finish);
+      if (result && typeof result.then === "function") result.then(finish, () => finish([]));
+    } catch (_) {
+      finish([]);
     }
-  } catch (e) {}
+  });
 }
 
-async function clearFormState() {
-  formState = {
+async function refreshUserAssemblies({ force = false } = {}) {
+  if (!currentUser) return { joined: [], followed: [] };
+  const stillFresh = userAssemblies && !userAssemblies.error &&
+    Date.now() - userAssembliesLoadedAt < 30000;
+  if (!force && stillFresh) return userAssemblies;
+  if (userAssembliesRequest) return userAssembliesRequest;
+
+  userAssembliesRequest = TA.getMyAssemblies()
+    .then(assemblies => {
+      userAssemblies = assemblies;
+      if (!assemblies.error) userAssembliesLoadedAt = Date.now();
+      return assemblies;
+    })
+    .finally(() => { userAssembliesRequest = null; });
+  return userAssembliesRequest;
+}
+
+// ── Form state persistence ──
+const LEGACY_FORM_STATE_KEY = "ta-form-draft";
+const FORM_STATES_KEY = "ta-form-drafts-by-url";
+const MAX_LOCAL_FORM_STATES = 25;
+
+function createEmptyFormState() {
+  return {
     submitType: "correction",
     headline: "",
     replacement: "",
@@ -56,7 +76,74 @@ async function clearFormState() {
     vaultBodyOpen: false,
     inlineEditsOpen: false,
   };
-  try { await storageSet({ [FORM_STATE_KEY]: "" }); } catch (e) {}
+}
+
+let formState = createEmptyFormState();
+let formStatesByUrl = {};
+
+function getFormStateUrlKey(url = currentUrl) {
+  if (!url || !url.startsWith("http")) return null;
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+async function saveFormState() {
+  const urlKey = getFormStateUrlKey();
+  if (!urlKey) return;
+  try {
+    if (!Object.prototype.hasOwnProperty.call(formStatesByUrl, urlKey)) {
+      const cachedUrls = Object.keys(formStatesByUrl);
+      if (cachedUrls.length >= MAX_LOCAL_FORM_STATES) delete formStatesByUrl[cachedUrls[0]];
+    }
+    formStatesByUrl[urlKey] = formState;
+    await storageSet({
+      [FORM_STATES_KEY]: JSON.stringify(formStatesByUrl),
+      [LEGACY_FORM_STATE_KEY]: "",
+    });
+  } catch (e) {}
+}
+
+async function loadFormState() {
+  try {
+    const result = await storageGet([FORM_STATES_KEY, LEGACY_FORM_STATE_KEY]);
+    if (result[FORM_STATES_KEY]) {
+      formStatesByUrl = JSON.parse(result[FORM_STATES_KEY]) || {};
+    }
+
+    const urlKey = getFormStateUrlKey();
+    if (urlKey && formStatesByUrl[urlKey]) {
+      formState = { ...createEmptyFormState(), ...formStatesByUrl[urlKey] };
+    } else if (urlKey && result[LEGACY_FORM_STATE_KEY]) {
+      // One-time migration from the old global draft. Its original page was
+      // not recorded, so attach it to the active page and let the user save
+      // or discard it explicitly.
+      const saved = JSON.parse(result[LEGACY_FORM_STATE_KEY]);
+      formState = { ...createEmptyFormState(), ...saved };
+      formStatesByUrl[urlKey] = formState;
+      await storageSet({
+        [FORM_STATES_KEY]: JSON.stringify(formStatesByUrl),
+        [LEGACY_FORM_STATE_KEY]: "",
+      });
+    }
+  } catch (e) {}
+}
+
+async function clearFormState() {
+  clearTimeout(saveTimer);
+  const urlKey = getFormStateUrlKey();
+  formState = createEmptyFormState();
+  if (urlKey) delete formStatesByUrl[urlKey];
+  try {
+    await storageSet({
+      [FORM_STATES_KEY]: JSON.stringify(formStatesByUrl),
+      [LEGACY_FORM_STATE_KEY]: "",
+    });
+  } catch (e) {}
 }
 
 // Debounced save on input changes
@@ -83,21 +170,14 @@ function captureFormFields() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Load saved form state first
-  await loadFormState();
-
-  // Get current tab URL
+  // Get the current tab before loading form state because unsaved work is
+  // cached separately for each article URL.
   try {
-    const [tab] = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = await getActiveTab();
     currentUrl = tab?.url;
-  } catch (e) {
-    try {
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      currentUrl = tab?.url;
-    } catch (_) {}
-  }
+  } catch (_) {}
+
+  await loadFormState();
 
   // Check stored auth
   currentUser = await TA.getStoredUser();
@@ -170,6 +250,7 @@ function renderAuthHeader() {
       await TA.logout();
       currentUser = null;
       userAssemblies = null;
+      userAssembliesLoadedAt = 0;
       renderAuthHeader();
       renderSubmitTab();
       renderAssembliesTab();
@@ -214,7 +295,7 @@ async function doLoginGate() {
     return;
   }
   currentUser = { username: result.username, displayName: result.displayName, id: result.id };
-  userAssemblies = await TA.getMyAssemblies();
+  userAssemblies = await refreshUserAssemblies({ force: true });
   renderAuthHeader();
   showDesignTabIfAdmin();
   loadCorrections();
@@ -269,9 +350,9 @@ async function loadCorrections() {
   // Load user assemblies for relationship badges
   if (currentUser && !userAssemblies) {
     userAssemblies = await TA.getCachedAssemblies();
-    if (!userAssemblies) {
-      userAssemblies = await TA.getMyAssemblies();
-    }
+    // Cached data can render relationship badges immediately, but refresh it
+    // because memberships may have changed since the popup last opened.
+    refreshUserAssemblies({ force: true }).catch(() => {});
   }
 
   try {
@@ -441,10 +522,7 @@ async function renderDesignTab() {
 
 async function sendDesignMessage(msg) {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (tab && tab.id) {
       return new Promise((resolve) => {
         try {
@@ -564,10 +642,7 @@ async function setSiteMutedPopup(mute) {
 
   // Notify content script
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (tab && tab.id) {
       const msg = { type: "TA_SITE_MUTE_CHANGED", domain, muted: mute };
       try { chrome.tabs.sendMessage(tab.id, msg); } catch (e) {
@@ -653,6 +728,119 @@ function relBadge(orgId) {
 // ── Submit tab ──
 let detectedAuthors = []; // auto-detected from page
 let detectedContentType = "article"; // auto-detected from page
+let detectedPageInfoUrl = null;
+
+function sendMessageToTab(tabId, message, timeoutMs = 1200) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = response => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(response || null);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    try {
+      const tabsApi = typeof chrome !== "undefined" && chrome.tabs ? chrome.tabs : browser.tabs;
+      const result = tabsApi.sendMessage(tabId, message, response => {
+        // Reading lastError prevents Firefox/Chrome from logging an expected
+        // warning when an old tab lost its listener after extension reload.
+        try { void chrome?.runtime?.lastError; } catch (_) {}
+        finish(response);
+      });
+      if (result && typeof result.then === "function") result.then(finish, () => finish(null));
+    } catch (_) {
+      finish(null);
+    }
+  });
+}
+
+async function reinjectContentScript(tabId) {
+  // Firefox Manifest V2 supports tabs.executeScript. This repairs already-open
+  // tabs after a temporary add-on is reloaded in about:debugging.
+  try {
+    if (typeof browser !== "undefined" && browser.tabs?.executeScript) {
+      await browser.tabs.executeScript(tabId, { file: "api-client.js" });
+      await browser.tabs.executeScript(tabId, { file: "content.js" });
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+async function extractPageInfoFromFirefoxTab(tabId) {
+  if (typeof browser === "undefined" || !browser.tabs?.executeScript) return null;
+  const extractionCode = `(() => {
+    const clean = value => String(value || "").replace(/^by\\s+/i, "").replace(/\\s+/g, " ").trim();
+    const corrected = document.querySelector("[data-ta-original-text]");
+    let headline = clean(corrected && corrected.dataset.taOriginalText);
+    if (!headline) {
+      const headlineElement = document.querySelector('[itemprop="headline"], [data-testid*="headline" i], [data-qa="headline"], h1');
+      headline = clean(headlineElement && headlineElement.textContent);
+    }
+    if (!headline) {
+      const metaTitle = document.querySelector('meta[property="og:title"], meta[name="twitter:title"]');
+      headline = clean(metaTitle && metaTitle.content) || clean(document.title);
+    }
+
+    const authors = [];
+    const seen = new Set();
+    const addAuthor = value => {
+      const name = clean(value);
+      const key = name.toLowerCase();
+      if (!name || name.length < 2 || name.length > 80 || seen.has(key)) return;
+      seen.add(key);
+      authors.push(name);
+    };
+    document.querySelectorAll('meta[name="author"], meta[property="article:author"], meta[name="dcterms.creator"], meta[name="dc.creator"], meta[property="og:article:author"]').forEach(meta => addAuthor(meta.content));
+    document.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
+      try {
+        const visit = (value, depth = 0) => {
+          if (!value || depth > 4) return;
+          if (Array.isArray(value)) { value.forEach(item => visit(item, depth + 1)); return; }
+          if (typeof value !== "object") return;
+          const field = value.author || value.creator;
+          (Array.isArray(field) ? field : field ? [field] : []).forEach(author => addAuthor(typeof author === "string" ? author : author && author.name));
+          ["@graph", "mainEntity", "mainEntityOfPage", "itemListElement"].forEach(key => visit(value[key], depth + 1));
+        };
+        visit(JSON.parse(script.textContent));
+      } catch (_) {}
+    });
+    if (authors.length === 0) {
+      document.querySelectorAll('[class*="byline" i], [data-testid="byline"], [rel="author"], [itemprop="author"]').forEach(element => {
+        const text = clean(element.textContent);
+        if (text.length > 0 && text.length < 120) text.split(/\\s*[,&]\\s*|\\s+and\\s+/i).forEach(addAuthor);
+      });
+    }
+    return { headline, authors: authors.slice(0, 10) };
+  })()`;
+
+  try {
+    const results = await browser.tabs.executeScript(tabId, { code: extractionCode });
+    return results?.[0] || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function requestPageInfo(tabId) {
+  let response = await sendMessageToTab(tabId, { type: "TA_GET_PAGE_INFO" });
+  if (!response && await reinjectContentScript(tabId)) {
+    response = await sendMessageToTab(tabId, { type: "TA_GET_PAGE_INFO" }, 2000);
+  }
+
+  // Direct metadata extraction is a Firefox-specific fallback for new tabs or
+  // pages whose content listener is unavailable. Merge it field-by-field so a
+  // partial normal response (headline but no author, for example) is repaired.
+  const direct = await extractPageInfoFromFirefoxTab(tabId);
+  if (!response && !direct) return null;
+  return {
+    ...(direct || {}),
+    ...(response || {}),
+    headline: response?.headline || direct?.headline || "",
+    authors: response?.authors?.length ? response.authors : (direct?.authors || []),
+  };
+}
 
 // Platform-adaptive labels for the submit form
 function getFormLabels(contentType) {
@@ -684,8 +872,30 @@ async function renderSubmitTab() {
     return;
   }
 
+  // Membership controls authorization, so never decide from a possibly stale
+  // extension-storage cache. Wait for current server data before gating.
+  gate.innerHTML = '<div class="empty"><div class="empty-icon">…</div>Checking assembly memberships…</div>';
+  const currentAssemblies = await refreshUserAssemblies();
+  if (currentAssemblies.error) {
+    gate.innerHTML = `
+      <div class="submit-panel">
+        <div class="empty">
+          <div class="empty-icon">⚠</div>
+          ${escapeHtml(currentAssemblies.error)}
+          <br><br>
+          <button class="login-btn" id="btn-retry-memberships">Try Again</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("btn-retry-memberships").addEventListener("click", async () => {
+      userAssembliesLoadedAt = 0;
+      await renderSubmitTab();
+    });
+    return;
+  }
+
   // Logged in — show submit form
-  const joinedOrgs = userAssemblies?.joined || [];
+  const joinedOrgs = currentAssemblies.joined;
   if (joinedOrgs.length === 0) {
     gate.innerHTML = `
       <div class="submit-panel">
@@ -911,6 +1121,9 @@ async function renderSubmitTab() {
         </button>
         <button class="submit-btn" id="btn-save-draft" style="flex:0 0 auto; background:#B8963E; padding:8px 14px; font-size:11px">
           Save Draft
+        </button>
+        <button class="submit-btn" id="btn-discard-form" style="flex:0 0 auto; background:#7A7570; padding:8px 12px; font-size:11px">
+          Discard
         </button>
       </div>
       <div id="draft-msg" class="submit-msg" style="display:none"></div>
@@ -1183,13 +1396,33 @@ async function renderSubmitTab() {
       if (result.error) {
         if (draftMsgEl) { draftMsgEl.textContent = result.error; draftMsgEl.className = "submit-msg error"; draftMsgEl.style.display = "block"; }
       } else {
-        if (draftMsgEl) { draftMsgEl.textContent = "Draft saved!"; draftMsgEl.className = "submit-msg success"; draftMsgEl.style.display = "block"; }
+        pendingUrlDraft = result.draft || null;
         // Refresh drafts list
         cachedDraftsList = await TA.getDrafts();
+        await clearFormState();
+        clearPreviewMessage();
+        renderSubmitTab();
+        const clearedMsgEl = document.getElementById("draft-msg");
+        if (clearedMsgEl) {
+          clearedMsgEl.textContent = "Draft saved. The form is ready for another article.";
+          clearedMsgEl.className = "submit-msg success";
+          clearedMsgEl.style.display = "block";
+          setTimeout(() => { clearedMsgEl.style.display = "none"; }, 3000);
+        }
+        return;
       }
       btnSaveDraft.disabled = false;
       btnSaveDraft.textContent = "Save Draft";
       setTimeout(() => { if (draftMsgEl) draftMsgEl.style.display = "none"; }, 3000);
+    });
+  }
+
+  const btnDiscardForm = document.getElementById("btn-discard-form");
+  if (btnDiscardForm) {
+    btnDiscardForm.addEventListener("click", async () => {
+      await clearFormState();
+      clearPreviewMessage();
+      renderSubmitTab();
     });
   }
 
@@ -1245,45 +1478,36 @@ async function renderSubmitTab() {
     });
   }
 
-  // Auto-detect headline and authors from current page
+  // Auto-detect headline and authors from the current page once per popup.
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
-    if (tab && tab.id) {
-      const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
-        ? chrome.tabs.sendMessage.bind(chrome.tabs)
-        : browser.tabs.sendMessage.bind(browser.tabs);
-      // Detect content type for platform-adaptive form labels
-      sendMsg(tab.id, { type: "TA_GET_CONTENT_TYPE" }, (response) => {
-        if (response && response.contentType && response.contentType !== detectedContentType) {
-          detectedContentType = response.contentType;
-          renderSubmitTab(); // Re-render with platform-adaptive labels
+    const tab = await getActiveTab();
+    if (tab && tab.id && detectedPageInfoUrl !== currentUrl) {
+      detectedPageInfoUrl = currentUrl;
+      const response = await requestPageInfo(tab.id);
+      let needsRender = false;
+      if (response?.contentType && response.contentType !== detectedContentType) {
+        detectedContentType = response.contentType;
+        needsRender = true;
+      }
+      if (response?.headline && !formState.headline) {
+        formState.headline = response.headline;
+        needsRender = true;
+      }
+      if (Array.isArray(response?.authors) && response.authors.length > 0) {
+        detectedAuthors = response.authors.slice(0, 10);
+        if (formState.selectedAuthors.length === 0) {
+          formState.selectedAuthors = [...detectedAuthors];
+          needsRender = true;
         }
-      });
-      sendMsg(tab.id, { type: "TA_GET_HEADLINE" }, (response) => {
-        const headlineInput = document.getElementById("sub-headline");
-        if (response && response.headline && headlineInput && !headlineInput.value) {
-          headlineInput.value = response.headline;
-          formState.headline = response.headline;
-          headlineInput.placeholder = "The original headline as published";
-          debouncedSave();
-        } else if (headlineInput) {
-          headlineInput.placeholder = "The original headline as published";
-        }
-      });
-      sendMsg(tab.id, { type: "TA_GET_AUTHORS" }, (response) => {
-        if (response && response.authors && response.authors.length > 0) {
-          detectedAuthors = response.authors.slice(0, 10);
-          if (formState.selectedAuthors.length === 0) {
-            formState.selectedAuthors = [...detectedAuthors];
-            debouncedSave();
-            renderSubmitTab();
-          }
-        }
-      });
+      }
+      if (needsRender) {
+        await saveFormState();
+        renderSubmitTab();
+        return;
+      }
     }
+    const headlineInput = document.getElementById("sub-headline");
+    if (headlineInput) headlineInput.placeholder = "The original headline as published";
   } catch (e) {
     const headlineInput = document.getElementById("sub-headline");
     if (headlineInput) headlineInput.placeholder = "The original headline as published";
@@ -1307,7 +1531,7 @@ async function doLogin() {
     return;
   }
   currentUser = { username: result.username, displayName: result.displayName, id: result.id };
-  userAssemblies = await TA.getMyAssemblies();
+  userAssemblies = await refreshUserAssemblies({ force: true });
   renderAuthHeader();
   renderSubmitTab();
   loadCorrections();
@@ -1359,7 +1583,7 @@ async function doSubmit() {
   const evidence = [{ url, explanation: "Source article under review" }];
 
   // Submit the correction/affirmation (multi-assembly via orgIds)
-  const result = await TA.submitCorrection({
+  const submissionPayload = {
     submissionType: formState.submitType,
     url,
     originalHeadline,
@@ -1369,7 +1593,8 @@ async function doSubmit() {
     orgIds: selectedOrgs,
     evidence,
     inlineEdits: inlineEdits.length > 0 ? inlineEdits : undefined,
-  });
+  };
+  const result = await TA.submitCorrection(submissionPayload);
 
   if (result.error) {
     msgEl.className = "submit-msg error";
@@ -1379,6 +1604,13 @@ async function doSubmit() {
     btnSubmit.textContent = isAffirm ? "Submit Affirmation" : "Submit Correction";
     return;
   }
+
+  await TA.cacheOwnSubmissionPreviews(
+    submissionPayload,
+    result,
+    userAssemblies,
+    currentUser,
+  );
 
   // The submission endpoint returns one result per selected assembly in the
   // same order as orgIds. Preserve that association because vault entries
@@ -1449,8 +1681,8 @@ async function doSubmit() {
   const orgCount = selectedOrgs.length;
   msgEl.className = "submit-msg success";
   msgEl.textContent = isAffirm
-    ? `Affirmation submitted to ${orgCount} assembly${orgCount > 1 ? "s" : ""}! It will appear after review.`
-    : `Correction submitted to ${orgCount} assembly${orgCount > 1 ? "s" : ""}! It will appear after review.`;
+    ? `Affirmation submitted to ${orgCount} assembly${orgCount > 1 ? "s" : ""}! Your pending affirmation is now visible to you; others will see it after approval.`
+    : `Correction submitted to ${orgCount} assembly${orgCount > 1 ? "s" : ""}! Your pending correction is now visible to you; others will see it after approval.`;
   if (inlineEdits.length > 0) {
     msgEl.textContent += ` ${inlineEdits.length} body correction(s) included.`;
   }
@@ -1503,24 +1735,26 @@ async function renderAssembliesTab() {
       const result = await TA.login(username, password);
       if (!result) { errorEl.textContent = "Invalid credentials."; errorEl.style.display = "block"; return; }
       currentUser = { username: result.username, displayName: result.displayName, id: result.id };
-      userAssemblies = await TA.getMyAssemblies();
+      userAssemblies = await refreshUserAssemblies({ force: true });
       renderAuthHeader();
       renderAssembliesTab();
     });
     return;
   }
 
-  if (!userAssemblies) {
-    userAssemblies = await TA.getMyAssemblies();
+  const currentAssemblies = await refreshUserAssemblies();
+  if (currentAssemblies.error) {
+    container.innerHTML = `<div class="empty">${escapeHtml(currentAssemblies.error)}</div>`;
+    return;
   }
 
   let html = '<div class="assemblies-panel">';
 
   html += '<h3>Joined Assemblies</h3>';
-  if (userAssemblies.joined.length === 0) {
+  if (currentAssemblies.joined.length === 0) {
     html += '<div style="font-size:11px; color:#B0A89C; padding:8px 0;">No memberships. <a href="https://trustassembly.org/orgs" target="_blank" style="color:#B8963E">Join on the web</a></div>';
   } else {
-    userAssemblies.joined.forEach(org => {
+    currentAssemblies.joined.forEach(org => {
       html += `
         <div class="assembly-row">
           <div><div class="name">${escapeHtml(org.name)}</div><div class="role">Member</div></div>
@@ -1530,10 +1764,10 @@ async function renderAssembliesTab() {
   }
 
   html += '<h3 style="margin-top:14px;">Followed Assemblies</h3>';
-  if (userAssemblies.followed.length === 0) {
+  if (currentAssemblies.followed.length === 0) {
     html += '<div style="font-size:11px; color:#B0A89C; padding:8px 0;">Not following any assemblies yet.</div>';
   } else {
-    userAssemblies.followed.forEach(org => {
+    currentAssemblies.followed.forEach(org => {
       html += `
         <div class="assembly-row">
           <div><div class="name">${escapeHtml(org.name)}</div><div class="role">Following</div></div>
@@ -1549,7 +1783,7 @@ async function renderAssembliesTab() {
   container.querySelectorAll("[data-unfollow]").forEach(btn => {
     btn.addEventListener("click", async () => {
       await TA.unfollowOrg(btn.dataset.unfollow);
-      userAssemblies = await TA.getMyAssemblies();
+      userAssemblies = await refreshUserAssemblies({ force: true });
       renderAssembliesTab();
     });
   });
@@ -1577,10 +1811,7 @@ function setupSettings() {
 
 async function notifyContentScript(changedSettings) {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (tab && tab.id) {
       const message = { type: "TA_SETTINGS_CHANGED", ...changedSettings };
       try {
@@ -1613,10 +1844,7 @@ function formatStatus(status) {
 // ── Live Preview ──
 async function sendPreviewMessage(text) {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (!tab || !tab.id) return;
     const headlineInput = document.getElementById("sub-headline");
     const originalHeadline = headlineInput ? headlineInput.value.trim() : "";
@@ -1643,10 +1871,7 @@ function debouncedInlinePreview() {
 async function sendInlineEditPreviews() {
   try {
     const edits = (formState.inlineEdits || []).filter(e => e.original && e.original.trim());
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (!tab || !tab.id) return;
     const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
       ? chrome.tabs.sendMessage.bind(chrome.tabs)
@@ -1659,10 +1884,7 @@ async function sendInlineEditPreviews() {
 
 async function clearPreviewMessage() {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (!tab || !tab.id) return;
     const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
       ? chrome.tabs.sendMessage.bind(chrome.tabs)

@@ -138,41 +138,60 @@ export async function GET() {
     checks.all_usernames = `ERROR: ${(e as Error).message}`;
   }
 
-  // 8. Write-test: attempt INSERT+ROLLBACK on critical tables to diagnose write failures
+  // 8. Write-test: create a valid dependency chain, then roll everything back.
+  // A fresh database has no user or organization to reference, so testing each
+  // child table with `(SELECT id ... LIMIT 1)` incorrectly reported NOT NULL
+  // failures even though writes were working normally.
   checks.writeTest = {};
-  const writeTables = [
-    {
-      name: "organizations",
-      sql: `INSERT INTO organizations (name, description, created_by) VALUES ('__write_test__', 'test', (SELECT id FROM users LIMIT 1)) RETURNING id`,
-    },
-    {
-      name: "submissions",
-      sql: `INSERT INTO submissions (submission_type, url, original_headline, reasoning, submitted_by, org_id) VALUES ('correction', 'http://test', 'test', 'test', (SELECT id FROM users LIMIT 1), (SELECT id FROM organizations LIMIT 1)) RETURNING id`,
-    },
-    {
-      name: "stories",
-      sql: `INSERT INTO stories (title, description, submitted_by, org_id) VALUES ('test story title', 'test description for the story that is long enough', (SELECT id FROM users LIMIT 1), (SELECT id FROM organizations LIMIT 1)) RETURNING id`,
-    },
-  ];
-  for (const wt of writeTables) {
+  let writeClient;
+  try {
+    writeClient = await sql.connect();
+    await writeClient.query("BEGIN");
+
+    const testUser = await writeClient.query(`
+      INSERT INTO users (username, display_name, email, password_hash, salt)
+      VALUES (
+        'write_test_' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 16),
+        '__write_test__', 'write-test@example.invalid', '__write_test__', '__write_test__'
+      )
+      RETURNING id
+    `);
+    const userId = testUser.rows[0].id;
+    (checks.writeTest as Record<string, unknown>).users = { ok: true };
+
+    const testOrganization = await writeClient.query(`
+      INSERT INTO organizations (name, description, created_by)
+      VALUES ('__write_test__' || gen_random_uuid()::text, 'test', $1)
+      RETURNING id
+    `, [userId]);
+    const organizationId = testOrganization.rows[0].id;
+    (checks.writeTest as Record<string, unknown>).organizations = { ok: true };
+
+    await writeClient.query(`
+      INSERT INTO submissions
+        (submission_type, url, original_headline, reasoning, submitted_by, org_id)
+      VALUES ('correction', 'http://test.invalid', 'test', 'test', $1, $2)
+    `, [userId, organizationId]);
+    (checks.writeTest as Record<string, unknown>).submissions = { ok: true };
+
+    await writeClient.query(`
+      INSERT INTO stories (title, description, submitted_by, org_id)
+      VALUES ('test story title', 'test description for the story that is long enough', $1, $2)
+    `, [userId, organizationId]);
+    (checks.writeTest as Record<string, unknown>).stories = { ok: true };
+
+    await writeClient.query("ROLLBACK");
+  } catch (e) {
     try {
-      const client = await sql.connect();
-      try {
-        await client.query("BEGIN");
-        await client.query(wt.sql);
-        await client.query("ROLLBACK");
-        (checks.writeTest as Record<string, unknown>)[wt.name] = { ok: true };
-      } catch (e) {
-        await client.query("ROLLBACK");
-        (checks.writeTest as Record<string, unknown>)[wt.name] = { ok: false, error: (e as Error).message };
-        errors.push(`Write ${wt.name}: ${(e as Error).message}`);
-      } finally {
-        client.release();
-      }
-    } catch (e) {
-      (checks.writeTest as Record<string, unknown>)[wt.name] = { ok: false, error: `connect failed: ${(e as Error).message}` };
-      errors.push(`Write ${wt.name} connect: ${(e as Error).message}`);
-    }
+      await writeClient?.query("ROLLBACK");
+    } catch { /* Preserve the original write error. */ }
+    (checks.writeTest as Record<string, unknown>).transaction = {
+      ok: false,
+      error: (e as Error).message,
+    };
+    errors.push(`Write transaction: ${(e as Error).message}`);
+  } finally {
+    writeClient?.release();
   }
 
   // 9. Schema check: verify critical columns exist

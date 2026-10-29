@@ -321,6 +321,10 @@ export async function POST(request: NextRequest) {
         );
 
         await approveClient.query("COMMIT");
+        // Keep the response consistent with the persisted state so clients do
+        // not cache a trusted, already-approved submission as pending.
+        sub.status = "approved";
+        sub.resolved_at = now;
       } catch (e) {
         await approveClient.query("ROLLBACK");
         console.error("Trusted auto-approve transaction failed, rolled back:", e);

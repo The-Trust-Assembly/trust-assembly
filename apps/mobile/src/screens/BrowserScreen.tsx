@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Linking,
   StyleSheet,
@@ -11,17 +12,19 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
-import { COLORS } from '../utils/constants';
+import { CACHE_TTL, COLORS } from '../utils/constants';
 import WebViewToolbar from '../components/WebViewToolbar';
 import { getContentScript } from '../utils/contentScriptUtils';
 import { INJECTED_CSS } from '../utils/injectedCss';
-import { getCorrections, getPublicOverlayResource, getUserAssemblies } from '../api/trustAssemblyApi';
+import { getForURL, getPublicOverlayResource, getUserAssemblies } from '../api/trustAssemblyApi';
 import { useAuth } from '../storage/authContext';
 import {
   cacheCorrections,
   getCachedCorrections,
+  getLastBrowserUrl,
   getSettings,
   isSiteMuted,
+  saveLastBrowserUrl,
   setSiteMuted,
 } from '../storage/settingsStore';
 import {
@@ -35,11 +38,14 @@ import {
 } from '../utils/urlUtils';
 import type { CorrectionsResponse, TASettings } from '../types/trustAssembly';
 import { useBrowserPage } from '../storage/browserPageContext';
+import { mergeOwnPendingForUrl } from '../storage/pendingSubmissionStore';
 
 interface BridgeMessage {
   type: string;
   requestId?: string;
   url?: string;
+  method?: string;
+  body?: string;
   count?: number;
   signalType?: string;
   title?: string;
@@ -118,11 +124,12 @@ export default function BrowserScreen({ navigation, route }: any) {
   const assembliesRequestRef = useRef<{
     userId: string;
     request: ReturnType<typeof getUserAssemblies>;
+    requestedAt: number;
   } | null>(null);
   const currentUrlRef = useRef(DEFAULT_BROWSER_URL);
   const pageGenerationRef = useRef(0);
-  const initialLinkHandled = useRef(false);
-  const [sourceUrl, setSourceUrl] = useState(DEFAULT_BROWSER_URL);
+  const hasExplicitNavigationRef = useRef(false);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [currentUrl, setCurrentUrl] = useState(DEFAULT_BROWSER_URL);
   const [currentTitle, setCurrentTitle] = useState('');
   const [currentAuthors, setCurrentAuthors] = useState<string[]>([]);
@@ -192,16 +199,21 @@ export default function BrowserScreen({ navigation, route }: any) {
       return;
     }
 
-    if (assembliesRequestRef.current?.userId !== user.id) {
+    if (
+      assembliesRequestRef.current?.userId !== user.id ||
+      Date.now() - assembliesRequestRef.current.requestedAt > CACHE_TTL
+    ) {
       let request: ReturnType<typeof getUserAssemblies>;
-      request = getUserAssemblies().finally(() => {
+      request = getUserAssemblies().catch((error) => {
         if (assembliesRequestRef.current?.request === request) {
           assembliesRequestRef.current = null;
         }
+        throw error;
       });
       assembliesRequestRef.current = {
         userId: user.id,
         request,
+        requestedAt: Date.now(),
       };
     }
     const assemblies = await assembliesRequestRef.current.request;
@@ -219,12 +231,12 @@ export default function BrowserScreen({ navigation, route }: any) {
     const request = (async () => {
       try {
         // getCorrections deliberately uses the unauthenticated public endpoint.
-        const fresh = await getCorrections(url);
-        await cacheCorrections(url, fresh);
-        return fresh;
+        const publicData = await getForURL(url);
+        await cacheCorrections(url, publicData);
+        return mergeOwnPendingForUrl(url, publicData);
       } catch (error) {
         const cached = await getCachedCorrections(url);
-        if (cached) return cached;
+        if (cached) return mergeOwnPendingForUrl(url, cached);
         throw error;
       } finally {
         inFlightFetches.current.delete(key);
@@ -281,7 +293,7 @@ export default function BrowserScreen({ navigation, route }: any) {
     topLevelUrl: string,
   ) => {
     if (!message.requestId || !message.url) return;
-    const request = buildOverlayFetchRequest(message.url, topLevelUrl);
+    const request = buildOverlayFetchRequest(message.url, topLevelUrl, message.method, message.body);
     if (!request) {
       dispatchToPage({
         type: 'TA_FETCH_RESULT',
@@ -299,7 +311,12 @@ export default function BrowserScreen({ navigation, route }: any) {
         nextCount = corrections.corrections.length + corrections.affirmations.length;
         data = corrections;
       } else {
-        data = await getPublicOverlayResource(request.path);
+        data = await getPublicOverlayResource(
+          request.path,
+          request.kind === 'correction-batch'
+            ? { method: 'POST', body: JSON.stringify({ urls: request.urls }) }
+            : undefined,
+        );
       }
 
       // Do not deliver a response into a different document after navigation.
@@ -396,6 +413,7 @@ export default function BrowserScreen({ navigation, route }: any) {
       Alert.alert('Invalid address', 'Enter a valid http:// or https:// address.');
       return;
     }
+    hasExplicitNavigationRef.current = true;
     setCorrectionCount(undefined);
     setCurrentTitle('');
     setCurrentAuthors([]);
@@ -404,6 +422,7 @@ export default function BrowserScreen({ navigation, route }: any) {
     pageGenerationRef.current += 1;
     setCurrentUrl(nextUrl);
     setSourceUrl(nextUrl);
+    saveLastBrowserUrl(nextUrl).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -413,14 +432,25 @@ export default function BrowserScreen({ navigation, route }: any) {
     };
 
     const subscription = Linking.addEventListener('url', handleIncomingUrl);
-    if (!initialLinkHandled.current) {
-      initialLinkHandled.current = true;
-      Linking.getInitialURL().then((url) => {
-        const target = url ? extractSharedUrl(url) : null;
-        if (target) navigateTo(target);
-      }).catch(() => undefined);
-    }
     return () => subscription.remove();
+  }, [navigateTo]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([Linking.getInitialURL(), getLastBrowserUrl()])
+      .then(([initialUrl, savedUrl]) => {
+        if (cancelled || hasExplicitNavigationRef.current) return;
+        const target = (initialUrl ? extractSharedUrl(initialUrl) : null)
+          || (savedUrl ? normalizeBrowserUrl(savedUrl) : null)
+          || DEFAULT_BROWSER_URL;
+        navigateTo(target);
+      })
+      .catch(() => {
+        if (!cancelled && !hasExplicitNavigationRef.current) navigateTo(DEFAULT_BROWSER_URL);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [navigateTo]);
 
   useEffect(() => {
@@ -435,9 +465,10 @@ export default function BrowserScreen({ navigation, route }: any) {
     const unsubscribe = navigation.addListener('focus', () => {
       sendPreferencesToPage(currentUrl).catch(() => undefined);
       syncAssembliesToPage().catch(() => undefined);
+      dispatchToPage({ type: 'TA_REFRESH_OWN_PENDING' });
     });
     return unsubscribe;
-  }, [currentUrl, navigation, sendPreferencesToPage, syncAssembliesToPage]);
+  }, [currentUrl, dispatchToPage, navigation, sendPreferencesToPage, syncAssembliesToPage]);
 
   const handleNavigation = (state: WebViewNavigation) => {
     setCanGoBack(state.canGoBack);
@@ -500,7 +531,7 @@ export default function BrowserScreen({ navigation, route }: any) {
           </Text>
         </TouchableOpacity>
       </View>
-      <WebView
+      {sourceUrl ? <WebView
         ref={webViewRef}
         source={{ uri: sourceUrl }}
         onMessage={handleWebViewMessage}
@@ -515,7 +546,9 @@ export default function BrowserScreen({ navigation, route }: any) {
           setCorrectionCount(undefined);
         }}
         onNavigationStateChange={handleNavigation}
-        onLoadEnd={() => {
+        onLoadEnd={(event) => {
+          const loadedUrl = normalizeBrowserUrl(event.nativeEvent.url || '');
+          if (loadedUrl) saveLastBrowserUrl(loadedUrl).catch(() => undefined);
           sendPreferencesToPage(currentUrl).catch(() => undefined);
           requestPageMetadata();
         }}
@@ -536,7 +569,12 @@ export default function BrowserScreen({ navigation, route }: any) {
         setSupportMultipleWindows={false}
         allowsBackForwardNavigationGestures
         style={styles.webView}
-      />
+      /> : (
+        <View style={styles.browserLoading}>
+          <ActivityIndicator color={COLORS.gold} size="large" />
+          <Text style={styles.browserLoadingText}>Restoring your last page…</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -559,4 +597,6 @@ const styles = StyleSheet.create({
   muteText: { fontSize: 10, color: COLORS.navy, fontWeight: '600' },
   muteTextActive: { color: COLORS.red },
   webView: { flex: 1 },
+  browserLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  browserLoadingText: { color: '#7A7570', fontSize: 12 },
 });

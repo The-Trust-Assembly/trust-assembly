@@ -69,16 +69,21 @@ Safari requires Web Extensions to be wrapped in a native macOS/iOS app via Xcode
 
 ### API Endpoint
 
-Edit `api-client.js` and change `API_BASE` to point to your Trust Assembly API:
+Production packages always target `https://trustassembly.org`. Do not edit a
+generated browser directory to change that value. Build an isolated local
+development extension instead:
 
-```javascript
-const API_BASE = "https://trustassembly.org"; // Your API URL
+```powershell
+node packages/trust-overlay/scripts/build.mjs --dev --api-base=http://localhost:3000
 ```
 
-For local development:
-```javascript
-const API_BASE = "http://localhost:3000";
-```
+Load `.dev/trust-overlay/chrome` as the unpacked extension. The `.dev` tree is
+ignored by Git, is labeled `Trust Assembly (Local Dev)`, and does not overwrite
+production extension files or release ZIPs. `http://localhost:3000` is the
+default when `--api-base` is omitted. Firefox development builds also use a
+separate add-on ID, so their login, cache, and settings cannot be confused with
+the installed production extension. After rebuilding, reload the temporary
+add-on from `about:debugging`.
 
 ### Settings
 
@@ -195,7 +200,11 @@ artifact is stale.
 
 ### Testing Without an API
 
-For testing the UI without a running API server, you can modify `api-client.js` to return mock data:
+Use the popup's design/testing controls for mock corrections. Do not modify a
+generated `api-client.js`; local end-to-end API testing should use the `--dev`
+build described above.
+
+For reference, mock correction data uses this shape:
 
 ```javascript
 const TA = {

@@ -1,6 +1,6 @@
 import { TA_API_BASE } from './constants';
 
-export const DEFAULT_BROWSER_URL = TA_API_BASE;
+export const DEFAULT_BROWSER_URL = 'https://ground.news/';
 
 const TRACKING_PARAMS = [
   'utm_source',
@@ -105,6 +105,7 @@ export function correctionUrlFromBridge(messageUrl: string): string | null {
 
 export type OverlayFetchRequest =
   | { kind: 'corrections'; path: string; articleUrl: string }
+  | { kind: 'correction-batch'; path: string; urls: string[] }
   | { kind: 'vault'; path: string };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -116,6 +117,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 export function buildOverlayFetchRequest(
   requestedUrl: string,
   currentTopLevelUrl: string,
+  requestedMethod = 'GET',
+  requestedBody?: string,
 ): OverlayFetchRequest | null {
   const current = normalizeBrowserUrl(currentTopLevelUrl);
   if (!current) return null;
@@ -129,6 +132,27 @@ export function buildOverlayFetchRequest(
 
   const apiBase = new URL(TA_API_BASE);
   if (requested.protocol !== 'https:' || requested.origin !== apiBase.origin) return null;
+
+  const method = requestedMethod.toUpperCase();
+
+  if (requested.pathname === '/api/corrections/batch') {
+    if (method !== 'POST' || typeof requestedBody !== 'string' || requestedBody.length > 170000) return null;
+    try {
+      const body = JSON.parse(requestedBody) as { urls?: unknown };
+      if (!Array.isArray(body.urls) || body.urls.length < 1 || body.urls.length > 40) return null;
+      const urls = body.urls.map((value) => typeof value === 'string' ? normalizeBrowserUrl(value) : null);
+      if (urls.some((value) => !value)) return null;
+      return {
+        kind: 'correction-batch',
+        path: '/api/corrections/batch',
+        urls: [...new Set(urls as string[])],
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  if (method !== 'GET') return null;
 
   if (requested.pathname === '/api/corrections') {
     return {

@@ -37,35 +37,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<TAUserSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for stored session on mount
+  // Restore the local session immediately, then verify it without holding the
+  // entire app behind a network request. Any authenticated 401 also triggers
+  // the invalidation listener below, so an expired session is still removed.
   const refresh = async () => {
     setIsLoading(true);
-    let stored: TAUserSummary | null = null;
+    const stored = await getStoredUser().catch(() => null);
+    setUser(stored);
+    setIsLoading(false);
+
+    if (!stored) return;
+
     try {
-      stored = await getStoredUser();
-      if (stored) {
-        // Verify session is still valid
-        const verified = await getMe();
-        if (verified) {
-          setUser({
-            username: verified.username,
-            displayName: verified.displayName || verified.display_name,
-            id: verified.id,
-          });
-        } else {
-          // Token expired
-          await apiLogout();
-          setUser(null);
-        }
+      const verified = await getMe();
+      if (verified) {
+        setUser({
+          username: verified.username,
+          displayName: verified.displayName || verified.display_name,
+          id: verified.id,
+        });
       } else {
+        await apiLogout();
         setUser(null);
       }
     } catch {
-      // A temporary network failure should not destroy an otherwise valid
-      // local session. Authenticated requests will invalidate it on a 401.
-      setUser(stored);
-    } finally {
-      setIsLoading(false);
+      // Keep the locally restored session during temporary network failures.
     }
   };
 

@@ -15,6 +15,7 @@ import { useAuth } from '../storage/authContext';
 import type { Assembly, SubmissionDraft } from '../types/trustAssembly';
 import { correctionCacheKey, normalizeBrowserUrl } from '../utils/urlUtils';
 import { useBrowserPage } from '../storage/browserPageContext';
+import { cacheOwnSubmissionPreviews } from '../storage/pendingSubmissionStore';
 
 interface SubmitScreenProps {
   route?: { params?: { url?: string; title?: string } };
@@ -303,7 +304,7 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
           reasoning: e.reasoning?.trim() || null,
         }));
 
-      const result = await submitCorrection({
+      const submissionPayload = {
         submissionType: submitType,
         url: normalizedUrl,
         originalHeadline: headline.trim(),
@@ -313,12 +314,15 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
         orgIds: selectedOrgs,
         evidence,
         inlineEdits: validInlineEdits.length > 0 ? validInlineEdits : undefined,
-      });
+      };
+      const result = await submitCorrection(submissionPayload);
 
       if (result.error) {
         Alert.alert('Error', result.error);
         return;
       }
+
+      await cacheOwnSubmissionPreviews(submissionPayload, result, userAssemblies, user);
 
       const submissionIds = result.submissions?.map((submission) => submission.id)
         || (result.id ? [result.id] : []);
@@ -369,8 +373,8 @@ export default function SubmitScreen({ route, navigation }: SubmitScreenProps) {
 
       const orgCount = selectedOrgs.length;
       let message = submitType === 'affirmation'
-        ? `Affirmation submitted to ${orgCount} assembly${orgCount > 1 ? 's' : ''}. It will appear after review.`
-        : `Correction submitted to ${orgCount} assembly${orgCount > 1 ? 's' : ''}. It will appear after review.`;
+        ? `Affirmation submitted to ${orgCount} assembly${orgCount > 1 ? 's' : ''}. Your pending affirmation is visible to you; others will see it after approval.`
+        : `Correction submitted to ${orgCount} assembly${orgCount > 1 ? 's' : ''}. Your pending correction is visible to you; others will see it after approval.`;
       if (validInlineEdits.length > 0) message += ` ${validInlineEdits.length} body correction(s) included.`;
       if (vaultSuccessCount > 0) message += ` ${vaultSuccessCount} vault artifact(s) linked.`;
       if (vaultFailureCount > 0) message += ` ${vaultFailureCount} vault artifact(s) could not be saved.`;
