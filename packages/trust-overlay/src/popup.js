@@ -12,6 +12,34 @@ let userAssembliesRequest = null;
 let pendingUrlDraft = null; // Server draft for current URL (checked on popup open)
 let cachedDraftsList = null; // Cached list of all user drafts
 
+async function getActiveTab() {
+  const query = { active: true, currentWindow: true };
+
+  // Firefox exposes both namespaces, but only `browser` consistently returns
+  // promises. Prefer it so an awaited chrome.tabs.query() cannot resolve to
+  // undefined before page metadata detection starts.
+  if (typeof browser !== "undefined" && browser.tabs?.query) {
+    const tabs = await browser.tabs.query(query);
+    return tabs?.[0] || null;
+  }
+
+  if (typeof chrome === "undefined" || !chrome.tabs?.query) return null;
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = tabs => {
+      if (settled) return;
+      settled = true;
+      resolve(tabs?.[0] || null);
+    };
+    try {
+      const result = chrome.tabs.query(query, finish);
+      if (result && typeof result.then === "function") result.then(finish, () => finish([]));
+    } catch (_) {
+      finish([]);
+    }
+  });
+}
+
 async function refreshUserAssemblies({ force = false } = {}) {
   if (!currentUser) return { joined: [], followed: [] };
   const stillFresh = userAssemblies && !userAssemblies.error &&
@@ -145,16 +173,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Get the current tab before loading form state because unsaved work is
   // cached separately for each article URL.
   try {
-    const [tab] = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = await getActiveTab();
     currentUrl = tab?.url;
-  } catch (e) {
-    try {
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      currentUrl = tab?.url;
-    } catch (_) {}
-  }
+  } catch (_) {}
 
   await loadFormState();
 
@@ -501,10 +522,7 @@ async function renderDesignTab() {
 
 async function sendDesignMessage(msg) {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (tab && tab.id) {
       return new Promise((resolve) => {
         try {
@@ -624,10 +642,7 @@ async function setSiteMutedPopup(mute) {
 
   // Notify content script
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (tab && tab.id) {
       const msg = { type: "TA_SITE_MUTE_CHANGED", domain, muted: mute };
       try { chrome.tabs.sendMessage(tab.id, msg); } catch (e) {
@@ -753,11 +768,78 @@ async function reinjectContentScript(tabId) {
   return false;
 }
 
+async function extractPageInfoFromFirefoxTab(tabId) {
+  if (typeof browser === "undefined" || !browser.tabs?.executeScript) return null;
+  const extractionCode = `(() => {
+    const clean = value => String(value || "").replace(/^by\\s+/i, "").replace(/\\s+/g, " ").trim();
+    const corrected = document.querySelector("[data-ta-original-text]");
+    let headline = clean(corrected && corrected.dataset.taOriginalText);
+    if (!headline) {
+      const headlineElement = document.querySelector('[itemprop="headline"], [data-testid*="headline" i], [data-qa="headline"], h1');
+      headline = clean(headlineElement && headlineElement.textContent);
+    }
+    if (!headline) {
+      const metaTitle = document.querySelector('meta[property="og:title"], meta[name="twitter:title"]');
+      headline = clean(metaTitle && metaTitle.content) || clean(document.title);
+    }
+
+    const authors = [];
+    const seen = new Set();
+    const addAuthor = value => {
+      const name = clean(value);
+      const key = name.toLowerCase();
+      if (!name || name.length < 2 || name.length > 80 || seen.has(key)) return;
+      seen.add(key);
+      authors.push(name);
+    };
+    document.querySelectorAll('meta[name="author"], meta[property="article:author"], meta[name="dcterms.creator"], meta[name="dc.creator"], meta[property="og:article:author"]').forEach(meta => addAuthor(meta.content));
+    document.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
+      try {
+        const visit = (value, depth = 0) => {
+          if (!value || depth > 4) return;
+          if (Array.isArray(value)) { value.forEach(item => visit(item, depth + 1)); return; }
+          if (typeof value !== "object") return;
+          const field = value.author || value.creator;
+          (Array.isArray(field) ? field : field ? [field] : []).forEach(author => addAuthor(typeof author === "string" ? author : author && author.name));
+          ["@graph", "mainEntity", "mainEntityOfPage", "itemListElement"].forEach(key => visit(value[key], depth + 1));
+        };
+        visit(JSON.parse(script.textContent));
+      } catch (_) {}
+    });
+    if (authors.length === 0) {
+      document.querySelectorAll('[class*="byline" i], [data-testid="byline"], [rel="author"], [itemprop="author"]').forEach(element => {
+        const text = clean(element.textContent);
+        if (text.length > 0 && text.length < 120) text.split(/\\s*[,&]\\s*|\\s+and\\s+/i).forEach(addAuthor);
+      });
+    }
+    return { headline, authors: authors.slice(0, 10) };
+  })()`;
+
+  try {
+    const results = await browser.tabs.executeScript(tabId, { code: extractionCode });
+    return results?.[0] || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function requestPageInfo(tabId) {
   let response = await sendMessageToTab(tabId, { type: "TA_GET_PAGE_INFO" });
-  if (response) return response;
-  if (!await reinjectContentScript(tabId)) return null;
-  return sendMessageToTab(tabId, { type: "TA_GET_PAGE_INFO" }, 2000);
+  if (!response && await reinjectContentScript(tabId)) {
+    response = await sendMessageToTab(tabId, { type: "TA_GET_PAGE_INFO" }, 2000);
+  }
+
+  // Direct metadata extraction is a Firefox-specific fallback for new tabs or
+  // pages whose content listener is unavailable. Merge it field-by-field so a
+  // partial normal response (headline but no author, for example) is repaired.
+  const direct = await extractPageInfoFromFirefoxTab(tabId);
+  if (!response && !direct) return null;
+  return {
+    ...(direct || {}),
+    ...(response || {}),
+    headline: response?.headline || direct?.headline || "",
+    authors: response?.authors?.length ? response.authors : (direct?.authors || []),
+  };
 }
 
 // Platform-adaptive labels for the submit form
@@ -1398,10 +1480,7 @@ async function renderSubmitTab() {
 
   // Auto-detect headline and authors from the current page once per popup.
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (tab && tab.id && detectedPageInfoUrl !== currentUrl) {
       detectedPageInfoUrl = currentUrl;
       const response = await requestPageInfo(tab.id);
@@ -1732,10 +1811,7 @@ function setupSettings() {
 
 async function notifyContentScript(changedSettings) {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (tab && tab.id) {
       const message = { type: "TA_SETTINGS_CHANGED", ...changedSettings };
       try {
@@ -1768,10 +1844,7 @@ function formatStatus(status) {
 // ── Live Preview ──
 async function sendPreviewMessage(text) {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (!tab || !tab.id) return;
     const headlineInput = document.getElementById("sub-headline");
     const originalHeadline = headlineInput ? headlineInput.value.trim() : "";
@@ -1798,10 +1871,7 @@ function debouncedInlinePreview() {
 async function sendInlineEditPreviews() {
   try {
     const edits = (formState.inlineEdits || []).filter(e => e.original && e.original.trim());
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (!tab || !tab.id) return;
     const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
       ? chrome.tabs.sendMessage.bind(chrome.tabs)
@@ -1814,10 +1884,7 @@ async function sendInlineEditPreviews() {
 
 async function clearPreviewMessage() {
   try {
-    const tabs = typeof chrome !== "undefined" && chrome.tabs
-      ? await chrome.tabs.query({ active: true, currentWindow: true })
-      : await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
+    const tab = await getActiveTab();
     if (!tab || !tab.id) return;
     const sendMsg = (typeof chrome !== "undefined" && chrome.tabs)
       ? chrome.tabs.sendMessage.bind(chrome.tabs)

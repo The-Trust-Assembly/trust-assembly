@@ -23,8 +23,13 @@ assert.match(contentScript, /data = await mergeOwnPendingSubmissions\(url, data\
 assert.match(contentScript, /corrections: \(data\.corrections \|\| \[\]\)\.filter\(item => !item\.isOwnSubmission\)/);
 assert.match(contentScript, /message\.type === "TA_GET_PAGE_INFO"/);
 assert.match(contentScript, /document\.querySelector\("\[data-ta-original-text\]"\)/);
+assert.match(popupScript, /async function getActiveTab\(\)/);
+assert.match(popupScript, /await browser\.tabs\.query\(query\)/);
+assert.doesNotMatch(popupScript, /await chrome\.tabs\.query\(/);
 assert.match(popupScript, /requestPageInfo\(tab\.id\)/);
 assert.match(popupScript, /browser\.tabs\.executeScript\(tabId, \{ file: "content\.js" \}\)/);
+assert.match(popupScript, /extractPageInfoFromFirefoxTab\(tabId\)/);
+assert.match(popupScript, /meta\[name="author"\]/);
 
 const postedMessages = [];
 const storage = new Map();
