@@ -118,6 +118,65 @@ assert.equal(settingsMessage.showTranslations, true);
 // only the state-management preamble, before the popup's DOM setup begins.
 const popupPreamble = popupScript.split('document.addEventListener("DOMContentLoaded"')[0];
 const popupStorage = new Map();
+
+function createActiveTabTestContext(globals) {
+  const popupContext = vm.createContext({
+    clearTimeout,
+    setTimeout,
+    ...globals,
+  });
+  vm.runInContext(`${popupPreamble}\n;globalThis.__getActiveTab = getActiveTab;`, popupContext);
+  return popupContext;
+}
+
+// Firefox exposes both `browser` and `chrome`. The promise-returning browser
+// namespace must win; awaiting Firefox's callback-style chrome.tabs.query was
+// the regression that left Submit headline/author detection blank.
+let firefoxBrowserQueryCalls = 0;
+let firefoxChromeQueryCalls = 0;
+const firefoxPopup = createActiveTabTestContext({
+  browser: {
+    tabs: {
+      async query(query) {
+        firefoxBrowserQueryCalls++;
+        assert.deepEqual({ ...query }, { active: true, currentWindow: true });
+        return [{ id: 41, url: "https://example.com/firefox-story" }];
+      },
+    },
+  },
+  chrome: {
+    tabs: {
+      query() {
+        firefoxChromeQueryCalls++;
+        throw new Error("Firefox must use the browser namespace");
+      },
+    },
+  },
+});
+const firefoxActiveTab = await firefoxPopup.__getActiveTab();
+assert.equal(firefoxActiveTab.id, 41);
+assert.equal(firefoxActiveTab.url, "https://example.com/firefox-story");
+assert.equal(firefoxBrowserQueryCalls, 1);
+assert.equal(firefoxChromeQueryCalls, 0);
+
+// Chrome still uses its callback API when the browser namespace is absent.
+let chromeQueryCalls = 0;
+const chromePopup = createActiveTabTestContext({
+  chrome: {
+    tabs: {
+      query(query, callback) {
+        chromeQueryCalls++;
+        assert.deepEqual({ ...query }, { active: true, currentWindow: true });
+        callback([{ id: 73, url: "https://example.com/chrome-story" }]);
+      },
+    },
+  },
+});
+const chromeActiveTab = await chromePopup.__getActiveTab();
+assert.equal(chromeActiveTab.id, 73);
+assert.equal(chromeActiveTab.url, "https://example.com/chrome-story");
+assert.equal(chromeQueryCalls, 1);
+
 function createPopupDraftContext() {
   const popupContext = vm.createContext({
     URL,
