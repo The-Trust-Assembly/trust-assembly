@@ -39,19 +39,8 @@ import {
 import type { CorrectionsResponse, TASettings } from '../types/trustAssembly';
 import { useBrowserPage } from '../storage/browserPageContext';
 import { mergeOwnPendingForUrl } from '../storage/pendingSubmissionStore';
-
-interface BridgeMessage {
-  type: string;
-  requestId?: string;
-  url?: string;
-  method?: string;
-  body?: string;
-  count?: number;
-  signalType?: string;
-  title?: string;
-  authors?: unknown;
-  contentType?: string;
-}
+import { parseTrustedWebViewMessage } from '../utils/webViewBridge';
+import type { TrustedWebViewMessage } from '../utils/webViewBridge';
 
 const PAGE_METADATA_SCRIPT = `
   (function () {
@@ -247,7 +236,7 @@ export default function BrowserScreen({ navigation, route }: any) {
     return request;
   }, []);
 
-  const handleLegacyFetchRequest = useCallback(async (message: BridgeMessage) => {
+  const handleLegacyFetchRequest = useCallback(async (message: TrustedWebViewMessage & { type: 'TA_FETCH_CORRECTIONS' }) => {
     const articleUrl = correctionUrlFromBridge(message.url || '');
     if (!articleUrl) {
       if (message.requestId) {
@@ -288,7 +277,7 @@ export default function BrowserScreen({ navigation, route }: any) {
   }, [dispatchToPage, fetchCorrectionData, settings]);
 
   const handleCanonicalFetchRequest = useCallback(async (
-    message: BridgeMessage,
+    message: TrustedWebViewMessage & { type: 'TA_FETCH' },
     generation: number,
     topLevelUrl: string,
   ) => {
@@ -348,23 +337,17 @@ export default function BrowserScreen({ navigation, route }: any) {
   }, [dispatchToPage, fetchCorrectionData]);
 
   const handleWebViewMessage = useCallback(async (event: WebViewMessageEvent) => {
-    let message: BridgeMessage;
-    try {
-      const parsed: unknown = JSON.parse(event.nativeEvent.data);
-      if (!parsed || typeof parsed !== 'object' || typeof (parsed as BridgeMessage).type !== 'string') return;
-      message = parsed as BridgeMessage;
-    } catch {
-      return;
-    }
-
-    const senderUrl = normalizeBrowserUrl(event.nativeEvent.url || '');
     const topLevelUrl = currentUrlRef.current;
-    if (!senderUrl || correctionCacheKey(senderUrl) !== correctionCacheKey(topLevelUrl)) return;
+    const message = parseTrustedWebViewMessage(
+      event.nativeEvent.data,
+      event.nativeEvent.url || '',
+      topLevelUrl,
+    );
+    if (!message) return;
     const generation = pageGenerationRef.current;
 
     switch (message.type) {
       case 'TA_FETCH':
-        if (typeof message.requestId !== 'string' || message.requestId.length > 128) return;
         await handleCanonicalFetchRequest(message, generation, topLevelUrl);
         break;
       case 'TA_FETCH_CORRECTIONS':
@@ -372,9 +355,7 @@ export default function BrowserScreen({ navigation, route }: any) {
         break;
       case 'TA_COUNT':
       case 'TA_CORRECTIONS_PROCESSED':
-        if (typeof message.count === 'number' && Number.isFinite(message.count)) {
-          setCorrectionCount(Math.max(0, Math.floor(message.count)));
-        }
+        setCorrectionCount(message.count);
         break;
       case 'TA_READY':
         await Promise.all([
@@ -386,19 +367,9 @@ export default function BrowserScreen({ navigation, route }: any) {
         navigation.navigate('Corrections', { url: currentUrl });
         break;
       case 'TA_PAGE_METADATA': {
-        const metadataUrl = normalizeBrowserUrl(message.url || '');
-        if (!metadataUrl || correctionCacheKey(metadataUrl) !== correctionCacheKey(topLevelUrl)) return;
-        if (typeof message.title === 'string') setCurrentTitle(message.title.trim().slice(0, 1000));
-        if (Array.isArray(message.authors)) {
-          setCurrentAuthors(message.authors
-            .filter((author): author is string => typeof author === 'string')
-            .map((author) => author.trim())
-            .filter(Boolean)
-            .slice(0, 10));
-        }
-        if (typeof message.contentType === 'string' && ['article', 'video', 'shortform', 'audio', 'product'].includes(message.contentType)) {
-          setCurrentContentType(message.contentType);
-        }
+        setCurrentTitle(message.title);
+        setCurrentAuthors(message.authors);
+        setCurrentContentType(message.contentType);
         break;
       }
       default:

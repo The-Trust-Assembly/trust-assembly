@@ -11,6 +11,7 @@
     "test": "npm run test:unit && npm run test:overlay",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/development-environment.test.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types tests/import-extract.test.ts",
     "test:db": "node scripts/test-database-migrations.mjs",
+    "test:api": "node scripts/test-api-integration.mjs",
     "seed:local-agents": "node scripts/seed-local-test-agents.mjs",
     "build:overlay": "node packages/trust-overlay/scripts/build.mjs",
     "build:overlay:dev": "node packages/trust-overlay/scripts/build.mjs --dev",

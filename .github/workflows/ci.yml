@@ -41,6 +41,11 @@ jobs:
         env:
           TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/trust_assembly_ci
 
+      - name: Test submission and jury API workflow
+        run: npm run test:api
+        env:
+          TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/trust_assembly_ci
+
       - name: Verify generated extension and mobile overlay files
         run: npm run check:overlay
 
