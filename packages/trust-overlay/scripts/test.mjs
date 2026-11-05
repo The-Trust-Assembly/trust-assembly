@@ -177,6 +177,87 @@ assert.equal(chromeActiveTab.id, 73);
 assert.equal(chromeActiveTab.url, "https://example.com/chrome-story");
 assert.equal(chromeQueryCalls, 1);
 
+// Execute the exact Firefox fallback extractor against a representative news
+// article fixture. This catches selector/author regressions without requiring
+// a real publisher page or a permanently installed extension in CI.
+const firefoxExtractorStart = popupScript.indexOf("async function extractPageInfoFromFirefoxTab");
+const firefoxExtractorEnd = popupScript.indexOf("async function requestPageInfo", firefoxExtractorStart);
+assert.ok(firefoxExtractorStart >= 0 && firefoxExtractorEnd > firefoxExtractorStart);
+const firefoxExtractorSource = popupScript.slice(firefoxExtractorStart, firefoxExtractorEnd);
+const fixtureHeadline = {
+  textContent: "Abbott holds slim edge over Hinojosa in latest Texas governor poll",
+};
+const fixtureAuthorMeta = { content: "Steven Ardary" };
+const fixtureJsonLd = {
+  textContent: JSON.stringify({
+    "@type": "NewsArticle",
+    headline: fixtureHeadline.textContent,
+    author: { "@type": "Person", name: "Steven Ardary" },
+  }),
+};
+const fixtureDocument = {
+  title: `${fixtureHeadline.textContent} | FOX 7 Austin`,
+  querySelector(selector) {
+    if (selector === "[data-ta-original-text]") return null;
+    if (selector.includes("h1")) return fixtureHeadline;
+    if (selector.includes("og:title")) return null;
+    return null;
+  },
+  querySelectorAll(selector) {
+    if (selector.includes('meta[name="author"]')) return [fixtureAuthorMeta];
+    if (selector === 'script[type="application/ld+json"]') return [fixtureJsonLd];
+    return [];
+  },
+};
+const firefoxExtractorContext = vm.createContext({
+  browser: {
+    tabs: {
+      async executeScript(_tabId, details) {
+        assert.ok(details.code.includes("document.querySelector"));
+        return [vm.runInNewContext(details.code, { document: fixtureDocument })];
+      },
+    },
+  },
+});
+vm.runInContext(
+  `${firefoxExtractorSource}\n;globalThis.__extractPageInfo = extractPageInfoFromFirefoxTab;`,
+  firefoxExtractorContext,
+);
+const fixturePageInfo = await firefoxExtractorContext.__extractPageInfo(101);
+assert.deepEqual(JSON.parse(JSON.stringify(fixturePageInfo)), {
+  headline: fixtureHeadline.textContent,
+  authors: ["Steven Ardary"],
+});
+
+// The same matching logic drives both article-page and feed-link headline
+// replacement. Verify common publisher punctuation and truncation differences.
+const matcherStart = contentScript.indexOf("function normalizeForMatch");
+const matcherEnd = contentScript.indexOf("// ── Apply Corrections Inline", matcherStart);
+assert.ok(matcherStart >= 0 && matcherEnd > matcherStart);
+const matcherContext = vm.createContext({});
+vm.runInContext(
+  `${contentScript.slice(matcherStart, matcherEnd)}\n;globalThis.__headlinesMatch = headlinesMatch;`,
+  matcherContext,
+);
+assert.equal(
+  matcherContext.__headlinesMatch(
+    "Abbott holds slim edge over Hinojosa in latest Texas governor poll",
+    "Abbott holds slim edge over Hinojosa in latest Texas governor poll",
+  ),
+  true,
+);
+assert.equal(
+  matcherContext.__headlinesMatch(
+    "Alaska governor orders investigation into Peltola campaign over spoiler candidate…",
+    "Alaska governor orders investigation into Peltola campaign over spoiler candidate controversy",
+  ),
+  true,
+);
+assert.equal(
+  matcherContext.__headlinesMatch("Unrelated market report", fixtureHeadline.textContent),
+  false,
+);
+
 function createPopupDraftContext() {
   const popupContext = vm.createContext({
     URL,

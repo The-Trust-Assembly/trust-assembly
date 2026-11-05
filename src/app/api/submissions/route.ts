@@ -188,7 +188,6 @@ export async function POST(request: NextRequest) {
       );
       if (dupeCheck.rows.length > 0) {
         await client.query("ROLLBACK");
-        client.release();
         return err("Duplicate submission detected. This submission was already created moments ago.", 409);
       }
 
